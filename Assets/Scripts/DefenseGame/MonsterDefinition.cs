@@ -9,7 +9,10 @@ namespace DefenseGame
     {
         public string id;
         public string displayName;
+        [TextArea] public string description;
         public CharacterGrade grade;
+        public MonsterRole role;
+        public Color accentColor = Color.white;
         public GameObject prefab;
         public bool isBoss;
         public int rewardGold = 5;
@@ -17,4 +20,3 @@ namespace DefenseGame
         public List<SkillDefinition> skills = new List<SkillDefinition>();
     }
 }
-

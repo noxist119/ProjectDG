@@ -11,7 +11,11 @@ namespace DefenseGame
         AttackSpeedBoost = 3,
         CriticalBoost = 4,
         MoveSpeedBoost = 5,
-        ManaSurge = 6
+        ManaSurge = 6,
+        MultiShot = 7,
+        Execute = 8,
+        ShieldBreak = 9,
+        SummonRush = 10
     }
 
     [Serializable]
@@ -26,6 +30,6 @@ namespace DefenseGame
         public float radius = 2.5f;
         public float manaThreshold = 100f;
         public float cooldown = 4f;
+        public int hitCount = 1;
     }
 }
-

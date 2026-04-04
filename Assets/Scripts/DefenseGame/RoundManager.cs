@@ -19,6 +19,26 @@ namespace DefenseGame
         public bool IsRoundRunning { get; private set; }
         public bool IsBossRound => CurrentRound > 0 && CurrentRound % 10 == 0;
 
+        private void Awake()
+        {
+            if ((spawnPoints == null || spawnPoints.Length == 0) && transform.childCount > 0)
+            {
+                spawnPoints = new Transform[transform.childCount];
+                for (int i = 0; i < transform.childCount; i++)
+                {
+                    spawnPoints[i] = transform.GetChild(i);
+                }
+            }
+        }
+
+        public void Configure(MonsterDatabase database, MonsterUnit fallbackPrefab, Transform[] newSpawnPoints, Transform newGoalPoint)
+        {
+            monsterDatabase = database;
+            fallbackMonsterPrefab = fallbackPrefab;
+            spawnPoints = newSpawnPoints;
+            goalPoint = newGoalPoint;
+        }
+
         public void StartNextRound()
         {
             if (!IsRoundRunning)
@@ -83,8 +103,8 @@ namespace DefenseGame
 
             Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
             MonsterUnit monster = Instantiate(prefabToUse, spawnPoint.position, spawnPoint.rotation);
+            monster.gameObject.SetActive(true);
             monster.Initialize(definition, goalPoint);
         }
     }
 }
-

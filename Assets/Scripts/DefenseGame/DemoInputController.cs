@@ -6,6 +6,11 @@ namespace DefenseGame
     {
         [SerializeField] private DefenseGameController gameController;
 
+        public void Configure(DefenseGameController controller)
+        {
+            gameController = controller;
+        }
+
         private void Update()
         {
             if (gameController == null)
@@ -24,4 +29,3 @@ namespace DefenseGame
         }
     }
 }
-

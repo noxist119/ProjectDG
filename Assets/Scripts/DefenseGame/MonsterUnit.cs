@@ -1,9 +1,13 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace DefenseGame
 {
     public class MonsterUnit : MonoBehaviour
     {
+        [SerializeField] private Renderer[] tintRenderers;
+
         private MonsterDefinition definition;
         private Transform goal;
         private float currentHealth;
@@ -15,8 +19,9 @@ namespace DefenseGame
         private float attackSpeedBuffTimer;
         private float critBuffTimer;
         private float moveSpeedBuffTimer;
-        private readonly System.Collections.Generic.List<DefenderUnit> defenders = new System.Collections.Generic.List<DefenderUnit>();
-        private readonly System.Collections.Generic.Dictionary<string, float> skillCooldowns = new System.Collections.Generic.Dictionary<string, float>();
+        private bool enraged;
+        private readonly List<DefenderUnit> defenders = new List<DefenderUnit>();
+        private readonly Dictionary<string, float> skillCooldowns = new Dictionary<string, float>();
 
         public static event System.Action<MonsterUnit> OnMonsterSpawned;
         public static event System.Action<MonsterUnit> OnMonsterKilled;
@@ -49,6 +54,7 @@ namespace DefenseGame
 
             TickBuffs();
             TickSkillCooldowns();
+            TickBossPhase();
 
             currentMana = Mathf.Min(definition.stats.maxMana, currentMana + 5f * Time.deltaTime);
             attackCooldown -= Time.deltaTime;
@@ -89,10 +95,12 @@ namespace DefenseGame
             attackSpeedBuffTimer = 0f;
             critBuffTimer = 0f;
             moveSpeedBuffTimer = 0f;
+            enraged = false;
             defenders.Clear();
             defenders.AddRange(FindObjectsOfType<DefenderUnit>());
             skillCooldowns.Clear();
             gameObject.name = definition.displayName;
+            ApplyVisuals();
             OnMonsterSpawned?.Invoke(this);
         }
 
@@ -177,49 +185,59 @@ namespace DefenseGame
 
         private void CastSkill(SkillDefinition skill)
         {
-            switch (skill.effectType)
+            if (skill.effectType == SkillEffectType.DirectDamage)
             {
-                case SkillEffectType.DirectDamage:
-                    DefenderUnit singleTarget = FindNearestDefender();
-                    if (singleTarget != null)
+                DefenderUnit singleTarget = FindNearestDefender();
+                if (singleTarget != null)
+                {
+                    singleTarget.TakeDamage(definition.stats.attackPower * skill.power, false);
+                }
+            }
+            else if (skill.effectType == SkillEffectType.AreaDamage)
+            {
+                DefenderUnit[] targets = FindObjectsOfType<DefenderUnit>();
+                for (int i = 0; i < targets.Length; i++)
+                {
+                    if (Vector3.Distance(transform.position, targets[i].transform.position) <= skill.radius)
                     {
-                        singleTarget.TakeDamage(definition.stats.attackPower * skill.power, false);
+                        targets[i].TakeDamage(definition.stats.attackPower * skill.power, false);
                     }
-                    break;
+                }
+            }
+            else if (skill.effectType == SkillEffectType.HealSelf)
+            {
+                Heal(MaxHealth * skill.power);
+            }
+            else if (skill.effectType == SkillEffectType.AttackSpeedBoost)
+            {
+                attackSpeedBonus = skill.power;
+                attackSpeedBuffTimer = skill.duration;
+            }
+            else if (skill.effectType == SkillEffectType.CriticalBoost)
+            {
+                critChanceBonus = skill.power;
+                critBuffTimer = skill.duration;
+            }
+            else if (skill.effectType == SkillEffectType.MoveSpeedBoost)
+            {
+                moveSpeedBonus = skill.power;
+                moveSpeedBuffTimer = skill.duration;
+            }
+            else if (skill.effectType == SkillEffectType.ManaSurge)
+            {
+                currentMana = Mathf.Min(definition.stats.maxMana, currentMana + definition.stats.maxMana * skill.power);
+            }
+            else if (skill.effectType == SkillEffectType.SummonRush)
+            {
+                List<DefenderUnit> targets = defenders.Where(defender => defender != null)
+                    .OrderBy(defender => Vector3.Distance(transform.position, defender.transform.position))
+                    .Take(skill.hitCount)
+                    .ToList();
 
-                case SkillEffectType.AreaDamage:
-                    DefenderUnit[] targets = FindObjectsOfType<DefenderUnit>();
-                    for (int i = 0; i < targets.Length; i++)
-                    {
-                        if (Vector3.Distance(transform.position, targets[i].transform.position) <= skill.radius)
-                        {
-                            targets[i].TakeDamage(definition.stats.attackPower * skill.power, false);
-                        }
-                    }
-                    break;
-
-                case SkillEffectType.HealSelf:
-                    Heal(MaxHealth * skill.power);
-                    break;
-
-                case SkillEffectType.AttackSpeedBoost:
-                    attackSpeedBonus = skill.power;
-                    attackSpeedBuffTimer = skill.duration;
-                    break;
-
-                case SkillEffectType.CriticalBoost:
-                    critChanceBonus = skill.power;
-                    critBuffTimer = skill.duration;
-                    break;
-
-                case SkillEffectType.MoveSpeedBoost:
-                    moveSpeedBonus = skill.power;
-                    moveSpeedBuffTimer = skill.duration;
-                    break;
-
-                case SkillEffectType.ManaSurge:
-                    currentMana = Mathf.Min(definition.stats.maxMana, currentMana + definition.stats.maxMana * skill.power);
-                    break;
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    targets[i].TakeDamage(definition.stats.attackPower * skill.power, false);
+                }
             }
         }
 
@@ -297,6 +315,40 @@ namespace DefenseGame
             }
         }
 
+        private void TickBossPhase()
+        {
+            if (!IsBoss || enraged)
+            {
+                return;
+            }
+
+            if (currentHealth <= MaxHealth * 0.5f)
+            {
+                enraged = true;
+                attackSpeedBonus += 0.35f;
+                moveSpeedBonus += 0.2f;
+                critChanceBonus += 0.12f;
+            }
+        }
+
+        private void ApplyVisuals()
+        {
+            if (tintRenderers == null || tintRenderers.Length == 0)
+            {
+                tintRenderers = GetComponentsInChildren<Renderer>(true);
+            }
+
+            for (int i = 0; i < tintRenderers.Length; i++)
+            {
+                if (tintRenderers[i] != null && tintRenderers[i].material != null)
+                {
+                    tintRenderers[i].material.color = definition.accentColor;
+                }
+            }
+
+            transform.localScale = IsBoss ? Vector3.one * 1.7f : Vector3.one;
+        }
+
         private void HandleDefenderSpawned(DefenderUnit defender)
         {
             if (defender != null && !defenders.Contains(defender))
@@ -311,4 +363,3 @@ namespace DefenseGame
         }
     }
 }
-

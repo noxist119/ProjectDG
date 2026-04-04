@@ -15,6 +15,7 @@ namespace DefenseGame
         [SerializeField] private int startGold = 30;
         [SerializeField] private int summonCost = 10;
         [SerializeField] private int life = 20;
+        [SerializeField] private int roundStartGold = 4;
 
         public event System.Action OnStateChanged;
 
@@ -26,38 +27,59 @@ namespace DefenseGame
         public int BoardUnitCount => boardManager != null ? boardManager.Slots.Count - boardManager.EmptySlotCount : 0;
         public int CharacterCount => characterDatabase != null ? characterDatabase.Characters.Count : 0;
         public int MonsterCount => monsterDatabase != null ? monsterDatabase.Monsters.Count : 0;
+        public string CurrentStateSummary => "Gold " + Gold + " | Life " + Life + " | Round " + CurrentRound + (IsBossRound ? " Boss" : string.Empty);
+
+        private void Awake()
+        {
+            if (characterDatabase == null) characterDatabase = GetComponent<CharacterDatabase>();
+            if (monsterDatabase == null) monsterDatabase = GetComponent<MonsterDatabase>();
+            if (boardManager == null) boardManager = GetComponent<DefenseBoardManager>();
+            if (roundManager == null) roundManager = GetComponent<RoundManager>();
+        }
 
         private void OnEnable()
         {
             MonsterUnit.OnMonsterKilled += HandleMonsterKilled;
             MonsterUnit.OnMonsterEscaped += HandleMonsterEscaped;
-
-            if (roundManager != null)
-            {
-                roundManager.OnRoundStateChanged += HandleRoundStateChanged;
-            }
+            SubscribeRoundManager();
         }
 
         private void OnDisable()
         {
             MonsterUnit.OnMonsterKilled -= HandleMonsterKilled;
             MonsterUnit.OnMonsterEscaped -= HandleMonsterEscaped;
-
-            if (roundManager != null)
-            {
-                roundManager.OnRoundStateChanged -= HandleRoundStateChanged;
-            }
+            UnsubscribeRoundManager();
         }
 
         private void Start()
         {
-            Gold = startGold;
+            if (Gold <= 0)
+            {
+                Gold = startGold;
+            }
+
+            NotifyStateChanged();
+        }
+
+        public void Configure(CharacterDatabase characters, MonsterDatabase monsters, DefenseBoardManager board, RoundManager rounds, DefenderUnit fallbackUnit)
+        {
+            UnsubscribeRoundManager();
+            characterDatabase = characters;
+            monsterDatabase = monsters;
+            boardManager = board;
+            roundManager = rounds;
+            defaultUnitPrefab = fallbackUnit;
+            SubscribeRoundManager();
+            if (Gold <= 0)
+            {
+                Gold = startGold;
+            }
             NotifyStateChanged();
         }
 
         public bool TrySummon()
         {
-            if (Gold < summonCost)
+            if (Gold < summonCost || characterDatabase == null || boardManager == null)
             {
                 return false;
             }
@@ -81,6 +103,11 @@ namespace DefenseGame
 
         public bool TryMerge(CharacterGrade grade)
         {
+            if (boardManager == null || characterDatabase == null)
+            {
+                return false;
+            }
+
             bool merged = boardManager.TryMergeUnitsOfGrade(grade, characterDatabase, defaultUnitPrefab);
             if (merged)
             {
@@ -92,12 +119,23 @@ namespace DefenseGame
 
         public void StartRound()
         {
+            if (roundManager == null)
+            {
+                return;
+            }
+
+            Gold += roundStartGold + CurrentRound;
             roundManager.StartNextRound();
             NotifyStateChanged();
         }
 
         public void AddCharacterContent(int additionalCount)
         {
+            if (characterDatabase == null)
+            {
+                return;
+            }
+
             int nextCount = Mathf.Max(characterDatabase.Characters.Count + additionalCount, characterDatabase.Characters.Count);
             characterDatabase.GenerateStarterCharacters(nextCount);
             NotifyStateChanged();
@@ -105,6 +143,11 @@ namespace DefenseGame
 
         public void AddMonsterContent(int additionalCount)
         {
+            if (monsterDatabase == null)
+            {
+                return;
+            }
+
             int nextCount = Mathf.Max(monsterDatabase.Monsters.Count + additionalCount, monsterDatabase.Monsters.Count);
             monsterDatabase.GenerateStarterMonsters(nextCount);
             NotifyStateChanged();
@@ -132,10 +175,26 @@ namespace DefenseGame
             NotifyStateChanged();
         }
 
+        private void SubscribeRoundManager()
+        {
+            if (roundManager != null)
+            {
+                roundManager.OnRoundStateChanged -= HandleRoundStateChanged;
+                roundManager.OnRoundStateChanged += HandleRoundStateChanged;
+            }
+        }
+
+        private void UnsubscribeRoundManager()
+        {
+            if (roundManager != null)
+            {
+                roundManager.OnRoundStateChanged -= HandleRoundStateChanged;
+            }
+        }
+
         private void NotifyStateChanged()
         {
             OnStateChanged?.Invoke();
         }
     }
 }
-

@@ -12,6 +12,20 @@ namespace DefenseGame
         public IReadOnlyList<BoardSlot> Slots => slots;
         public int EmptySlotCount => slots.Count(slot => slot != null && slot.IsEmpty);
 
+        private void Awake()
+        {
+            if (slots.Count == 0)
+            {
+                slots = GetComponentsInChildren<BoardSlot>(true).ToList();
+            }
+        }
+
+        public void Configure(List<BoardSlot> newSlots, DefenderUnit fallbackPrefab)
+        {
+            slots = newSlots;
+            fallbackUnitPrefab = fallbackPrefab;
+        }
+
         public bool TrySpawnUnit(CharacterDefinition definition, DefenderUnit prefabOverride = null)
         {
             BoardSlot emptySlot = slots.FirstOrDefault(slot => slot != null && slot.IsEmpty);
@@ -31,6 +45,7 @@ namespace DefenseGame
             }
 
             DefenderUnit unit = Instantiate(prefabToUse, emptySlot.UnitAnchor.position, Quaternion.identity);
+            unit.gameObject.SetActive(true);
             unit.Initialize(definition);
             emptySlot.AssignUnit(unit);
             return true;
@@ -75,6 +90,7 @@ namespace DefenseGame
             }
 
             DefenderUnit unit = Instantiate(prefabToUse, spawnSlot.UnitAnchor.position, Quaternion.identity);
+            unit.gameObject.SetActive(true);
             unit.Initialize(mergedCharacter);
             spawnSlot.AssignUnit(unit);
             return true;
@@ -94,4 +110,3 @@ namespace DefenseGame
         }
     }
 }
-

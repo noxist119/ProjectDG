@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace DefenseGame
@@ -6,6 +8,7 @@ namespace DefenseGame
     {
         [SerializeField] private Transform firePoint;
         [SerializeField] private Projectile projectilePrefab;
+        [SerializeField] private Renderer[] tintRenderers;
 
         private CharacterDefinition definition;
         private BoardSlot currentSlot;
@@ -16,8 +19,8 @@ namespace DefenseGame
         private float critChanceBonus;
         private float attackSpeedBuffTimer;
         private float critBuffTimer;
-        private readonly System.Collections.Generic.List<MonsterUnit> monsters = new System.Collections.Generic.List<MonsterUnit>();
-        private readonly System.Collections.Generic.Dictionary<string, float> skillCooldowns = new System.Collections.Generic.Dictionary<string, float>();
+        private readonly List<MonsterUnit> monsters = new List<MonsterUnit>();
+        private readonly Dictionary<string, float> skillCooldowns = new Dictionary<string, float>();
 
         public static event System.Action<DefenderUnit> OnDefenderSpawned;
         public static event System.Action<DefenderUnit> OnDefenderRemoved;
@@ -42,6 +45,13 @@ namespace DefenseGame
             MonsterUnit.OnMonsterSpawned -= HandleMonsterSpawned;
             MonsterUnit.OnMonsterKilled -= HandleMonsterRemoved;
             MonsterUnit.OnMonsterEscaped -= HandleMonsterRemoved;
+        }
+
+        public void ConfigureRuntimePieces(Projectile projectileTemplate, Transform launchPoint, Renderer[] renderers)
+        {
+            projectilePrefab = projectileTemplate;
+            firePoint = launchPoint;
+            tintRenderers = renderers;
         }
 
         private void Update()
@@ -82,7 +92,8 @@ namespace DefenseGame
             monsters.Clear();
             monsters.AddRange(FindObjectsOfType<MonsterUnit>());
             skillCooldowns.Clear();
-            gameObject.name = $"{definition.displayName}_{definition.grade}";
+            gameObject.name = definition.displayName + "_" + definition.grade;
+            ApplyVisuals();
             OnDefenderSpawned?.Invoke(this);
         }
 
@@ -133,6 +144,7 @@ namespace DefenseGame
 
             Transform launchPoint = firePoint != null ? firePoint : transform;
             Projectile projectile = Instantiate(projectilePrefab, launchPoint.position, Quaternion.identity);
+            projectile.gameObject.SetActive(true);
             projectile.Initialize(target, damage, definition.stats.projectileSpeed, critical);
         }
 
@@ -167,44 +179,77 @@ namespace DefenseGame
 
         private void CastSkill(SkillDefinition skill)
         {
-            switch (skill.effectType)
+            if (skill.effectType == SkillEffectType.DirectDamage)
             {
-                case SkillEffectType.DirectDamage:
-                    MonsterUnit target = FindNearestTarget();
-                    if (target != null)
+                MonsterUnit target = FindNearestTarget();
+                if (target != null)
+                {
+                    target.TakeDamage(definition.stats.attackPower * skill.power, false);
+                }
+            }
+            else if (skill.effectType == SkillEffectType.AreaDamage)
+            {
+                MonsterUnit[] areaTargets = FindObjectsOfType<MonsterUnit>();
+                for (int i = 0; i < areaTargets.Length; i++)
+                {
+                    if (Vector3.Distance(transform.position, areaTargets[i].transform.position) <= skill.radius)
                     {
-                        target.TakeDamage(definition.stats.attackPower * skill.power, false);
+                        areaTargets[i].TakeDamage(definition.stats.attackPower * skill.power, false);
                     }
-                    break;
-
-                case SkillEffectType.AreaDamage:
-                    MonsterUnit[] areaTargets = FindObjectsOfType<MonsterUnit>();
-                    for (int i = 0; i < areaTargets.Length; i++)
-                    {
-                        if (Vector3.Distance(transform.position, areaTargets[i].transform.position) <= skill.radius)
-                        {
-                            areaTargets[i].TakeDamage(definition.stats.attackPower * skill.power, false);
-                        }
-                    }
-                    break;
-
-                case SkillEffectType.HealSelf:
-                    Heal(MaxHealth * skill.power);
-                    break;
-
-                case SkillEffectType.AttackSpeedBoost:
-                    attackSpeedBonus = skill.power;
-                    attackSpeedBuffTimer = skill.duration;
-                    break;
-
-                case SkillEffectType.CriticalBoost:
-                    critChanceBonus = skill.power;
-                    critBuffTimer = skill.duration;
-                    break;
-
-                case SkillEffectType.ManaSurge:
-                    currentMana = Mathf.Min(MaxMana, currentMana + MaxMana * skill.power);
-                    break;
+                }
+            }
+            else if (skill.effectType == SkillEffectType.HealSelf)
+            {
+                Heal(MaxHealth * skill.power);
+            }
+            else if (skill.effectType == SkillEffectType.AttackSpeedBoost)
+            {
+                attackSpeedBonus = skill.power;
+                attackSpeedBuffTimer = skill.duration;
+            }
+            else if (skill.effectType == SkillEffectType.CriticalBoost)
+            {
+                critChanceBonus = skill.power;
+                critBuffTimer = skill.duration;
+            }
+            else if (skill.effectType == SkillEffectType.ManaSurge)
+            {
+                currentMana = Mathf.Min(MaxMana, currentMana + MaxMana * skill.power);
+            }
+            else if (skill.effectType == SkillEffectType.MultiShot)
+            {
+                List<MonsterUnit> targets = GetNearestTargets(skill.hitCount);
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    targets[i].TakeDamage(definition.stats.attackPower * skill.power, false);
+                }
+            }
+            else if (skill.effectType == SkillEffectType.Execute)
+            {
+                MonsterUnit target = FindNearestTarget();
+                if (target != null)
+                {
+                    float multiplier = target.CurrentHealth <= target.MaxHealth * 0.35f ? skill.power * 1.8f : skill.power;
+                    target.TakeDamage(definition.stats.attackPower * multiplier, true);
+                }
+            }
+            else if (skill.effectType == SkillEffectType.SummonRush)
+            {
+                MonsterUnit[] allTargets = FindObjectsOfType<MonsterUnit>();
+                int hits = 0;
+                for (int i = 0; i < allTargets.Length && hits < skill.hitCount; i++)
+                {
+                    allTargets[i].TakeDamage(definition.stats.attackPower * skill.power, false);
+                    hits++;
+                }
+            }
+            else if (skill.effectType == SkillEffectType.ShieldBreak)
+            {
+                MonsterUnit target = FindNearestTarget();
+                if (target != null)
+                {
+                    target.TakeDamage(definition.stats.attackPower * skill.power, false);
+                }
             }
         }
 
@@ -231,6 +276,14 @@ namespace DefenseGame
             }
 
             return bestTarget;
+        }
+
+        private List<MonsterUnit> GetNearestTargets(int count)
+        {
+            return monsters.Where(monster => monster != null)
+                .OrderBy(monster => Vector3.Distance(transform.position, monster.transform.position))
+                .Take(count)
+                .ToList();
         }
 
         private void TickBuffs()
@@ -273,6 +326,22 @@ namespace DefenseGame
             }
         }
 
+        private void ApplyVisuals()
+        {
+            if (tintRenderers == null || tintRenderers.Length == 0)
+            {
+                tintRenderers = GetComponentsInChildren<Renderer>(true);
+            }
+
+            for (int i = 0; i < tintRenderers.Length; i++)
+            {
+                if (tintRenderers[i] != null && tintRenderers[i].material != null)
+                {
+                    tintRenderers[i].material.color = definition.accentColor;
+                }
+            }
+        }
+
         private void Die()
         {
             RemoveFromBoard();
@@ -294,4 +363,3 @@ namespace DefenseGame
         }
     }
 }
-

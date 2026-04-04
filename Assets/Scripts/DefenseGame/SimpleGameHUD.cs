@@ -11,11 +11,37 @@ namespace DefenseGame
         [SerializeField] private Text roundText;
         [SerializeField] private Text boardText;
         [SerializeField] private Text contentText;
+        [SerializeField] private Text hintText;
+
+        public void Configure(DefenseGameController controller, Text gold, Text lifeLabel, Text round, Text board, Text content, Text hint)
+        {
+            if (gameController != null)
+            {
+                gameController.OnStateChanged -= Refresh;
+            }
+
+            gameController = controller;
+            goldText = gold;
+            lifeText = lifeLabel;
+            roundText = round;
+            boardText = board;
+            contentText = content;
+            hintText = hint;
+
+            if (gameController != null)
+            {
+                gameController.OnStateChanged -= Refresh;
+                gameController.OnStateChanged += Refresh;
+            }
+
+            Refresh();
+        }
 
         private void OnEnable()
         {
             if (gameController != null)
             {
+                gameController.OnStateChanged -= Refresh;
                 gameController.OnStateChanged += Refresh;
             }
         }
@@ -40,12 +66,12 @@ namespace DefenseGame
                 return;
             }
 
-            if (goldText != null) goldText.text = $"Gold : {gameController.Gold}";
-            if (lifeText != null) lifeText.text = $"Life : {gameController.Life}";
-            if (roundText != null) roundText.text = $"Round : {gameController.CurrentRound} {(gameController.IsBossRound ? "BOSS" : string.Empty)}";
-            if (boardText != null) boardText.text = $"Units : {gameController.BoardUnitCount}";
-            if (contentText != null) contentText.text = $"Characters : {gameController.CharacterCount} / Monsters : {gameController.MonsterCount}";
+            if (goldText != null) goldText.text = "Gold : " + gameController.Gold;
+            if (lifeText != null) lifeText.text = "Life : " + gameController.Life;
+            if (roundText != null) roundText.text = "Round : " + gameController.CurrentRound + (gameController.IsBossRound ? " BOSS" : string.Empty);
+            if (boardText != null) boardText.text = "Units : " + gameController.BoardUnitCount;
+            if (contentText != null) contentText.text = "Characters : " + gameController.CharacterCount + " / Monsters : " + gameController.MonsterCount;
+            if (hintText != null) hintText.text = "Space Round | S Summon | 1-4 Merge | C Add Heroes | M Add Monsters";
         }
     }
 }
-
