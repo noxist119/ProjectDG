@@ -12,8 +12,9 @@ namespace DefenseGame
         [SerializeField] private Text boardText;
         [SerializeField] private Text contentText;
         [SerializeField] private Text hintText;
+        [SerializeField] private string hintMessage = "Space Round | S Summon | 1-4 Merge | C Add Heroes | M Add Monsters";
 
-        public void Configure(DefenseGameController controller, Text gold, Text lifeLabel, Text round, Text board, Text content, Text hint)
+        public void Configure(DefenseGameController controller, Text gold, Text lifeLabel, Text round, Text board, Text content, Text hint, string overrideHint = null)
         {
             if (gameController != null)
             {
@@ -27,6 +28,10 @@ namespace DefenseGame
             boardText = board;
             contentText = content;
             hintText = hint;
+            if (!string.IsNullOrWhiteSpace(overrideHint))
+            {
+                hintMessage = overrideHint;
+            }
 
             if (gameController != null)
             {
@@ -71,7 +76,7 @@ namespace DefenseGame
             if (roundText != null) roundText.text = "Round : " + gameController.CurrentRound + (gameController.IsBossRound ? " BOSS" : string.Empty);
             if (boardText != null) boardText.text = "Units : " + gameController.BoardUnitCount;
             if (contentText != null) contentText.text = "Characters : " + gameController.CharacterCount + " / Monsters : " + gameController.MonsterCount;
-            if (hintText != null) hintText.text = "Space Round | S Summon | 1-4 Merge | C Add Heroes | M Add Monsters";
+            if (hintText != null) hintText.text = hintMessage;
         }
     }
 }

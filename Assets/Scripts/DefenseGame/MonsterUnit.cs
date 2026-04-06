@@ -10,6 +10,7 @@ namespace DefenseGame
 
         private MonsterDefinition definition;
         private Transform goal;
+        private FloatingCombatUI floatingUi;
         private float currentHealth;
         private float currentMana;
         private float attackCooldown;
@@ -58,6 +59,7 @@ namespace DefenseGame
 
             currentMana = Mathf.Min(definition.stats.maxMana, currentMana + 5f * Time.deltaTime);
             attackCooldown -= Time.deltaTime;
+            floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
 
             if (TryCastSkill())
             {
@@ -101,6 +103,8 @@ namespace DefenseGame
             skillCooldowns.Clear();
             gameObject.name = definition.displayName;
             ApplyVisuals();
+            floatingUi = FloatingCombatUI.Attach(transform, definition.displayName, definition.accentColor);
+            floatingUi.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
             OnMonsterSpawned?.Invoke(this);
         }
 
@@ -108,6 +112,8 @@ namespace DefenseGame
         {
             currentHealth -= damage;
             currentMana = Mathf.Min(definition.stats.maxMana, currentMana + damage * 0.25f);
+            floatingUi?.ShowDamage(damage, critical, false);
+            floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
 
             if (currentHealth <= 0f)
             {
@@ -124,6 +130,8 @@ namespace DefenseGame
         public void Heal(float amount)
         {
             currentHealth = Mathf.Min(MaxHealth, currentHealth + amount);
+            floatingUi?.ShowDamage(amount, false, true);
+            floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
         }
 
         private void MoveTowardsGoal()

@@ -9,6 +9,7 @@ namespace DefenseGame
         [SerializeField] private List<CharacterDefinition> characters = new List<CharacterDefinition>();
         [SerializeField] private bool generateStarterCharacters = true;
         [SerializeField] private int starterCharacterCount = 30;
+        [SerializeField] private GamePresentationConfig presentationConfig;
 
         private static readonly string[] NormalNames =
         {
@@ -45,6 +46,16 @@ namespace DefenseGame
             {
                 GenerateStarterCharacters(starterCharacterCount);
             }
+            else
+            {
+                ApplyPresentationOverrides();
+            }
+        }
+
+        public void ApplyPresentationConfig(GamePresentationConfig config)
+        {
+            presentationConfig = config;
+            ApplyPresentationOverrides();
         }
 
         public void GenerateStarterCharacters(int totalCount)
@@ -68,6 +79,8 @@ namespace DefenseGame
                     characters.Add(CreateDefinition($"Hero {i + 1:D2}", grade, i));
                 }
             }
+
+            ApplyPresentationOverrides();
         }
 
         public List<CharacterDefinition> GetCharactersByGrade(CharacterGrade grade)
@@ -329,6 +342,19 @@ namespace DefenseGame
             if (ratio < 0.88f) return CharacterGrade.Epic;
             if (ratio < 0.97f) return CharacterGrade.Legendary;
             return CharacterGrade.Mythic;
+        }
+
+        private void ApplyPresentationOverrides()
+        {
+            if (presentationConfig == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < characters.Count; i++)
+            {
+                presentationConfig.ApplyToCharacter(characters[i]);
+            }
         }
     }
 }

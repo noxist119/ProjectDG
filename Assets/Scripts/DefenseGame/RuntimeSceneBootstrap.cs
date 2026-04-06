@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,8 +14,9 @@ namespace DefenseGame
         [SerializeField] private Vector3 spawnCenter = new Vector3(0f, 0f, 8f);
         [SerializeField] private float laneSpacing = 3.2f;
         [SerializeField] private float slotSpacing = 1.8f;
+        [SerializeField] private GamePresentationConfig presentationConfig;
 
-        private static readonly Color[] SlotColors =
+        private static readonly Color[] DefaultSlotColors =
         {
             new Color(0.30f, 0.56f, 0.93f),
             new Color(0.25f, 0.78f, 0.77f),
@@ -28,22 +30,13 @@ namespace DefenseGame
             new Color(0.98f, 0.87f, 0.45f)
         };
 
-        private static readonly Color[] LaneColors =
+        private static readonly Color[] DefaultLaneColors =
         {
             new Color(0.16f, 0.70f, 0.98f),
             new Color(0.24f, 0.88f, 0.54f),
             new Color(0.98f, 0.66f, 0.20f),
             new Color(0.94f, 0.28f, 0.43f),
             new Color(0.72f, 0.38f, 0.95f)
-        };
-
-        private static readonly Color[] AccentColors =
-        {
-            new Color(0.08f, 0.11f, 0.14f),
-            new Color(0.12f, 0.18f, 0.24f),
-            new Color(0.18f, 0.10f, 0.11f),
-            new Color(0.17f, 0.14f, 0.22f),
-            new Color(0.13f, 0.19f, 0.24f)
         };
 
         private void Start()
@@ -65,6 +58,9 @@ namespace DefenseGame
             DemoInputController demoInput = GetOrAdd<DemoInputController>(gameObject);
             GameUIButtonBinder buttonBinder = GetOrAdd<GameUIButtonBinder>(gameObject);
             SimpleGameHUD hud = GetOrAdd<SimpleGameHUD>(gameObject);
+
+            characterDatabase.ApplyPresentationConfig(presentationConfig);
+            monsterDatabase.ApplyPresentationConfig(presentationConfig);
 
             Transform root = EnsureRoot("RuntimeStageRoot");
             Transform boardRoot = EnsureChild(root, "BoardSlots");
@@ -154,22 +150,37 @@ namespace DefenseGame
 
         private void EnsureGround(Transform root)
         {
-            ReplaceNamedPrimitive(root, "Ground", PrimitiveType.Plane, new Vector3(0f, -0.5f, 0f), new Vector3(2f, 1f, 1.8f), AccentColors[0]);
-            ReplaceNamedPrimitive(root, "BoardStrip", PrimitiveType.Cube, new Vector3(0f, -0.15f, -5.5f), new Vector3(20f, 0.25f, 2.6f), AccentColors[1]);
-            ReplaceNamedPrimitive(root, "EnemyRunway", PrimitiveType.Cube, new Vector3(0f, -0.15f, 2.1f), new Vector3(20f, 0.2f, 12.5f), AccentColors[2]);
-            ReplaceNamedPrimitive(root, "MidBridge", PrimitiveType.Cube, new Vector3(0f, -0.12f, -1.6f), new Vector3(20f, 0.08f, 1.2f), new Color(0.25f, 0.29f, 0.36f));
+            ReplaceNamedPrimitive(root, "Ground", PrimitiveType.Plane, new Vector3(0f, -0.5f, 0f), new Vector3(2f, 1f, 1.8f), GetConfigColor(config => config.groundColor, new Color(0.08f, 0.11f, 0.14f)));
+            ReplaceNamedPrimitive(root, "BoardStrip", PrimitiveType.Cube, new Vector3(0f, -0.15f, -5.5f), new Vector3(20f, 0.25f, 2.6f), GetConfigColor(config => config.boardStripColor, new Color(0.12f, 0.18f, 0.24f)));
+            ReplaceNamedPrimitive(root, "EnemyRunway", PrimitiveType.Cube, new Vector3(0f, -0.15f, 2.1f), new Vector3(20f, 0.2f, 12.5f), GetConfigColor(config => config.enemyRunwayColor, new Color(0.18f, 0.10f, 0.11f)));
+            ReplaceNamedPrimitive(root, "MidBridge", PrimitiveType.Cube, new Vector3(0f, -0.12f, -1.6f), new Vector3(20f, 0.08f, 1.2f), GetConfigColor(config => config.midBridgeColor, new Color(0.25f, 0.29f, 0.36f)));
         }
 
         private void EnsureBackdrop(Transform root)
         {
-            ReplaceNamedPrimitive(root, "NorthWall", PrimitiveType.Cube, new Vector3(0f, 2.5f, 10.5f), new Vector3(24f, 5f, 0.5f), AccentColors[3]);
-            ReplaceNamedPrimitive(root, "SouthWall", PrimitiveType.Cube, new Vector3(0f, 2f, -9.8f), new Vector3(24f, 4f, 0.5f), AccentColors[4]);
-            ReplaceNamedPrimitive(root, "LeftCliff", PrimitiveType.Cube, new Vector3(-11.2f, 1.5f, 0f), new Vector3(1.2f, 3f, 21f), AccentColors[0]);
-            ReplaceNamedPrimitive(root, "RightCliff", PrimitiveType.Cube, new Vector3(11.2f, 1.5f, 0f), new Vector3(1.2f, 3f, 21f), AccentColors[0]);
-            ReplaceNamedPrimitive(root, "LeftBanner", PrimitiveType.Cube, new Vector3(-9.5f, 3.5f, -5.7f), new Vector3(1.2f, 2.8f, 0.2f), LaneColors[0]);
-            ReplaceNamedPrimitive(root, "RightBanner", PrimitiveType.Cube, new Vector3(9.5f, 3.5f, -5.7f), new Vector3(1.2f, 2.8f, 0.2f), LaneColors[3]);
-        }
+            Transform oldOverride = root.Find("BackgroundOverride");
+            if (oldOverride != null)
+            {
+                SafeDestroy(oldOverride.gameObject);
+            }
 
+            if (presentationConfig != null && presentationConfig.backgroundPrefab != null)
+            {
+                GameObject overrideObject = Instantiate(presentationConfig.backgroundPrefab, root);
+                overrideObject.name = "BackgroundOverride";
+                overrideObject.transform.localPosition = Vector3.zero;
+                overrideObject.transform.localRotation = Quaternion.identity;
+                overrideObject.transform.localScale = Vector3.one;
+                return;
+            }
+
+            ReplaceNamedPrimitive(root, "NorthWall", PrimitiveType.Cube, new Vector3(0f, 2.5f, 10.5f), new Vector3(24f, 5f, 0.5f), GetConfigColor(config => config.northWallColor, new Color(0.17f, 0.14f, 0.22f)));
+            ReplaceNamedPrimitive(root, "SouthWall", PrimitiveType.Cube, new Vector3(0f, 2f, -9.8f), new Vector3(24f, 4f, 0.5f), GetConfigColor(config => config.southWallColor, new Color(0.13f, 0.19f, 0.24f)));
+            ReplaceNamedPrimitive(root, "LeftCliff", PrimitiveType.Cube, new Vector3(-11.2f, 1.5f, 0f), new Vector3(1.2f, 3f, 21f), GetConfigColor(config => config.sideWallColor, new Color(0.12f, 0.14f, 0.18f)));
+            ReplaceNamedPrimitive(root, "RightCliff", PrimitiveType.Cube, new Vector3(11.2f, 1.5f, 0f), new Vector3(1.2f, 3f, 21f), GetConfigColor(config => config.sideWallColor, new Color(0.12f, 0.14f, 0.18f)));
+            ReplaceNamedPrimitive(root, "LeftBanner", PrimitiveType.Cube, new Vector3(-9.5f, 3.5f, -5.7f), new Vector3(1.2f, 2.8f, 0.2f), GetLaneColor(0));
+            ReplaceNamedPrimitive(root, "RightBanner", PrimitiveType.Cube, new Vector3(9.5f, 3.5f, -5.7f), new Vector3(1.2f, 2.8f, 0.2f), GetLaneColor(3));
+        }
         private void EnsureCamera()
         {
             Camera camera = Camera.main;
@@ -207,8 +218,8 @@ namespace DefenseGame
 
             for (int i = 0; i < slotCount; i++)
             {
-                Color baseColor = SlotColors[i % SlotColors.Length];
-                Color trimColor = SlotColors[(i + 3) % SlotColors.Length];
+                Color baseColor = GetSlotColor(i);
+                Color trimColor = GetSlotColor(i + 3);
 
                 GameObject slotObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 slotObject.name = "Slot_" + i.ToString("D2");
@@ -248,7 +259,7 @@ namespace DefenseGame
 
             for (int i = 0; i < laneCount; i++)
             {
-                Color laneColor = LaneColors[i % LaneColors.Length];
+                Color laneColor = GetLaneColor(i);
                 float x = -width * 0.5f + i * laneSpacing;
 
                 GameObject beacon = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -271,20 +282,6 @@ namespace DefenseGame
                 stripe.transform.position = new Vector3(x, -0.1f, 1.0f);
                 stripe.transform.localScale = new Vector3(0.18f, 0.03f, 13.5f);
                 stripe.GetComponent<Renderer>().material.color = laneColor * 0.75f;
-
-                GameObject sideLampLeft = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                sideLampLeft.name = "LaneLampLeft_" + i.ToString("D2");
-                sideLampLeft.transform.SetParent(laneRoot);
-                sideLampLeft.transform.position = new Vector3(x - 0.55f, 0.28f, -1.8f);
-                sideLampLeft.transform.localScale = Vector3.one * 0.18f;
-                sideLampLeft.GetComponent<Renderer>().material.color = laneColor;
-
-                GameObject sideLampRight = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                sideLampRight.name = "LaneLampRight_" + i.ToString("D2");
-                sideLampRight.transform.SetParent(laneRoot);
-                sideLampRight.transform.position = new Vector3(x + 0.55f, 0.28f, -1.8f);
-                sideLampRight.transform.localScale = Vector3.one * 0.18f;
-                sideLampRight.GetComponent<Renderer>().material.color = laneColor;
             }
         }
 
@@ -295,39 +292,35 @@ namespace DefenseGame
 
             for (int i = 0; i < laneCount; i++)
             {
-                Color laneColor = LaneColors[i % LaneColors.Length];
+                Color laneColor = GetLaneColor(i);
                 GameObject point = new GameObject("Spawn_" + i.ToString("D2"));
                 point.transform.SetParent(spawnRoot);
                 point.transform.position = spawnCenter + new Vector3(-width * 0.5f + i * laneSpacing, 0f, 0f);
                 points[i] = point.transform;
 
-                GameObject portal = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                portal.name = "PortalVisual";
-                portal.transform.SetParent(point.transform);
-                portal.transform.localPosition = new Vector3(0f, 1.2f, 0f);
-                portal.transform.localScale = Vector3.one * 0.9f;
-                portal.GetComponent<Renderer>().material.color = laneColor * 1.1f;
+                if (presentationConfig != null && presentationConfig.spawnPortalPrefab != null)
+                {
+                    GameObject portalOverride = Instantiate(presentationConfig.spawnPortalPrefab, point.transform);
+                    portalOverride.name = "PortalVisual";
+                    portalOverride.transform.localPosition = Vector3.zero;
+                    portalOverride.transform.localRotation = Quaternion.identity;
+                }
+                else
+                {
+                    GameObject portal = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    portal.name = "PortalVisual";
+                    portal.transform.SetParent(point.transform);
+                    portal.transform.localPosition = new Vector3(0f, 1.2f, 0f);
+                    portal.transform.localScale = Vector3.one * 0.9f;
+                    portal.GetComponent<Renderer>().material.color = laneColor * 1.1f;
 
-                GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                ring.name = "PortalRing";
-                ring.transform.SetParent(point.transform);
-                ring.transform.localPosition = new Vector3(0f, 0.08f, 0f);
-                ring.transform.localScale = new Vector3(0.85f, 0.02f, 0.85f);
-                ring.GetComponent<Renderer>().material.color = Color.Lerp(laneColor, Color.white, 0.25f);
-
-                GameObject archLeft = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                archLeft.name = "ArchLeft";
-                archLeft.transform.SetParent(point.transform);
-                archLeft.transform.localPosition = new Vector3(-0.7f, 1.0f, 0f);
-                archLeft.transform.localScale = new Vector3(0.16f, 2.0f, 0.16f);
-                archLeft.GetComponent<Renderer>().material.color = laneColor * 0.8f;
-
-                GameObject archRight = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                archRight.name = "ArchRight";
-                archRight.transform.SetParent(point.transform);
-                archRight.transform.localPosition = new Vector3(0.7f, 1.0f, 0f);
-                archRight.transform.localScale = new Vector3(0.16f, 2.0f, 0.16f);
-                archRight.GetComponent<Renderer>().material.color = laneColor * 0.8f;
+                    GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                    ring.name = "PortalRing";
+                    ring.transform.SetParent(point.transform);
+                    ring.transform.localPosition = new Vector3(0f, 0.08f, 0f);
+                    ring.transform.localScale = new Vector3(0.85f, 0.02f, 0.85f);
+                    ring.GetComponent<Renderer>().material.color = Color.Lerp(laneColor, Color.white, 0.25f);
+                }
             }
 
             return points;
@@ -335,6 +328,15 @@ namespace DefenseGame
 
         private Transform BuildGoal(Transform miscRoot)
         {
+            if (presentationConfig != null && presentationConfig.goalPrefab != null)
+            {
+                GameObject overrideGoal = Instantiate(presentationConfig.goalPrefab, miscRoot);
+                overrideGoal.name = "GoalPoint";
+                overrideGoal.transform.localPosition = new Vector3(0f, 0f, -8.5f);
+                overrideGoal.transform.localRotation = Quaternion.identity;
+                return overrideGoal.transform;
+            }
+
             GameObject goal = new GameObject("GoalPoint");
             goal.transform.SetParent(miscRoot);
             goal.transform.position = new Vector3(0f, 0f, -8.5f);
@@ -344,15 +346,14 @@ namespace DefenseGame
             gate.transform.SetParent(goal.transform);
             gate.transform.localPosition = new Vector3(0f, 1.3f, 0f);
             gate.transform.localScale = new Vector3(6.5f, 2.6f, 0.6f);
-            gate.GetComponent<Renderer>().material.color = new Color(0.24f, 0.54f, 0.72f);
+            gate.GetComponent<Renderer>().material.color = GetConfigColor(config => config.gateColor, new Color(0.24f, 0.54f, 0.72f));
 
             GameObject core = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             core.name = "GateCore";
             core.transform.SetParent(goal.transform);
             core.transform.localPosition = new Vector3(0f, 1.7f, -0.1f);
             core.transform.localScale = Vector3.one * 1.1f;
-            core.GetComponent<Renderer>().material.color = new Color(0.38f, 0.89f, 1f);
-
+            core.GetComponent<Renderer>().material.color = GetConfigColor(config => config.gateCoreColor, new Color(0.38f, 0.89f, 1f));
             GameObject towerLeft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             towerLeft.name = "GateTowerLeft";
             towerLeft.transform.SetParent(goal.transform);
@@ -372,12 +373,21 @@ namespace DefenseGame
 
         private void BuildCenterCrystal(Transform miscRoot)
         {
+            if (presentationConfig != null && presentationConfig.centerCrystalPrefab != null)
+            {
+                GameObject overrideCrystal = Instantiate(presentationConfig.centerCrystalPrefab, miscRoot);
+                overrideCrystal.name = "DefenseCrystal";
+                overrideCrystal.transform.localPosition = new Vector3(0f, 1.2f, -6.7f);
+                overrideCrystal.transform.localRotation = Quaternion.identity;
+                return;
+            }
+
             GameObject crystal = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             crystal.name = "DefenseCrystal";
             crystal.transform.SetParent(miscRoot);
             crystal.transform.position = new Vector3(0f, 1.2f, -6.7f);
             crystal.transform.localScale = new Vector3(0.8f, 1.3f, 0.8f);
-            crystal.GetComponent<Renderer>().material.color = new Color(0.30f, 0.95f, 0.86f);
+            crystal.GetComponent<Renderer>().material.color = GetConfigColor(config => config.crystalColor, new Color(0.30f, 0.95f, 0.86f));
 
             GameObject baseRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             baseRing.name = "CrystalRing";
@@ -389,12 +399,21 @@ namespace DefenseGame
 
         private void BuildFlankTowers(Transform miscRoot)
         {
-            BuildTower(miscRoot, "WestTower", new Vector3(-7.8f, 0f, -6.2f), SlotColors[1], SlotColors[5]);
-            BuildTower(miscRoot, "EastTower", new Vector3(7.8f, 0f, -6.2f), SlotColors[2], SlotColors[7]);
+            BuildTower(miscRoot, "WestTower", new Vector3(-7.8f, 0f, -6.2f), GetSlotColor(1), GetSlotColor(5));
+            BuildTower(miscRoot, "EastTower", new Vector3(7.8f, 0f, -6.2f), GetSlotColor(2), GetSlotColor(7));
         }
 
         private void BuildTower(Transform parent, string name, Vector3 position, Color baseColor, Color topColor)
         {
+            if (presentationConfig != null && presentationConfig.flankTowerPrefab != null)
+            {
+                GameObject overrideTower = Instantiate(presentationConfig.flankTowerPrefab, parent);
+                overrideTower.name = name;
+                overrideTower.transform.localPosition = position;
+                overrideTower.transform.localRotation = Quaternion.identity;
+                return;
+            }
+
             GameObject towerRoot = new GameObject(name);
             towerRoot.transform.SetParent(parent);
             towerRoot.transform.position = position;
@@ -425,51 +444,102 @@ namespace DefenseGame
         {
             for (int i = 0; i < 5; i++)
             {
+                if (presentationConfig != null && presentationConfig.skyAccentPrefab != null)
+                {
+                    GameObject overrideOrb = Instantiate(presentationConfig.skyAccentPrefab, miscRoot);
+                    overrideOrb.name = "SkyOrb_" + i.ToString("D2");
+                    overrideOrb.transform.localPosition = new Vector3(-8f + i * 4f, 4.8f + (i % 2) * 0.6f, 6.2f - i * 1.3f);
+                    overrideOrb.transform.localRotation = Quaternion.identity;
+                    continue;
+                }
+
                 GameObject orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 orb.name = "SkyOrb_" + i.ToString("D2");
                 orb.transform.SetParent(miscRoot);
                 orb.transform.position = new Vector3(-8f + i * 4f, 4.8f + (i % 2) * 0.6f, 6.2f - i * 1.3f);
                 orb.transform.localScale = Vector3.one * (0.35f + i * 0.05f);
-                orb.GetComponent<Renderer>().material.color = LaneColors[i % LaneColors.Length] * 0.95f;
+                orb.GetComponent<Renderer>().material.color = GetLaneColor(i) * 0.95f;
             }
         }
 
         private Projectile BuildProjectileTemplate(Transform templateRoot)
         {
-            GameObject projectileObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            projectileObject.name = "ProjectileTemplate";
-            projectileObject.transform.SetParent(templateRoot);
-            projectileObject.transform.localScale = Vector3.one * 0.25f;
-            projectileObject.GetComponent<Renderer>().material.color = new Color(1f, 0.85f, 0.3f);
-            Projectile projectile = projectileObject.AddComponent<Projectile>();
+            GameObject projectileObject = CreateTemplateObject(templateRoot, presentationConfig != null ? presentationConfig.projectilePrefab : null, PrimitiveType.Sphere, "ProjectileTemplate", Vector3.one * 0.25f);
+            Renderer renderer = projectileObject.GetComponentInChildren<Renderer>();
+            if (renderer != null)
+            {
+                renderer.material.color = new Color(1f, 0.85f, 0.3f);
+            }
+
+            Projectile projectile = projectileObject.GetComponent<Projectile>();
+            if (projectile == null)
+            {
+                projectile = projectileObject.AddComponent<Projectile>();
+            }
+
             projectileObject.SetActive(false);
             return projectile;
         }
 
         private DefenderUnit BuildDefenderTemplate(Transform templateRoot, Projectile projectileTemplate)
         {
-            GameObject unitObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            unitObject.name = "DefenderTemplate";
-            unitObject.transform.SetParent(templateRoot);
-            unitObject.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
-            DefenderUnit unit = unitObject.AddComponent<DefenderUnit>();
-            GameObject firePoint = new GameObject("FirePoint");
-            firePoint.transform.SetParent(unitObject.transform);
-            firePoint.transform.localPosition = new Vector3(0f, 0.8f, 0.6f);
-            unit.ConfigureRuntimePieces(projectileTemplate, firePoint.transform, unitObject.GetComponentsInChildren<Renderer>(true));
+            GameObject unitObject = CreateTemplateObject(templateRoot, presentationConfig != null ? presentationConfig.defaultDefenderPrefab : null, PrimitiveType.Capsule, "DefenderTemplate", new Vector3(0.8f, 1f, 0.8f));
+            DefenderUnit unit = unitObject.GetComponent<DefenderUnit>();
+            if (unit == null)
+            {
+                unit = unitObject.AddComponent<DefenderUnit>();
+            }
+
+            Transform firePoint = unitObject.transform.Find("FirePoint");
+            if (firePoint == null)
+            {
+                GameObject firePointObject = new GameObject("FirePoint");
+                firePointObject.transform.SetParent(unitObject.transform);
+                firePointObject.transform.localPosition = new Vector3(0f, 0.8f, 0.6f);
+                firePoint = firePointObject.transform;
+            }
+
+            unit.ConfigureRuntimePieces(projectileTemplate, firePoint, unitObject.GetComponentsInChildren<Renderer>(true));
             unitObject.SetActive(false);
             return unit;
         }
-
         private MonsterUnit BuildMonsterTemplate(Transform templateRoot)
         {
-            GameObject monsterObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            monsterObject.name = "MonsterTemplate";
-            monsterObject.transform.SetParent(templateRoot);
-            monsterObject.transform.localScale = new Vector3(1f, 1f, 1f);
-            MonsterUnit monster = monsterObject.AddComponent<MonsterUnit>();
+            GameObject monsterObject = CreateTemplateObject(templateRoot, presentationConfig != null ? presentationConfig.defaultMonsterPrefab : null, PrimitiveType.Cube, "MonsterTemplate", Vector3.one);
+            MonsterUnit monster = monsterObject.GetComponent<MonsterUnit>();
+            if (monster == null)
+            {
+                monster = monsterObject.AddComponent<MonsterUnit>();
+            }
+
             monsterObject.SetActive(false);
             return monster;
+        }
+
+        private GameObject CreateTemplateObject(Transform parent, GameObject prefab, PrimitiveType fallbackPrimitive, string name, Vector3 scale)
+        {
+            GameObject instance;
+            if (prefab != null)
+            {
+                instance = Instantiate(prefab, parent);
+                instance.name = name;
+            }
+            else
+            {
+                instance = GameObject.CreatePrimitive(fallbackPrimitive);
+                instance.name = name;
+                instance.transform.SetParent(parent);
+                instance.transform.localScale = scale;
+            }
+
+            instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = Quaternion.identity;
+            if (prefab == null)
+            {
+                instance.transform.localScale = scale;
+            }
+
+            return instance;
         }
 
         private void BuildCanvas(Transform root, SimpleGameHUD hud, DefenseGameController gameController, GameUIButtonBinder binder)
@@ -487,13 +557,26 @@ namespace DefenseGame
             canvasObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             canvasObject.AddComponent<GraphicRaycaster>();
 
-            Font font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            Text gold = CreateText(canvas.transform, font, new Vector2(120f, -30f), "Gold : 0");
-            Text life = CreateText(canvas.transform, font, new Vector2(120f, -60f), "Life : 0");
-            Text round = CreateText(canvas.transform, font, new Vector2(120f, -90f), "Round : 0");
-            Text board = CreateText(canvas.transform, font, new Vector2(120f, -120f), "Units : 0");
-            Text content = CreateText(canvas.transform, font, new Vector2(180f, -150f), "Characters : 0 / Monsters : 0");
-            Text hint = CreateText(canvas.transform, font, new Vector2(310f, -30f), "Space Round | S Summon | 1-4 Merge | C Add Heroes | M Add Monsters");
+            Font font = presentationConfig != null && presentationConfig.uiFont != null
+                ? presentationConfig.uiFont
+                : RuntimeFontProvider.GetDefaultFont();
+            Color textColor = presentationConfig != null ? presentationConfig.hudTextColor : Color.white;
+            string hintValue = presentationConfig != null && !string.IsNullOrWhiteSpace(presentationConfig.hintText)
+                ? presentationConfig.hintText
+                : "Space Round | S Summon | 1-4 Merge | C Add Heroes | M Add Monsters";
+
+            CreatePanel(canvas.transform, "TopPanel", new Vector2(14f, -14f), new Vector2(760f, 154f), new Color(0.05f, 0.08f, 0.12f, 0.78f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f));
+            CreatePanel(canvas.transform, "BottomPanel", new Vector2(18f, 18f), new Vector2(810f, 86f), new Color(0.05f, 0.08f, 0.12f, 0.82f), Vector2.zero, Vector2.zero, Vector2.zero);
+            Text title = CreateText(canvas.transform, font, new Color(0.82f, 0.92f, 1f), new Vector2(130f, -8f), "Defense Command");
+            title.fontSize = 24;
+            title.fontStyle = FontStyle.Bold;
+
+            Text gold = CreateText(canvas.transform, font, textColor, new Vector2(120f, -30f), "Gold : 0");
+            Text life = CreateText(canvas.transform, font, textColor, new Vector2(120f, -60f), "Life : 0");
+            Text round = CreateText(canvas.transform, font, textColor, new Vector2(120f, -90f), "Round : 0");
+            Text board = CreateText(canvas.transform, font, textColor, new Vector2(120f, -120f), "Units : 0");
+            Text content = CreateText(canvas.transform, font, textColor, new Vector2(180f, -150f), "Characters : 0 / Monsters : 0");
+            Text hint = CreateText(canvas.transform, font, textColor, new Vector2(310f, -30f), hintValue);
             hint.alignment = TextAnchor.MiddleLeft;
             RectTransform hintRect = hint.GetComponent<RectTransform>();
             hintRect.sizeDelta = new Vector2(620f, 30f);
@@ -505,17 +588,17 @@ namespace DefenseGame
             CreateButton(canvas.transform, font, "Merge E", new Vector2(570f, 60f), binder.OnClickMergeEpic);
             CreateButton(canvas.transform, font, "Merge L", new Vector2(690f, 60f), binder.OnClickMergeLegendary);
 
-            hud.Configure(gameController, gold, life, round, board, content, hint);
+            hud.Configure(gameController, gold, life, round, board, content, hint, hintValue);
         }
 
-        private Text CreateText(Transform parent, Font font, Vector2 anchoredPosition, string value)
+        private Text CreateText(Transform parent, Font font, Color color, Vector2 anchoredPosition, string value)
         {
             GameObject textObject = new GameObject(value.Replace(" ", string.Empty) + "Text");
             textObject.transform.SetParent(parent);
             Text text = textObject.AddComponent<Text>();
             text.font = font;
             text.fontSize = 20;
-            text.color = Color.white;
+            text.color = color;
             text.text = value;
             text.alignment = TextAnchor.MiddleCenter;
 
@@ -528,12 +611,27 @@ namespace DefenseGame
             return text;
         }
 
+        private void CreatePanel(Transform parent, string name, Vector2 anchoredPosition, Vector2 size, Color color, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot)
+        {
+            GameObject panelObject = new GameObject(name);
+            panelObject.transform.SetParent(parent);
+            Image image = panelObject.AddComponent<Image>();
+            image.color = color;
+
+            RectTransform rect = image.rectTransform;
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.pivot = pivot;
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = size;
+        }
+
         private void CreateButton(Transform parent, Font font, string label, Vector2 anchoredPosition, UnityEngine.Events.UnityAction onClick)
         {
             GameObject buttonObject = new GameObject(label + "Button");
             buttonObject.transform.SetParent(parent);
             Image image = buttonObject.AddComponent<Image>();
-            image.color = new Color(0.16f, 0.19f, 0.26f, 0.92f);
+            image.color = presentationConfig != null ? presentationConfig.buttonColor : new Color(0.16f, 0.19f, 0.26f, 0.92f);
             Button button = buttonObject.AddComponent<Button>();
             button.onClick.AddListener(onClick);
 
@@ -549,7 +647,7 @@ namespace DefenseGame
             Text text = textObject.AddComponent<Text>();
             text.font = font;
             text.fontSize = 18;
-            text.color = Color.white;
+            text.color = presentationConfig != null ? presentationConfig.buttonTextColor : Color.white;
             text.text = label;
             text.alignment = TextAnchor.MiddleCenter;
 
@@ -578,6 +676,26 @@ namespace DefenseGame
             {
                 renderer.material.color = color;
             }
+        }
+        private Color GetSlotColor(int index)
+        {
+            Color[] colors = presentationConfig != null && presentationConfig.slotColors != null && presentationConfig.slotColors.Length > 0
+                ? presentationConfig.slotColors
+                : DefaultSlotColors;
+            return colors[index % colors.Length];
+        }
+
+        private Color GetLaneColor(int index)
+        {
+            Color[] colors = presentationConfig != null && presentationConfig.laneColors != null && presentationConfig.laneColors.Length > 0
+                ? presentationConfig.laneColors
+                : DefaultLaneColors;
+            return colors[index % colors.Length];
+        }
+
+        private Color GetConfigColor(System.Func<GamePresentationConfig, Color> selector, Color fallback)
+        {
+            return presentationConfig != null ? selector(presentationConfig) : fallback;
         }
 
         private void SafeDestroy(GameObject target)

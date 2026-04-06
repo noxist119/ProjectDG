@@ -10,6 +10,7 @@ namespace DefenseGame
         [SerializeField] private List<MonsterDefinition> bosses = new List<MonsterDefinition>();
         [SerializeField] private bool generateStarterMonsters = true;
         [SerializeField] private int starterMonsterCount = 30;
+        [SerializeField] private GamePresentationConfig presentationConfig;
 
         private static readonly string[] MonsterNames =
         {
@@ -34,6 +35,16 @@ namespace DefenseGame
             {
                 GenerateStarterMonsters(starterMonsterCount);
             }
+            else
+            {
+                ApplyPresentationOverrides();
+            }
+        }
+
+        public void ApplyPresentationConfig(GamePresentationConfig config)
+        {
+            presentationConfig = config;
+            ApplyPresentationOverrides();
         }
 
         public void GenerateStarterMonsters(int totalCount)
@@ -53,6 +64,8 @@ namespace DefenseGame
             {
                 bosses.Add(CreateBoss(BossNames[i], i));
             }
+
+            ApplyPresentationOverrides();
         }
 
         public MonsterDefinition GetRandomMonsterForRound(int round)
@@ -302,6 +315,24 @@ namespace DefenseGame
             if (ratio < 0.85f) return CharacterGrade.Epic;
             if (ratio < 0.96f) return CharacterGrade.Legendary;
             return CharacterGrade.Mythic;
+        }
+
+        private void ApplyPresentationOverrides()
+        {
+            if (presentationConfig == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                presentationConfig.ApplyToMonster(monsters[i]);
+            }
+
+            for (int i = 0; i < bosses.Count; i++)
+            {
+                presentationConfig.ApplyToMonster(bosses[i]);
+            }
         }
     }
 }

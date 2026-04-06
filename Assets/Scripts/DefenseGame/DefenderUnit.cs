@@ -12,6 +12,7 @@ namespace DefenseGame
 
         private CharacterDefinition definition;
         private BoardSlot currentSlot;
+        private FloatingCombatUI floatingUi;
         private float currentHealth;
         private float currentMana;
         private float attackCooldown;
@@ -66,6 +67,7 @@ namespace DefenseGame
 
             currentMana = Mathf.Min(MaxMana, currentMana + 6f * Time.deltaTime);
             attackCooldown -= Time.deltaTime;
+            floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
 
             if (TryCastSkill())
             {
@@ -94,6 +96,8 @@ namespace DefenseGame
             skillCooldowns.Clear();
             gameObject.name = definition.displayName + "_" + definition.grade;
             ApplyVisuals();
+            floatingUi = FloatingCombatUI.Attach(transform, definition.displayName, definition.accentColor);
+            floatingUi.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
             OnDefenderSpawned?.Invoke(this);
         }
 
@@ -115,6 +119,8 @@ namespace DefenseGame
         {
             currentHealth -= damage;
             currentMana = Mathf.Min(MaxMana, currentMana + damage * 0.35f);
+            floatingUi?.ShowDamage(damage, critical, false);
+            floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
 
             if (currentHealth <= 0f)
             {
@@ -125,6 +131,8 @@ namespace DefenseGame
         public void Heal(float amount)
         {
             currentHealth = Mathf.Min(MaxHealth, currentHealth + amount);
+            floatingUi?.ShowDamage(amount, false, true);
+            floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
         }
 
         private void PerformAttack(MonsterUnit target)

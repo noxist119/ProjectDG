@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: cube_lobby_controller
+  m_Controller: {fileID: 9100000, guid: 39578cbbde2eb49bfa846ffcd45cc608, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 1d48d8e9f3ffe45419070a876c2fa2c9, type: 2}
+    m_OverrideClip: {fileID: 1630532820983164958, guid: c793275ac4a5bf0408f77347213fa608, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 356d8dc29b11b4311bf10798008d8298, type: 2}
+    m_OverrideClip: {fileID: 7512335139587720797, guid: c793275ac4a5bf0408f77347213fa608, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 3c2b399877c5943ea9117811949cfe81, type: 2}
+    m_OverrideClip: {fileID: 7512335139587720797, guid: c793275ac4a5bf0408f77347213fa608, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: f3e02812b929247dd95e259760d4da31, type: 2}
+    m_OverrideClip: {fileID: 1630532820983164958, guid: c793275ac4a5bf0408f77347213fa608, type: 3}
