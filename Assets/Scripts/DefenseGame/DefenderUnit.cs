@@ -13,6 +13,7 @@ namespace DefenseGame
         private CharacterDefinition definition;
         private BoardSlot currentSlot;
         private FloatingCombatUI floatingUi;
+        private UnitAnimationDriver animationDriver;
         private float currentHealth;
         private float currentMana;
         private float attackCooldown;
@@ -55,6 +56,38 @@ namespace DefenseGame
             tintRenderers = renderers;
         }
 
+        public void AdoptRuntimeTemplate(DefenderUnit template)
+        {
+            if (template == null)
+            {
+                return;
+            }
+
+            projectilePrefab = template.projectilePrefab;
+            if (firePoint == null)
+            {
+                Transform existingPoint = transform.Find("FirePoint");
+                if (existingPoint != null)
+                {
+                    firePoint = existingPoint;
+                }
+                else
+                {
+                    GameObject firePointObject = new GameObject("FirePoint");
+                    firePointObject.transform.SetParent(transform);
+                    firePointObject.transform.localPosition = new Vector3(0f, 0.8f, 0.6f);
+                    firePoint = firePointObject.transform;
+                }
+            }
+
+            if (tintRenderers == null || tintRenderers.Length == 0)
+            {
+                tintRenderers = GetComponentsInChildren<Renderer>(true);
+            }
+
+            EnsureAnimationDriver();
+        }
+
         private void Update()
         {
             if (definition == null)
@@ -68,6 +101,7 @@ namespace DefenseGame
             currentMana = Mathf.Min(MaxMana, currentMana + 6f * Time.deltaTime);
             attackCooldown -= Time.deltaTime;
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
+            animationDriver?.PlayMoving(false);
 
             if (TryCastSkill())
             {
@@ -96,8 +130,10 @@ namespace DefenseGame
             skillCooldowns.Clear();
             gameObject.name = definition.displayName + "_" + definition.grade;
             ApplyVisuals();
+            EnsureAnimationDriver();
             floatingUi = FloatingCombatUI.Attach(transform, definition.displayName, definition.accentColor);
             floatingUi.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
+            animationDriver?.PlaySpawn();
             OnDefenderSpawned?.Invoke(this);
         }
 
@@ -135,6 +171,11 @@ namespace DefenseGame
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
         }
 
+        public void PlayWinAnimation()
+        {
+            animationDriver?.PlayWin();
+        }
+
         private void PerformAttack(MonsterUnit target)
         {
             float effectiveAttackSpeed = Mathf.Max(0.2f, definition.stats.attackSpeed * (1f + attackSpeedBonus));
@@ -146,6 +187,7 @@ namespace DefenseGame
 
             if (projectilePrefab == null)
             {
+                animationDriver?.PlayAttack();
                 target.TakeDamage(damage, critical);
                 return;
             }
@@ -154,6 +196,7 @@ namespace DefenseGame
             Projectile projectile = Instantiate(projectilePrefab, launchPoint.position, Quaternion.identity);
             projectile.gameObject.SetActive(true);
             projectile.Initialize(target, damage, definition.stats.projectileSpeed, critical);
+            animationDriver?.PlayAttack();
         }
 
         private bool TryCastSkill()
@@ -187,6 +230,7 @@ namespace DefenseGame
 
         private void CastSkill(SkillDefinition skill)
         {
+            animationDriver?.PlaySkill();
             if (skill.effectType == SkillEffectType.DirectDamage)
             {
                 MonsterUnit target = FindNearestTarget();
@@ -346,6 +390,18 @@ namespace DefenseGame
                 if (tintRenderers[i] != null && tintRenderers[i].material != null)
                 {
                     tintRenderers[i].material.color = definition.accentColor;
+                }
+            }
+        }
+
+        private void EnsureAnimationDriver()
+        {
+            if (animationDriver == null)
+            {
+                animationDriver = GetComponent<UnitAnimationDriver>();
+                if (animationDriver == null)
+                {
+                    animationDriver = gameObject.AddComponent<UnitAnimationDriver>();
                 }
             }
         }

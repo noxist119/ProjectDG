@@ -11,6 +11,7 @@ namespace DefenseGame
         private MonsterDefinition definition;
         private Transform goal;
         private FloatingCombatUI floatingUi;
+        private UnitAnimationDriver animationDriver;
         private float currentHealth;
         private float currentMana;
         private float attackCooldown;
@@ -46,6 +47,21 @@ namespace DefenseGame
             DefenderUnit.OnDefenderRemoved -= HandleDefenderRemoved;
         }
 
+        public void AdoptRuntimeTemplate(MonsterUnit template)
+        {
+            if (template == null)
+            {
+                return;
+            }
+
+            if (tintRenderers == null || tintRenderers.Length == 0)
+            {
+                tintRenderers = GetComponentsInChildren<Renderer>(true);
+            }
+
+            EnsureAnimationDriver();
+        }
+
         private void Update()
         {
             if (definition == null)
@@ -77,6 +93,7 @@ namespace DefenseGame
                         PerformAttack(target);
                     }
 
+                    animationDriver?.PlayMoving(false);
                     return;
                 }
             }
@@ -103,8 +120,10 @@ namespace DefenseGame
             skillCooldowns.Clear();
             gameObject.name = definition.displayName;
             ApplyVisuals();
+            EnsureAnimationDriver();
             floatingUi = FloatingCombatUI.Attach(transform, definition.displayName, definition.accentColor);
             floatingUi.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
+            animationDriver?.PlaySpawn();
             OnMonsterSpawned?.Invoke(this);
         }
 
@@ -143,6 +162,7 @@ namespace DefenseGame
 
             float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus);
             transform.position = Vector3.MoveTowards(transform.position, goal.position, moveSpeed * Time.deltaTime);
+            animationDriver?.PlayMoving(true);
 
             if (Vector3.Distance(transform.position, goal.position) <= 0.05f)
             {
@@ -159,6 +179,7 @@ namespace DefenseGame
             bool critical = Random.value <= Mathf.Clamp01(definition.stats.criticalChance + critChanceBonus);
             float damage = definition.stats.attackPower * (critical ? definition.stats.criticalDamageMultiplier : 1f);
             currentMana = Mathf.Min(definition.stats.maxMana, currentMana + 10f);
+            animationDriver?.PlayAttack();
             target.TakeDamage(damage, critical);
         }
 
@@ -193,6 +214,7 @@ namespace DefenseGame
 
         private void CastSkill(SkillDefinition skill)
         {
+            animationDriver?.PlaySkill();
             if (skill.effectType == SkillEffectType.DirectDamage)
             {
                 DefenderUnit singleTarget = FindNearestDefender();
@@ -355,6 +377,18 @@ namespace DefenseGame
             }
 
             transform.localScale = IsBoss ? Vector3.one * 1.7f : Vector3.one;
+        }
+
+        private void EnsureAnimationDriver()
+        {
+            if (animationDriver == null)
+            {
+                animationDriver = GetComponent<UnitAnimationDriver>();
+                if (animationDriver == null)
+                {
+                    animationDriver = gameObject.AddComponent<UnitAnimationDriver>();
+                }
+            }
         }
 
         private void HandleDefenderSpawned(DefenderUnit defender)

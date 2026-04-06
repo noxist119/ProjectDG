@@ -56,6 +56,10 @@ namespace DefenseGame
             }
 
             CharacterPresentationOverride entry = characterOverrides.Find(candidate => candidate != null && candidate.characterId == definition.id);
+            if (entry == null && TryGetOrderedCharacterOverride(definition.id, out CharacterPresentationOverride orderedEntry))
+            {
+                entry = orderedEntry;
+            }
             if (entry == null)
             {
                 return;
@@ -80,6 +84,10 @@ namespace DefenseGame
             }
 
             MonsterPresentationOverride entry = monsterOverrides.Find(candidate => candidate != null && candidate.monsterId == definition.id);
+            if (entry == null && TryGetOrderedMonsterOverride(definition.id, out MonsterPresentationOverride orderedEntry))
+            {
+                entry = orderedEntry;
+            }
             if (entry == null)
             {
                 return;
@@ -94,6 +102,65 @@ namespace DefenseGame
             {
                 definition.accentColor = entry.accentColor;
             }
+        }
+
+        private bool TryGetOrderedCharacterOverride(string definitionId, out CharacterPresentationOverride entry)
+        {
+            entry = null;
+            if (!TryParseIndex(definitionId, out int index))
+            {
+                return false;
+            }
+
+            List<CharacterPresentationOverride> ordered = characterOverrides.FindAll(candidate => candidate != null && candidate.prefab != null);
+            if (index < 0 || index >= ordered.Count)
+            {
+                return false;
+            }
+
+            entry = ordered[index];
+            return true;
+        }
+
+        private bool TryGetOrderedMonsterOverride(string definitionId, out MonsterPresentationOverride entry)
+        {
+            entry = null;
+            if (!TryParseIndex(definitionId, out int index))
+            {
+                return false;
+            }
+
+            List<MonsterPresentationOverride> ordered = monsterOverrides.FindAll(candidate => candidate != null && candidate.prefab != null);
+            if (index < 0 || index >= ordered.Count)
+            {
+                return false;
+            }
+
+            entry = ordered[index];
+            return true;
+        }
+
+        private bool TryParseIndex(string definitionId, out int index)
+        {
+            index = -1;
+            if (string.IsNullOrWhiteSpace(definitionId))
+            {
+                return false;
+            }
+
+            string[] parts = definitionId.Split('_');
+            if (parts.Length == 0)
+            {
+                return false;
+            }
+
+            if (!int.TryParse(parts[parts.Length - 1], out int parsed))
+            {
+                return false;
+            }
+
+            index = parsed - 1;
+            return index >= 0;
         }
     }
 

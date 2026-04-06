@@ -34,25 +34,33 @@ namespace DefenseGame
                 return false;
             }
 
-            DefenderUnit prefabToUse = definition.prefab != null
-                ? definition.prefab.GetComponent<DefenderUnit>()
-                : prefabOverride != null ? prefabOverride : fallbackUnitPrefab;
+            GameObject sourcePrefab = definition.prefab != null
+                ? definition.prefab
+                : prefabOverride != null ? prefabOverride.gameObject : fallbackUnitPrefab != null ? fallbackUnitPrefab.gameObject : null;
 
-            if (prefabToUse == null)
+            if (sourcePrefab == null)
             {
                 Debug.LogError("No DefenderUnit prefab assigned.");
                 return false;
             }
 
-            DefenderUnit unit = Instantiate(prefabToUse, emptySlot.UnitAnchor.position, Quaternion.identity);
+            GameObject spawnedObject = Instantiate(sourcePrefab, emptySlot.UnitAnchor.position, Quaternion.identity);
+            DefenderUnit unit = spawnedObject.GetComponent<DefenderUnit>();
+            if (unit == null)
+            {
+                unit = spawnedObject.AddComponent<DefenderUnit>();
+                unit.AdoptRuntimeTemplate(prefabOverride != null ? prefabOverride : fallbackUnitPrefab);
+            }
+
             unit.gameObject.SetActive(true);
             unit.Initialize(definition);
             emptySlot.AssignUnit(unit);
             return true;
         }
 
-        public bool TryMergeUnitsOfGrade(CharacterGrade grade, CharacterDatabase database, DefenderUnit prefabOverride = null)
+        public bool TryMergeUnitsOfGrade(CharacterGrade grade, CharacterDatabase database, out MergeResultInfo mergeResult, DefenderUnit prefabOverride = null)
         {
+            mergeResult = default;
             List<DefenderUnit> sameGradeUnits = slots
                 .Where(slot => slot != null && !slot.IsEmpty)
                 .Select(slot => slot.OccupiedUnit)
@@ -79,20 +87,34 @@ namespace DefenseGame
                 return false;
             }
 
-            DefenderUnit prefabToUse = mergedCharacter.prefab != null
-                ? mergedCharacter.prefab.GetComponent<DefenderUnit>()
-                : prefabOverride != null ? prefabOverride : fallbackUnitPrefab;
+            GameObject sourcePrefab = mergedCharacter.prefab != null
+                ? mergedCharacter.prefab
+                : prefabOverride != null ? prefabOverride.gameObject : fallbackUnitPrefab != null ? fallbackUnitPrefab.gameObject : null;
 
-            if (prefabToUse == null)
+            if (sourcePrefab == null)
             {
                 Debug.LogError("No DefenderUnit prefab assigned for merge result.");
                 return false;
             }
 
-            DefenderUnit unit = Instantiate(prefabToUse, spawnSlot.UnitAnchor.position, Quaternion.identity);
+            GameObject spawnedObject = Instantiate(sourcePrefab, spawnSlot.UnitAnchor.position, Quaternion.identity);
+            DefenderUnit unit = spawnedObject.GetComponent<DefenderUnit>();
+            if (unit == null)
+            {
+                unit = spawnedObject.AddComponent<DefenderUnit>();
+                unit.AdoptRuntimeTemplate(prefabOverride != null ? prefabOverride : fallbackUnitPrefab);
+            }
+
             unit.gameObject.SetActive(true);
             unit.Initialize(mergedCharacter);
             spawnSlot.AssignUnit(unit);
+            mergeResult = new MergeResultInfo
+            {
+                sourceGrade = grade,
+                resultGrade = nextGrade,
+                resultCharacterName = mergedCharacter.displayName,
+                resultColor = mergedCharacter.accentColor
+            };
             return true;
         }
 

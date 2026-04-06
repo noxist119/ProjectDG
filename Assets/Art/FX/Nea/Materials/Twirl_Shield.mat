@@ -1,0 +1,153 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-3244889414727674637
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: 7
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Twirl_Shield
+  m_Shader: {fileID: -6465566751694194690, guid: cec0e1b7389fa5a488176f6c1becdfeb, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - Texture2D_1eeaafa3f0634404bf27cd6ad8e24111:
+        m_Texture: {fileID: 2800000, guid: a3aaaade224fcd94b92eccf096070093, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - Texture2D_37c5367c929f4c0fbb86d453195b1da8:
+        m_Texture: {fileID: 2800000, guid: dfc615286e0364a44b581ce95d0d31fe, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - Texture2D_3f18d297760c4190bc11c0b333906e68:
+        m_Texture: {fileID: 2800000, guid: 8bef102b6887d42a3b542f04540dd25c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - Texture2D_6fafbfb9fb704b37b5c887434677e7e7:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - Texture2D_892acf0827c143798b2ee285d4f20d94:
+        m_Texture: {fileID: 2800000, guid: dd16694d8c8f3c14b8359e7934c30b18, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - Texture2D_923f7ab0d81f408aaa1b8c04e7d02950:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - Texture2D_ba5ab85de69c4273ac480c74d48ddce9:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - Texture2D_fe1d00f8dcba41988ddb7e2728972dbe:
+        m_Texture: {fileID: 2800000, guid: 4619c8b38325442458022d053597727d, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: 95281d3560f1f854c8c492b78f79c224, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Texture2DAsset_19de867853334269995efe58dfd4f92b_Out_0:
+        m_Texture: {fileID: 2800000, guid: 2f4fc03cfe8594f4f934e3d12a27a41b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Texture2DAsset_75cf6ed24e7743e09397bf2f47d5d626_Out_0:
+        m_Texture: {fileID: 2800000, guid: e155b8319ffd1ff48ab3d6a305c6e15d, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Texture2DAsset_e62640476afb474d9a7242923217a236_Out_0:
+        m_Texture: {fileID: 2800000, guid: e155b8319ffd1ff48ab3d6a305c6e15d, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_Lightmaps:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_LightmapsInd:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_ShadowMasks:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - Vector1_0a83da0f72f147f2be6421c6ac806db0: 0.731
+    - Vector1_19a27e4cd5974a70b05ee7a4112157e9: 0.1
+    - Vector1_307a1ccb9a234ed9abb8c1215beb8b42: 0.01
+    - Vector1_411486409fe44fd2b693bbdf729d3599: 1
+    - Vector1_695840a54bd84e9ea1cc5961e1439e3e: 0
+    - Vector1_6cb75c0251ee4505a14140bbf0196f34: 0
+    - Vector1_740c79be6e45461c9374c2785dfe68e8: 10.81
+    - Vector1_743c17fd556549c68edb0c77e8f95c01: 6.63
+    - Vector1_7e462aaf7584447097f0115ce95e74e8: 2
+    - Vector1_84697770ac794c8486801d8905ac380f: 0.32
+    - Vector1_8a234645ae424510acb86d1cf449b078: 0
+    - Vector1_8e7b75bb25db4f5f88ce8894d20c1051: 1
+    - Vector1_94f313f272054b3fae3b002409160ccc: 0
+    - Vector1_9ad81f3c7043482cae4653455e36e529: 0
+    - Vector1_a2536670e2d641519cb2b929e5d4cd6b: 0.79
+    - Vector1_b301435b16974d93868ebbc36cf999fc: 1.21
+    - Vector1_b6213761e8f14fd4bdc873c3190e62d6: 0.237
+    - Vector1_b968630ed2964e70905b2d4994bea03a: 0.389
+    - Vector1_ba16ab05e5ce44c1b86a1f2681eac5d5: 10
+    - Vector1_bb9d14e22e524e208ca8025d2daeffc4: 1
+    - Vector1_c347180aeaa3452ca63d4a5839f915c9: 0.28
+    - Vector1_d0671715fe494aae8cf1e6093bf6c15f: 2.94
+    - Vector1_d8a0ae5966a54cab8bc3c21fdb5b1393: 0.1
+    - Vector1_ef997ac3c43945299e6f18490c1e2b4f: -0.32
+    - Vector1_f25a090a999c4ea98b434bf623e8e23f: 0.414
+    - _ColorMask: 15
+    - _QueueControl: 0
+    - _QueueOffset: 0
+    - _Stencil: 0
+    - _StencilComp: 8
+    - _StencilOp: 0
+    - _StencilReadMask: 255
+    - _StencilWriteMask: 255
+    m_Colors:
+    - Color_33ceacb6f16f49e3b7f70d8bc5cadc85: {r: 0, g: 1, b: 0.7904351, a: 0}
+    - Color_3be13bb2741a4b8b8fe5741d1c2da819: {r: 1.067674, g: 6.062866, b: 6.062866, a: 0}
+    - Color_6df801397c9e41578410775c25f134de: {r: 1, g: 1, b: 1, a: 1}
+    - Color_728d9da042c44172a2a69341e51a2884: {r: 0.17240664, g: 0.07232696, b: 1, a: 0.1254902}
+    - Color_8f256431435e4aa1a5d021efe06946a6: {r: 0.02425873, g: 0.886898, b: 1, a: 1}
+    - Color_9030699dd4ae4cbb89ed7784eb618f40: {r: 0, g: 0, b: 0, a: 0}
+    - Color_9ff3eaf3b80948e8ad897b46e6835333: {r: 0.1559265, g: 0.3139887, b: 0.9559735, a: 1}
+    - Color_D4B395BF: {r: 2.023601, g: 2.023601, b: 2.023601, a: 1}
+    - Color_ae62a9f3d7e343c0924a1cd58cc62c67: {r: 0, g: 0, b: 0, a: 0}
+    - Color_ba553b204f3c48d4b5d86b0ddf007938: {r: 0.038414, g: 0, b: 1, a: 0.27058825}
+    - Color_f2c7f417edd54760b88e4cd198670c6a: {r: 0, g: 11.26975, b: 19.93076, a: 0}
+    - Color_f4b325029b774673b4bc4e563177a0a4: {r: 0.15289457, g: 6.498019, b: 5.45324, a: 0.19215687}
+    - Color_faf8e7a532dc42c993c810cf8fd792ca: {r: 0, g: 306.4497, b: 732.6218, a: 1}
+    - Vector2_41e9cb4297424fad9797939b169f209b: {r: 0.05, g: 0.05, b: 0, a: 0}
+    - Vector2_d9ac211f970a47bb83a40adf8c27f2e0: {r: 0.7, g: 2.65, b: 0, a: 0}
+    - Vector4_bf4cf425f095492089d4d1df54d9884d: {r: 0, g: 0, b: 0, a: 0}
+    - _ClipRect: {r: -32767, g: -32767, b: 32767, a: 32767}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []

@@ -18,6 +18,7 @@ namespace DefenseGame
         [SerializeField] private int roundStartGold = 4;
 
         public event System.Action OnStateChanged;
+        public event System.Action<MergeResultInfo> OnMergeCompleted;
 
         public int Gold { get; private set; }
         public int Life => life;
@@ -28,6 +29,7 @@ namespace DefenseGame
         public int CharacterCount => characterDatabase != null ? characterDatabase.Characters.Count : 0;
         public int MonsterCount => monsterDatabase != null ? monsterDatabase.Monsters.Count : 0;
         public string CurrentStateSummary => "Gold " + Gold + " | Life " + Life + " | Round " + CurrentRound + (IsBossRound ? " Boss" : string.Empty);
+        public MergeResultInfo? LastMergeResult { get; private set; }
 
         private void Awake()
         {
@@ -108,9 +110,11 @@ namespace DefenseGame
                 return false;
             }
 
-            bool merged = boardManager.TryMergeUnitsOfGrade(grade, characterDatabase, defaultUnitPrefab);
+            bool merged = boardManager.TryMergeUnitsOfGrade(grade, characterDatabase, out MergeResultInfo mergeResult, defaultUnitPrefab);
             if (merged)
             {
+                LastMergeResult = mergeResult;
+                OnMergeCompleted?.Invoke(mergeResult);
                 NotifyStateChanged();
             }
 
@@ -172,6 +176,18 @@ namespace DefenseGame
 
         private void HandleRoundStateChanged(int round, bool bossRound, bool running)
         {
+            if (!running && boardManager != null)
+            {
+                DefenderUnit[] defenders = boardManager.GetAliveDefenders();
+                for (int i = 0; i < defenders.Length; i++)
+                {
+                    if (defenders[i] != null)
+                    {
+                        defenders[i].PlayWinAnimation();
+                    }
+                }
+            }
+
             NotifyStateChanged();
         }
 

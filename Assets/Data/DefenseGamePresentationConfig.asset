@@ -1,0 +1,122 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6045e7cccf2cf4f8a483a43d195004, type: 3}
+  m_Name: DefenseGamePresentationConfig
+  m_EditorClassIdentifier: 
+  backgroundPrefab: {fileID: 8743797414568790579, guid: 77df743fd4be3294d9cba1528bb0076a, type: 3}
+  defaultDefenderPrefab: {fileID: 8114239208549360040, guid: 0d90107ee5159544d8268fa02db774c1, type: 3}
+  defaultMonsterPrefab: {fileID: 8114239208549360040, guid: 0d90107ee5159544d8268fa02db774c1, type: 3}
+  projectilePrefab: {fileID: 0}
+  spawnPortalPrefab: {fileID: 0}
+  goalPrefab: {fileID: 0}
+  centerCrystalPrefab: {fileID: 0}
+  flankTowerPrefab: {fileID: 0}
+  skyAccentPrefab: {fileID: 0}
+  uiFont: {fileID: 0}
+  hudTextColor: {r: 1, g: 1, b: 1, a: 1}
+  buttonColor: {r: 0.16, g: 0.19, b: 0.26, a: 0.92}
+  buttonTextColor: {r: 1, g: 1, b: 1, a: 1}
+  hintText: Space Round | S Summon | 1-4 Merge | C Add Heroes | M Add Monsters
+  groundColor: {r: 0.08, g: 0.11, b: 0.14, a: 1}
+  boardStripColor: {r: 0.12, g: 0.18, b: 0.24, a: 1}
+  enemyRunwayColor: {r: 0.18, g: 0.1, b: 0.11, a: 1}
+  midBridgeColor: {r: 0.25, g: 0.29, b: 0.36, a: 1}
+  northWallColor: {r: 0.17, g: 0.14, b: 0.22, a: 1}
+  southWallColor: {r: 0.13, g: 0.19, b: 0.24, a: 1}
+  sideWallColor: {r: 0.12, g: 0.14, b: 0.18, a: 1}
+  gateColor: {r: 0.24, g: 0.54, b: 0.72, a: 1}
+  gateCoreColor: {r: 0.38, g: 0.89, b: 1, a: 1}
+  crystalColor: {r: 0.3, g: 0.95, b: 0.86, a: 1}
+  slotColors: []
+  laneColors: []
+  characterOverrides:
+  - characterId: hero_01
+    prefab: {fileID: 8450453488667238903, guid: 9e7260e835150c14e9b2969765c9557d, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - characterId: hero_02
+    prefab: {fileID: 8114239208549360040, guid: 0a12be33613c4f44ebb6fe4dfd69b6d2, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - characterId: hero_03
+    prefab: {fileID: 475690231378783162, guid: 07abcca9d8ebaf64b916bed9b9e3447c, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - characterId: hero_04
+    prefab: {fileID: 6387176286333869973, guid: a8a3b861164aaaa418967534285ac23b, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - characterId: hero_05
+    prefab: {fileID: 3838531007208405164, guid: 7b4a9c06e5f3f0248b4d532c8a676978, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - characterId: hero_06
+    prefab: {fileID: 8431363997676515441, guid: 97587b0869a372647b1aee99458797be, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - characterId: hero_07
+    prefab: {fileID: 7813995091687352930, guid: cf0be9405e0dcaa4da73dbe5583efb1f, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - characterId: hero_08
+    prefab: {fileID: 54759762040844804, guid: c01e4ddd77c2c694d9bf9d5342d933f0, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - characterId: hero_09
+    prefab: {fileID: 7813995091687352930, guid: a976882ae216dc44eb4f99546068eac1, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - characterId: hero_10
+    prefab: {fileID: 6515254060684848401, guid: 5f52b7ac5e844c14cb04987c509956a2, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  monsterOverrides:
+  - monsterId: 
+    prefab: {fileID: 0}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_01
+    prefab: {fileID: 2768806735398101681, guid: 3225d1781062bb84facf32e7d6801ce1, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_02
+    prefab: {fileID: 8089538033588148870, guid: 9a1f6fbe5e80aae4fb181afa43ce6978, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_03
+    prefab: {fileID: 3592633432571130781, guid: e24490c93add40c4196836b122cca66f, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_04
+    prefab: {fileID: 8986542917073464587, guid: 096e3c0c4249bde49b2a32e605748832, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_05
+    prefab: {fileID: 3802086840998525379, guid: 3d7a4c1b46c9a5945843749ad3e6b3f1, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_06
+    prefab: {fileID: 1428775832836419692, guid: bff41ef205496d444b3099049eb5e110, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_07
+    prefab: {fileID: 7261520279625366880, guid: 4f0f5d6d07f88564dbaf852188630323, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_08
+    prefab: {fileID: 2642286521261682323, guid: e9f1495f28b29ce459136797d3511ed3, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_09
+    prefab: {fileID: 2642286521261682323, guid: ca7ab50e96d4771489b7b5a2411bae5e, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}

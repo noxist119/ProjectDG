@@ -91,18 +91,25 @@ namespace DefenseGame
                 return;
             }
 
-            MonsterUnit prefabToUse = definition.prefab != null
-                ? definition.prefab.GetComponent<MonsterUnit>()
-                : fallbackMonsterPrefab;
+            GameObject sourcePrefab = definition.prefab != null
+                ? definition.prefab
+                : fallbackMonsterPrefab != null ? fallbackMonsterPrefab.gameObject : null;
 
-            if (prefabToUse == null)
+            if (sourcePrefab == null)
             {
                 Debug.LogError("No MonsterUnit prefab assigned.");
                 return;
             }
 
             Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
-            MonsterUnit monster = Instantiate(prefabToUse, spawnPoint.position, spawnPoint.rotation);
+            GameObject spawnedObject = Instantiate(sourcePrefab, spawnPoint.position, spawnPoint.rotation);
+            MonsterUnit monster = spawnedObject.GetComponent<MonsterUnit>();
+            if (monster == null)
+            {
+                monster = spawnedObject.AddComponent<MonsterUnit>();
+                monster.AdoptRuntimeTemplate(fallbackMonsterPrefab);
+            }
+
             monster.gameObject.SetActive(true);
             monster.Initialize(definition, goalPoint);
         }

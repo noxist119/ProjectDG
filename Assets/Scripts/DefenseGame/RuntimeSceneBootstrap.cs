@@ -576,6 +576,12 @@ namespace DefenseGame
             Text round = CreateText(canvas.transform, font, textColor, new Vector2(120f, -90f), "Round : 0");
             Text board = CreateText(canvas.transform, font, textColor, new Vector2(120f, -120f), "Units : 0");
             Text content = CreateText(canvas.transform, font, textColor, new Vector2(180f, -150f), "Characters : 0 / Monsters : 0");
+            Text mergeResult = CreateText(canvas.transform, font, new Color(0.95f, 0.87f, 0.42f), new Vector2(520f, -92f), "Merge Result : waiting");
+            mergeResult.alignment = TextAnchor.MiddleLeft;
+            mergeResult.fontStyle = FontStyle.Bold;
+            mergeResult.fontSize = 18;
+            RectTransform mergeRect = mergeResult.GetComponent<RectTransform>();
+            mergeRect.sizeDelta = new Vector2(420f, 28f);
             Text hint = CreateText(canvas.transform, font, textColor, new Vector2(310f, -30f), hintValue);
             hint.alignment = TextAnchor.MiddleLeft;
             RectTransform hintRect = hint.GetComponent<RectTransform>();
@@ -588,7 +594,7 @@ namespace DefenseGame
             CreateButton(canvas.transform, font, "Merge E", new Vector2(570f, 60f), binder.OnClickMergeEpic);
             CreateButton(canvas.transform, font, "Merge L", new Vector2(690f, 60f), binder.OnClickMergeLegendary);
 
-            hud.Configure(gameController, gold, life, round, board, content, hint, hintValue);
+            hud.Configure(gameController, gold, life, round, board, content, hint, mergeResult, hintValue);
         }
 
         private Text CreateText(Transform parent, Font font, Color color, Vector2 anchoredPosition, string value)
