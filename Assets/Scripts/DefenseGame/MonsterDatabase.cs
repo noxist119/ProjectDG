@@ -139,31 +139,42 @@ namespace DefenseGame
             stats.criticalDamageMultiplier = 1.5f + gradeIndex * 0.08f;
             stats.attackSpeed = 0.82f + gradeIndex * 0.07f;
             stats.maxMana = 100f + gradeIndex * 14f;
-            stats.attackRange = 1.35f + gradeIndex * 0.08f;
+            stats.attackRange = 1.35f + gradeIndex * 0.08f + (seed % 2) * 0.12f;
             stats.moveSpeed = 1.35f + gradeIndex * 0.08f;
             stats.projectileSpeed = 0f;
+            stats.manaRegenPerSecondRate = 0.05f;
+            stats.manaGainWhenHitRate = 0.10f;
+            stats.manaGainPerAttackRate = 0.15f;
 
             if (role == MonsterRole.Charger)
             {
                 stats.moveSpeed *= 1.25f;
                 stats.attackSpeed *= 1.1f;
+                stats.attackRange = 1.2f;
+                stats.manaGainPerAttackRate = 0.16f;
             }
             else if (role == MonsterRole.Brute)
             {
                 stats.maxHealth *= 1.45f;
                 stats.attackPower *= 1.2f;
                 stats.moveSpeed *= 0.82f;
+                stats.attackRange += 0.15f;
+                stats.manaGainWhenHitRate = 0.12f;
             }
             else if (role == MonsterRole.Caster)
             {
                 stats.maxMana *= 1.3f;
-                stats.attackRange += 0.4f;
+                stats.attackRange += 2.4f;
+                stats.manaRegenPerSecondRate = 0.06f;
+                stats.manaGainPerAttackRate = 0.16f;
             }
             else if (role == MonsterRole.Elite)
             {
                 stats.maxHealth *= 1.2f;
                 stats.attackPower *= 1.18f;
                 stats.criticalChance += 0.1f;
+                stats.attackRange += 0.45f;
+                stats.manaGainPerAttackRate = 0.17f;
             }
 
             if (isBoss)
@@ -174,6 +185,9 @@ namespace DefenseGame
                 stats.criticalDamageMultiplier = 1.85f;
                 stats.attackSpeed = 0.95f + seed * 0.05f;
                 stats.maxMana = 120f;
+                stats.manaRegenPerSecondRate = 0.06f;
+                stats.manaGainWhenHitRate = 0.12f;
+                stats.manaGainPerAttackRate = 0.18f;
                 stats.attackRange = 2f;
                 stats.moveSpeed = 1.15f + seed * 0.04f;
             }

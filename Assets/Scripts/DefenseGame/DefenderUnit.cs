@@ -88,6 +88,7 @@ namespace DefenseGame
             }
 
             EnsureAnimationDriver();
+            EnsureInteractionCollider();
         }
 
         private void Update()
@@ -100,7 +101,7 @@ namespace DefenseGame
             TickBuffs();
             TickSkillCooldowns();
 
-            currentMana = Mathf.Min(MaxMana, currentMana + 6f * Time.deltaTime);
+            currentMana = Mathf.Min(MaxMana, currentMana + MaxMana * definition.stats.manaRegenPerSecondRate * Time.deltaTime);
             attackCooldown -= Time.deltaTime;
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
             animationDriver?.PlayMoving(false);
@@ -118,7 +119,10 @@ namespace DefenseGame
             else if (target == null && !HasAnyLivingMonster())
             {
                 ResetFacingToDefault();
-                animationDriver?.ForceIdle();
+                if (animationDriver == null || !animationDriver.IsLocked)
+                {
+                    animationDriver?.ForceIdle();
+                }
             }
         }
 
@@ -138,6 +142,7 @@ namespace DefenseGame
             gameObject.name = definition.displayName + "_" + definition.grade;
             ApplyVisuals();
             EnsureAnimationDriver();
+            EnsureInteractionCollider();
             floatingUi = FloatingCombatUI.Attach(transform, definition.displayName, definition.accentColor);
             floatingUi.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
             animationDriver?.PlaySpawn();
@@ -163,7 +168,7 @@ namespace DefenseGame
         public void TakeDamage(float damage, bool critical)
         {
             currentHealth -= damage;
-            currentMana = Mathf.Min(MaxMana, currentMana + damage * 0.35f);
+            currentMana = Mathf.Min(MaxMana, currentMana + MaxMana * definition.stats.manaGainWhenHitRate);
             floatingUi?.ShowDamage(damage, critical, false);
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
 
@@ -203,7 +208,7 @@ namespace DefenseGame
 
             bool critical = Random.value <= Mathf.Clamp01(definition.stats.criticalChance + critChanceBonus);
             float damage = definition.stats.attackPower * (critical ? definition.stats.criticalDamageMultiplier : 1f);
-            currentMana = Mathf.Min(MaxMana, currentMana + 12f);
+            currentMana = Mathf.Min(MaxMana, currentMana + MaxMana * definition.stats.manaGainPerAttackRate);
 
             if (projectilePrefab == null)
             {
@@ -226,20 +231,20 @@ namespace DefenseGame
                 return false;
             }
 
+            if (currentMana < MaxMana)
+            {
+                return false;
+            }
+
             for (int i = 0; i < definition.skills.Count; i++)
             {
                 SkillDefinition skill = definition.skills[i];
-                if (currentMana < skill.manaThreshold)
-                {
-                    continue;
-                }
-
                 if (skillCooldowns.TryGetValue(skill.id, out float cooldown) && cooldown > 0f)
                 {
                     continue;
                 }
 
-                currentMana = Mathf.Max(0f, currentMana - skill.manaThreshold);
+                currentMana = 0f;
                 CastSkill(skill);
                 skillCooldowns[skill.id] = skill.cooldown;
                 return true;
@@ -441,6 +446,54 @@ namespace DefenseGame
             }
         }
 
+        private void EnsureInteractionCollider()
+        {
+            if (GetComponentInChildren<Collider>(true) != null)
+            {
+                return;
+            }
+
+            if (tintRenderers == null || tintRenderers.Length == 0)
+            {
+                tintRenderers = GetComponentsInChildren<Renderer>(true);
+            }
+
+            Bounds bounds = new Bounds(transform.position, Vector3.one);
+            bool initialized = false;
+            for (int i = 0; i < tintRenderers.Length; i++)
+            {
+                Renderer renderer = tintRenderers[i];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                if (!initialized)
+                {
+                    bounds = renderer.bounds;
+                    initialized = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            BoxCollider collider = gameObject.GetComponent<BoxCollider>();
+            if (collider == null)
+            {
+                collider = gameObject.AddComponent<BoxCollider>();
+            }
+
+            Vector3 worldCenter = initialized ? bounds.center : transform.position + Vector3.up * 0.9f;
+            Vector3 worldSize = initialized ? bounds.size : new Vector3(1f, 1.8f, 1f);
+            collider.center = transform.InverseTransformPoint(worldCenter);
+            collider.size = new Vector3(
+                Mathf.Max(0.6f, worldSize.x),
+                Mathf.Max(1.2f, worldSize.y),
+                Mathf.Max(0.6f, worldSize.z));
+        }
+
         private void Die()
         {
             RemoveFromBoard();
@@ -462,7 +515,10 @@ namespace DefenseGame
             if (!HasAnyLivingMonster())
             {
                 ResetFacingToDefault();
-                animationDriver?.ForceIdle();
+                if (animationDriver == null || !animationDriver.IsLocked)
+                {
+                    animationDriver?.ForceIdle();
+                }
             }
         }
 

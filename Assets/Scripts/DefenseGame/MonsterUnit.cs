@@ -7,6 +7,7 @@ namespace DefenseGame
     public class MonsterUnit : MonoBehaviour
     {
         [SerializeField] private Renderer[] tintRenderers;
+        [SerializeField] private float facingOffsetY = 180f;
 
         private MonsterDefinition definition;
         private Transform goal;
@@ -73,7 +74,7 @@ namespace DefenseGame
             TickSkillCooldowns();
             TickBossPhase();
 
-            currentMana = Mathf.Min(definition.stats.maxMana, currentMana + 5f * Time.deltaTime);
+            currentMana = Mathf.Min(definition.stats.maxMana, currentMana + definition.stats.maxMana * definition.stats.manaRegenPerSecondRate * Time.deltaTime);
             attackCooldown -= Time.deltaTime;
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
 
@@ -130,7 +131,7 @@ namespace DefenseGame
         public void TakeDamage(float damage, bool critical)
         {
             currentHealth -= damage;
-            currentMana = Mathf.Min(definition.stats.maxMana, currentMana + damage * 0.25f);
+            currentMana = Mathf.Min(definition.stats.maxMana, currentMana + definition.stats.maxMana * definition.stats.manaGainWhenHitRate);
             floatingUi?.ShowDamage(damage, critical, false);
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
 
@@ -160,6 +161,7 @@ namespace DefenseGame
                 return;
             }
 
+            FaceTarget(goal.position);
             float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus);
             transform.position = Vector3.MoveTowards(transform.position, goal.position, moveSpeed * Time.deltaTime);
             animationDriver?.PlayMoving(true);
@@ -179,7 +181,7 @@ namespace DefenseGame
 
             bool critical = Random.value <= Mathf.Clamp01(definition.stats.criticalChance + critChanceBonus);
             float damage = definition.stats.attackPower * (critical ? definition.stats.criticalDamageMultiplier : 1f);
-            currentMana = Mathf.Min(definition.stats.maxMana, currentMana + 10f);
+            currentMana = Mathf.Min(definition.stats.maxMana, currentMana + definition.stats.maxMana * definition.stats.manaGainPerAttackRate);
             animationDriver?.PlayAttack();
             target.TakeDamage(damage, critical);
         }
@@ -191,20 +193,20 @@ namespace DefenseGame
                 return false;
             }
 
+            if (currentMana < definition.stats.maxMana)
+            {
+                return false;
+            }
+
             for (int i = 0; i < definition.skills.Count; i++)
             {
                 SkillDefinition skill = definition.skills[i];
-                if (currentMana < skill.manaThreshold)
-                {
-                    continue;
-                }
-
                 if (skillCooldowns.TryGetValue(skill.id, out float cooldown) && cooldown > 0f)
                 {
                     continue;
                 }
 
-                currentMana = Mathf.Max(0f, currentMana - skill.manaThreshold);
+                currentMana = 0f;
                 CastSkill(skill);
                 skillCooldowns[skill.id] = skill.cooldown;
                 return true;
@@ -291,7 +293,8 @@ namespace DefenseGame
                 return;
             }
 
-            transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+            Quaternion lookRotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+            transform.rotation = lookRotation * Quaternion.Euler(0f, facingOffsetY, 0f);
         }
 
         private DefenderUnit FindNearestDefender()

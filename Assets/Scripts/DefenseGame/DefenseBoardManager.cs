@@ -8,6 +8,13 @@ namespace DefenseGame
     {
         [SerializeField] private List<BoardSlot> slots = new List<BoardSlot>();
         [SerializeField] private DefenderUnit fallbackUnitPrefab;
+        [SerializeField] private float dragHeight = 1.4f;
+
+        private DefenderUnit draggedUnit;
+        private BoardSlot draggedOriginSlot;
+        private Collider[] draggedColliders;
+        private Plane dragPlane;
+        private Vector3 dragOffset;
 
         public IReadOnlyList<BoardSlot> Slots => slots;
         public int EmptySlotCount => slots.Count(slot => slot != null && slot.IsEmpty);
@@ -18,6 +25,13 @@ namespace DefenseGame
             {
                 slots = GetComponentsInChildren<BoardSlot>(true).ToList();
             }
+
+            dragPlane = new Plane(Vector3.up, new Vector3(0f, dragHeight, 0f));
+        }
+
+        private void Update()
+        {
+            HandleDragging();
         }
 
         public void Configure(List<BoardSlot> newSlots, DefenderUnit fallbackPrefab)
@@ -53,8 +67,8 @@ namespace DefenseGame
             }
 
             unit.gameObject.SetActive(true);
-            unit.Initialize(definition);
             emptySlot.AssignUnit(unit);
+            unit.Initialize(definition);
             return true;
         }
 
@@ -106,8 +120,8 @@ namespace DefenseGame
             }
 
             unit.gameObject.SetActive(true);
-            unit.Initialize(mergedCharacter);
             spawnSlot.AssignUnit(unit);
+            unit.Initialize(mergedCharacter);
             mergeResult = new MergeResultInfo
             {
                 sourceGrade = grade,
@@ -129,6 +143,144 @@ namespace DefenseGame
                 .Select(slot => slot.OccupiedUnit)
                 .Where(unit => unit != null)
                 .ToArray();
+        }
+
+        public bool TryMoveUnit(DefenderUnit unit, BoardSlot targetSlot)
+        {
+            if (unit == null || targetSlot == null || !targetSlot.IsEmpty)
+            {
+                return false;
+            }
+
+            BoardSlot sourceSlot = unit.CurrentSlot;
+            if (sourceSlot == null)
+            {
+                return false;
+            }
+
+            sourceSlot.Clear();
+            targetSlot.AssignUnit(unit);
+            return true;
+        }
+
+        private void HandleDragging()
+        {
+            if (Camera.main == null)
+            {
+                return;
+            }
+
+            if (Input.GetMouseButtonDown(0))
+            {
+                TryBeginDrag();
+            }
+
+            if (draggedUnit != null)
+            {
+                UpdateDragPosition();
+
+                if (Input.GetMouseButtonUp(0))
+                {
+                    EndDrag();
+                }
+            }
+        }
+
+        private void TryBeginDrag()
+        {
+            if (!TryGetPointerHit(out RaycastHit hit))
+            {
+                return;
+            }
+
+            DefenderUnit unit = hit.collider.GetComponentInParent<DefenderUnit>();
+            if (unit == null)
+            {
+                return;
+            }
+
+            BoardSlot originSlot = unit.CurrentSlot;
+            if (originSlot == null)
+            {
+                return;
+            }
+
+            draggedUnit = unit;
+            draggedOriginSlot = originSlot;
+            draggedColliders = draggedUnit.GetComponentsInChildren<Collider>(true);
+            draggedOriginSlot.Clear();
+            draggedUnit.transform.SetParent(transform, true);
+
+            for (int i = 0; i < draggedColliders.Length; i++)
+            {
+                draggedColliders[i].enabled = false;
+            }
+
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (dragPlane.Raycast(ray, out float enter))
+            {
+                dragOffset = draggedUnit.transform.position - ray.GetPoint(enter);
+            }
+            else
+            {
+                dragOffset = Vector3.zero;
+            }
+        }
+
+        private void UpdateDragPosition()
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (!dragPlane.Raycast(ray, out float enter))
+            {
+                return;
+            }
+
+            Vector3 point = ray.GetPoint(enter) + dragOffset;
+            point.y = dragHeight;
+            draggedUnit.transform.position = point;
+        }
+
+        private void EndDrag()
+        {
+            BoardSlot targetSlot = FindSlotUnderPointer();
+
+            for (int i = 0; i < draggedColliders.Length; i++)
+            {
+                if (draggedColliders[i] != null)
+                {
+                    draggedColliders[i].enabled = true;
+                }
+            }
+
+            if (targetSlot != null && targetSlot.IsEmpty)
+            {
+                targetSlot.AssignUnit(draggedUnit);
+            }
+            else if (draggedOriginSlot != null)
+            {
+                draggedOriginSlot.AssignUnit(draggedUnit);
+            }
+
+            draggedUnit = null;
+            draggedOriginSlot = null;
+            draggedColliders = null;
+            dragOffset = Vector3.zero;
+        }
+
+        private BoardSlot FindSlotUnderPointer()
+        {
+            if (!TryGetPointerHit(out RaycastHit hit))
+            {
+                return null;
+            }
+
+            return hit.collider.GetComponentInParent<BoardSlot>();
+        }
+
+        private bool TryGetPointerHit(out RaycastHit hit)
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            return Physics.Raycast(ray, out hit, 200f);
         }
     }
 }

@@ -10,14 +10,16 @@ namespace DefenseGame
         [SerializeField] private string[] idleStates = { "idle", "Idle", "dle", "Dle", "Idle 0", "Idle_0", "Idle_01", "BattleIdle", "Battle_Idle", "LobbyIdle", "LobbyIdle 0", "Wait" };
         [SerializeField] private string[] walkStates = { "walk", "Walk", "Run", "Move" };
         [SerializeField] private string[] winStates = { "win", "Win" };
-        [SerializeField] private string[] attackStates = { "attack", "Attack", "Attack1", "Attack2", "Attack01", "Attack02", "attack1", "attack2" };
-        [SerializeField] private string[] skillStates = { "skill", "Skill", "Skill1", "Skill2", "Skill01", "Skill02", "skill1", "skill2" };
+        [SerializeField] private string[] attackStates = { "Attack01", "Attack1", "attack1", "Attack02", "Attack2", "attack2", "attack", "Attack" };
+        [SerializeField] private string[] skillStates = { "Skill01", "Skill1", "skill1", "Skill02", "Skill2", "skill2", "Skill03", "Skill3", "skill3", "skill", "Skill" };
         [SerializeField] private string[] spawnTriggers = { "Spawn" };
         [SerializeField] private string[] attackTriggers = { "Attack" };
         [SerializeField] private string[] skillTriggers = { "Skill" };
         [SerializeField] private string[] winTriggers = { "Win" };
         [SerializeField] private string[] attackIndexInts = { "AttackIndex" };
         [SerializeField] private string[] skillIndexInts = { "SkillIndex", "PlayIndex" };
+        [SerializeField] private int defaultAttackIndex = 1;
+        [SerializeField] private int defaultSkillIndex = 1;
         [SerializeField] private float actionBlendDuration = 0.08f;
         [SerializeField] private float spawnReturnDelay = 0.85f;
         [SerializeField] private float attackReturnDelay = 0.45f;
@@ -27,6 +29,8 @@ namespace DefenseGame
         private Coroutine returnRoutine;
         private string currentState;
         private float lockUntilTime;
+
+        public bool IsLocked => Time.time < lockUntilTime;
 
         private void Awake()
         {
@@ -78,8 +82,14 @@ namespace DefenseGame
 
         public void PlayAttack()
         {
-            TrySetFirstInt(attackIndexInts, Random.Range(0, 2));
-            if (TryPlayAny(attackStates) || TrySetAnyTrigger(attackTriggers))
+            bool played = TryPlayAny(attackStates);
+            if (!played)
+            {
+                TrySetFirstInt(attackIndexInts, defaultAttackIndex);
+                played = TrySetAnyTrigger(attackTriggers);
+            }
+
+            if (played)
             {
                 LockFor(attackReturnDelay);
                 ScheduleReturnToIdle(attackReturnDelay);
@@ -88,8 +98,14 @@ namespace DefenseGame
 
         public void PlaySkill()
         {
-            TrySetFirstInt(skillIndexInts, Random.Range(0, 3));
-            if (TryPlayAny(skillStates) || TrySetAnyTrigger(skillTriggers))
+            bool played = TryPlayAny(skillStates);
+            if (!played)
+            {
+                TrySetFirstInt(skillIndexInts, defaultSkillIndex);
+                played = TrySetAnyTrigger(skillTriggers);
+            }
+
+            if (played)
             {
                 LockFor(skillReturnDelay);
                 ScheduleReturnToIdle(skillReturnDelay);
@@ -236,7 +252,7 @@ namespace DefenseGame
 
         private bool IsBusyState()
         {
-            return Time.time < lockUntilTime;
+            return IsLocked;
         }
 
         private void LockFor(float duration)

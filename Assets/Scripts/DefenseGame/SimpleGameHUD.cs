@@ -13,14 +13,17 @@ namespace DefenseGame
         [SerializeField] private Text contentText;
         [SerializeField] private Text hintText;
         [SerializeField] private Text mergeResultText;
+        [SerializeField] private Text mergeCelebrationText;
+        [SerializeField] private Text mergeCelebrationSubText;
         [SerializeField] private Text countdownText;
         [SerializeField] private Text roundBannerText;
         [SerializeField] private string hintMessage = "Space Round | S Summon | 1-4 Merge | C Add Heroes | M Add Monsters";
         [SerializeField] private float mergeBannerTimer;
         [SerializeField] private string mergeBannerMessage = string.Empty;
+        [SerializeField] private float mergeCelebrationTimer;
         [SerializeField] private float roundBannerTimer;
 
-        public void Configure(DefenseGameController controller, Text gold, Text lifeLabel, Text round, Text board, Text content, Text hint, Text mergeResult, Text countdown, Text roundBanner, string overrideHint = null)
+        public void Configure(DefenseGameController controller, Text gold, Text lifeLabel, Text round, Text board, Text content, Text hint, Text mergeResult, Text mergeCelebration, Text mergeCelebrationSub, Text countdown, Text roundBanner, string overrideHint = null)
         {
             if (gameController != null)
             {
@@ -38,6 +41,8 @@ namespace DefenseGame
             contentText = content;
             hintText = hint;
             mergeResultText = mergeResult;
+            mergeCelebrationText = mergeCelebration;
+            mergeCelebrationSubText = mergeCelebrationSub;
             countdownText = countdown;
             roundBannerText = roundBanner;
             if (!string.IsNullOrWhiteSpace(overrideHint))
@@ -125,6 +130,50 @@ namespace DefenseGame
                     roundBannerText.text = string.Empty;
                 }
             }
+
+            if (mergeCelebrationText != null)
+            {
+                if (mergeCelebrationTimer > 0f)
+                {
+                    mergeCelebrationTimer -= Time.deltaTime;
+                    float normalized = Mathf.Clamp01(mergeCelebrationTimer / 1.8f);
+                    float scale = Mathf.Lerp(1f, 1.18f, normalized);
+                    RectTransform titleRect = mergeCelebrationText.GetComponent<RectTransform>();
+                    if (titleRect != null)
+                    {
+                        titleRect.localScale = Vector3.one * scale;
+                    }
+
+                    Color titleColor = mergeCelebrationText.color;
+                    titleColor.a = Mathf.Lerp(0.1f, 1f, normalized);
+                    mergeCelebrationText.color = titleColor;
+
+                    if (mergeCelebrationSubText != null)
+                    {
+                        RectTransform subRect = mergeCelebrationSubText.GetComponent<RectTransform>();
+                        if (subRect != null)
+                        {
+                            subRect.localScale = Vector3.one * Mathf.Lerp(1f, 1.08f, normalized);
+                        }
+
+                        Color subColor = mergeCelebrationSubText.color;
+                        subColor.a = Mathf.Lerp(0.05f, 0.92f, normalized);
+                        mergeCelebrationSubText.color = subColor;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(mergeCelebrationText.text))
+                {
+                    mergeCelebrationText.text = string.Empty;
+                    mergeCelebrationText.color = new Color(mergeCelebrationText.color.r, mergeCelebrationText.color.g, mergeCelebrationText.color.b, 0f);
+                    mergeCelebrationText.GetComponent<RectTransform>().localScale = Vector3.one;
+                    if (mergeCelebrationSubText != null)
+                    {
+                        mergeCelebrationSubText.text = string.Empty;
+                        mergeCelebrationSubText.color = new Color(mergeCelebrationSubText.color.r, mergeCelebrationSubText.color.g, mergeCelebrationSubText.color.b, 0f);
+                        mergeCelebrationSubText.GetComponent<RectTransform>().localScale = Vector3.one;
+                    }
+                }
+            }
         }
 
         public void Refresh()
@@ -150,11 +199,24 @@ namespace DefenseGame
         {
             mergeBannerMessage = result.BuildMessage();
             mergeBannerTimer = 3f;
+            mergeCelebrationTimer = 1.8f;
 
             if (mergeBannerTextAvailable())
             {
                 mergeResultText.text = "Merge Result : " + mergeBannerMessage;
                 mergeResultText.color = result.resultColor;
+            }
+
+            if (mergeCelebrationText != null)
+            {
+                mergeCelebrationText.text = "MERGE SUCCESS!";
+                mergeCelebrationText.color = result.resultColor;
+            }
+
+            if (mergeCelebrationSubText != null)
+            {
+                mergeCelebrationSubText.text = result.sourceGrade + " -> " + result.resultGrade + "  |  " + result.resultCharacterName;
+                mergeCelebrationSubText.color = new Color(1f, 0.98f, 0.9f, 0.92f);
             }
         }
 

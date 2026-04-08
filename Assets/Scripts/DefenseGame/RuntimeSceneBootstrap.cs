@@ -595,6 +595,27 @@ namespace DefenseGame
             mergeResult.fontSize = 18;
             RectTransform mergeRect = mergeResult.GetComponent<RectTransform>();
             mergeRect.sizeDelta = new Vector2(420f, 28f);
+            Text mergeCelebration = CreateText(canvas.transform, font, new Color(1f, 0.92f, 0.5f, 0f), Vector2.zero, string.Empty);
+            mergeCelebration.alignment = TextAnchor.MiddleCenter;
+            mergeCelebration.fontStyle = FontStyle.Bold;
+            mergeCelebration.fontSize = 42;
+            RectTransform mergeCelebrationRect = mergeCelebration.GetComponent<RectTransform>();
+            mergeCelebrationRect.anchorMin = new Vector2(0.5f, 0.5f);
+            mergeCelebrationRect.anchorMax = new Vector2(0.5f, 0.5f);
+            mergeCelebrationRect.pivot = new Vector2(0.5f, 0.5f);
+            mergeCelebrationRect.anchoredPosition = new Vector2(0f, 170f);
+            mergeCelebrationRect.sizeDelta = new Vector2(640f, 64f);
+
+            Text mergeCelebrationSub = CreateText(canvas.transform, font, new Color(1f, 0.98f, 0.9f, 0f), Vector2.zero, string.Empty);
+            mergeCelebrationSub.alignment = TextAnchor.MiddleCenter;
+            mergeCelebrationSub.fontStyle = FontStyle.Bold;
+            mergeCelebrationSub.fontSize = 24;
+            RectTransform mergeCelebrationSubRect = mergeCelebrationSub.GetComponent<RectTransform>();
+            mergeCelebrationSubRect.anchorMin = new Vector2(0.5f, 0.5f);
+            mergeCelebrationSubRect.anchorMax = new Vector2(0.5f, 0.5f);
+            mergeCelebrationSubRect.pivot = new Vector2(0.5f, 0.5f);
+            mergeCelebrationSubRect.anchoredPosition = new Vector2(0f, 126f);
+            mergeCelebrationSubRect.sizeDelta = new Vector2(760f, 40f);
             Text hint = CreateText(canvas.transform, font, textColor, new Vector2(310f, -30f), hintValue);
             hint.alignment = TextAnchor.MiddleLeft;
             RectTransform hintRect = hint.GetComponent<RectTransform>();
@@ -628,7 +649,7 @@ namespace DefenseGame
             CreateButton(canvas.transform, font, "Merge E", new Vector2(570f, 60f), binder.OnClickMergeEpic);
             CreateButton(canvas.transform, font, "Merge L", new Vector2(690f, 60f), binder.OnClickMergeLegendary);
 
-            hud.Configure(gameController, gold, life, round, board, content, hint, mergeResult, countdown, roundBanner, hintValue);
+            hud.Configure(gameController, gold, life, round, board, content, hint, mergeResult, mergeCelebration, mergeCelebrationSub, countdown, roundBanner, hintValue);
         }
 
         private Text CreateText(Transform parent, Font font, Color color, Vector2 anchoredPosition, string value)

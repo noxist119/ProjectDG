@@ -21,22 +21,22 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: dice_Infection gas
-  m_Shader: {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _ALPHATEST_ON
   - _EMISSION
-  - _GLOSSYREFLECTIONS_OFF
   m_InvalidKeywords:
-  - _SURFACE_TYPE_TRANSPARENT
+  - _GLOSSYREFLECTIONS_OFF
   m_LightmapFlags: 2
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
+  m_CustomRenderQueue: 2450
+  stringTagMap:
+    RenderType: TransparentCutout
   disabledShaderPasses:
   - SHADOWCASTER
-  - DepthOnly
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -131,7 +131,7 @@ Material:
     - Vector1_6965aefe9e6446a4b504375a2edba63f: 0.05
     - Vector1_e3b61fe1bc624eac9297e1a03f587ee7: 0.2
     - _AlphaClip: 1
-    - _AlphaToMask: 0
+    - _AlphaToMask: 1
     - _Blend: 0
     - _BlendModePreserveSpecular: 0
     - _BlendOp: 0
@@ -157,8 +157,8 @@ Material:
     - _DistortionStrength: 1
     - _DistortionStrengthScaled: 0.1
     - _DstBlend: 0
-    - _DstBlendAlpha: 10
-    - _EnvironmentReflections: 1
+    - _DstBlendAlpha: 0
+    - _EnvironmentReflections: 0
     - _FlipbookBlending: 0
     - _FlipbookMode: 0
     - _FresnelIntensity: 1
@@ -190,7 +190,7 @@ Material:
     - _ShadowSmooth: 0.327
     - _ShadowThreshold: 0.88
     - _Shininess: 0
-    - _Smoothness: 0.25
+    - _Smoothness: 0
     - _SmoothnessSource: 0
     - _SmoothnessTextureChannel: 0
     - _SoftParticlesEnabled: 0
@@ -209,7 +209,7 @@ Material:
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
-    - _Surface: 1
+    - _Surface: 0
     - _TintFactor: 0
     - _UVSec: 0
     - _UseUIAlphaClip: 0
@@ -219,7 +219,7 @@ Material:
     - Color_1815cfb258ab4728abc3e8c347625f04: {r: 0, g: 0, b: 0, a: 0}
     - Color_476abea5ded047508c2a341f48079c0e: {r: 0, g: 1, b: 0.8520973, a: 0}
     - Color_fc0c0a230368499baa52a94b359858dd: {r: 0.9811321, g: 0.9811321, b: 0.9811321, a: 0}
-    - _BaseColor: {r: 0.4150942, g: 0.4150942, b: 0.4150942, a: 1}
+    - _BaseColor: {r: 0.41509414, g: 0.41509414, b: 0.41509414, a: 1}
     - _BaseColorAddSubDiff: {r: 0, g: 0, b: 0, a: 0}
     - _CameraFadeParams: {r: 0, g: 0, b: 0, a: 0}
     - _Color: {r: 0.41509417, g: 0.41509417, b: 0.41509417, a: 1}

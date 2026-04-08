@@ -147,31 +147,45 @@ namespace DefenseGame
             stats.criticalDamageMultiplier = 1.5f + gradeIndex * 0.1f;
             stats.attackSpeed = 1f + gradeIndex * 0.1f;
             stats.maxMana = 100f + gradeIndex * 18f;
-            stats.attackRange = 5.25f + gradeIndex * 0.35f;
+            stats.attackRange = 4.75f + gradeIndex * 0.3f + (seed % 4) * 0.2f;
             stats.projectileSpeed = 11f + gradeIndex * 1.5f;
             stats.moveSpeed = 0f;
+            stats.manaRegenPerSecondRate = 0.05f;
+            stats.manaGainWhenHitRate = 0.10f;
+            stats.manaGainPerAttackRate = 0.15f;
 
             if (role == CharacterRole.Vanguard)
             {
                 stats.maxHealth *= 1.35f;
-                stats.attackRange -= 1.25f;
+                stats.attackRange = 2.35f + (seed % 3) * 0.2f;
                 stats.attackPower *= 1.1f;
+                stats.manaGainWhenHitRate = 0.12f;
+                stats.manaGainPerAttackRate = 0.16f;
             }
             else if (role == CharacterRole.Ranger)
             {
-                stats.attackRange += 2.25f;
+                stats.attackRange += 3.4f;
                 stats.attackSpeed *= 1.1f;
+                stats.projectileSpeed += 2f;
+                stats.manaGainPerAttackRate = 0.17f;
             }
             else if (role == CharacterRole.Mage)
             {
                 stats.attackPower *= 1.25f;
                 stats.maxMana *= 1.2f;
+                stats.attackRange += 1.7f;
+                stats.manaRegenPerSecondRate = 0.06f;
+                stats.manaGainPerAttackRate = 0.16f;
             }
             else if (role == CharacterRole.Support)
             {
                 stats.maxHealth *= 1.1f;
                 stats.attackSpeed *= 0.92f;
                 stats.maxMana *= 1.35f;
+                stats.attackRange += 1.2f;
+                stats.manaRegenPerSecondRate = 0.07f;
+                stats.manaGainWhenHitRate = 0.12f;
+                stats.manaGainPerAttackRate = 0.14f;
             }
             else if (role == CharacterRole.Assassin)
             {
@@ -179,12 +193,16 @@ namespace DefenseGame
                 stats.criticalDamageMultiplier += 0.35f;
                 stats.attackSpeed *= 1.2f;
                 stats.maxHealth *= 0.85f;
+                stats.attackRange = 3f + (seed % 2) * 0.25f;
+                stats.manaGainPerAttackRate = 0.18f;
             }
             else if (role == CharacterRole.Summoner)
             {
                 stats.attackPower *= 0.95f;
                 stats.maxMana *= 1.45f;
-                stats.attackRange += 0.8f;
+                stats.attackRange += 2.2f;
+                stats.manaRegenPerSecondRate = 0.08f;
+                stats.manaGainPerAttackRate = 0.14f;
             }
 
             stats.criticalChance = Mathf.Clamp01(stats.criticalChance);
