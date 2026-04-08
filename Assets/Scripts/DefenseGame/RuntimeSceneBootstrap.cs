@@ -15,6 +15,7 @@ namespace DefenseGame
         [SerializeField] private float laneSpacing = 3.2f;
         [SerializeField] private float slotSpacing = 1.8f;
         [SerializeField] private GamePresentationConfig presentationConfig;
+        [SerializeField] private bool hideDefaultStageDecorWhenUsingBackground = true;
 
         private static readonly Color[] DefaultSlotColors =
         {
@@ -83,10 +84,14 @@ namespace DefenseGame
             List<BoardSlot> slots = BuildSlots(boardRoot);
             BuildLaneDecor(laneRoot);
             Transform[] spawnPoints = BuildSpawnPoints(spawnRoot);
-            Transform goalPoint = BuildGoal(miscRoot);
-            BuildCenterCrystal(miscRoot);
-            BuildFlankTowers(miscRoot);
-            BuildSkyOrnaments(miscRoot);
+            bool useCustomBackground = presentationConfig != null && presentationConfig.backgroundPrefab != null;
+            Transform goalPoint = BuildGoal(miscRoot, useCustomBackground && hideDefaultStageDecorWhenUsingBackground);
+            if (!(useCustomBackground && hideDefaultStageDecorWhenUsingBackground))
+            {
+                BuildCenterCrystal(miscRoot);
+                BuildFlankTowers(miscRoot);
+                BuildSkyOrnaments(miscRoot);
+            }
 
             Projectile projectileTemplate = BuildProjectileTemplate(templateRoot);
             DefenderUnit defenderTemplate = BuildDefenderTemplate(templateRoot, projectileTemplate);
@@ -326,8 +331,16 @@ namespace DefenseGame
             return points;
         }
 
-        private Transform BuildGoal(Transform miscRoot)
+        private Transform BuildGoal(Transform miscRoot, bool logicOnly)
         {
+            if (logicOnly)
+            {
+                GameObject hiddenGoal = new GameObject("GoalPoint");
+                hiddenGoal.transform.SetParent(miscRoot);
+                hiddenGoal.transform.position = new Vector3(0f, 0f, -8.5f);
+                return hiddenGoal.transform;
+            }
+
             if (presentationConfig != null && presentationConfig.goalPrefab != null)
             {
                 GameObject overrideGoal = Instantiate(presentationConfig.goalPrefab, miscRoot);
@@ -586,6 +599,27 @@ namespace DefenseGame
             hint.alignment = TextAnchor.MiddleLeft;
             RectTransform hintRect = hint.GetComponent<RectTransform>();
             hintRect.sizeDelta = new Vector2(620f, 30f);
+            Text countdown = CreateText(canvas.transform, font, new Color(1f, 0.95f, 0.58f, 0f), Vector2.zero, string.Empty);
+            countdown.alignment = TextAnchor.MiddleCenter;
+            countdown.fontStyle = FontStyle.Bold;
+            countdown.fontSize = 82;
+            RectTransform countdownRect = countdown.GetComponent<RectTransform>();
+            countdownRect.anchorMin = new Vector2(0.5f, 0.5f);
+            countdownRect.anchorMax = new Vector2(0.5f, 0.5f);
+            countdownRect.pivot = new Vector2(0.5f, 0.5f);
+            countdownRect.anchoredPosition = new Vector2(0f, 35f);
+            countdownRect.sizeDelta = new Vector2(220f, 120f);
+
+            Text roundBanner = CreateText(canvas.transform, font, new Color(0.48f, 1f, 0.72f, 0f), Vector2.zero, string.Empty);
+            roundBanner.alignment = TextAnchor.MiddleCenter;
+            roundBanner.fontStyle = FontStyle.Bold;
+            roundBanner.fontSize = 34;
+            RectTransform bannerRect = roundBanner.GetComponent<RectTransform>();
+            bannerRect.anchorMin = new Vector2(0.5f, 0.5f);
+            bannerRect.anchorMax = new Vector2(0.5f, 0.5f);
+            bannerRect.pivot = new Vector2(0.5f, 0.5f);
+            bannerRect.anchoredPosition = new Vector2(0f, 120f);
+            bannerRect.sizeDelta = new Vector2(520f, 60f);
 
             CreateButton(canvas.transform, font, "Start", new Vector2(90f, 60f), binder.OnClickStartRound);
             CreateButton(canvas.transform, font, "Summon", new Vector2(210f, 60f), binder.OnClickSummon);
@@ -594,7 +628,7 @@ namespace DefenseGame
             CreateButton(canvas.transform, font, "Merge E", new Vector2(570f, 60f), binder.OnClickMergeEpic);
             CreateButton(canvas.transform, font, "Merge L", new Vector2(690f, 60f), binder.OnClickMergeLegendary);
 
-            hud.Configure(gameController, gold, life, round, board, content, hint, mergeResult, hintValue);
+            hud.Configure(gameController, gold, life, round, board, content, hint, mergeResult, countdown, roundBanner, hintValue);
         }
 
         private Text CreateText(Transform parent, Font font, Color color, Vector2 anchoredPosition, string value)

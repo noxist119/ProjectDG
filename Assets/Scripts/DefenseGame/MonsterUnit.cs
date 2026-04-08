@@ -173,6 +173,7 @@ namespace DefenseGame
 
         private void PerformAttack(DefenderUnit target)
         {
+            FaceTarget(target.transform.position);
             float effectiveAttackSpeed = Mathf.Max(0.2f, definition.stats.attackSpeed * (1f + attackSpeedBonus));
             attackCooldown = 1f / effectiveAttackSpeed;
 
@@ -220,12 +221,17 @@ namespace DefenseGame
                 DefenderUnit singleTarget = FindNearestDefender();
                 if (singleTarget != null)
                 {
+                    FaceTarget(singleTarget.transform.position);
                     singleTarget.TakeDamage(definition.stats.attackPower * skill.power, false);
                 }
             }
             else if (skill.effectType == SkillEffectType.AreaDamage)
             {
                 DefenderUnit[] targets = FindObjectsOfType<DefenderUnit>();
+                if (targets.Length > 0)
+                {
+                    FaceTarget(targets[0].transform.position);
+                }
                 for (int i = 0; i < targets.Length; i++)
                 {
                     if (Vector3.Distance(transform.position, targets[i].transform.position) <= skill.radius)
@@ -264,11 +270,28 @@ namespace DefenseGame
                     .Take(skill.hitCount)
                     .ToList();
 
+                if (targets.Count > 0)
+                {
+                    FaceTarget(targets[0].transform.position);
+                }
+
                 for (int i = 0; i < targets.Count; i++)
                 {
                     targets[i].TakeDamage(definition.stats.attackPower * skill.power, false);
                 }
             }
+        }
+
+        private void FaceTarget(Vector3 targetPosition)
+        {
+            Vector3 direction = targetPosition - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
         }
 
         private DefenderUnit FindNearestDefender()

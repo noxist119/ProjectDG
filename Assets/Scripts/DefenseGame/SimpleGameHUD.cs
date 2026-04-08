@@ -13,16 +13,21 @@ namespace DefenseGame
         [SerializeField] private Text contentText;
         [SerializeField] private Text hintText;
         [SerializeField] private Text mergeResultText;
+        [SerializeField] private Text countdownText;
+        [SerializeField] private Text roundBannerText;
         [SerializeField] private string hintMessage = "Space Round | S Summon | 1-4 Merge | C Add Heroes | M Add Monsters";
         [SerializeField] private float mergeBannerTimer;
         [SerializeField] private string mergeBannerMessage = string.Empty;
+        [SerializeField] private float roundBannerTimer;
 
-        public void Configure(DefenseGameController controller, Text gold, Text lifeLabel, Text round, Text board, Text content, Text hint, Text mergeResult, string overrideHint = null)
+        public void Configure(DefenseGameController controller, Text gold, Text lifeLabel, Text round, Text board, Text content, Text hint, Text mergeResult, Text countdown, Text roundBanner, string overrideHint = null)
         {
             if (gameController != null)
             {
                 gameController.OnStateChanged -= Refresh;
                 gameController.OnMergeCompleted -= HandleMergeCompleted;
+                gameController.OnRoundCountdownChanged -= HandleRoundCountdownChanged;
+                gameController.OnBannerRequested -= HandleBannerRequested;
             }
 
             gameController = controller;
@@ -33,6 +38,8 @@ namespace DefenseGame
             contentText = content;
             hintText = hint;
             mergeResultText = mergeResult;
+            countdownText = countdown;
+            roundBannerText = roundBanner;
             if (!string.IsNullOrWhiteSpace(overrideHint))
             {
                 hintMessage = overrideHint;
@@ -44,6 +51,10 @@ namespace DefenseGame
                 gameController.OnStateChanged += Refresh;
                 gameController.OnMergeCompleted -= HandleMergeCompleted;
                 gameController.OnMergeCompleted += HandleMergeCompleted;
+                gameController.OnRoundCountdownChanged -= HandleRoundCountdownChanged;
+                gameController.OnRoundCountdownChanged += HandleRoundCountdownChanged;
+                gameController.OnBannerRequested -= HandleBannerRequested;
+                gameController.OnBannerRequested += HandleBannerRequested;
             }
 
             Refresh();
@@ -57,6 +68,10 @@ namespace DefenseGame
                 gameController.OnStateChanged += Refresh;
                 gameController.OnMergeCompleted -= HandleMergeCompleted;
                 gameController.OnMergeCompleted += HandleMergeCompleted;
+                gameController.OnRoundCountdownChanged -= HandleRoundCountdownChanged;
+                gameController.OnRoundCountdownChanged += HandleRoundCountdownChanged;
+                gameController.OnBannerRequested -= HandleBannerRequested;
+                gameController.OnBannerRequested += HandleBannerRequested;
             }
         }
 
@@ -71,6 +86,8 @@ namespace DefenseGame
             {
                 gameController.OnStateChanged -= Refresh;
                 gameController.OnMergeCompleted -= HandleMergeCompleted;
+                gameController.OnRoundCountdownChanged -= HandleRoundCountdownChanged;
+                gameController.OnBannerRequested -= HandleBannerRequested;
             }
         }
 
@@ -92,6 +109,21 @@ namespace DefenseGame
                 Color color = mergeResultText.color;
                 color.a = 0.65f;
                 mergeResultText.color = color;
+            }
+
+            if (roundBannerText != null)
+            {
+                if (roundBannerTimer > 0f)
+                {
+                    roundBannerTimer -= Time.deltaTime;
+                    Color color = roundBannerText.color;
+                    color.a = Mathf.Lerp(0.15f, 1f, Mathf.Clamp01(roundBannerTimer / 2.5f));
+                    roundBannerText.color = color;
+                }
+                else if (!string.IsNullOrEmpty(roundBannerText.text))
+                {
+                    roundBannerText.text = string.Empty;
+                }
             }
         }
 
@@ -124,6 +156,31 @@ namespace DefenseGame
                 mergeResultText.text = "Merge Result : " + mergeBannerMessage;
                 mergeResultText.color = result.resultColor;
             }
+        }
+
+        private void HandleRoundCountdownChanged(int countdown)
+        {
+            if (countdownText == null)
+            {
+                return;
+            }
+
+            countdownText.text = countdown > 0 ? countdown.ToString() : string.Empty;
+            Color color = countdownText.color;
+            color.a = countdown > 0 ? 1f : 0f;
+            countdownText.color = color;
+        }
+
+        private void HandleBannerRequested(string message, Color color, float duration)
+        {
+            if (roundBannerText == null)
+            {
+                return;
+            }
+
+            roundBannerText.text = message;
+            roundBannerText.color = color;
+            roundBannerTimer = duration;
         }
 
         private bool mergeBannerTextAvailable()

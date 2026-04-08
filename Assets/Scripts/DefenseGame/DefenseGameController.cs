@@ -19,6 +19,8 @@ namespace DefenseGame
 
         public event System.Action OnStateChanged;
         public event System.Action<MergeResultInfo> OnMergeCompleted;
+        public event System.Action<int> OnRoundCountdownChanged;
+        public event System.Action<string, Color, float> OnBannerRequested;
 
         public int Gold { get; private set; }
         public int Life => life;
@@ -183,12 +185,24 @@ namespace DefenseGame
                 {
                     if (defenders[i] != null)
                     {
+                        defenders[i].ResetFacingToDefault();
                         defenders[i].PlayWinAnimation();
                     }
                 }
+
+                OnBannerRequested?.Invoke("ROUND CLEAR", new Color(0.48f, 1f, 0.72f), 2.5f);
             }
 
             NotifyStateChanged();
+        }
+
+        private void HandleRoundCountdownChanged(int countdown)
+        {
+            OnRoundCountdownChanged?.Invoke(countdown);
+            if (countdown > 0)
+            {
+                OnBannerRequested?.Invoke("ROUND " + CurrentRound + " STARTS IN", new Color(0.98f, 0.88f, 0.42f), 1.05f);
+            }
         }
 
         private void SubscribeRoundManager()
@@ -197,6 +211,8 @@ namespace DefenseGame
             {
                 roundManager.OnRoundStateChanged -= HandleRoundStateChanged;
                 roundManager.OnRoundStateChanged += HandleRoundStateChanged;
+                roundManager.OnCountdownChanged -= HandleRoundCountdownChanged;
+                roundManager.OnCountdownChanged += HandleRoundCountdownChanged;
             }
         }
 
@@ -205,6 +221,7 @@ namespace DefenseGame
             if (roundManager != null)
             {
                 roundManager.OnRoundStateChanged -= HandleRoundStateChanged;
+                roundManager.OnCountdownChanged -= HandleRoundCountdownChanged;
             }
         }
 

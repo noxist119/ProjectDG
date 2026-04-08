@@ -12,8 +12,10 @@ namespace DefenseGame
         [SerializeField] private float spawnInterval = 0.7f;
         [SerializeField] private int baseMonsterCount = 8;
         [SerializeField] private int bossSupportMonsterCount = 6;
+        [SerializeField] private int preRoundCountdown = 5;
 
         public event System.Action<int, bool, bool> OnRoundStateChanged;
+        public event System.Action<int> OnCountdownChanged;
 
         public int CurrentRound { get; private set; }
         public bool IsRoundRunning { get; private set; }
@@ -52,6 +54,14 @@ namespace DefenseGame
             IsRoundRunning = true;
             CurrentRound++;
             OnRoundStateChanged?.Invoke(CurrentRound, IsBossRound, true);
+
+            for (int countdown = preRoundCountdown; countdown >= 1; countdown--)
+            {
+                OnCountdownChanged?.Invoke(countdown);
+                yield return new WaitForSeconds(1f);
+            }
+
+            OnCountdownChanged?.Invoke(0);
 
             if (IsBossRound)
             {

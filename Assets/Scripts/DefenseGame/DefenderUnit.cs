@@ -23,6 +23,8 @@ namespace DefenseGame
         private float critBuffTimer;
         private readonly List<MonsterUnit> monsters = new List<MonsterUnit>();
         private readonly Dictionary<string, float> skillCooldowns = new Dictionary<string, float>();
+        private Quaternion defaultFacingRotation = Quaternion.identity;
+        private bool hasDefaultFacing;
 
         public static event System.Action<DefenderUnit> OnDefenderSpawned;
         public static event System.Action<DefenderUnit> OnDefenderRemoved;
@@ -113,6 +115,11 @@ namespace DefenseGame
             {
                 PerformAttack(target);
             }
+            else if (target == null && !HasAnyLivingMonster())
+            {
+                ResetFacingToDefault();
+                animationDriver?.ForceIdle();
+            }
         }
 
         public void Initialize(CharacterDefinition newDefinition)
@@ -140,6 +147,8 @@ namespace DefenseGame
         public void SetSlot(BoardSlot slot)
         {
             currentSlot = slot;
+            defaultFacingRotation = transform.rotation;
+            hasDefaultFacing = true;
         }
 
         public void RemoveFromBoard()
@@ -176,8 +185,19 @@ namespace DefenseGame
             animationDriver?.PlayWin();
         }
 
+        public void ResetFacingToDefault()
+        {
+            if (!hasDefaultFacing)
+            {
+                return;
+            }
+
+            transform.rotation = defaultFacingRotation;
+        }
+
         private void PerformAttack(MonsterUnit target)
         {
+            FaceTarget(target.transform.position);
             float effectiveAttackSpeed = Mathf.Max(0.2f, definition.stats.attackSpeed * (1f + attackSpeedBonus));
             attackCooldown = 1f / effectiveAttackSpeed;
 
@@ -236,6 +256,7 @@ namespace DefenseGame
                 MonsterUnit target = FindNearestTarget();
                 if (target != null)
                 {
+                    FaceTarget(target.transform.position);
                     target.TakeDamage(definition.stats.attackPower * skill.power, false);
                 }
             }
@@ -281,6 +302,7 @@ namespace DefenseGame
                 MonsterUnit target = FindNearestTarget();
                 if (target != null)
                 {
+                    FaceTarget(target.transform.position);
                     float multiplier = target.CurrentHealth <= target.MaxHealth * 0.35f ? skill.power * 1.8f : skill.power;
                     target.TakeDamage(definition.stats.attackPower * multiplier, true);
                 }
@@ -300,9 +322,22 @@ namespace DefenseGame
                 MonsterUnit target = FindNearestTarget();
                 if (target != null)
                 {
+                    FaceTarget(target.transform.position);
                     target.TakeDamage(definition.stats.attackPower * skill.power, false);
                 }
             }
+        }
+
+        private void FaceTarget(Vector3 targetPosition)
+        {
+            Vector3 direction = targetPosition - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
         }
 
         private MonsterUnit FindNearestTarget()
@@ -424,6 +459,27 @@ namespace DefenseGame
         private void HandleMonsterRemoved(MonsterUnit monster)
         {
             monsters.Remove(monster);
+            if (!HasAnyLivingMonster())
+            {
+                ResetFacingToDefault();
+                animationDriver?.ForceIdle();
+            }
+        }
+
+        private bool HasAnyLivingMonster()
+        {
+            for (int i = monsters.Count - 1; i >= 0; i--)
+            {
+                if (monsters[i] == null)
+                {
+                    monsters.RemoveAt(i);
+                    continue;
+                }
+
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -7,8 +7,8 @@ namespace DefenseGame
     {
         [SerializeField] private Animator animator;
         [SerializeField] private string[] spawnStates = { "spawn", "Spawn" };
-        [SerializeField] private string[] idleStates = { "idle", "Idle", "dle", "Dle" };
-        [SerializeField] private string[] walkStates = { "walk", "Walk" };
+        [SerializeField] private string[] idleStates = { "idle", "Idle", "dle", "Dle", "Idle 0", "Idle_0", "Idle_01", "BattleIdle", "Battle_Idle", "LobbyIdle", "LobbyIdle 0", "Wait" };
+        [SerializeField] private string[] walkStates = { "walk", "Walk", "Run", "Move" };
         [SerializeField] private string[] winStates = { "win", "Win" };
         [SerializeField] private string[] attackStates = { "attack", "Attack", "Attack1", "Attack2", "Attack01", "Attack02", "attack1", "attack2" };
         [SerializeField] private string[] skillStates = { "skill", "Skill", "Skill1", "Skill2", "Skill01", "Skill02", "skill1", "skill2" };
@@ -33,6 +33,15 @@ namespace DefenseGame
             if (animator == null)
             {
                 animator = GetComponentInChildren<Animator>();
+            }
+
+            if (animator != null)
+            {
+                AnimationEventProxy proxy = animator.GetComponent<AnimationEventProxy>();
+                if (proxy == null)
+                {
+                    animator.gameObject.AddComponent<AnimationEventProxy>();
+                }
             }
         }
 
@@ -102,6 +111,18 @@ namespace DefenseGame
             {
                 PlayIdle();
             }
+        }
+
+        public void ForceIdle()
+        {
+            lockUntilTime = 0f;
+            if (returnRoutine != null)
+            {
+                StopCoroutine(returnRoutine);
+                returnRoutine = null;
+            }
+
+            PlayIdle();
         }
 
         private bool TryPlayAny(string[] stateNames)

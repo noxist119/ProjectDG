@@ -1,7 +1,7 @@
 fileFormatVersion: 2
 guid: c401ea72392d941448c28e2cc44811cb
 ModelImporter:
-  serializedVersion: 20200
+  serializedVersion: 22200
   internalIDToNameTable:
   - first:
       74: -5218545960831041069
@@ -17,6 +17,7 @@ ModelImporter:
     bakeSimulation: 0
     resampleCurves: 1
     optimizeGameObjects: 0
+    removeConstantScaleCurves: 0
     motionNodeName: 
     rigImportErrors: 
     rigImportWarnings: 
@@ -62,14 +63,14 @@ ModelImporter:
       - time: 0.34826234
         functionName: PlayEffectTile
         data: 'Effect_Assassin_Skill01_Down '
-        objectReferenceParameter: {instanceID: 0}
+        objectReferenceParameter: {fileID: 5432687094837458392, guid: fadfd893b4a826642aea4a28372e9ff8, type: 3}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.4457207
         functionName: PlayEffectTile
         data: Effect_Assassin_Skill01_Up
-        objectReferenceParameter: {instanceID: 0}
+        objectReferenceParameter: {fileID: 6361103059183960065, guid: a72ca05d002ef4846bea35532a1f2929, type: 3}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
@@ -85,10 +86,12 @@ ModelImporter:
     addColliders: 0
     useSRGBMaterialColor: 1
     sortHierarchyByName: 1
+    importPhysicalCameras: 1
     importVisibility: 1
     importBlendShapes: 1
     importCameras: 1
     importLights: 1
+    nodeNameCollisionStrategy: 0
     fileIdsGeneration: 2
     swapUVChannels: 0
     generateSecondaryUV: 0
@@ -100,6 +103,7 @@ ModelImporter:
     skinWeightsMode: 0
     maxBonesPerVertex: 4
     minBoneWeight: 0.001
+    optimizeBones: 1
     meshOptimizationFlags: -1
     indexFormat: 0
     secondaryUVAngleDistortion: 8
@@ -110,6 +114,7 @@ ModelImporter:
     secondaryUVMinObjectScale: 1
     secondaryUVPackMargin: 4
     useFileScale: 1
+    strictVertexDataChecks: 0
   tangentSpace:
     normalSmoothAngle: 60
     normalImportMode: 0
@@ -142,6 +147,8 @@ ModelImporter:
   humanoidOversampling: 1
   avatarSetup: 1
   addHumanoidExtraRootOnlyWhenUsingAvatar: 1
+  importBlendShapeDeformPercent: 0
+  remapMaterialsIfMaterialImportModeIsNone: 1
   additionalBone: 0
   userData: 
   assetBundleName: 
