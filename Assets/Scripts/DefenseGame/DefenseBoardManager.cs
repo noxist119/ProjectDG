@@ -147,7 +147,7 @@ namespace DefenseGame
 
         public bool TryMoveUnit(DefenderUnit unit, BoardSlot targetSlot)
         {
-            if (unit == null || targetSlot == null || !targetSlot.IsEmpty)
+            if (unit == null || targetSlot == null)
             {
                 return false;
             }
@@ -158,8 +158,35 @@ namespace DefenseGame
                 return false;
             }
 
+            if (sourceSlot == targetSlot)
+            {
+                if (targetSlot.IsEmpty || targetSlot.OccupiedUnit == unit)
+                {
+                    targetSlot.AssignUnit(unit);
+                    return true;
+                }
+            }
+
+            DefenderUnit targetUnit = targetSlot.OccupiedUnit;
+            if (targetUnit == unit)
+            {
+                targetSlot.AssignUnit(unit);
+                return true;
+            }
+
             sourceSlot.Clear();
+            if (targetUnit != null)
+            {
+                targetSlot.Clear();
+            }
+
             targetSlot.AssignUnit(unit);
+
+            if (targetUnit != null)
+            {
+                sourceSlot.AssignUnit(targetUnit);
+            }
+
             return true;
         }
 
@@ -252,9 +279,9 @@ namespace DefenseGame
                 }
             }
 
-            if (targetSlot != null && targetSlot.IsEmpty)
+            if (targetSlot != null)
             {
-                targetSlot.AssignUnit(draggedUnit);
+                TryMoveUnit(draggedUnit, targetSlot);
             }
             else if (draggedOriginSlot != null)
             {

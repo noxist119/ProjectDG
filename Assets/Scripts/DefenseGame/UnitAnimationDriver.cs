@@ -27,10 +27,14 @@ namespace DefenseGame
         [SerializeField] private float winHoldDuration = 2f;
 
         private Coroutine returnRoutine;
+        private Coroutine actionRoutine;
         private string currentState;
+        private string desiredLoopState;
         private float lockUntilTime;
+        private bool actionInProgress;
+        private bool movementLoopActive;
 
-        public bool IsLocked => Time.time < lockUntilTime;
+        public bool IsLocked => actionInProgress || Time.time < lockUntilTime;
 
         private void Awake()
         {
@@ -51,97 +55,76 @@ namespace DefenseGame
 
         public void PlaySpawn()
         {
-            if (TryPlayAny(spawnStates) || TrySetAnyTrigger(spawnTriggers))
-            {
-                LockFor(spawnReturnDelay);
-                ScheduleReturnToIdle(spawnReturnDelay);
-            }
-            else
-            {
-                PlayIdle();
-            }
-        }
-
-        public void PlayIdle()
-        {
-            TryPlayAny(idleStates);
-        }
-
-        public void PlayWalk()
-        {
-            TryPlayAny(walkStates);
-        }
-
-        public void PlayWin()
-        {
-            if (TryPlayAny(winStates) || TrySetAnyTrigger(winTriggers))
-            {
-                LockFor(winHoldDuration);
-            }
-        }
-
-        public void PlayAttack()
-        {
-            bool played = TryPlayAny(attackStates);
-            if (!played)
-            {
-                TrySetFirstInt(attackIndexInts, defaultAttackIndex);
-                played = TrySetAnyTrigger(attackTriggers);
-            }
-
-            if (played)
-            {
-                LockFor(attackReturnDelay);
-                ScheduleReturnToIdle(attackReturnDelay);
-            }
-        }
-
-        public void PlaySkill()
-        {
-            bool played = TryPlayAny(skillStates);
-            if (!played)
-            {
-                TrySetFirstInt(skillIndexInts, defaultSkillIndex);
-                played = TrySetAnyTrigger(skillTriggers);
-            }
-
-            if (played)
-            {
-                LockFor(skillReturnDelay);
-                ScheduleReturnToIdle(skillReturnDelay);
-            }
-        }
-
-        public void PlayMoving(bool isMoving)
-        {
-            if (Time.time < lockUntilTime)
+            if (TryPlayAction(spawnStates, spawnTriggers, null, 0, spawnReturnDelay))
             {
                 return;
-            }
-
-            if (isMoving)
-            {
-                PlayWalk();
-            }
-            else if (!IsBusyState())
-            {
-                PlayIdle();
-            }
-        }
-
-        public void ForceIdle()
-        {
-            lockUntilTime = 0f;
-            if (returnRoutine != null)
-            {
-                StopCoroutine(returnRoutine);
-                returnRoutine = null;
             }
 
             PlayIdle();
         }
 
-        private bool TryPlayAny(string[] stateNames)
+        public void PlayIdle()
+        {
+            if (movementLoopActive)
+            {
+                return;
+            }
+
+            SetDesiredLoopState(idleStates);
+        }
+
+        public void PlayWalk()
+        {
+            movementLoopActive = true;
+            SetDesiredLoopState(walkStates);
+        }
+
+        public void PlayWin()
+        {
+            TryPlayAction(winStates, winTriggers, null, 0, winHoldDuration);
+        }
+
+        public void PlayAttack()
+        {
+            TryPlayAction(attackStates, attackTriggers, attackIndexInts, defaultAttackIndex, attackReturnDelay);
+        }
+
+        public void PlaySkill()
+        {
+            TryPlayAction(skillStates, skillTriggers, skillIndexInts, defaultSkillIndex, skillReturnDelay);
+        }
+
+        public void PlayMoving(bool isMoving)
+        {
+            movementLoopActive = isMoving;
+
+            if (isMoving)
+            {
+                desiredLoopState = ResolveFirstPlayableState(walkStates);
+                ForceLoopState(desiredLoopState, true);
+            }
+            else
+            {
+                desiredLoopState = ResolveFirstPlayableState(idleStates);
+                if (!IsLocked)
+                {
+                    ForceLoopState(desiredLoopState, false);
+                }
+            }
+        }
+
+        public void ForceIdle()
+        {
+            movementLoopActive = false;
+            actionInProgress = false;
+            lockUntilTime = 0f;
+            CancelActionRoutine();
+            CancelScheduledReturn();
+            desiredLoopState = ResolveFirstPlayableState(idleStates);
+            ForceLoopState(desiredLoopState, false);
+        }
+
+        private bool TryPlayAny(string[] stateNames, bool allowRestartCurrent = false)
         {
             if (animator == null || stateNames == null)
             {
@@ -158,9 +141,19 @@ namespace DefenseGame
 
                 if (HasState(state))
                 {
-                    if (currentState != state)
+                    bool isCurrentlyPlaying = IsCurrentlyInState(state);
+                    bool shouldRestart = allowRestartCurrent && (!isCurrentlyPlaying || ShouldRestartCurrentState(state));
+                    if (currentState != state || !isCurrentlyPlaying || shouldRestart)
                     {
-                        animator.CrossFade(state, actionBlendDuration, 0);
+                        if (shouldRestart)
+                        {
+                            animator.Play(state, 0, 0f);
+                        }
+                        else
+                        {
+                            animator.CrossFade(state, actionBlendDuration, 0);
+                        }
+
                         currentState = state;
                     }
                     return true;
@@ -170,9 +163,180 @@ namespace DefenseGame
             return false;
         }
 
+        private bool TryPlayLoopingState(string[] stateNames)
+        {
+            if (animator == null || stateNames == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < stateNames.Length; i++)
+            {
+                string state = stateNames[i];
+                if (string.IsNullOrWhiteSpace(state) || !HasState(state))
+                {
+                    continue;
+                }
+
+                if (IsTransitioningAwayFromState(state))
+                {
+                    animator.Play(state, 0, GetCurrentLoopNormalizedTime());
+                    currentState = state;
+                }
+                else if (!IsCurrentlyInState(state))
+                {
+                    animator.Play(state, 0, 0f);
+                    currentState = state;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private void SetDesiredLoopState(string[] stateNames)
+        {
+            desiredLoopState = ResolveFirstPlayableState(stateNames);
+            if (string.IsNullOrWhiteSpace(desiredLoopState))
+            {
+                return;
+            }
+
+            if (!IsLocked)
+            {
+                ApplyDesiredLoopState();
+            }
+        }
+
+        private void ApplyDesiredLoopState()
+        {
+            if (IsLocked || string.IsNullOrWhiteSpace(desiredLoopState) || animator == null)
+            {
+                return;
+            }
+
+            ForceLoopState(desiredLoopState, movementLoopActive);
+        }
+
+        private string ResolveFirstPlayableState(string[] stateNames)
+        {
+            if (stateNames == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < stateNames.Length; i++)
+            {
+                string state = stateNames[i];
+                if (!string.IsNullOrWhiteSpace(state) && HasState(state))
+                {
+                    return state;
+                }
+            }
+
+            return null;
+        }
+
         private bool HasState(string stateName)
         {
             return animator != null && animator.runtimeAnimatorController != null && animator.HasState(0, Animator.StringToHash(stateName));
+        }
+
+        private bool ShouldRestartCurrentState(string stateName)
+        {
+            if (animator == null)
+            {
+                return false;
+            }
+
+            AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            if (!stateInfo.IsName(stateName))
+            {
+                return false;
+            }
+
+            return stateInfo.normalizedTime >= 0.98f;
+        }
+
+        private bool IsCurrentlyInState(string stateName)
+        {
+            if (animator == null)
+            {
+                return false;
+            }
+
+            return animator.GetCurrentAnimatorStateInfo(0).IsName(stateName);
+        }
+
+        private bool IsTransitioningAwayFromState(string stateName)
+        {
+            if (animator == null || !animator.IsInTransition(0))
+            {
+                return false;
+            }
+
+            AnimatorStateInfo current = animator.GetCurrentAnimatorStateInfo(0);
+            AnimatorStateInfo next = animator.GetNextAnimatorStateInfo(0);
+            return current.IsName(stateName) && !next.IsName(stateName);
+        }
+
+        private float GetCurrentLoopNormalizedTime()
+        {
+            if (animator == null)
+            {
+                return 0f;
+            }
+
+            AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            float normalizedTime = stateInfo.normalizedTime;
+            return normalizedTime - Mathf.Floor(normalizedTime);
+        }
+
+        private void ForceLoopState(string stateName, bool preserveNormalizedTime)
+        {
+            if (animator == null || string.IsNullOrWhiteSpace(stateName))
+            {
+                return;
+            }
+
+            bool shouldReapply = IsTransitioningAwayFromState(stateName) || !IsCurrentlyInState(stateName);
+            if (!shouldReapply)
+            {
+                return;
+            }
+
+            float normalizedTime = preserveNormalizedTime ? GetCurrentLoopNormalizedTime() : 0f;
+            animator.Play(stateName, 0, normalizedTime);
+            currentState = stateName;
+        }
+
+        private bool TryPlayAction(string[] stateNames, string[] triggerNames, string[] intParameterNames, int intValue, float fallbackDuration)
+        {
+            CancelScheduledReturn();
+
+            string actionState = ResolveFirstPlayableState(stateNames);
+            if (!string.IsNullOrWhiteSpace(actionState))
+            {
+                animator.CrossFade(actionState, actionBlendDuration, 0);
+                currentState = actionState;
+                StartActionObservation(actionState, fallbackDuration);
+                return true;
+            }
+
+            if (intParameterNames != null)
+            {
+                TrySetFirstInt(intParameterNames, intValue);
+            }
+
+            if (TrySetAnyTrigger(triggerNames))
+            {
+                LockFor(fallbackDuration);
+                ScheduleReturnToDesiredLoop(fallbackDuration);
+                return true;
+            }
+
+            return false;
         }
 
         private bool TrySetAnyTrigger(string[] triggerNames)
@@ -232,12 +396,34 @@ namespace DefenseGame
 
         private void ScheduleReturnToIdle(float delay)
         {
+            CancelScheduledReturn();
+
+            returnRoutine = StartCoroutine(ReturnToIdleAfter(delay));
+        }
+
+        private void ScheduleReturnToDesiredLoop(float delay)
+        {
+            CancelScheduledReturn();
+
+            returnRoutine = StartCoroutine(ReturnToDesiredLoopAfter(delay));
+        }
+
+        private void CancelScheduledReturn()
+        {
             if (returnRoutine != null)
             {
                 StopCoroutine(returnRoutine);
+                returnRoutine = null;
             }
+        }
 
-            returnRoutine = StartCoroutine(ReturnToIdleAfter(delay));
+        private void CancelActionRoutine()
+        {
+            if (actionRoutine != null)
+            {
+                StopCoroutine(actionRoutine);
+                actionRoutine = null;
+            }
         }
 
         private IEnumerator ReturnToIdleAfter(float delay)
@@ -248,6 +434,54 @@ namespace DefenseGame
             {
                 PlayIdle();
             }
+        }
+
+        private IEnumerator ReturnToDesiredLoopAfter(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            returnRoutine = null;
+            lockUntilTime = 0f;
+            ApplyDesiredLoopState();
+        }
+
+        private void StartActionObservation(string stateName, float fallbackDuration)
+        {
+            CancelActionRoutine();
+            actionRoutine = StartCoroutine(ObserveActionState(stateName, fallbackDuration));
+        }
+
+        private IEnumerator ObserveActionState(string stateName, float fallbackDuration)
+        {
+            actionInProgress = true;
+            lockUntilTime = 0f;
+
+            float enterDeadline = Time.time + 0.5f;
+            while (Time.time < enterDeadline && !IsCurrentlyInState(stateName))
+            {
+                yield return null;
+            }
+
+            if (!IsCurrentlyInState(stateName))
+            {
+                yield return new WaitForSeconds(fallbackDuration);
+            }
+            else
+            {
+                while (IsCurrentlyInState(stateName))
+                {
+                    AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+                    if (stateInfo.normalizedTime >= 0.98f)
+                    {
+                        break;
+                    }
+
+                    yield return null;
+                }
+            }
+
+            actionInProgress = false;
+            actionRoutine = null;
+            ApplyDesiredLoopState();
         }
 
         private bool IsBusyState()

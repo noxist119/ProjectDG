@@ -525,6 +525,9 @@ namespace DefenseGame
                 monster = monsterObject.AddComponent<MonsterUnit>();
             }
 
+            monster.ConfigureRuntimePieces(
+                presentationConfig != null ? presentationConfig.monsterDeathEffectPrefab : null,
+                monsterObject.GetComponentsInChildren<Renderer>(true));
             monsterObject.SetActive(false);
             return monster;
         }

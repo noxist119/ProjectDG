@@ -63,7 +63,7 @@ ModelImporter:
       - time: 0.01
         functionName: SpawnProp
         data: eff_absorption_win
-        objectReferenceParameter: {instanceID: 0}
+        objectReferenceParameter: {fileID: 919132149155446097, guid: ae8d6865aba473347863cce41ef244dc, type: 3}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0

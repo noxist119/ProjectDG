@@ -12,6 +12,7 @@ namespace DefenseGame
         public GameObject backgroundPrefab;
         public GameObject defaultDefenderPrefab;
         public GameObject defaultMonsterPrefab;
+        public GameObject monsterDeathEffectPrefab;
         public GameObject projectilePrefab;
         public GameObject spawnPortalPrefab;
         public GameObject goalPrefab;
@@ -44,6 +45,7 @@ namespace DefenseGame
 
         [Header("Character Overrides")]
         public List<CharacterPresentationOverride> characterOverrides = new List<CharacterPresentationOverride>();
+        public bool useRandomCharacterPrefabFallback = true;
 
         [Header("Monster Overrides")]
         public List<MonsterPresentationOverride> monsterOverrides = new List<MonsterPresentationOverride>();
@@ -62,7 +64,14 @@ namespace DefenseGame
             }
             if (entry == null)
             {
-                return;
+                if (useRandomCharacterPrefabFallback && TryGetRandomCharacterOverride(out CharacterPresentationOverride randomEntry))
+                {
+                    entry = randomEntry;
+                }
+                else
+                {
+                    return;
+                }
             }
 
             if (entry.prefab != null)
@@ -119,6 +128,19 @@ namespace DefenseGame
             }
 
             entry = ordered[index];
+            return true;
+        }
+
+        private bool TryGetRandomCharacterOverride(out CharacterPresentationOverride entry)
+        {
+            entry = null;
+            List<CharacterPresentationOverride> candidates = characterOverrides.FindAll(candidate => candidate != null && candidate.prefab != null);
+            if (candidates.Count == 0)
+            {
+                return false;
+            }
+
+            entry = candidates[UnityEngine.Random.Range(0, candidates.Count)];
             return true;
         }
 

@@ -14,11 +14,15 @@ namespace DefenseGame
         private BoardSlot currentSlot;
         private FloatingCombatUI floatingUi;
         private UnitAnimationDriver animationDriver;
+        private HitFlashFeedback hitFlashFeedback;
         private float currentHealth;
         private float currentMana;
         private float attackCooldown;
         private float attackSpeedBonus;
         private float critChanceBonus;
+        private float attackRangeBonus;
+        private float splashRadiusBonus;
+        private float splashDamageRatioBonus;
         private float attackSpeedBuffTimer;
         private float critBuffTimer;
         private readonly List<MonsterUnit> monsters = new List<MonsterUnit>();
@@ -36,6 +40,7 @@ namespace DefenseGame
         public float MaxHealth => definition != null ? definition.stats.maxHealth : 0f;
         public float CurrentMana => currentMana;
         public float MaxMana => definition != null ? definition.stats.maxMana : 0f;
+        public float CurrentAttackRange => definition != null ? GetEffectiveAttackRange() : 0f;
 
         private void OnEnable()
         {
@@ -88,6 +93,7 @@ namespace DefenseGame
             }
 
             EnsureAnimationDriver();
+            EnsureHitFlashFeedback();
             EnsureInteractionCollider();
         }
 
@@ -134,6 +140,9 @@ namespace DefenseGame
             attackCooldown = 0f;
             attackSpeedBonus = 0f;
             critChanceBonus = 0f;
+            attackRangeBonus = 0f;
+            splashRadiusBonus = 0f;
+            splashDamageRatioBonus = 0f;
             attackSpeedBuffTimer = 0f;
             critBuffTimer = 0f;
             monsters.Clear();
@@ -142,6 +151,7 @@ namespace DefenseGame
             gameObject.name = definition.displayName + "_" + definition.grade;
             ApplyVisuals();
             EnsureAnimationDriver();
+            EnsureHitFlashFeedback();
             EnsureInteractionCollider();
             floatingUi = FloatingCombatUI.Attach(transform, definition.displayName, definition.accentColor);
             floatingUi.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
@@ -169,6 +179,7 @@ namespace DefenseGame
         {
             currentHealth -= damage;
             currentMana = Mathf.Min(MaxMana, currentMana + MaxMana * definition.stats.manaGainWhenHitRate);
+            hitFlashFeedback?.PlayHit(critical);
             floatingUi?.ShowDamage(damage, critical, false);
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
 
@@ -188,6 +199,17 @@ namespace DefenseGame
         public void PlayWinAnimation()
         {
             animationDriver?.PlayWin();
+        }
+
+        public void AddAttackRangeBonus(float amount)
+        {
+            attackRangeBonus += amount;
+        }
+
+        public void AddBasicAttackSplash(float radiusBonus, float damageRatioBonus)
+        {
+            splashRadiusBonus += radiusBonus;
+            splashDamageRatioBonus += damageRatioBonus;
         }
 
         public void ResetFacingToDefault()
@@ -214,13 +236,21 @@ namespace DefenseGame
             {
                 animationDriver?.PlayAttack();
                 target.TakeDamage(damage, critical);
+                ApplyBasicAttackSplash(target, damage);
                 return;
             }
 
             Transform launchPoint = firePoint != null ? firePoint : transform;
             Projectile projectile = Instantiate(projectilePrefab, launchPoint.position, Quaternion.identity);
             projectile.gameObject.SetActive(true);
-            projectile.Initialize(target, damage, definition.stats.projectileSpeed, critical);
+            projectile.Initialize(
+                target,
+                damage,
+                definition.stats.projectileSpeed,
+                critical,
+                GetBasicAttackSplashRadius(),
+                GetBasicAttackSplashDamageRatio(),
+                definition.attackBehavior != null ? definition.attackBehavior.additionalPierceCount : 0);
             animationDriver?.PlayAttack();
         }
 
@@ -360,7 +390,7 @@ namespace DefenseGame
                 }
 
                 float distance = Vector3.Distance(transform.position, monster.transform.position);
-                if (distance <= definition.stats.attackRange && distance < bestDistance)
+                if (distance <= GetEffectiveAttackRange() && distance < bestDistance)
                 {
                     bestDistance = distance;
                     bestTarget = monster;
@@ -444,6 +474,20 @@ namespace DefenseGame
                     animationDriver = gameObject.AddComponent<UnitAnimationDriver>();
                 }
             }
+        }
+
+        private void EnsureHitFlashFeedback()
+        {
+            if (hitFlashFeedback == null)
+            {
+                hitFlashFeedback = GetComponent<HitFlashFeedback>();
+                if (hitFlashFeedback == null)
+                {
+                    hitFlashFeedback = gameObject.AddComponent<HitFlashFeedback>();
+                }
+            }
+
+            hitFlashFeedback.Configure(tintRenderers);
         }
 
         private void EnsureInteractionCollider()
@@ -536,6 +580,54 @@ namespace DefenseGame
             }
 
             return false;
+        }
+
+        private float GetEffectiveAttackRange()
+        {
+            float baseRange = definition.stats.attackRange;
+            if (definition.attackBehavior != null)
+            {
+                baseRange = definition.attackBehavior.ResolveAttackRange(baseRange);
+            }
+
+            return Mathf.Max(0.5f, baseRange + attackRangeBonus);
+        }
+
+        private float GetBasicAttackSplashRadius()
+        {
+            float radius = definition.attackBehavior != null ? definition.attackBehavior.splashRadius : 0f;
+            return Mathf.Max(0f, radius + splashRadiusBonus);
+        }
+
+        private float GetBasicAttackSplashDamageRatio()
+        {
+            float ratio = definition.attackBehavior != null ? definition.attackBehavior.splashDamageRatio : 0f;
+            return Mathf.Clamp01(ratio + splashDamageRatioBonus);
+        }
+
+        private void ApplyBasicAttackSplash(MonsterUnit primaryTarget, float baseDamage)
+        {
+            float splashRadius = GetBasicAttackSplashRadius();
+            float splashDamageRatio = GetBasicAttackSplashDamageRatio();
+            if (primaryTarget == null || splashRadius <= 0f || splashDamageRatio <= 0f)
+            {
+                return;
+            }
+
+            MonsterUnit[] nearbyMonsters = FindObjectsOfType<MonsterUnit>();
+            for (int i = 0; i < nearbyMonsters.Length; i++)
+            {
+                MonsterUnit monster = nearbyMonsters[i];
+                if (monster == null || monster == primaryTarget)
+                {
+                    continue;
+                }
+
+                if (Vector3.Distance(primaryTarget.transform.position, monster.transform.position) <= splashRadius)
+                {
+                    monster.TakeDamage(baseDamage * splashDamageRatio, false);
+                }
+            }
         }
     }
 }

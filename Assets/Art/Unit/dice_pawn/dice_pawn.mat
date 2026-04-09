@@ -27,7 +27,6 @@ Material:
   m_ValidKeywords:
   - _EMISSION
   - _ENVIRONMENTREFLECTIONS_OFF
-  - _SPECULAR_SETUP
   m_InvalidKeywords:
   - _GLOSSYREFLECTIONS_OFF
   m_LightmapFlags: 2
@@ -262,7 +261,7 @@ Material:
     - _BackTopColor: {r: 0.5, g: 0.5, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _BottomColor: {r: 0, g: 0, b: 0, a: 0}
-    - _Color: {r: 0.7735849, g: 0.7735849, b: 0.7735849, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0.33018863, g: 0.33018863, b: 0.33018863, a: 1}
     - _FrontBottomColor: {r: 1, g: 0, b: 0, a: 0}
     - _FrontTopColor: {r: 1, g: 0, b: 0, a: 0}

@@ -1,7 +1,7 @@
 fileFormatVersion: 2
 guid: 4b28aef5b1f8ae44b818366673ced7fc
 ModelImporter:
-  serializedVersion: 20200
+  serializedVersion: 22200
   internalIDToNameTable:
   - first:
       74: 6368844232150820668
@@ -17,6 +17,7 @@ ModelImporter:
     bakeSimulation: 0
     resampleCurves: 1
     optimizeGameObjects: 0
+    removeConstantScaleCurves: 0
     motionNodeName: 
     rigImportErrors: 
     rigImportWarnings: 
@@ -62,35 +63,35 @@ ModelImporter:
       - time: 0.032803945
         functionName: PlayEffectKey
         data: Effect_Boss_Magician_Skill01_Hand_L
-        objectReferenceParameter: {instanceID: 0}
+        objectReferenceParameter: {fileID: 418729838135710773, guid: 334eb0815741d7a4ea16cb336d3b6b1e, type: 3}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.036048286
         functionName: PlayEffectKey
         data: Effect_Boss_Magician_Skill01_Hand_R
-        objectReferenceParameter: {instanceID: 0}
+        objectReferenceParameter: {fileID: 473028393774969547, guid: 2188a507c08af734397434ca6c826bfd, type: 3}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.26454163
         functionName: PlayEffect
         data: ' Effect_Boss_Magician_Skill01_meteor Start'
-        objectReferenceParameter: {instanceID: 0}
+        objectReferenceParameter: {fileID: 601719191499565855, guid: 70399f25128ad064da5e63e77cd45bf7, type: 3}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.9
         functionName: StopEffectKey
         data: Effect_Boss_Magician_Skill01_Hand_L
-        objectReferenceParameter: {instanceID: 0}
+        objectReferenceParameter: {fileID: 418729838135710773, guid: 334eb0815741d7a4ea16cb336d3b6b1e, type: 3}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
       - time: 0.9
         functionName: StopEffectKey
         data: Effect_Boss_Magician_Skill01_Hand_R
-        objectReferenceParameter: {instanceID: 0}
+        objectReferenceParameter: {fileID: 473028393774969547, guid: 2188a507c08af734397434ca6c826bfd, type: 3}
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
@@ -106,10 +107,12 @@ ModelImporter:
     addColliders: 0
     useSRGBMaterialColor: 1
     sortHierarchyByName: 1
+    importPhysicalCameras: 1
     importVisibility: 1
     importBlendShapes: 1
     importCameras: 1
     importLights: 1
+    nodeNameCollisionStrategy: 0
     fileIdsGeneration: 2
     swapUVChannels: 0
     generateSecondaryUV: 0
@@ -121,6 +124,7 @@ ModelImporter:
     skinWeightsMode: 0
     maxBonesPerVertex: 4
     minBoneWeight: 0.001
+    optimizeBones: 1
     meshOptimizationFlags: -1
     indexFormat: 0
     secondaryUVAngleDistortion: 8
@@ -131,6 +135,7 @@ ModelImporter:
     secondaryUVMinObjectScale: 1
     secondaryUVPackMargin: 4
     useFileScale: 1
+    strictVertexDataChecks: 0
   tangentSpace:
     normalSmoothAngle: 60
     normalImportMode: 0
@@ -163,6 +168,8 @@ ModelImporter:
   humanoidOversampling: 1
   avatarSetup: 1
   addHumanoidExtraRootOnlyWhenUsingAvatar: 1
+  importBlendShapeDeformPercent: 0
+  remapMaterialsIfMaterialImportModeIsNone: 1
   additionalBone: 0
   userData: 
   assetBundleName: 

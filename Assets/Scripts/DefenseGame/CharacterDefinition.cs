@@ -15,6 +15,7 @@ namespace DefenseGame
         public Color accentColor = Color.white;
         public GameObject prefab;
         public CombatStats stats = new CombatStats();
+        public AttackBehavior attackBehavior = new AttackBehavior();
         public List<SkillDefinition> skills = new List<SkillDefinition>();
         public int mergeValue = 1;
     }

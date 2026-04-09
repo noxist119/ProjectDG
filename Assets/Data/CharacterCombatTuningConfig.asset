@@ -1,0 +1,87 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fab2e90fd93c06d4e9a79872dd95d73f, type: 3}
+  m_Name: CharacterCombatTuningConfig
+  m_EditorClassIdentifier: 
+  entries:
+  - characterId: hero_01
+    overrideAttackRange: 0
+    attackRange: 0
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+  - characterId: hero_02
+    overrideAttackRange: 0
+    attackRange: 0
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+  - characterId: hero_03
+    overrideAttackRange: 0
+    attackRange: 0
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+  - characterId: hero_04
+    overrideAttackRange: 0
+    attackRange: 0
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+  - characterId: hero_06
+    overrideAttackRange: 0
+    attackRange: 0
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+  - characterId: hero_07
+    overrideAttackRange: 0
+    attackRange: 0
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+  - characterId: hero_08
+    overrideAttackRange: 0
+    attackRange: 0
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+  - characterId: hero_09
+    overrideAttackRange: 0
+    attackRange: 0
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+  - characterId: hero_10
+    overrideAttackRange: 0
+    attackRange: 0
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0

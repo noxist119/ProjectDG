@@ -11,6 +11,7 @@ namespace DefenseGame
         [SerializeField] private bool generateStarterMonsters = true;
         [SerializeField] private int starterMonsterCount = 30;
         [SerializeField] private GamePresentationConfig presentationConfig;
+        [SerializeField] private MonsterCombatTuningConfig combatTuningConfig;
 
         private static readonly string[] MonsterNames =
         {
@@ -37,14 +38,20 @@ namespace DefenseGame
             }
             else
             {
-                ApplyPresentationOverrides();
+                ApplyDefinitionOverrides();
             }
         }
 
         public void ApplyPresentationConfig(GamePresentationConfig config)
         {
             presentationConfig = config;
-            ApplyPresentationOverrides();
+            ApplyDefinitionOverrides();
+        }
+
+        public void ApplyCombatTuningConfig(MonsterCombatTuningConfig config)
+        {
+            combatTuningConfig = config;
+            ApplyDefinitionOverrides();
         }
 
         public void GenerateStarterMonsters(int totalCount)
@@ -65,7 +72,7 @@ namespace DefenseGame
                 bosses.Add(CreateBoss(BossNames[i], i));
             }
 
-            ApplyPresentationOverrides();
+            ApplyDefinitionOverrides();
         }
 
         public MonsterDefinition GetRandomMonsterForRound(int round)
@@ -331,21 +338,32 @@ namespace DefenseGame
             return CharacterGrade.Mythic;
         }
 
-        private void ApplyPresentationOverrides()
+        private void ApplyDefinitionOverrides()
         {
-            if (presentationConfig == null)
-            {
-                return;
-            }
-
             for (int i = 0; i < monsters.Count; i++)
             {
-                presentationConfig.ApplyToMonster(monsters[i]);
+                if (presentationConfig != null)
+                {
+                    presentationConfig.ApplyToMonster(monsters[i]);
+                }
+
+                if (combatTuningConfig != null)
+                {
+                    combatTuningConfig.ApplyToMonster(monsters[i]);
+                }
             }
 
             for (int i = 0; i < bosses.Count; i++)
             {
-                presentationConfig.ApplyToMonster(bosses[i]);
+                if (presentationConfig != null)
+                {
+                    presentationConfig.ApplyToMonster(bosses[i]);
+                }
+
+                if (combatTuningConfig != null)
+                {
+                    combatTuningConfig.ApplyToMonster(bosses[i]);
+                }
             }
         }
     }

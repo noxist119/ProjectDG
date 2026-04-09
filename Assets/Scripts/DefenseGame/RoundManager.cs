@@ -9,10 +9,11 @@ namespace DefenseGame
         [SerializeField] private MonsterUnit fallbackMonsterPrefab;
         [SerializeField] private Transform[] spawnPoints;
         [SerializeField] private Transform goalPoint;
-        [SerializeField] private float spawnInterval = 0.7f;
+        [SerializeField] private float spawnInterval = 0.85f;
         [SerializeField] private int baseMonsterCount = 8;
         [SerializeField] private int bossSupportMonsterCount = 6;
         [SerializeField] private int preRoundCountdown = 5;
+        [SerializeField] private bool cycleSpawnPoints = true;
 
         public event System.Action<int, bool, bool> OnRoundStateChanged;
         public event System.Action<int> OnCountdownChanged;
@@ -20,6 +21,8 @@ namespace DefenseGame
         public int CurrentRound { get; private set; }
         public bool IsRoundRunning { get; private set; }
         public bool IsBossRound => CurrentRound > 0 && CurrentRound % 10 == 0;
+
+        private int nextSpawnPointIndex;
 
         private void Awake()
         {
@@ -53,6 +56,7 @@ namespace DefenseGame
         {
             IsRoundRunning = true;
             CurrentRound++;
+            nextSpawnPointIndex = 0;
             OnRoundStateChanged?.Invoke(CurrentRound, IsBossRound, true);
 
             for (int countdown = preRoundCountdown; countdown >= 1; countdown--)
@@ -111,17 +115,38 @@ namespace DefenseGame
                 return;
             }
 
-            Transform spawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
+            Transform spawnPoint = GetNextSpawnPoint();
             GameObject spawnedObject = Instantiate(sourcePrefab, spawnPoint.position, spawnPoint.rotation);
             MonsterUnit monster = spawnedObject.GetComponent<MonsterUnit>();
             if (monster == null)
             {
                 monster = spawnedObject.AddComponent<MonsterUnit>();
+            }
+
+            if (fallbackMonsterPrefab != null)
+            {
                 monster.AdoptRuntimeTemplate(fallbackMonsterPrefab);
             }
 
             monster.gameObject.SetActive(true);
             monster.Initialize(definition, goalPoint);
+        }
+
+        private Transform GetNextSpawnPoint()
+        {
+            if (spawnPoints == null || spawnPoints.Length == 0)
+            {
+                return null;
+            }
+
+            if (!cycleSpawnPoints)
+            {
+                return spawnPoints[Random.Range(0, spawnPoints.Length)];
+            }
+
+            Transform spawnPoint = spawnPoints[nextSpawnPointIndex % spawnPoints.Length];
+            nextSpawnPointIndex++;
+            return spawnPoint;
         }
     }
 }

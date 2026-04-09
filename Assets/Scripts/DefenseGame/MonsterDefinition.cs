@@ -17,6 +17,7 @@ namespace DefenseGame
         public bool isBoss;
         public int rewardGold = 5;
         public CombatStats stats = new CombatStats();
+        public AttackBehavior attackBehavior = new AttackBehavior();
         public List<SkillDefinition> skills = new List<SkillDefinition>();
     }
 }

@@ -7,12 +7,19 @@ namespace DefenseGame
     public class MonsterUnit : MonoBehaviour
     {
         [SerializeField] private Renderer[] tintRenderers;
-        [SerializeField] private float facingOffsetY = 180f;
+        [SerializeField] private float facingOffsetY = 0f;
+        [SerializeField] private float separationRadius = 0.95f;
+        [SerializeField] private float separationStrength = 1.1f;
+        [SerializeField] private float globalMoveSpeedMultiplier = 0.7f;
+        [SerializeField] private GameObject deathEffectPrefab;
+        [SerializeField] private Vector3 deathEffectOffset = new Vector3(0f, 0.6f, 0f);
 
         private MonsterDefinition definition;
         private Transform goal;
+        private Vector3 laneGoalPosition;
         private FloatingCombatUI floatingUi;
         private UnitAnimationDriver animationDriver;
+        private HitFlashFeedback hitFlashFeedback;
         private float currentHealth;
         private float currentMana;
         private float attackCooldown;
@@ -35,6 +42,7 @@ namespace DefenseGame
         public float MaxHealth => definition != null ? definition.stats.maxHealth : 0f;
         public float CurrentMana => currentMana;
         public bool IsBoss => definition != null && definition.isBoss;
+        public float CurrentAttackRange => definition != null ? GetEffectiveAttackRange() : 0f;
 
         private void OnEnable()
         {
@@ -55,12 +63,24 @@ namespace DefenseGame
                 return;
             }
 
+            if (deathEffectPrefab == null)
+            {
+                deathEffectPrefab = template.deathEffectPrefab;
+            }
+
             if (tintRenderers == null || tintRenderers.Length == 0)
             {
                 tintRenderers = GetComponentsInChildren<Renderer>(true);
             }
 
             EnsureAnimationDriver();
+            EnsureHitFlashFeedback();
+        }
+
+        public void ConfigureRuntimePieces(GameObject deathEffectTemplate, Renderer[] renderers)
+        {
+            deathEffectPrefab = deathEffectTemplate;
+            tintRenderers = renderers;
         }
 
         private void Update()
@@ -87,7 +107,7 @@ namespace DefenseGame
             if (target != null)
             {
                 float distance = Vector3.Distance(transform.position, target.transform.position);
-                if (distance <= definition.stats.attackRange)
+                if (distance <= GetEffectiveAttackRange())
                 {
                     if (attackCooldown <= 0f)
                     {
@@ -106,6 +126,9 @@ namespace DefenseGame
         {
             definition = newDefinition;
             goal = goalPoint;
+            laneGoalPosition = goal != null
+                ? new Vector3(transform.position.x, goal.position.y, goal.position.z)
+                : transform.position;
             currentHealth = definition.stats.maxHealth;
             currentMana = 0f;
             attackCooldown = 0f;
@@ -122,6 +145,7 @@ namespace DefenseGame
             gameObject.name = definition.displayName;
             ApplyVisuals();
             EnsureAnimationDriver();
+            EnsureHitFlashFeedback();
             floatingUi = FloatingCombatUI.Attach(transform, definition.displayName, definition.accentColor);
             floatingUi.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
             animationDriver?.PlaySpawn();
@@ -132,11 +156,13 @@ namespace DefenseGame
         {
             currentHealth -= damage;
             currentMana = Mathf.Min(definition.stats.maxMana, currentMana + definition.stats.maxMana * definition.stats.manaGainWhenHitRate);
+            hitFlashFeedback?.PlayHit(critical);
             floatingUi?.ShowDamage(damage, critical, false);
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
 
             if (currentHealth <= 0f)
             {
+                PlayDeathEffect();
                 OnMonsterKilled?.Invoke(this);
                 Destroy(gameObject);
             }
@@ -161,12 +187,13 @@ namespace DefenseGame
                 return;
             }
 
-            FaceTarget(goal.position);
-            float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus);
-            transform.position = Vector3.MoveTowards(transform.position, goal.position, moveSpeed * Time.deltaTime);
+            Vector3 moveTarget = BuildMoveTarget();
+            FaceTarget(moveTarget);
+            float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus) * globalMoveSpeedMultiplier;
+            transform.position = Vector3.MoveTowards(transform.position, moveTarget, moveSpeed * Time.deltaTime);
             animationDriver?.PlayMoving(true);
 
-            if (Vector3.Distance(transform.position, goal.position) <= 0.05f)
+            if (Vector3.Distance(transform.position, laneGoalPosition) <= 0.05f)
             {
                 OnMonsterEscaped?.Invoke(this);
                 Destroy(gameObject);
@@ -184,6 +211,7 @@ namespace DefenseGame
             currentMana = Mathf.Min(definition.stats.maxMana, currentMana + definition.stats.maxMana * definition.stats.manaGainPerAttackRate);
             animationDriver?.PlayAttack();
             target.TakeDamage(damage, critical);
+            ApplyBasicAttackExtensions(target, damage);
         }
 
         private bool TryCastSkill()
@@ -295,6 +323,40 @@ namespace DefenseGame
 
             Quaternion lookRotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
             transform.rotation = lookRotation * Quaternion.Euler(0f, facingOffsetY, 0f);
+        }
+
+        private Vector3 BuildMoveTarget()
+        {
+            Vector3 target = laneGoalPosition;
+            Vector3 separation = Vector3.zero;
+            MonsterUnit[] others = FindObjectsOfType<MonsterUnit>();
+
+            for (int i = 0; i < others.Length; i++)
+            {
+                MonsterUnit other = others[i];
+                if (other == null || other == this)
+                {
+                    continue;
+                }
+
+                Vector3 delta = transform.position - other.transform.position;
+                delta.y = 0f;
+                float distance = delta.magnitude;
+                if (distance <= 0.0001f || distance > separationRadius)
+                {
+                    continue;
+                }
+
+                separation += delta.normalized * ((separationRadius - distance) / separationRadius);
+            }
+
+            if (separation != Vector3.zero)
+            {
+                target += separation.normalized * separationStrength;
+            }
+
+            target.x = Mathf.Clamp(target.x, laneGoalPosition.x - 0.6f, laneGoalPosition.x + 0.6f);
+            return target;
         }
 
         private DefenderUnit FindNearestDefender()
@@ -414,6 +476,116 @@ namespace DefenseGame
                 {
                     animationDriver = gameObject.AddComponent<UnitAnimationDriver>();
                 }
+            }
+        }
+
+        private void EnsureHitFlashFeedback()
+        {
+            if (hitFlashFeedback == null)
+            {
+                hitFlashFeedback = GetComponent<HitFlashFeedback>();
+                if (hitFlashFeedback == null)
+                {
+                    hitFlashFeedback = gameObject.AddComponent<HitFlashFeedback>();
+                }
+            }
+
+            hitFlashFeedback.Configure(tintRenderers);
+        }
+
+        private void PlayDeathEffect()
+        {
+            if (deathEffectPrefab == null)
+            {
+                return;
+            }
+
+            GameObject effect = Instantiate(deathEffectPrefab, transform.position + deathEffectOffset, Quaternion.identity);
+            effect.SetActive(true);
+            Destroy(effect, ResolveEffectLifetime(effect));
+        }
+
+        private float ResolveEffectLifetime(GameObject effect)
+        {
+            float lifetime = 3f;
+            ParticleSystem[] particleSystems = effect.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < particleSystems.Length; i++)
+            {
+                ParticleSystem particleSystem = particleSystems[i];
+                ParticleSystem.MainModule main = particleSystem.main;
+                float duration = main.duration;
+                if (main.startLifetime.mode == ParticleSystemCurveMode.TwoConstants)
+                {
+                    duration += Mathf.Max(main.startLifetime.constantMin, main.startLifetime.constantMax);
+                }
+                else if (main.startLifetime.mode == ParticleSystemCurveMode.Constant)
+                {
+                    duration += main.startLifetime.constant;
+                }
+                else
+                {
+                    duration += 1f;
+                }
+
+                lifetime = Mathf.Max(lifetime, duration + 0.5f);
+            }
+
+            return lifetime;
+        }
+
+        private float GetEffectiveAttackRange()
+        {
+            if (definition == null)
+            {
+                return 0f;
+            }
+
+            return definition.attackBehavior.ResolveAttackRange(definition.stats.attackRange);
+        }
+
+        private void ApplyBasicAttackExtensions(DefenderUnit primaryTarget, float damage)
+        {
+            if (primaryTarget == null || definition == null)
+            {
+                return;
+            }
+
+            float splashRadius = definition.attackBehavior.splashRadius;
+            float splashDamageRatio = definition.attackBehavior.splashDamageRatio;
+            int additionalPierceCount = Mathf.Max(0, definition.attackBehavior.additionalPierceCount);
+
+            if (splashRadius > 0f && splashDamageRatio > 0f)
+            {
+                DefenderUnit[] allDefenders = FindObjectsOfType<DefenderUnit>();
+                for (int i = 0; i < allDefenders.Length; i++)
+                {
+                    DefenderUnit defender = allDefenders[i];
+                    if (defender == null || defender == primaryTarget)
+                    {
+                        continue;
+                    }
+
+                    if (Vector3.Distance(primaryTarget.transform.position, defender.transform.position) <= splashRadius)
+                    {
+                        defender.TakeDamage(damage * splashDamageRatio, false);
+                    }
+                }
+            }
+
+            if (additionalPierceCount <= 0)
+            {
+                return;
+            }
+
+            List<DefenderUnit> additionalTargets = defenders
+                .Where(defender => defender != null && defender != primaryTarget)
+                .OrderBy(defender => Vector3.Distance(transform.position, defender.transform.position))
+                .Take(additionalPierceCount)
+                .ToList();
+
+            for (int i = 0; i < additionalTargets.Count; i++)
+            {
+                additionalTargets[i].TakeDamage(damage, false);
             }
         }
 

@@ -10,6 +10,7 @@ namespace DefenseGame
         [SerializeField] private bool generateStarterCharacters = true;
         [SerializeField] private int starterCharacterCount = 30;
         [SerializeField] private GamePresentationConfig presentationConfig;
+        [SerializeField] private CharacterCombatTuningConfig combatTuningConfig;
 
         private static readonly string[] NormalNames =
         {
@@ -48,14 +49,20 @@ namespace DefenseGame
             }
             else
             {
-                ApplyPresentationOverrides();
+                ApplyDefinitionOverrides();
             }
         }
 
         public void ApplyPresentationConfig(GamePresentationConfig config)
         {
             presentationConfig = config;
-            ApplyPresentationOverrides();
+            ApplyDefinitionOverrides();
+        }
+
+        public void ApplyCombatTuningConfig(CharacterCombatTuningConfig config)
+        {
+            combatTuningConfig = config;
+            ApplyDefinitionOverrides();
         }
 
         public void GenerateStarterCharacters(int totalCount)
@@ -80,7 +87,7 @@ namespace DefenseGame
                 }
             }
 
-            ApplyPresentationOverrides();
+            ApplyDefinitionOverrides();
         }
 
         public List<CharacterDefinition> GetCharactersByGrade(CharacterGrade grade)
@@ -362,16 +369,19 @@ namespace DefenseGame
             return CharacterGrade.Mythic;
         }
 
-        private void ApplyPresentationOverrides()
+        private void ApplyDefinitionOverrides()
         {
-            if (presentationConfig == null)
-            {
-                return;
-            }
-
             for (int i = 0; i < characters.Count; i++)
             {
-                presentationConfig.ApplyToCharacter(characters[i]);
+                if (presentationConfig != null)
+                {
+                    presentationConfig.ApplyToCharacter(characters[i]);
+                }
+
+                if (combatTuningConfig != null)
+                {
+                    combatTuningConfig.ApplyToCharacter(characters[i]);
+                }
             }
         }
     }
