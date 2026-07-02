@@ -1,0 +1,20 @@
+<Project>
+  <!-- Unity's generated csproj files can include Code Coverage editor/reporting
+       assemblies even when normal gameplay code does not use them. Those
+       assemblies pull different framework DLL versions into dotnet/MSBuild and
+       produce noisy MSB3277 conflicts, so keep them out of local script builds. -->
+  <ItemGroup>
+    <Reference Remove="ReportGeneratorMerged" />
+    <Reference Remove="Unity.TestTools.CodeCoverage.Editor" />
+    <Reference Remove="Unity.TestTools.CodeCoverage.Editor.OpenCover.Model" />
+    <Reference Remove="Unity.TestTools.CodeCoverage.Editor.OpenCover.Mono.Reflection" />
+  </ItemGroup>
+
+  <!-- Runtime script builds should not reference Editor-only assemblies. Unity's
+       generated csproj can still add them for IDE convenience, but MSBuild then
+       sees their framework dependencies and raises version-conflict warnings. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Assembly-CSharp'">
+    <ProjectReference Remove="MCPForUnity.Editor.csproj" />
+    <ProjectReference Remove="StylizedGrass_Editor.csproj" />
+  </ItemGroup>
+</Project>

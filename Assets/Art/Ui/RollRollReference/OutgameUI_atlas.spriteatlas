@@ -1,0 +1,395 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: OutgameUI_atlas
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings:
+    - serializedVersion: 3
+      m_BuildTarget: DefaultTexturePlatform
+      m_MaxTextureSize: 2048
+      m_ResizeAlgorithm: 0
+      m_TextureFormat: -1
+      m_TextureCompression: 2
+      m_CompressionQuality: 50
+      m_CrunchedCompression: 0
+      m_AllowsAlphaSplitting: 0
+      m_Overridden: 0
+      m_AndroidETC2FallbackOverride: 0
+      m_ForceMaximumCompressionQuality_BC6H_BC7: 0
+    - serializedVersion: 3
+      m_BuildTarget: iPhone
+      m_MaxTextureSize: 2048
+      m_ResizeAlgorithm: 0
+      m_TextureFormat: 48
+      m_TextureCompression: 1
+      m_CompressionQuality: 100
+      m_CrunchedCompression: 0
+      m_AllowsAlphaSplitting: 0
+      m_Overridden: 1
+      m_AndroidETC2FallbackOverride: 0
+      m_ForceMaximumCompressionQuality_BC6H_BC7: 0
+    - serializedVersion: 3
+      m_BuildTarget: Android
+      m_MaxTextureSize: 2048
+      m_ResizeAlgorithm: 0
+      m_TextureFormat: 48
+      m_TextureCompression: 1
+      m_CompressionQuality: 100
+      m_CrunchedCompression: 0
+      m_AllowsAlphaSplitting: 0
+      m_Overridden: 1
+      m_AndroidETC2FallbackOverride: 0
+      m_ForceMaximumCompressionQuality_BC6H_BC7: 0
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 1
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 102900000, guid: cfbb06e87fff56648b7e15e6306f98ee, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: bb3a6520c6011c54db89bca2b62186b7, type: 3}
+  - {fileID: 21300000, guid: 43bc65209966a394a8876464a6e3cf38, type: 3}
+  - {fileID: 21300000, guid: 03771e3006cb76f4dba31aebb7d4695a, type: 3}
+  - {fileID: 21300000, guid: 15ddbe50bea3f9e4e837d9853d4b5c84, type: 3}
+  - {fileID: 21300000, guid: 39e5bc70f72530047a8e1ee47c10e4cc, type: 3}
+  - {fileID: 21300000, guid: 65d77780587f6b1469cfee7d88be7026, type: 3}
+  - {fileID: 21300000, guid: 6f5845906b9c36f4e930403a62b64d7d, type: 3}
+  - {fileID: 21300000, guid: b6be28903eab06f4c8fc862b46534d39, type: 3}
+  - {fileID: 21300000, guid: ebbc3fa0ef632f74f832e76b5c4c0ffa, type: 3}
+  - {fileID: 21300000, guid: da0551b0aa949f84dbb7784485edb841, type: 3}
+  - {fileID: 21300000, guid: 6186a2b0c35b34c45857985c3b27f50f, type: 3}
+  - {fileID: 21300000, guid: 7a8f74115a9c5ea459bee40e3d7db731, type: 3}
+  - {fileID: 21300000, guid: edcdea2122f74a54984c1ce3b5496e08, type: 3}
+  - {fileID: 21300000, guid: 8036ff7195a9eb5418d560a10a77a8bf, type: 3}
+  - {fileID: 21300000, guid: f24885a17e49ee948902041b9dcb39db, type: 3}
+  - {fileID: 21300000, guid: 51772cc137f420e4da56a2e88bb1f9f2, type: 3}
+  - {fileID: 21300000, guid: a2029dc1b38f4b04296e663aab348c58, type: 3}
+  - {fileID: 21300000, guid: 6113ece10592f9e47b7f3af0ac5e8e23, type: 3}
+  - {fileID: 21300000, guid: a8d485024932b6a48a652b6b0e2e0a51, type: 3}
+  - {fileID: 21300000, guid: 27fe3562e446486469cf5a29670100d6, type: 3}
+  - {fileID: 21300000, guid: e8b5c56242ca3544189524d202a747a9, type: 3}
+  - {fileID: 21300000, guid: 861a3272d0ee892439a802064ef58784, type: 3}
+  - {fileID: 21300000, guid: d07e4d923090ea34691687eaec9bacd0, type: 3}
+  - {fileID: 21300000, guid: 49ed5ea24f7391c44be58616381677e4, type: 3}
+  - {fileID: 21300000, guid: 3637b3d2a99f91d488d28cd3c0c134a4, type: 3}
+  - {fileID: 21300000, guid: 9396a1f2f738e054fbd77a4f256c6b2f, type: 3}
+  - {fileID: 21300000, guid: 3e9b95f2bb7cdaa4ab1440fd279cbba1, type: 3}
+  - {fileID: 21300000, guid: f60e0cf2763c70d4d8bdf9fc37d25f4a, type: 3}
+  - {fileID: 21300000, guid: 3c5b3003978cfbc42b13d8960c073015, type: 3}
+  - {fileID: 21300000, guid: bc326a0341422434e8f5bc71255956be, type: 3}
+  - {fileID: 21300000, guid: 4c82de03929697e468d582d62b8e949a, type: 3}
+  - {fileID: 21300000, guid: b9ce5633b0690f04bbb405da99f8babb, type: 3}
+  - {fileID: 21300000, guid: a3d86243722afbb45bb50a541569f12e, type: 3}
+  - {fileID: 21300000, guid: a3bc1353597242d4fa524e6f378b2eff, type: 3}
+  - {fileID: 21300000, guid: 09a4b6630c9d40948a66f8f9872b7a1a, type: 3}
+  - {fileID: 21300000, guid: 821fae73e8f75f44c859338742064fc8, type: 3}
+  - {fileID: 21300000, guid: aded6983aa091634eb0e5f233a16e5d3, type: 3}
+  - {fileID: 21300000, guid: 9f895da302385244085cd83322702877, type: 3}
+  - {fileID: 21300000, guid: e6382fc3b73bcb64e8eb14107e6c9911, type: 3}
+  - {fileID: 21300000, guid: 904e48d38add6c54e835d68e81c2d756, type: 3}
+  - {fileID: 21300000, guid: 2be6bdd364ae2a24eb1dfb2d3456f807, type: 3}
+  - {fileID: 21300000, guid: d6be12e34795ae149a2a451897482fdb, type: 3}
+  - {fileID: 21300000, guid: 631d1ff327d71394eb6c227178c7c3fd, type: 3}
+  - {fileID: 21300000, guid: 01a23704ce9b9774cbd0543af37688a1, type: 3}
+  - {fileID: 21300000, guid: 2861c724c2d0a02438e04ab00dce4b16, type: 3}
+  - {fileID: 21300000, guid: 31ae0c445abad4149b9bb3b0ad03d515, type: 3}
+  - {fileID: 21300000, guid: 5f75c954b98ae9c4c8520385bc456734, type: 3}
+  - {fileID: 21300000, guid: 5bfd746487254e841bfe301413528389, type: 3}
+  - {fileID: 21300000, guid: 94120984e58cdb64cad686dbec18ca2f, type: 3}
+  - {fileID: 21300000, guid: 0506fa848aee24f47b54dc8a3cb009e4, type: 3}
+  - {fileID: 21300000, guid: 6df1e7b41b1ba91479b4ae6264efa959, type: 3}
+  - {fileID: 21300000, guid: 285e9af40388bb643851bb828adccf78, type: 3}
+  - {fileID: 21300000, guid: b58d5705fd079b44b8a9412bcf110172, type: 3}
+  - {fileID: 21300000, guid: c37ef855f838ce646a53048d916a5359, type: 3}
+  - {fileID: 21300000, guid: 0f52d9558e657d945ae9590b0ac32448, type: 3}
+  - {fileID: 21300000, guid: 9c6f5c55d6852b847b80b4c1efa40828, type: 3}
+  - {fileID: 21300000, guid: eb195475e3d6aae458245c607590700b, type: 3}
+  - {fileID: 21300000, guid: c478d98513df05b41898d857aa8ad57d, type: 3}
+  - {fileID: 21300000, guid: bdbf9ea5aae7e804eb6da719f9bc2aa1, type: 3}
+  - {fileID: 21300000, guid: 597e27b50306d5646adab0dd3b34c3db, type: 3}
+  - {fileID: 21300000, guid: ea59e0d5ec9f1c94dbaa07a6dd9a1a4a, type: 3}
+  - {fileID: 21300000, guid: 1d3783263a3dffb49949b5d634e63fb5, type: 3}
+  - {fileID: 21300000, guid: 42a87a46b34dd3841956eb08e0170fc6, type: 3}
+  - {fileID: 21300000, guid: 7332ca464f1ea4245955fdb6c2fa2944, type: 3}
+  - {fileID: 21300000, guid: 3bbfd156744b62d40983c18695cf5840, type: 3}
+  - {fileID: 21300000, guid: 53251896d205db844a9135391a428a0b, type: 3}
+  - {fileID: 21300000, guid: 976580a607f2a5944b5634fa989761e9, type: 3}
+  - {fileID: 21300000, guid: 7501c4c617311be46b93af77ce14d989, type: 3}
+  - {fileID: 21300000, guid: c1049bd6820f64e408830d6c605222e4, type: 3}
+  - {fileID: 21300000, guid: b10ca0f6c3a6e9b4589c46e1cdc5de5c, type: 3}
+  - {fileID: 21300000, guid: e9ad6737f6174cd4aaba10c6698dd137, type: 3}
+  - {fileID: 21300000, guid: e0572757200053044b661f3078174148, type: 3}
+  - {fileID: 21300000, guid: 4b29ab5767f8b7e4fbd1f191c766eca5, type: 3}
+  - {fileID: 21300000, guid: 5130ab774c5bbcc45a7b55b5e27a08da, type: 3}
+  - {fileID: 21300000, guid: 89a37c87cbbdc414f90a91599869ed98, type: 3}
+  - {fileID: 21300000, guid: c27d9ba782e4d5f4ab928470142ee793, type: 3}
+  - {fileID: 21300000, guid: 6784abc788db4714ea39d35c7aac9fe5, type: 3}
+  - {fileID: 21300000, guid: ae757218a12d9bc41a53d34ac990fa31, type: 3}
+  - {fileID: 21300000, guid: 925e54384b53d6846a21f6dcf9a16a01, type: 3}
+  - {fileID: 21300000, guid: f6d0124859a27614db080a14c4dba69e, type: 3}
+  - {fileID: 21300000, guid: 1df6cc58273b4ad4da03fd95ab19c910, type: 3}
+  - {fileID: 21300000, guid: 734ece5842e80af43ae9022ff5132ce0, type: 3}
+  - {fileID: 21300000, guid: 4b9a89686e109ef4797f628fcb193037, type: 3}
+  - {fileID: 21300000, guid: 2e61ffa8de27bbb419e844488269c3cf, type: 3}
+  - {fileID: 21300000, guid: 50b6b3b893ce5ae48abd59a72b809fc1, type: 3}
+  - {fileID: 21300000, guid: 361d01c88873d8944a35ad12d0df8f1c, type: 3}
+  - {fileID: 21300000, guid: fb8ea5c855c1f3545872187e7e2001a3, type: 3}
+  - {fileID: 21300000, guid: df09a029e23171e4194320f54f976df5, type: 3}
+  - {fileID: 21300000, guid: 3d1e8b3935ffe4e488cd887a00216698, type: 3}
+  - {fileID: 21300000, guid: 85ab8549e86e3914d8faef11d273052e, type: 3}
+  - {fileID: 21300000, guid: c22bac6903afa94409f7fa8708dd57e5, type: 3}
+  - {fileID: 21300000, guid: 0692c289a303eb748983dad686c7c121, type: 3}
+  - {fileID: 21300000, guid: b77bf6896deb0d64e9d528aaa796d791, type: 3}
+  - {fileID: 21300000, guid: 25100da9c989e814bbaf405283680a69, type: 3}
+  - {fileID: 21300000, guid: 563324d9baf4bda499ae64214bf889bb, type: 3}
+  - {fileID: 21300000, guid: 670047d97c3571448b70591b63d4e0b8, type: 3}
+  - {fileID: 21300000, guid: a33aa2e99b5f7884f998649dc85b261c, type: 3}
+  - {fileID: 21300000, guid: ed9d33f9586dc1b4fa77d3ddb329492d, type: 3}
+  - {fileID: 21300000, guid: 462ce7f904362e748b5926ea65f88435, type: 3}
+  - {fileID: 21300000, guid: 925a9bf93a3ece040bf1cc26399b32e2, type: 3}
+  - {fileID: 21300000, guid: 60e56d0a1a0922749baf313c2ba41ff6, type: 3}
+  - {fileID: 21300000, guid: 004b6d1a5646ff145a8e2078d1b3d860, type: 3}
+  - {fileID: 21300000, guid: a4667f2a7f9360a4f9a15ebefb39f427, type: 3}
+  - {fileID: 21300000, guid: 5fcdc17afd9e59f4db998631913e5ad2, type: 3}
+  - {fileID: 21300000, guid: 81785e8acb607f24b995604d3275edfc, type: 3}
+  - {fileID: 21300000, guid: 88a861aab81489447b0b79fbc0a00f9a, type: 3}
+  - {fileID: 21300000, guid: 305d51da64df35c4f95be3df44a9aab1, type: 3}
+  - {fileID: 21300000, guid: 5c5dd5daa422fcc498737ceefef8b8c9, type: 3}
+  - {fileID: 21300000, guid: 7fe6e7da039dc774fa15f0c75e171610, type: 3}
+  - {fileID: 21300000, guid: 8f15c52ba015a6b4da7f36de74dfbdfe, type: 3}
+  - {fileID: 21300000, guid: 69e4357b591762c42b63e4832cb18bb7, type: 3}
+  - {fileID: 21300000, guid: 3e617b7b45bed43479f807297f2609de, type: 3}
+  - {fileID: 21300000, guid: b10db19b3b7e53640b916bdbaa8a4b54, type: 3}
+  - {fileID: 21300000, guid: ffb8d19b3b8bf6c46923f2de05599fa6, type: 3}
+  - {fileID: 21300000, guid: ca7e139b1515f1f4982dc0d0ea62b783, type: 3}
+  - {fileID: 21300000, guid: 3307199ba602f6a4091cde8f1c72e19e, type: 3}
+  - {fileID: 21300000, guid: f6f26bab3caa89547a04c580daf9b824, type: 3}
+  - {fileID: 21300000, guid: e0808bcb62611224ea6893a73a2b2275, type: 3}
+  - {fileID: 21300000, guid: 0c02ffeb7612814438211007a083e7e5, type: 3}
+  - {fileID: 21300000, guid: cfd1f0fbc43425949a22b7866c68f8aa, type: 3}
+  - {fileID: 21300000, guid: 5151d40c82bf75e42b53eac3d27f1eea, type: 3}
+  - {fileID: 21300000, guid: 1888590cdc2f6c24e89146ce1bd02eed, type: 3}
+  - {fileID: 21300000, guid: bb8e811ccb2f9ca409d58466c8131c7d, type: 3}
+  - {fileID: 21300000, guid: 2289141c07694054db11d4f06806987d, type: 3}
+  - {fileID: 21300000, guid: 48d6474c97745a64abc08fa9d143a014, type: 3}
+  - {fileID: 21300000, guid: 1039d55cba000b146b0ce07f2ac3caaa, type: 3}
+  - {fileID: 21300000, guid: d8d6dc6cc8797e54198b381edd700f05, type: 3}
+  - {fileID: 21300000, guid: 90e9cabc6b7043740a099074abe70468, type: 3}
+  - {fileID: 21300000, guid: ac3ad2ccb6d27654d8361698d38ca53d, type: 3}
+  - {fileID: 21300000, guid: 0a0f54cc13ac5f049bedc160580d8a11, type: 3}
+  - {fileID: 21300000, guid: 5fa3ee1d788721b428f32b6cf1653565, type: 3}
+  - {fileID: 21300000, guid: 5c05633def1a80346bef310793109940, type: 3}
+  - {fileID: 21300000, guid: fbf2a25d21d04c4469ed80f09aceb31b, type: 3}
+  - {fileID: 21300000, guid: 94707d8dc60ed6b47b5dfb020b86463d, type: 3}
+  - {fileID: 21300000, guid: 480795eda184fa4448648019cfd4699c, type: 3}
+  - {fileID: 21300000, guid: d43f58ed1de8b1449b8750a131ff27e4, type: 3}
+  - {fileID: 21300000, guid: baf3210e45481e74b9cb0e7df80e1fbe, type: 3}
+  - {fileID: 21300000, guid: 987b350edbb3c6d4390a0d622134bd64, type: 3}
+  - {fileID: 21300000, guid: 849d1b0e18f3eb84199b6060ac4871c0, type: 3}
+  - {fileID: 21300000, guid: f8cf4f0e56bd8524fafa34e29eac2edc, type: 3}
+  - {fileID: 21300000, guid: e240b82e91daa9847a412cbce0860f07, type: 3}
+  - {fileID: 21300000, guid: 1461b23e25814c44d94515571db8374b, type: 3}
+  - {fileID: 21300000, guid: bcd7eb3e7048e2a4383eefbc24cb0b86, type: 3}
+  - {fileID: 21300000, guid: 050b2c3ee0f29d34688264a6e4f2a273, type: 3}
+  - {fileID: 21300000, guid: 4d78c86e8cb1ef741b89bb716aa664fa, type: 3}
+  - {fileID: 21300000, guid: 9da4317e1ef78484aafa013ba2dce188, type: 3}
+  - {fileID: 21300000, guid: 35561e7e7180fc04f99a1b1739a0cd9e, type: 3}
+  - {fileID: 21300000, guid: 746d21ced9b4fee409b2f4f20d8a3cf9, type: 3}
+  - {fileID: 21300000, guid: 4769d8ce399b71a42b8d2b3539c7128d, type: 3}
+  - {fileID: 21300000, guid: c4285bce982de1a449a89d35bc1277e9, type: 3}
+  - {fileID: 21300000, guid: 07e9a9fe08bb2884c8521220bffd2457, type: 3}
+  - {fileID: 21300000, guid: 8bac0b0fdca7ccb498655dc36c263409, type: 3}
+  - {fileID: 21300000, guid: 8506e05fa434be648b43ee008f1de4ba, type: 3}
+  - {fileID: 21300000, guid: 23ec4e5f8d2742248b0a5009129d6d87, type: 3}
+  - {fileID: 21300000, guid: cf36c77fb709f6a4f84f56f0891c0c07, type: 3}
+  - {fileID: 21300000, guid: 2c079a8fe5f5de64694a9a684e44fadf, type: 3}
+  - {fileID: 21300000, guid: ca3db89f8cc93274d91b2c67dae7a291, type: 3}
+  - {fileID: 21300000, guid: 8a43a0bf2de1be947a61b0ec51160862, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - icon-roll-synergy-dice-2
+  - top-panel-icon-chest-empty
+  - icon-main-menu-collection
+  - icon-main-menu-roll
+  - icon-rename
+  - minimi-info-popup-gauge-fill-progress
+  - game-mode-banner-background-orange
+  - rank-gold-bg
+  - cloud-003
+  - icon-main-menu-shop
+  - minimi-info-popup-detail-info-icon-background
+  - tooltip-button
+  - cloud-006
+  - minimi-info-popup-detail-info-stat-icon
+  - deck-edited-target-arrow
+  - gradient-type-a
+  - minimi-info-popup-gauge-track
+  - button-common-green-38
+  - minimi-info-popup-title-background
+  - 000-main-lobby-battle-my-deck-list-innershadow
+  - common-round-49
+  - shortcurt-arrow-up
+  - button-common-orange
+  - icon-roll-synergy-dice-3-disabled
+  - collection-minimi-card-background-disabled
+  - 000-main-lobby-battle-my-deck-list-mask
+  - shortcurt-current
+  - icon-loading
+  - inventory-minimi-itemrenderer-background-unlock
+  - icon-main-menu-trophy
+  - button-common-orange-164
+  - cloud-001
+  - icon-roll-synergy-dice-1-white
+  - collection-minimi-card-parts-track
+  - top-panel-icon-chest-own-num-background
+  - toggle-on-track
+  - icon-main-menu-battle-activated
+  - deck-preset-button-activated
+  - split-line
+  - 000-main-lobby-top-panel-button-background
+  - player-info-ranked-grade-background
+  - collection-minimi-card-unlock-track
+  - common-popup-background
+  - common-half-round-background
+  - inventory-minimi-itemrenderer-detail-info-button-icon
+  - inventory-minimi-itemrenderer-detail-info-button
+  - new-tag
+  - 000-main-lobby-button-plus-shop-icon
+  - top-panel-popup-menu-button-background
+  - reward-item-tilelist-background-dark
+  - common-green-list-item-renderer-background
+  - dice-tower-item-info-speechbubble
+  - cloud-000
+  - collection-deck-background
+  - dice-tower-get-item-speechbubble
+  - cloud-002
+  - background
+  - reward-item-tilelist-small-background
+  - tooltip2-button
+  - lootbox-getted-text-background
+  - common-round-38
+  - toggle-off-track
+  - 000-main-lobby-button-plus-shop-background
+  - icon-roll-synergy-dice-3
+  - deck-preset-button-normal
+  - indicator-pin
+  - icon-roll-synergy-dice-3-white
+  - button-common-gray-blue-38
+  - gradient-background-002
+  - icon-main-menu-battle
+  - raid-mode-render-image
+  - glow-background
+  - icon-mail
+  - button-common-green-164
+  - icon-hamburger
+  - dice-synergy-itemrendererbackground
+  - 000-main-lobby-battle-button-duel-normal-inner-info-background
+  - button-common-green-blue-164
+  - minimi-info-popup-levelup-arrow
+  - icon-roll-synergy-dice-2-disabled
+  - common-title-background
+  - sub-tab-menu-active-bg
+  - gradient-bg
+  - rank-common-bg
+  - button-common-disabled-164
+  - icon-roll-synergy-dice-4-white
+  - 000-main-lobby-bottom-menu-background
+  - inventory-minimi-itemrenderer-background
+  - icon-roll-synergy-dice-6-disabled
+  - 000-main-lobby-top-panel-nickname-button-shadow
+  - slider-track
+  - icon-roll-synergy-dice-5-white
+  - common-02-list-bg
+  - icon-x
+  - 000-main-lobby-battle-button-raid-normal-inner-info-background
+  - icon-roll-synergy-dice-4-disabled
+  - common-beige-list-item-renderer-background
+  - button-common-small-blue
+  - icon-check
+  - button-common-green-60
+  - grade-shadow
+  - game-mode-banner-background-yellow
+  - loot-box-background
+  - common-sorting-button
+  - common-round-60
+  - common-round-21
+  - icon-roll-synergy-dice-4
+  - common-half-round-background-128
+  - sub-tab-menu-bg
+  - icon-roll-synergy-dice-2-white
+  - common-list-background
+  - icon-main-menu-roll-activated
+  - icon-roll-synergy-dice-5-disabled
+  - minimi-info-popup-gauge-fill-levelup
+  - shortcurt-arrow-down
+  - top-panel-popup-menu-background
+  - reward-item-tilelist-goods-name-background
+  - icon-check
+  - icon-infinite-time
+  - icon-roll-synergy-dice-6
+  - seaseon-rank-buff-background
+  - icon-main-menu-shop-activated
+  - top-rank-visual-img
+  - icon-main-menu-trophy-activated
+  - icon-arrow
+  - grade-icon-shadow
+  - glow
+  - 000-main-lobby-bottom-menu-activated-background
+  - rank-bronze-bg
+  - get-all-items-background
+  - icon-roll-synergy-dice-1-disabled
+  - slider-filled
+  - gauge-fill
+  - icon-roll-synergy-dice-1
+  - icon-lock
+  - pattern-001
+  - collection-minimi-card-background
+  - toast-message-bg
+  - minimi-info-popup-upgrade-gold
+  - common-round-background
+  - button-common-gray-blue-164
+  - tooltip-speechbubble
+  - rank-silver-bg
+  - 000-main-lobby-battle-deck-container-background
+  - icon-main-menu-collection-activated
+  - common-dot
+  - top-panel-icon-chest-own
+  - top-map-panel-visual
+  - reward-item-tilelist-background
+  - new-tag-background
+  - sub-tab-menu-bg
+  - common-round-128
+  - icon-roll-synergy-dice-5
+  - slider-head
+  - 000-main-lobby-battle-my-deck-list-background
+  - minimi-info-popup-detail-info-background
+  - pattern-002
+  - icon-roll-synergy-dice-6-white
+  m_RenderDataMap: {}
+  m_Tag: OutgameUI_atlas
+  m_IsVariant: 0

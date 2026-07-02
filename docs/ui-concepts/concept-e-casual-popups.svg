@@ -1,0 +1,109 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="e_bg" x1="120" y1="40" x2="1490" y2="860" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C7F3FF"/>
+      <stop offset="0.52" stop-color="#97DEFF"/>
+      <stop offset="1" stop-color="#82BEFF"/>
+    </linearGradient>
+    <linearGradient id="e_panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#EEF8FF" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="e_boss" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFA188"/>
+      <stop offset="1" stop-color="#FF6E93"/>
+    </linearGradient>
+    <linearGradient id="e_merge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5FE7D2"/>
+      <stop offset="1" stop-color="#4ABFFF"/>
+    </linearGradient>
+    <filter id="e_shadow" x="-50" y="-50" width="1700" height="1000" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#2D6EA3" flood-opacity="0.22"/>
+    </filter>
+    <filter id="e_soft" x="-90" y="-90" width="380" height="380" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="45"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" rx="32" fill="url(#e_bg)"/>
+  <circle cx="280" cy="170" r="120" fill="#FFFFFF" fill-opacity="0.42" filter="url(#e_soft)"/>
+  <circle cx="1300" cy="170" r="120" fill="#FFFFFF" fill-opacity="0.32" filter="url(#e_soft)"/>
+  <circle cx="1220" cy="740" r="120" fill="#A4FBE9" fill-opacity="0.30" filter="url(#e_soft)"/>
+
+  <text x="72" y="84" fill="#FFFFFF" font-family="Poppins, Noto Sans KR, sans-serif" font-size="28" font-weight="700">Casual Overlay Direction</text>
+  <text x="72" y="116" fill="#EDF9FF" font-family="Noto Sans KR, sans-serif" font-size="18">보스 진입과 합성 성공을 조금 더 귀엽고 가볍게 보여주는 팝업 톤입니다.</text>
+
+  <g filter="url(#e_shadow)">
+    <rect x="72" y="166" width="670" height="610" rx="44" fill="url(#e_panel)"/>
+    <rect x="858" y="166" width="670" height="610" rx="44" fill="url(#e_panel)"/>
+  </g>
+
+  <g filter="url(#e_shadow)">
+    <rect x="104" y="196" width="606" height="84" rx="30" fill="#FFF3F6"/>
+    <rect x="890" y="196" width="606" height="84" rx="30" fill="#F0FBFF"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif">
+    <text x="132" y="230" fill="#F28595" font-size="15" font-weight="700">BOSS ROUND</text>
+    <text x="132" y="262" fill="#5B5168" font-size="30" font-weight="700">마법사 타워가 등장해요!</text>
+
+    <text x="918" y="230" fill="#58B7D6" font-size="15" font-weight="700">MERGE SUCCESS</text>
+    <text x="918" y="262" fill="#45627B" font-size="30" font-weight="700">희귀 다이스가 에픽으로 진화했어요!</text>
+  </g>
+
+  <g filter="url(#e_shadow)">
+    <circle cx="406" cy="404" r="116" fill="#FFF6F8"/>
+    <circle cx="406" cy="404" r="84" fill="url(#e_boss)"/>
+    <circle cx="1192" cy="404" r="116" fill="#F3FDFF"/>
+    <circle cx="1192" cy="404" r="84" fill="url(#e_merge)"/>
+  </g>
+
+  <text x="406" y="392" text-anchor="middle" fill="#FFF7FA" font-family="Poppins, Noto Sans KR, sans-serif" font-size="16" font-weight="700">ROUND 20</text>
+  <text x="406" y="430" text-anchor="middle" fill="#FFF7FA" font-family="Poppins, Noto Sans KR, sans-serif" font-size="40" font-weight="700">BOSS</text>
+  <text x="1192" y="392" text-anchor="middle" fill="#F4FDFF" font-family="Poppins, Noto Sans KR, sans-serif" font-size="16" font-weight="700">EPIC</text>
+  <text x="1192" y="430" text-anchor="middle" fill="#F4FDFF" font-family="Poppins, Noto Sans KR, sans-serif" font-size="40" font-weight="700">UP!</text>
+
+  <g font-family="Noto Sans KR, sans-serif" font-size="20">
+    <text x="126" y="514" fill="#6C6276">보스 패턴: 보호막 생성 후 폭발 구체 3회</text>
+    <text x="126" y="548" fill="#6C6276">추천 대응: 바람 / 번개 / 감속 조합</text>
+    <text x="126" y="582" fill="#6C6276">팁: 희귀 합성을 아껴두면 훨씬 편해져요</text>
+
+    <text x="914" y="514" fill="#53718A">공격력 +32 / 치명타 확률 +8%</text>
+    <text x="914" y="548" fill="#53718A">새 특성: 연쇄 번개 탄환 추가</text>
+    <text x="914" y="582" fill="#53718A">스킬 슬롯 2개 개방</text>
+  </g>
+
+  <g filter="url(#e_shadow)">
+    <rect x="126" y="614" width="560" height="20" rx="10" fill="#E5EDF8"/>
+    <rect x="126" y="614" width="450" height="20" rx="10" fill="url(#e_boss)"/>
+    <rect x="914" y="614" width="560" height="20" rx="10" fill="#DBF0FF"/>
+    <rect x="914" y="614" width="488" height="20" rx="10" fill="url(#e_merge)"/>
+  </g>
+  <text x="126" y="668" fill="#5A5263" font-family="Poppins, Noto Sans KR, sans-serif" font-size="28" font-weight="700">Boss HP 79%</text>
+  <text x="914" y="668" fill="#45627B" font-family="Poppins, Noto Sans KR, sans-serif" font-size="28" font-weight="700">Upgrade Rate 87%</text>
+
+  <g filter="url(#e_shadow)">
+    <rect x="126" y="694" width="250" height="58" rx="24" fill="#FFF0F4" stroke="#F29AAD" stroke-width="2"/>
+    <rect x="394" y="694" width="250" height="58" rx="24" fill="url(#e_boss)"/>
+    <rect x="914" y="694" width="250" height="58" rx="24" fill="#EEFAFF" stroke="#76D5F5" stroke-width="2"/>
+    <rect x="1182" y="694" width="250" height="58" rx="24" fill="url(#e_merge)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-size="24" font-weight="700">
+    <text x="251" y="731" text-anchor="middle" fill="#865B69">패턴 보기</text>
+    <text x="519" y="731" text-anchor="middle" fill="#FFF7FA">전투 시작</text>
+    <text x="1039" y="731" text-anchor="middle" fill="#4A708B">다음 합성 보기</text>
+    <text x="1307" y="731" text-anchor="middle" fill="#0E536A">보드에 배치</text>
+  </g>
+
+  <g opacity="0.94" filter="url(#e_shadow)">
+    <rect x="972" y="342" width="60" height="60" rx="20" fill="#C8E7FF"/>
+    <rect x="1044" y="342" width="60" height="60" rx="20" fill="#C8E7FF"/>
+    <rect x="1116" y="342" width="60" height="60" rx="20" fill="#C8E7FF"/>
+    <path d="M1096 372H1128" stroke="#58B7D6" stroke-width="5" stroke-linecap="round"/>
+    <path d="M1128 372L1114 360" stroke="#58B7D6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M1128 372L1114 384" stroke="#58B7D6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="1144" y="322" width="126" height="100" rx="28" fill="url(#e_merge)"/>
+    <text x="1207" y="381" text-anchor="middle" fill="#0D566E" font-family="Poppins, Noto Sans KR, sans-serif" font-size="28" font-weight="700">에픽</text>
+  </g>
+</svg>

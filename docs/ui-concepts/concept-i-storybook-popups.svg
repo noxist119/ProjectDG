@@ -1,0 +1,143 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="i_bg" x1="800" y1="0" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#AEE8FF"/>
+      <stop offset="0.58" stop-color="#88D0FF"/>
+      <stop offset="1" stop-color="#72B3F8"/>
+    </linearGradient>
+    <linearGradient id="i_paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFDF7"/>
+      <stop offset="1" stop-color="#F4EBD8"/>
+    </linearGradient>
+    <linearGradient id="i_orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFB46F"/>
+      <stop offset="1" stop-color="#FF7A48"/>
+    </linearGradient>
+    <linearGradient id="i_pink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFB4DF"/>
+      <stop offset="1" stop-color="#FF70AF"/>
+    </linearGradient>
+    <linearGradient id="i_blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6BE7FF"/>
+      <stop offset="1" stop-color="#4F97FF"/>
+    </linearGradient>
+    <filter id="i_shadow" x="-60" y="-60" width="1720" height="1020" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#4F81AA" flood-opacity="0.26"/>
+    </filter>
+    <filter id="i_soft" x="-120" y="-120" width="420" height="420" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="52"/>
+    </filter>
+    <filter id="i_noise" x="0" y="0" width="1600" height="900" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.05"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" rx="32" fill="url(#i_bg)"/>
+  <rect width="1600" height="900" rx="32" filter="url(#i_noise)" opacity="0.34"/>
+  <circle cx="220" cy="150" r="84" fill="#FFFFFF" fill-opacity="0.28" filter="url(#i_soft)"/>
+  <circle cx="1372" cy="180" r="96" fill="#FFFFFF" fill-opacity="0.20" filter="url(#i_soft)"/>
+
+  <g opacity="0.92">
+    <ellipse cx="176" cy="126" rx="90" ry="30" fill="#FFFFFF"/>
+    <ellipse cx="248" cy="136" rx="56" ry="24" fill="#FFFFFF"/>
+    <ellipse cx="1302" cy="122" rx="102" ry="34" fill="#FFFFFF"/>
+    <ellipse cx="1386" cy="134" rx="56" ry="22" fill="#FFFFFF"/>
+  </g>
+
+  <text x="70" y="84" fill="#FFFFFF" font-family="Poppins, Noto Sans KR, sans-serif" font-size="30" font-weight="700">Painted Reward Popup Direction</text>
+  <text x="70" y="118" fill="#EEF9FF" font-family="Noto Sans KR, sans-serif" font-size="19">팝업이 UI 패널이라기보다, 손으로 칠한 보상 카드와 배너처럼 보이도록 바꾼 버전입니다.</text>
+
+  <g filter="url(#i_shadow)">
+    <path d="M76 160C125 144 596 144 640 160C677 174 694 201 694 236V696C694 732 676 760 640 774C594 792 123 792 82 774C46 758 30 731 30 694V236C30 202 42 176 76 160Z" fill="#C0ECFF"/>
+    <path d="M88 174C129 162 583 162 623 174C653 183 667 207 667 240V686C667 716 653 738 624 748C586 760 128 760 91 748C61 738 50 717 50 688V240C50 208 58 183 88 174Z" fill="url(#i_paper)" stroke="#C8A35D" stroke-width="5"/>
+
+    <path d="M956 160C1005 144 1476 144 1520 160C1557 174 1574 201 1574 236V696C1574 732 1556 760 1520 774C1474 792 1003 792 962 774C926 758 910 731 910 694V236C910 202 922 176 956 160Z" fill="#C0ECFF"/>
+    <path d="M968 174C1009 162 1463 162 1503 174C1533 183 1547 207 1547 240V686C1547 716 1533 738 1504 748C1466 760 1008 760 971 748C941 738 930 717 930 688V240C930 208 938 183 968 174Z" fill="url(#i_paper)" stroke="#C8A35D" stroke-width="5"/>
+  </g>
+
+  <g filter="url(#i_shadow)">
+    <path d="M118 194C143 185 549 185 575 194C594 201 604 216 604 240C604 264 592 282 571 286H152C126 286 104 265 104 239C104 219 106 199 118 194Z" fill="#FFF2F5" stroke="#F792B5" stroke-width="4"/>
+    <path d="M1006 194C1031 185 1437 185 1463 194C1482 201 1492 216 1492 240C1492 264 1480 282 1459 286H1040C1014 286 992 265 992 239C992 219 994 199 1006 194Z" fill="#F1FBFF" stroke="#9EDCFF" stroke-width="4"/>
+    <path d="M136 180C155 168 262 168 281 180C295 189 298 209 289 220C280 231 156 231 145 220C136 211 124 188 136 180Z" fill="url(#i_orange)"/>
+    <path d="M1024 180C1043 168 1176 168 1197 180C1210 188 1215 208 1207 220C1198 232 1042 232 1030 220C1022 211 1012 189 1024 180Z" fill="url(#i_blue)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="212" y="210" text-anchor="middle" fill="#FFF7F0" font-size="16" stroke="#D96A3B" stroke-width="2" paint-order="stroke">BOSS ALERT</text>
+    <text x="354" y="248" text-anchor="middle" fill="#65596A" font-size="34">마법사 타워 등장!</text>
+
+    <text x="1115" y="210" text-anchor="middle" fill="#F7FEFF" font-size="16" stroke="#3C93D7" stroke-width="2" paint-order="stroke">MERGE SUCCESS</text>
+    <text x="1268" y="248" text-anchor="middle" fill="#4D677F" font-size="34">희귀 다이스가 에픽으로 진화!</text>
+  </g>
+
+  <g filter="url(#i_shadow)">
+    <circle cx="358" cy="390" r="134" fill="#FFF0F5"/>
+    <circle cx="358" cy="390" r="98" fill="url(#i_pink)"/>
+    <circle cx="1240" cy="390" r="134" fill="#ECFEFF"/>
+    <circle cx="1240" cy="390" r="98" fill="url(#i_blue)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="358" y="374" text-anchor="middle" fill="#FFF9FB" font-size="18">ROUND 20</text>
+    <text x="358" y="420" text-anchor="middle" fill="#FFF9FB" font-size="50" stroke="#FF6E9F" stroke-width="2" paint-order="stroke">BOSS</text>
+    <text x="1240" y="374" text-anchor="middle" fill="#F6FEFF" font-size="18">EPIC</text>
+    <text x="1240" y="420" text-anchor="middle" fill="#F6FEFF" font-size="50" stroke="#448FDF" stroke-width="2" paint-order="stroke">UP!</text>
+  </g>
+
+  <g filter="url(#i_shadow)">
+    <path d="M128 484C145 474 563 474 579 484C591 492 598 505 598 528V620C598 646 590 662 579 668C565 676 148 676 132 668C118 662 106 647 106 620V528C106 503 115 491 128 484Z" fill="#FAF2E4" stroke="#E0BA72" stroke-width="4"/>
+    <path d="M1018 484C1035 474 1453 474 1469 484C1481 492 1488 505 1488 528V620C1488 646 1480 662 1469 668C1455 676 1038 676 1022 668C1008 662 996 647 996 620V528C996 503 1005 491 1018 484Z" fill="#F3FAFF" stroke="#B8DBFA" stroke-width="4"/>
+  </g>
+
+  <g font-family="Noto Sans KR, sans-serif" font-size="22" font-weight="700">
+    <text x="136" y="534" fill="#7E6750">보호막 생성 후 폭발 구체 3회</text>
+    <text x="136" y="572" fill="#7E6750">추천 대응: 바람 / 번개 / 감속 조합</text>
+    <text x="136" y="610" fill="#7E6750">희귀 합성을 아껴두면 훨씬 쉬워져요</text>
+
+    <text x="1026" y="534" fill="#58718A">공격력 +32 / 치명타 확률 +8%</text>
+    <text x="1026" y="572" fill="#58718A">새 특성: 연쇄 번개 탄환 추가</text>
+    <text x="1026" y="610" fill="#58718A">스킬 슬롯 2개 개방</text>
+  </g>
+
+  <g filter="url(#i_shadow)">
+    <path d="M128 688C138 682 569 682 579 688C586 692 586 710 579 714C568 721 139 721 128 714C122 710 122 692 128 688Z" fill="#F1E2EC"/>
+    <path d="M128 688C136 682 486 682 496 688C503 692 503 710 496 714C486 721 136 721 128 714C121 710 121 692 128 688Z" fill="url(#i_pink)"/>
+
+    <path d="M1018 688C1028 682 1459 682 1469 688C1476 692 1476 710 1469 714C1458 721 1029 721 1018 714C1012 710 1012 692 1018 688Z" fill="#DDEEFF"/>
+    <path d="M1018 688C1026 682 1382 682 1392 688C1399 692 1399 710 1392 714C1382 721 1026 721 1018 714C1011 710 1011 692 1018 688Z" fill="url(#i_blue)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="128" y="756" fill="#655969" font-size="30" stroke="#FFFFFF" stroke-width="5" paint-order="stroke">Boss HP 79%</text>
+    <text x="1018" y="756" fill="#4C677F" font-size="30" stroke="#FFFFFF" stroke-width="5" paint-order="stroke">Upgrade Rate 87%</text>
+  </g>
+
+  <g filter="url(#i_shadow)">
+    <path d="M128 730C140 722 350 722 362 730C371 736 375 751 372 768C369 782 357 792 339 794H162C144 794 128 783 122 768C118 755 118 736 128 730Z" fill="#FFF2F6" stroke="#F793B5" stroke-width="4"/>
+    <path d="M388 730C402 720 616 720 630 730C639 736 644 751 640 768C636 783 624 792 608 794H418C400 792 386 784 381 768C378 754 378 736 388 730Z" fill="url(#i_orange)"/>
+    <path d="M1018 730C1030 722 1240 722 1252 730C1261 736 1265 751 1262 768C1259 782 1247 792 1229 794H1052C1034 794 1018 783 1012 768C1008 755 1008 736 1018 730Z" fill="#F1FBFF" stroke="#9EDCFF" stroke-width="4"/>
+    <path d="M1278 730C1292 720 1506 720 1520 730C1529 736 1534 751 1530 768C1526 783 1514 792 1498 794H1308C1290 792 1276 784 1271 768C1268 754 1268 736 1278 730Z" fill="url(#i_blue)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-size="24" font-weight="700">
+    <text x="247" y="770" text-anchor="middle" fill="#8A6170">패턴 보기</text>
+    <text x="511" y="770" text-anchor="middle" fill="#FFF8F0" stroke="#D86C3C" stroke-width="2" paint-order="stroke">전투 시작</text>
+    <text x="1137" y="770" text-anchor="middle" fill="#54718D">다음 합성 보기</text>
+    <text x="1401" y="770" text-anchor="middle" fill="#F7FEFF" stroke="#3F92D8" stroke-width="2" paint-order="stroke">보드에 배치</text>
+  </g>
+
+  <g opacity="0.96" filter="url(#i_shadow)">
+    <path d="M1084 328C1093 320 1140 320 1149 328C1158 336 1158 372 1149 380C1140 388 1093 388 1084 380C1075 372 1075 336 1084 328Z" fill="#D7EEFF" stroke="#A5D4F7" stroke-width="3"/>
+    <path d="M1160 328C1169 320 1216 320 1225 328C1234 336 1234 372 1225 380C1216 388 1169 388 1160 380C1151 372 1151 336 1160 328Z" fill="#D7EEFF" stroke="#A5D4F7" stroke-width="3"/>
+    <path d="M1236 328C1245 320 1292 320 1301 328C1310 336 1310 372 1301 380C1292 388 1245 388 1236 380C1227 372 1227 336 1236 328Z" fill="#D7EEFF" stroke="#A5D4F7" stroke-width="3"/>
+    <path d="M1211 354H1256" stroke="#4C96E3" stroke-width="6" stroke-linecap="round"/>
+    <path d="M1256 354L1238 338" stroke="#4C96E3" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M1256 354L1238 370" stroke="#4C96E3" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M1284 300C1296 290 1396 290 1409 300C1418 307 1421 324 1418 360C1416 385 1408 400 1396 406C1382 413 1310 413 1296 406C1283 399 1272 382 1272 358C1272 325 1274 307 1284 300Z" fill="url(#i_blue)"/>
+    <text x="1346" y="362" text-anchor="middle" fill="#F7FEFF" font-family="Poppins, Noto Sans KR, sans-serif" font-size="34" font-weight="700" stroke="#438FD1" stroke-width="2" paint-order="stroke">에픽</text>
+  </g>
+</svg>

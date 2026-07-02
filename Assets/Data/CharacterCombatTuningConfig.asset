@@ -1,0 +1,2346 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fab2e90fd93c06d4e9a79872dd95d73f, type: 3}
+  m_Name: CharacterCombatTuningConfig
+  m_EditorClassIdentifier: 
+  defaultBuffEffectPrefab: {fileID: 77778291808331230, guid: e60792b78de420147ad6aecbe7428410, type: 3}
+  defaultAttackSpeedBuffEffectPrefab: {fileID: 3517607748742827753, guid: c31fe59c9bb77c14499db59fb681bdfb, type: 3}
+  defaultHealEffectPrefab: {fileID: 412417142884872711, guid: a7c97896ce5d0bb4cbc0845fe8af10d5, type: 3}
+  defaultShieldEffectPrefab: {fileID: 760798788758920128, guid: 43f690128e4980a419dae1f3e465c80b, type: 3}
+  defaultManaEffectPrefab: {fileID: 125105820485990189, guid: a800efff6abb1cb46aa1f642d976b82d, type: 3}
+  defaultPetrifyMaterial: {fileID: 2100000, guid: 4726269a8d2dd0c4fa0b7d0ce513366a, type: 2}
+  entries:
+  - characterId: hero_01
+    overrideRole: 1
+    role: 0
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 4
+    overrideSkillCastRange: 1
+    skillCastRange: 5
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 2994745117888984257, guid: 2eb7de29312da554bbe7cd5143be94b8, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 3065465422528907525, guid: 5eacac13b71262a4c8982f9cf7fa82d7, type: 3}
+      areaEffectPrefab: {fileID: 6675953191425315939, guid: d1f3f2e6fbbfeae4f87a6c02265bc727, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_02
+    overrideRole: 1
+    role: 3
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 6
+    overrideSkillCastRange: 1
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 3957036485638939788, guid: c74a753f6a0aabb418abd6d337be845e, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 5313973487212098402, guid: 8297283ddbd8a1045a34d8b17574a1b9, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 412417142884872711, guid: a7c97896ce5d0bb4cbc0845fe8af10d5, type: 3}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 412417142884872711, guid: a7c97896ce5d0bb4cbc0845fe8af10d5, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_03
+    overrideRole: 1
+    role: 2
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 7
+    overrideSkillCastRange: 1
+    skillCastRange: 7
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 5139868990943104237, guid: 168d597e9a5b83f4587123c262820aff, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 5096908605654639167, guid: fdb7b81e95962b3429611d526283618c, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 1521109657933210954, guid: 18b162e456ef6a74290e863252879673, type: 3}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_04
+    overrideRole: 1
+    role: 1
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 6
+    overrideSkillCastRange: 1
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 8193457148601542739, guid: 06bfec34be8416f47a0555415e7661f1, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 6080998317579377050, guid: d60c30e053fc63044b364dac4d6dc5be, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 7918178120073468780, guid: 8b785756b6282e44da1a0305019a1ea5, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 6080998317579377050, guid: d60c30e053fc63044b364dac4d6dc5be, type: 3}
+      muzzleEffectPrefab: {fileID: 4358013474831186087, guid: b0620044c540ca443ae7bc9e5deab9de, type: 3}
+      hitEffectPrefab: {fileID: 7918178120073468780, guid: 8b785756b6282e44da1a0305019a1ea5, type: 3}
+      areaEffectPrefab: {fileID: 4358013474831186087, guid: b0620044c540ca443ae7bc9e5deab9de, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_05
+    overrideRole: 1
+    role: 0
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 3
+    overrideSkillCastRange: 1
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 2236015219824370419, guid: eda3eea7cc3cca1428fd09f1314df0d9, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 3241652952125890121, guid: 4b28338e97c51ee4abe223c1978f7fab, type: 3}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 8094380257523392501, guid: c41bdcae56b241849a3df75993ab991d, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_06
+    overrideRole: 1
+    role: 0
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 3
+    overrideSkillCastRange: 1
+    skillCastRange: 3
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 1196083647342845688, guid: b53e360f7adb6904481122c07e92384a, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 1196083647342845688, guid: b53e360f7adb6904481122c07e92384a, type: 3}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_07
+    overrideRole: 1
+    role: 4
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 3
+    overrideSkillCastRange: 1
+    skillCastRange: 3
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 6545883978387454975, guid: e0b44492bfe70cf41840cfdf9de5d413, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 5002498375911049122, guid: 551b1510f724923469f5159c42606b6f, type: 3}
+      hitEffectPrefab: {fileID: 513020757141165063, guid: 309d2ad0d2038c24698a1152d4b48224, type: 3}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_08
+    overrideRole: 1
+    role: 2
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 5
+    overrideSkillCastRange: 1
+    skillCastRange: 3.2
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 1957756049334073540, guid: 56984ed231e508a4daf452368ca72a22, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 5060112530731873764, guid: 2e5cc98435aa3cf4fa44204cce654514, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 5060112530731873764, guid: 2e5cc98435aa3cf4fa44204cce654514, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 7759714603059692761, guid: d7f589f0c2624c94c8542fce57918c18, type: 3}
+      areaEffectPrefab: {fileID: 6629139989434466663, guid: 8e1b73d083c0e5042ab3689f60a02daf, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_09
+    overrideRole: 1
+    role: 0
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 4
+    overrideSkillCastRange: 1
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 5192290403881601165, guid: 1976c6dbb1ee6494abe66fc6f10b8165, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 7717192646790788650, guid: 0eff106843afcdf46abf042927f53459, type: 3}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_10
+    overrideRole: 1
+    role: 1
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 8
+    overrideSkillCastRange: 1
+    skillCastRange: 8
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 4123712066605458082, guid: 8f07bd89e36b47d4090a85433869b96f, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 688622261819960194, guid: a84ea71f41c4bc54ab3b8301c30ab230, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 941652218423937350, guid: 836ab953e5a93f142acb69a2847fc748, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 941652218423937350, guid: 836ab953e5a93f142acb69a2847fc748, type: 3}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 3517607748742827753, guid: c31fe59c9bb77c14499db59fb681bdfb, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_11
+    overrideRole: 1
+    role: 1
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 5.5
+    overrideSkillCastRange: 0
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 6110964953150727085, guid: 48bf6c3cba1d786408b64d16bb5022d2, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 2583949201902509210, guid: aaf73d112d39a9d429a711af2d802316, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 1687431257425473550, guid: 9d6a3ec05b020a2418a97976e64ec4fc, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 2912789642093924987, guid: c56d7c08f895ebc4b9612d71d280094d, type: 3}
+      hitEffectPrefab: {fileID: 8051187462890037330, guid: 47a91cdff3a1d0b44a8ecacb31772817, type: 3}
+      areaEffectPrefab: {fileID: 2912789642093924987, guid: c56d7c08f895ebc4b9612d71d280094d, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_12
+    overrideRole: 1
+    role: 4
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 2
+    overrideSkillCastRange: 1
+    skillCastRange: 3
+    overrideSplash: 1
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 6478028148373132289, guid: f7541584a9219034d8bd23882928c11a, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 6361103059183960065, guid: a72ca05d002ef4846bea35532a1f2929, type: 3}
+      hitEffectPrefab: {fileID: 6478028148373132289, guid: 43f04da5c37aaa54b828617ee28b1d7d, type: 3}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_13
+    overrideRole: 1
+    role: 3
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 5
+    overrideSkillCastRange: 0
+    skillCastRange: 5
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 795918745189752304, guid: 0b48d7eb315f1eb408bfd9625168f143, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 4929813003319606861, guid: 135dd70dfe82f074e9bb2654474a0245, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 2880977316027680477, guid: 15146e45642f1564da2d0ecdb9a673f1, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 9075994227333601772, guid: e93c626ef4d829743909be624a66e935, type: 3}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 9097292879846154993, guid: c04949deb97f790478d17eb6a1314de7, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_14
+    overrideRole: 1
+    role: 3
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 3
+    overrideSkillCastRange: 0
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 2878961411126149619, guid: 902ec568a3cebf7459896dd8b1cdad96, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 3433668108648505631, guid: d30dc8034a2517e4bb0db8dcac9175b1, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_14_skill_01
+      displayName: "\uAC00\uC18D\uC758 \uBE5B"
+      description: "\uC0AC\uAC70\uB9AC \uC548\uC5D0 \uC788\uB294 \uC544\uAD70\uC758
+        \uACF5\uACA9\uC18D\uB3C4\uB97C 5\uCD08 \uB3D9\uC548 30% \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."
+      effectType: 38
+      category: 3
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 0.3
+      secondaryPower: 0
+      duration: 5
+      radius: 3
+      manaThreshold: 90
+      cooldown: 10
+      hitCount: 1
+      growthTargets: 1
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 7428249286968066296, guid: 6d683fe652622b14c894f07e7906bd63, type: 3}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 3866142588414677495, guid: e60792b78de420147ad6aecbe7428410, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_21
+    overrideRole: 1
+    role: 5
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 6
+    overrideSkillCastRange: 1
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 5480369419394824163, guid: f35a20d666333764a8694250cd0cac90, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 2472058110131124217, guid: 7919004bab0768b448acad60aa8700a9, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 3331594667336130893, guid: 8fcf68e0f7d558a459f48fe1d49d2eba, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 2472058110131124217, guid: 7919004bab0768b448acad60aa8700a9, type: 3}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 2467151991122253496, guid: 1dc77b1a20f11e14eb7fe985040fc66e, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_22
+    overrideRole: 1
+    role: 0
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 3
+    overrideSkillCastRange: 1
+    skillCastRange: 5
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 68133718819355833, guid: 79da7a83122bb214b8d6e8af45ece2ad, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 2108216419691438617, guid: fcfd61d328b54ab408ed2f2499715c05, type: 3}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 6264249921561020735, guid: 1ed84d10f6936034dbbff0e3dcd48805, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_23
+    overrideRole: 1
+    role: 4
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 4
+    overrideSkillCastRange: 1
+    skillCastRange: 4
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 8511648406406098129, guid: e0c5dc4e3d90bfa48bed1b5b3ad51a9b, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 4284909866767318013, guid: 016b24b6d0592164183e3b3d1d6f940b, type: 3}
+      hitEffectPrefab: {fileID: 1590785809353625568, guid: a7d204c674b4f2d44b6b5de1120acf76, type: 3}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_31
+    overrideRole: 1
+    role: 0
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 3
+    overrideSkillCastRange: 1
+    skillCastRange: 4
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 6609002909809982786, guid: 401a7afeebf35934996d6d260e4d4a49, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 3396317813641642181, guid: ae540cdfaaf2fe04cb1e695ff81e2bdb, type: 3}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_32
+    overrideRole: 1
+    role: 1
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 6
+    overrideSkillCastRange: 1
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 5480369419394824163, guid: f35a20d666333764a8694250cd0cac90, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 2472058110131124217, guid: 7919004bab0768b448acad60aa8700a9, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 3331594667336130893, guid: 8fcf68e0f7d558a459f48fe1d49d2eba, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_33
+    overrideRole: 1
+    role: 0
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 2.4
+    overrideSkillCastRange: 0
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 3970747301191373537, guid: c683dfc8a707ec44f8f0d782c6fb5e85, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_33_skill_01
+      displayName: "\uCD5C\uD6C4\uC758 \uB9F9\uB3C5"
+      description: "\uC8FD\uC744 \uB54C \uC804\uBC29\uC5D0 10\uCD08 \uB3D9\uC548
+        \uB3C5\uADF9\uBB3C \uC9C0\uB300\uB97C \uB9CC\uB4E4\uC5B4 \uCD08\uB2F9 80
+        \uD53C\uD574\uB97C \uC90D\uB2C8\uB2E4."
+      effectType: 37
+      category: 7
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 80
+      secondaryPower: 1
+      duration: 10
+      radius: 3
+      manaThreshold: 100
+      cooldown: 0
+      hitCount: 1
+      growthTargets: 1
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 9207456629344126583, guid: c29b6c0ff641e994bbbace65e353d26e, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_51
+    overrideRole: 1
+    role: 1
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 8
+    overrideSkillCastRange: 1
+    skillCastRange: 8
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 2560690855817200390, guid: 405247fb50345b74cb6de7fa56815ea7, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 44838360197815010, guid: 1b151ff074955d64db0bc8130d212052, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 4482873869427323944, guid: 3670cd243b133a24693099828eeed97d, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 44838360197815010, guid: 1b151ff074955d64db0bc8130d212052, type: 3}
+      hitEffectPrefab: {fileID: 4482873869427323944, guid: 3670cd243b133a24693099828eeed97d, type: 3}
+      areaEffectPrefab: {fileID: 8873209867236434821, guid: bd4f778d458560f40a1f1a2dc980dd06, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_52
+    overrideRole: 1
+    role: 2
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 8
+    overrideSkillCastRange: 1
+    skillCastRange: 10
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 6710179528171993193, guid: a1549fe790866c049a4c29768112c252, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 2039279403950578994, guid: 923e84a1a5b105644a6cdefb76ce7f81, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 346963227131980362, guid: 9ce55f744c9bead49a25cce149647848, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 3400458060214194211, guid: 5fe9b661ed0264940bcc288ab93a69f9, type: 3}
+      muzzleEffectPrefab: {fileID: 5201301169272625893, guid: e039c9c892a60e34ca7d54897f9da2c3, type: 3}
+      hitEffectPrefab: {fileID: 346963227131980362, guid: 9ce55f744c9bead49a25cce149647848, type: 3}
+      areaEffectPrefab: {fileID: 6341205295009172922, guid: bea4a12093e1b2445bd398f04faace16, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_53
+    overrideRole: 1
+    role: 1
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 6
+    overrideSkillCastRange: 1
+    skillCastRange: 6
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 7160089538264442003, guid: ddebeb7a2244fb7439a1a304be9addc6, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 2061084573129067699, guid: ece252818b892a047b386ab593533e53, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 3373442948179709132, guid: 27a75df83a1a3554eb1e04131812e3f4, type: 3}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 3373442948179709132, guid: 27a75df83a1a3554eb1e04131812e3f4, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_54
+    overrideRole: 1
+    role: 0
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 4
+    overrideSkillCastRange: 1
+    skillCastRange: 5
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 2031778079897192180, guid: 6d6f76f44378ed9449fac257ab4bb0b3, type: 3}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 5034280653795874719, guid: 713e31b1a62c2b24e8b736cfd5a84e80, type: 3}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 2253587756767277554, guid: 4fd97df0deb65e145985a69d8db306dc, type: 3}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_55
+    overrideRole: 1
+    role: 0
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideBasicAttackRange: 1
+    basicAttackRange: 2.8
+    overrideSkillCastRange: 1
+    skillCastRange: 3.4
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 0}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_56
+    overrideRole: 1
+    role: 1
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 9.5
+    overrideSkillCastRange: 1
+    skillCastRange: 9.5
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 0}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 8193457148601542739, guid: 06bfec34be8416f47a0555415e7661f1, type: 3}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+  - characterId: hero_57
+    overrideRole: 1
+    role: 1
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideBasicAttackRange: 1
+    basicAttackRange: 9
+    overrideSkillCastRange: 1
+    skillCastRange: 9
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 8193457148601542739, guid: 06bfec34be8416f47a0555415e7661f1, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 0}
+    overrideSkill01: 0
+    skill01:
+      id: hero_skill_01
+      displayName: Skill 01
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill02: 0
+    skill02:
+      id: hero_skill_02
+      displayName: Skill 02
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}
+    overrideSkill03: 0
+    skill03:
+      id: hero_skill_03
+      displayName: Skill 03
+      description: Directly tunable skill slot.
+      effectType: 0
+      category: 1
+      deliveryType: 0
+      useCustomCastRange: 0
+      castRange: 6
+      power: 1
+      secondaryPower: 0.35
+      duration: 3
+      radius: 2.5
+      manaThreshold: 100
+      cooldown: 4
+      hitCount: 1
+      growthTargets: 0
+      growthStepRatio: 0.05
+      projectilePrefab: {fileID: 0}
+      muzzleEffectPrefab: {fileID: 0}
+      hitEffectPrefab: {fileID: 0}
+      areaEffectPrefab: {fileID: 0}

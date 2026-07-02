@@ -1,0 +1,171 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="d_bg" x1="140" y1="40" x2="1470" y2="860" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#B5F0FF"/>
+      <stop offset="0.52" stop-color="#8CD7FF"/>
+      <stop offset="1" stop-color="#78B8FF"/>
+    </linearGradient>
+    <linearGradient id="d_panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#EAF7FF" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="d_teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#58E6D2"/>
+      <stop offset="1" stop-color="#3CC3FF"/>
+    </linearGradient>
+    <linearGradient id="d_coral" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF9B8A"/>
+      <stop offset="1" stop-color="#FF6F94"/>
+    </linearGradient>
+    <linearGradient id="d_yellow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFE98C"/>
+      <stop offset="1" stop-color="#FFBF54"/>
+    </linearGradient>
+    <filter id="d_shadow" x="-50" y="-50" width="1700" height="1000" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#2F6CA9" flood-opacity="0.22"/>
+    </filter>
+    <filter id="d_soft" x="-80" y="-80" width="340" height="340" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="40"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" rx="32" fill="url(#d_bg)"/>
+  <circle cx="220" cy="160" r="90" fill="#FFFFFF" fill-opacity="0.45" filter="url(#d_soft)"/>
+  <circle cx="1280" cy="180" r="110" fill="#FFFFFF" fill-opacity="0.35" filter="url(#d_soft)"/>
+  <circle cx="1380" cy="710" r="100" fill="#A8F8E9" fill-opacity="0.34" filter="url(#d_soft)"/>
+
+  <g opacity="0.88">
+    <ellipse cx="180" cy="128" rx="74" ry="28" fill="#FFFFFF"/>
+    <ellipse cx="242" cy="132" rx="50" ry="22" fill="#FFFFFF"/>
+    <ellipse cx="1336" cy="146" rx="88" ry="32" fill="#FFFFFF"/>
+    <ellipse cx="1410" cy="154" rx="56" ry="24" fill="#FFFFFF"/>
+  </g>
+
+  <g filter="url(#d_shadow)">
+    <rect x="38" y="34" width="1524" height="114" rx="34" fill="#F8FDFF" fill-opacity="0.72"/>
+    <rect x="64" y="52" width="180" height="76" rx="26" fill="url(#d_panel)"/>
+    <rect x="258" y="52" width="160" height="76" rx="26" fill="url(#d_panel)"/>
+    <rect x="432" y="52" width="180" height="76" rx="26" fill="url(#d_panel)"/>
+    <rect x="630" y="52" width="410" height="76" rx="26" fill="url(#d_panel)"/>
+    <rect x="1060" y="52" width="174" height="76" rx="26" fill="url(#d_teal)"/>
+    <rect x="1250" y="52" width="134" height="76" rx="26" fill="#F6FBFF"/>
+    <rect x="1398" y="52" width="134" height="76" rx="26" fill="url(#d_coral)"/>
+  </g>
+
+  <text x="74" y="24" fill="#FFFFFF" font-family="Poppins, Noto Sans KR, sans-serif" font-size="22" font-weight="700">Casual Direction</text>
+  <text x="74" y="46" fill="#E9FBFF" font-family="Noto Sans KR, sans-serif" font-size="18">더 밝고 말랑한 모바일 캐주얼 톤으로 다시 잡은 인게임 HUD</text>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif">
+    <text x="86" y="82" fill="#57A8CC" font-size="15" font-weight="700">ROUND</text>
+    <text x="86" y="112" fill="#134B73" font-size="36" font-weight="700">12-3</text>
+
+    <text x="280" y="82" fill="#57A8CC" font-size="15" font-weight="700">LIFE</text>
+    <text x="280" y="112" fill="#134B73" font-size="36" font-weight="700">17</text>
+
+    <text x="454" y="82" fill="#57A8CC" font-size="15" font-weight="700">GOLD</text>
+    <text x="454" y="112" fill="#C7771E" font-size="36" font-weight="700">128</text>
+
+    <text x="654" y="82" fill="#57A8CC" font-size="15" font-weight="700">BOSS TIMER</text>
+    <rect x="654" y="96" width="322" height="14" rx="7" fill="#DCEFFF"/>
+    <rect x="654" y="96" width="236" height="14" rx="7" fill="url(#d_teal)"/>
+    <circle cx="910" cy="103" r="20" fill="url(#d_coral)"/>
+    <text x="895" y="108" fill="#FFFFFF" font-size="15" font-weight="700">24s</text>
+
+    <text x="1147" y="82" text-anchor="middle" fill="#0D5672" font-size="15" font-weight="700">MAIN</text>
+    <text x="1147" y="112" text-anchor="middle" fill="#0E4B66" font-size="32" font-weight="700">소환</text>
+
+    <text x="1317" y="82" text-anchor="middle" fill="#5B9CC3" font-size="15" font-weight="700">AUTO</text>
+    <text x="1317" y="112" text-anchor="middle" fill="#23506F" font-size="30" font-weight="700">합성</text>
+
+    <text x="1465" y="82" text-anchor="middle" fill="#FFF0F5" font-size="15" font-weight="700">ALERT</text>
+    <text x="1465" y="112" text-anchor="middle" fill="#FFFFFF" font-size="30" font-weight="700">보스</text>
+  </g>
+
+  <g filter="url(#d_shadow)">
+    <rect x="54" y="174" width="1080" height="522" rx="40" fill="#F4FBFF" fill-opacity="0.72"/>
+    <rect x="1154" y="174" width="392" height="522" rx="40" fill="#F4FBFF" fill-opacity="0.72"/>
+    <rect x="54" y="722" width="1492" height="138" rx="40" fill="#F4FBFF" fill-opacity="0.72"/>
+  </g>
+
+  <g filter="url(#d_shadow)">
+    <rect x="86" y="210" width="1016" height="448" rx="34" fill="#C7F1FF" fill-opacity="0.50"/>
+    <rect x="114" y="240" width="210" height="346" rx="30" fill="#FFFFFF" fill-opacity="0.70"/>
+    <rect x="344" y="240" width="210" height="346" rx="30" fill="#FFFFFF" fill-opacity="0.70"/>
+    <rect x="574" y="240" width="210" height="346" rx="30" fill="#FFFFFF" fill-opacity="0.70"/>
+    <rect x="804" y="240" width="210" height="346" rx="30" fill="#FFFFFF" fill-opacity="0.70"/>
+    <rect x="114" y="600" width="900" height="28" rx="14" fill="#E0F2FF"/>
+    <rect x="406" y="256" width="328" height="58" rx="24" fill="#FFF4F7" stroke="#FF97AF" stroke-width="2"/>
+    <rect x="424" y="273" width="98" height="24" rx="12" fill="url(#d_coral)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif">
+    <text x="454" y="290" text-anchor="middle" fill="#FFFFFF" font-size="15" font-weight="700">BOSS WAVE</text>
+    <text x="538" y="291" fill="#6A5164" font-size="20" font-weight="700">마법사 타워가 곧 등장해요!</text>
+
+    <text x="142" y="276" fill="#64A6C8" font-size="15" font-weight="700">LANE A</text>
+    <text x="372" y="276" fill="#64A6C8" font-size="15" font-weight="700">LANE B</text>
+    <text x="602" y="276" fill="#64A6C8" font-size="15" font-weight="700">LANE C</text>
+    <text x="832" y="276" fill="#64A6C8" font-size="15" font-weight="700">LANE D</text>
+  </g>
+
+  <g opacity="0.92">
+    <circle cx="219" cy="412" r="38" fill="url(#d_yellow)"/>
+    <circle cx="449" cy="412" r="38" fill="#7BC6FF"/>
+    <circle cx="679" cy="412" r="38" fill="#61E4C2"/>
+    <circle cx="909" cy="412" r="38" fill="#FF8EA3"/>
+  </g>
+
+  <g filter="url(#d_shadow)">
+    <rect x="1188" y="208" width="324" height="120" rx="30" fill="#FFFFFF" fill-opacity="0.82"/>
+    <rect x="1188" y="348" width="324" height="132" rx="30" fill="#FFFFFF" fill-opacity="0.82"/>
+    <rect x="1188" y="500" width="324" height="164" rx="30" fill="#FFFFFF" fill-opacity="0.82"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif">
+    <text x="1218" y="246" fill="#63A8C7" font-size="15" font-weight="700">POWER BONUS</text>
+    <text x="1218" y="286" fill="#184C6E" font-size="42" font-weight="700">4,820</text>
+    <text x="1218" y="312" fill="#537693" font-size="18">광역 + 공속 시너지 활성</text>
+
+    <text x="1218" y="386" fill="#63A8C7" font-size="15" font-weight="700">MANA JUICE</text>
+    <rect x="1218" y="402" width="246" height="16" rx="8" fill="#DBEEFF"/>
+    <rect x="1218" y="402" width="190" height="16" rx="8" fill="url(#d_teal)"/>
+    <text x="1218" y="446" fill="#184C6E" font-size="34" font-weight="700">스킬 준비 완료!</text>
+    <text x="1218" y="470" fill="#537693" font-size="18">지원, 번개, 바람 다이스 대기 중</text>
+
+    <text x="1218" y="538" fill="#FF8DA3" font-size="15" font-weight="700">TODAY'S TIP</text>
+    <text x="1218" y="580" fill="#184C6E" font-size="34" font-weight="700">희귀 합성 먼저</text>
+    <text x="1218" y="608" fill="#537693" font-size="18">중장갑 몬스터 대비용으로 추천돼요</text>
+    <rect x="1218" y="624" width="246" height="22" rx="11" fill="#E8F7FF"/>
+    <rect x="1218" y="624" width="196" height="22" rx="11" fill="url(#d_teal)"/>
+  </g>
+
+  <g filter="url(#d_shadow)">
+    <rect x="84" y="748" width="176" height="84" rx="30" fill="#FFFFFF" fill-opacity="0.82"/>
+    <rect x="278" y="748" width="176" height="84" rx="30" fill="#FFFFFF" fill-opacity="0.82"/>
+    <rect x="472" y="748" width="176" height="84" rx="30" fill="#FFFFFF" fill-opacity="0.82"/>
+    <rect x="666" y="748" width="176" height="84" rx="30" fill="#FFFFFF" fill-opacity="0.82"/>
+    <rect x="860" y="748" width="176" height="84" rx="30" fill="#FFFFFF" fill-opacity="0.82"/>
+    <rect x="1080" y="742" width="184" height="94" rx="34" fill="#FFFFFF" fill-opacity="0.82"/>
+    <rect x="1288" y="742" width="218" height="94" rx="34" fill="url(#d_teal)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif">
+    <text x="106" y="783" fill="#184C6E" font-size="22" font-weight="700">화염</text>
+    <text x="300" y="783" fill="#184C6E" font-size="22" font-weight="700">빙결</text>
+    <text x="494" y="783" fill="#184C6E" font-size="22" font-weight="700">바람</text>
+    <text x="688" y="783" fill="#184C6E" font-size="22" font-weight="700">보호막</text>
+    <text x="882" y="783" fill="#184C6E" font-size="22" font-weight="700">지원</text>
+
+    <text x="106" y="812" fill="#E18E42" font-size="16" font-weight="700">LEGENDARY 2/3</text>
+    <text x="300" y="812" fill="#5EAAFF" font-size="16" font-weight="700">EPIC 1/3</text>
+    <text x="494" y="812" fill="#47C9A8" font-size="16" font-weight="700">EPIC 2/3</text>
+    <text x="688" y="812" fill="#FF8EA3" font-size="16" font-weight="700">RARE 3/3</text>
+    <text x="882" y="812" fill="#58B7D6" font-size="16" font-weight="700">RARE 1/3</text>
+
+    <text x="1172" y="780" text-anchor="middle" fill="#5EA7CB" font-size="15" font-weight="700">AUTO SKILL</text>
+    <text x="1172" y="815" text-anchor="middle" fill="#184C6E" font-size="28" font-weight="700">ON</text>
+
+    <text x="1397" y="780" text-anchor="middle" fill="#0C5972" font-size="15" font-weight="700">MAIN ACTION</text>
+    <text x="1397" y="815" text-anchor="middle" fill="#0A4E63" font-size="30" font-weight="700">소환 x10</text>
+  </g>
+</svg>

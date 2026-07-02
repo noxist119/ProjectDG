@@ -1,0 +1,280 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb89fe4e64bda614d88f86c99f211942, type: 3}
+  m_Name: MonsterCombatTuningConfig
+  m_EditorClassIdentifier: 
+  defaultBossSkillCastEffectPrefab: {fileID: 216071063587088953, guid: 2eee76fa5fd86b2469a0aaa997759bf4, type: 3}
+  defaultBossSkillHitEffectPrefab: {fileID: 9022636855794146652, guid: 6a6746af6956701489148222ca915885, type: 3}
+  defaultBossSkillAreaEffectPrefab: {fileID: 7727211166305907015, guid: c552d04b64b124b44b258ac6dd13c776, type: 3}
+  defaultBossSkillBuffEffectPrefab: {fileID: 3310089931149669754, guid: 233d986b0e8051044bc406f4028fc028, type: 3}
+  entries:
+  - monsterId: mob_01
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideAttackRange: 1
+    attackRange: 2.6
+    overrideProjectileSpeed: 0
+    projectileSpeed: 8
+    overrideMoveSpeed: 1
+    moveSpeed: 1.15
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 1867004809648363667, guid: f8e91a298c616df42b179351337db6e0, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 6534055518381600651, guid: 158e9be2501871748ba8c0880832407e, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 2381221871478740106, guid: 0288ede2ccc30e043965fb377274b26f, type: 3}
+    skill01HitEffectPrefab: {fileID: 7727211166305907015, guid: c552d04b64b124b44b258ac6dd13c776, type: 3}
+    skill01AreaEffectPrefab: {fileID: 7727211166305907015, guid: c552d04b64b124b44b258ac6dd13c776, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 2381221871478740106, guid: 0288ede2ccc30e043965fb377274b26f, type: 3}
+    skill02HitEffectPrefab: {fileID: 8922403831937086420, guid: 6de5f823ee313d04589447a92a156c94, type: 3}
+    skill02AreaEffectPrefab: {fileID: 3310089931149669754, guid: 233d986b0e8051044bc406f4028fc028, type: 3}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}
+  - monsterId: mob_02
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideAttackRange: 1
+    attackRange: 1.8
+    overrideProjectileSpeed: 0
+    projectileSpeed: 8
+    overrideMoveSpeed: 1
+    moveSpeed: 1.8
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 7397703463968734916, guid: 253c76503385c2a4c9fb05a51c8125cc, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 7397703463968734916, guid: 253c76503385c2a4c9fb05a51c8125cc, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 2307518005921512091, guid: 2c97edd2d88141c45a04173f2d71620c, type: 3}
+    skill01HitEffectPrefab: {fileID: 2307518005921512091, guid: 2c97edd2d88141c45a04173f2d71620c, type: 3}
+    skill01AreaEffectPrefab: {fileID: 2307518005921512091, guid: 2c97edd2d88141c45a04173f2d71620c, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 0}
+    skill02HitEffectPrefab: {fileID: 0}
+    skill02AreaEffectPrefab: {fileID: 0}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}
+  - monsterId: mob_03
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideAttackRange: 1
+    attackRange: 1.9
+    overrideProjectileSpeed: 0
+    projectileSpeed: 8
+    overrideMoveSpeed: 1
+    moveSpeed: 0.9
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 2367681456742369808, guid: 4b994750aa5e1c448831938fb78b36dc, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 2367681456742369808, guid: 4b994750aa5e1c448831938fb78b36dc, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 7149485859851509034, guid: 612896c08b8bbfb43a8c2eb0e7290d4a, type: 3}
+    skill01HitEffectPrefab: {fileID: 7149485859851509034, guid: 612896c08b8bbfb43a8c2eb0e7290d4a, type: 3}
+    skill01AreaEffectPrefab: {fileID: 7149485859851509034, guid: 612896c08b8bbfb43a8c2eb0e7290d4a, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 0}
+    skill02HitEffectPrefab: {fileID: 0}
+    skill02AreaEffectPrefab: {fileID: 0}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}
+  - monsterId: mob_04
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideAttackRange: 1
+    attackRange: 2.4
+    overrideProjectileSpeed: 0
+    projectileSpeed: 8
+    overrideMoveSpeed: 1
+    moveSpeed: 1.1
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 0}
+    basicAttackHitEffectPrefab: {fileID: 7402591817197635255, guid: 2cf1c07c0158509499f402fe731a0a6f, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 7047432137248645906, guid: 2e1544ea80ce3754b9f78f9ffc97fbf2, type: 3}
+    skill01HitEffectPrefab: {fileID: 7447634073458868082, guid: 05bb78fe2b217f44eb84aa4e423e0c4c, type: 3}
+    skill01AreaEffectPrefab: {fileID: 7047432137248645906, guid: 2e1544ea80ce3754b9f78f9ffc97fbf2, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 4602219590642491553, guid: 5d7dd13c1b965d344879b99d57930746, type: 3}
+    skill02HitEffectPrefab: {fileID: 127854337549858097, guid: 1e7e27840e22ede429e0b9b6cdd5c5d5, type: 3}
+    skill02AreaEffectPrefab: {fileID: 2608399058153028090, guid: cd960dee589b92440baa687f81156cc3, type: 3}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}
+  - monsterId: mob_05
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideAttackRange: 1
+    attackRange: 6
+    overrideProjectileSpeed: 1
+    projectileSpeed: 9.5
+    overrideMoveSpeed: 1
+    moveSpeed: 1.35
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 4381565710671466939, guid: 283c4c3160aefed4999d2df2b48f4e21, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 6599512078471435609, guid: d9a30bd0082cfe84c90a0b2e78cb87e4, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 3686056588936982021, guid: af35ede0939d9a54098549e5a75c8a31, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 8517837873285079763, guid: ad5b6e09198b67542a59ec31839fb305, type: 3}
+    skill01HitEffectPrefab: {fileID: 3686056588936982021, guid: af35ede0939d9a54098549e5a75c8a31, type: 3}
+    skill01AreaEffectPrefab: {fileID: 725733142018496468, guid: 9c832c2f5c5110d4f9a3f6d4cf9f19d9, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 0}
+    skill02HitEffectPrefab: {fileID: 0}
+    skill02AreaEffectPrefab: {fileID: 0}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}
+  - monsterId: mob_06
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideAttackRange: 1
+    attackRange: 1.8
+    overrideProjectileSpeed: 0
+    projectileSpeed: 8
+    overrideMoveSpeed: 1
+    moveSpeed: 1.2
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 3483995344892350475, guid: 808ff8f0a187a1b4cb60b8e0fdc85ade, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 3483995344892350475, guid: 808ff8f0a187a1b4cb60b8e0fdc85ade, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 407012632219863524, guid: 7ca0a1c35dbd9ef47823d56855297299, type: 3}
+    skill01HitEffectPrefab: {fileID: 3621501471247309826, guid: 984eb45f7549c55439dc39dcdf0aad12, type: 3}
+    skill01AreaEffectPrefab: {fileID: 3621501471247309826, guid: 984eb45f7549c55439dc39dcdf0aad12, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 0}
+    skill02HitEffectPrefab: {fileID: 0}
+    skill02AreaEffectPrefab: {fileID: 0}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}
+  - monsterId: mob_07
+    overrideBasicAttackType: 1
+    basicAttackType: 1
+    overrideAttackRange: 1
+    attackRange: 5.5
+    overrideProjectileSpeed: 1
+    projectileSpeed: 8.5
+    overrideMoveSpeed: 1
+    moveSpeed: 1.9
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 5313154827975024615, guid: d22db5b1a1c641b48833316321889f63, type: 3}
+    basicAttackMuzzleEffectPrefab: {fileID: 6060275283647094806, guid: 4e0c651ededf4e44faeaf76347332138, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 7166960237158115521, guid: 11d1dda4ad2e83b4ca14e35b06ec9970, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 601719191036440151, guid: 70399f25128ad064da5e63e77cd45bf7, type: 3}
+    skill01HitEffectPrefab: {fileID: 1723353008260530891, guid: 68e23a9b692253f4d8ef83385c3cfb60, type: 3}
+    skill01AreaEffectPrefab: {fileID: 463065645093586908, guid: ba73e14bd9553714c91683662338716e, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 216071063587088953, guid: 2eee76fa5fd86b2469a0aaa997759bf4, type: 3}
+    skill02HitEffectPrefab: {fileID: 9022636855794146652, guid: 6a6746af6956701489148222ca915885, type: 3}
+    skill02AreaEffectPrefab: {fileID: 1467080047196924948, guid: 107f2398eb5dcee4eaf0e109a8f2c43e, type: 3}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 3836686415090640846, guid: b90d19a40fe82eb41a7829f1eee30779, type: 3}
+    skill03HitEffectPrefab: {fileID: 8839644433024613703, guid: c2361221c4fd8b3478cf7df839a6026c, type: 3}
+    skill03AreaEffectPrefab: {fileID: 1467080047196924948, guid: 107f2398eb5dcee4eaf0e109a8f2c43e, type: 3}
+  - monsterId: mob_08
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideAttackRange: 1
+    attackRange: 1.5
+    overrideProjectileSpeed: 0
+    projectileSpeed: 8
+    overrideMoveSpeed: 1
+    moveSpeed: 0.95
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 1708027619817187095, guid: f139b981ac65e70479786303742ed244, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 4880377585569601787, guid: c494b6dbfc87d9e4f985daaa34871d24, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 519937183115742036, guid: 6acccc52d9b06ea4dafc80c76231c699, type: 3}
+    skill01HitEffectPrefab: {fileID: 519937183115742036, guid: 6acccc52d9b06ea4dafc80c76231c699, type: 3}
+    skill01AreaEffectPrefab: {fileID: 4937605765554024265, guid: 29d63f3e78620c741a80eedfc4f5ae97, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 0}
+    skill02HitEffectPrefab: {fileID: 0}
+    skill02AreaEffectPrefab: {fileID: 0}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}
+  - monsterId: mob_09
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideAttackRange: 1
+    attackRange: 1.8
+    overrideProjectileSpeed: 0
+    projectileSpeed: 8
+    overrideMoveSpeed: 1
+    moveSpeed: 1.12
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 3870758369733712019, guid: 3b37de978007f6d41ae20acb25701fae, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 6048359221435449304, guid: d8971f5119c6fc84bac0d51834fd1c50, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 6048359221435449304, guid: d8971f5119c6fc84bac0d51834fd1c50, type: 3}
+    skill01HitEffectPrefab: {fileID: 6048359221435449304, guid: d8971f5119c6fc84bac0d51834fd1c50, type: 3}
+    skill01AreaEffectPrefab: {fileID: 4948002573597895689, guid: a7c154696f8aef54d92dd3e4f45b72d4, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 0}
+    skill02HitEffectPrefab: {fileID: 0}
+    skill02AreaEffectPrefab: {fileID: 0}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}

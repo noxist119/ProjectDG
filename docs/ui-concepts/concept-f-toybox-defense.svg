@@ -1,0 +1,175 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="f_bg" x1="120" y1="40" x2="1480" y2="860" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#AEE8FF"/>
+      <stop offset="0.45" stop-color="#8CD4FF"/>
+      <stop offset="1" stop-color="#89C3FF"/>
+    </linearGradient>
+    <linearGradient id="f_ground" x1="800" y1="520" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9BE08C"/>
+      <stop offset="1" stop-color="#74C965"/>
+    </linearGradient>
+    <linearGradient id="f_cream" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#F4F0E7"/>
+    </linearGradient>
+    <linearGradient id="f_gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFD972"/>
+      <stop offset="1" stop-color="#F3A93B"/>
+    </linearGradient>
+    <linearGradient id="f_orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFA86B"/>
+      <stop offset="1" stop-color="#FF7B47"/>
+    </linearGradient>
+    <linearGradient id="f_blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#61E1FF"/>
+      <stop offset="1" stop-color="#4B98FF"/>
+    </linearGradient>
+    <linearGradient id="f_pink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF9ED4"/>
+      <stop offset="1" stop-color="#FF6EA5"/>
+    </linearGradient>
+    <filter id="f_shadow" x="-60" y="-60" width="1720" height="1020" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#5A8FBF" flood-opacity="0.30"/>
+    </filter>
+    <filter id="f_soft" x="-120" y="-120" width="420" height="420" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="50"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" rx="30" fill="url(#f_bg)"/>
+  <rect y="600" width="1600" height="300" fill="url(#f_ground)"/>
+  <circle cx="132" cy="140" r="74" fill="#FFFFFF" fill-opacity="0.42" filter="url(#f_soft)"/>
+  <circle cx="1386" cy="162" r="92" fill="#FFFFFF" fill-opacity="0.28" filter="url(#f_soft)"/>
+
+  <g opacity="0.95">
+    <ellipse cx="200" cy="118" rx="90" ry="34" fill="#FFFFFF"/>
+    <ellipse cx="274" cy="126" rx="54" ry="26" fill="#FFFFFF"/>
+    <ellipse cx="1290" cy="134" rx="86" ry="30" fill="#FFFFFF"/>
+    <ellipse cx="1356" cy="142" rx="50" ry="24" fill="#FFFFFF"/>
+  </g>
+
+  <g filter="url(#f_shadow)">
+    <rect x="34" y="30" width="1532" height="118" rx="38" fill="#D8F2FF"/>
+    <rect x="44" y="40" width="1512" height="98" rx="34" fill="url(#f_cream)" stroke="#C3E4FF" stroke-width="4"/>
+    <rect x="66" y="54" width="188" height="70" rx="28" fill="#F8FBFF" stroke="#D4E8FF" stroke-width="3"/>
+    <rect x="268" y="54" width="158" height="70" rx="28" fill="#F8FBFF" stroke="#D4E8FF" stroke-width="3"/>
+    <rect x="440" y="54" width="176" height="70" rx="28" fill="#FFF9EC" stroke="#F1D082" stroke-width="3"/>
+    <rect x="634" y="54" width="434" height="70" rx="28" fill="#F8FBFF" stroke="#D4E8FF" stroke-width="3"/>
+    <rect x="1088" y="54" width="174" height="70" rx="28" fill="url(#f_blue)"/>
+    <rect x="1278" y="54" width="118" height="70" rx="28" fill="#F8FBFF" stroke="#D4E8FF" stroke-width="3"/>
+    <rect x="1410" y="54" width="124" height="70" rx="28" fill="url(#f_orange)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="86" y="82" fill="#5A9FD0" font-size="14">ROUND</text>
+    <text x="86" y="110" fill="#1D4B72" font-size="34" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">12-3</text>
+    <text x="288" y="82" fill="#5A9FD0" font-size="14">LIFE</text>
+    <text x="288" y="110" fill="#1D4B72" font-size="34" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">17</text>
+    <text x="460" y="82" fill="#C88B28" font-size="14">GOLD</text>
+    <text x="460" y="110" fill="#C77517" font-size="34" stroke="#FFF9EA" stroke-width="4" paint-order="stroke">128</text>
+    <text x="654" y="82" fill="#5A9FD0" font-size="14">BOSS TIMER</text>
+    <rect x="654" y="95" width="330" height="14" rx="7" fill="#D8EAFB"/>
+    <rect x="654" y="95" width="224" height="14" rx="7" fill="url(#f_pink)"/>
+    <circle cx="905" cy="102" r="22" fill="url(#f_orange)"/>
+    <text x="887" y="108" fill="#FFF8F0" font-size="15">24s</text>
+    <text x="1175" y="79" text-anchor="middle" fill="#EAFBFF" font-size="13">MAIN</text>
+    <text x="1175" y="111" text-anchor="middle" fill="#F4FDFF" font-size="30" stroke="#2F7ACC" stroke-width="2" paint-order="stroke">소환</text>
+    <text x="1337" y="79" text-anchor="middle" fill="#5A9FD0" font-size="13">AUTO</text>
+    <text x="1337" y="111" text-anchor="middle" fill="#235478" font-size="28" stroke="#FFFFFF" stroke-width="3" paint-order="stroke">합성</text>
+    <text x="1472" y="79" text-anchor="middle" fill="#FFF3EA" font-size="13">BOSS</text>
+    <text x="1472" y="111" text-anchor="middle" fill="#FFFFFF" font-size="28" stroke="#D75F2F" stroke-width="2" paint-order="stroke">경고</text>
+  </g>
+
+  <g filter="url(#f_shadow)">
+    <rect x="44" y="160" width="1088" height="548" rx="46" fill="#E2F4FF"/>
+    <rect x="56" y="172" width="1064" height="522" rx="40" fill="url(#f_cream)" stroke="#B7DCFF" stroke-width="5"/>
+    <rect x="1150" y="160" width="406" height="548" rx="46" fill="#E2F4FF"/>
+    <rect x="1162" y="172" width="382" height="522" rx="40" fill="url(#f_cream)" stroke="#B7DCFF" stroke-width="5"/>
+  </g>
+
+  <g filter="url(#f_shadow)">
+    <rect x="86" y="204" width="1004" height="456" rx="34" fill="#D6F2FF"/>
+    <rect x="100" y="218" width="976" height="428" rx="30" fill="#A8E3FF"/>
+    <rect x="124" y="246" width="202" height="310" rx="30" fill="#FFF9EE" stroke="#DCC28A" stroke-width="4"/>
+    <rect x="352" y="246" width="202" height="310" rx="30" fill="#FFF9EE" stroke="#DCC28A" stroke-width="4"/>
+    <rect x="580" y="246" width="202" height="310" rx="30" fill="#FFF9EE" stroke="#DCC28A" stroke-width="4"/>
+    <rect x="808" y="246" width="202" height="310" rx="30" fill="#FFF9EE" stroke="#DCC28A" stroke-width="4"/>
+    <rect x="120" y="582" width="894" height="30" rx="15" fill="#E6EFF8"/>
+    <rect x="368" y="230" width="364" height="64" rx="26" fill="#FFF4F7" stroke="#FF9FB6" stroke-width="4"/>
+    <rect x="392" y="247" width="120" height="28" rx="14" fill="url(#f_pink)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="150" y="278" fill="#6EA3C0" font-size="16">LANE A</text>
+    <text x="378" y="278" fill="#6EA3C0" font-size="16">LANE B</text>
+    <text x="606" y="278" fill="#6EA3C0" font-size="16">LANE C</text>
+    <text x="834" y="278" fill="#6EA3C0" font-size="16">LANE D</text>
+    <text x="452" y="268" text-anchor="middle" fill="#FFFFFF" font-size="16" stroke="#FF77A3" stroke-width="2" paint-order="stroke">BOSS WAVE</text>
+    <text x="542" y="269" fill="#6E5966" font-size="22">마법사 타워 등장!</text>
+  </g>
+
+  <g opacity="0.95" filter="url(#f_shadow)">
+    <circle cx="225" cy="394" r="48" fill="url(#f_gold)"/>
+    <circle cx="453" cy="394" r="48" fill="url(#f_blue)"/>
+    <circle cx="681" cy="394" r="48" fill="#5DDAB8"/>
+    <circle cx="909" cy="394" r="48" fill="#FF8499"/>
+    <rect x="184" y="448" width="82" height="22" rx="11" fill="#FFF2BF"/>
+    <rect x="412" y="448" width="82" height="22" rx="11" fill="#D8F1FF"/>
+    <rect x="640" y="448" width="82" height="22" rx="11" fill="#D9FFF1"/>
+    <rect x="868" y="448" width="82" height="22" rx="11" fill="#FFE2E8"/>
+  </g>
+
+  <g filter="url(#f_shadow)">
+    <rect x="1188" y="206" width="330" height="126" rx="30" fill="#F8FBFF" stroke="#D5E8FF" stroke-width="4"/>
+    <rect x="1188" y="350" width="330" height="142" rx="30" fill="#F8FBFF" stroke="#D5E8FF" stroke-width="4"/>
+    <rect x="1188" y="510" width="330" height="154" rx="30" fill="#FFF9EE" stroke="#F1D082" stroke-width="4"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="1218" y="244" fill="#6EA3C0" font-size="15">TEAM POWER</text>
+    <text x="1218" y="286" fill="#24567B" font-size="40" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">4,820</text>
+    <text x="1218" y="314" fill="#5C7690" font-size="18">광역 + 공속 시너지 활성</text>
+
+    <text x="1218" y="388" fill="#6EA3C0" font-size="15">MANA READY</text>
+    <rect x="1218" y="402" width="250" height="18" rx="9" fill="#DFEBF8"/>
+    <rect x="1218" y="402" width="196" height="18" rx="9" fill="url(#f_blue)"/>
+    <text x="1218" y="448" fill="#24567B" font-size="34" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">스킬 찬스!</text>
+    <text x="1218" y="476" fill="#5C7690" font-size="18">지원, 번개, 바람 주사위 사용 가능</text>
+
+    <text x="1218" y="548" fill="#D99226" font-size="15">RECOMMEND</text>
+    <text x="1218" y="590" fill="#A95E1C" font-size="34" stroke="#FFF8EC" stroke-width="4" paint-order="stroke">희귀 합성 먼저</text>
+    <text x="1218" y="618" fill="#8C735A" font-size="18">중장갑 웨이브 직전에 쓰기 좋아요</text>
+    <rect x="1218" y="632" width="250" height="20" rx="10" fill="#F7E6B5"/>
+    <rect x="1218" y="632" width="190" height="20" rx="10" fill="url(#f_gold)"/>
+  </g>
+
+  <g filter="url(#f_shadow)">
+    <rect x="44" y="726" width="1512" height="138" rx="44" fill="#E2F4FF"/>
+    <rect x="56" y="738" width="1488" height="114" rx="38" fill="url(#f_cream)" stroke="#B7DCFF" stroke-width="5"/>
+    <rect x="82" y="752" width="180" height="84" rx="30" fill="#FFF9EE" stroke="#DCC28A" stroke-width="4"/>
+    <rect x="276" y="752" width="180" height="84" rx="30" fill="#FFF9EE" stroke="#DCC28A" stroke-width="4"/>
+    <rect x="470" y="752" width="180" height="84" rx="30" fill="#FFF9EE" stroke="#DCC28A" stroke-width="4"/>
+    <rect x="664" y="752" width="180" height="84" rx="30" fill="#FFF9EE" stroke="#DCC28A" stroke-width="4"/>
+    <rect x="858" y="752" width="180" height="84" rx="30" fill="#FFF9EE" stroke="#DCC28A" stroke-width="4"/>
+    <rect x="1090" y="746" width="186" height="96" rx="34" fill="#F8FBFF" stroke="#D4E8FF" stroke-width="4"/>
+    <rect x="1300" y="746" width="212" height="96" rx="34" fill="url(#f_orange)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="114" y="785" fill="#7A6122" font-size="22">화염</text>
+    <text x="308" y="785" fill="#7A6122" font-size="22">빙결</text>
+    <text x="502" y="785" fill="#7A6122" font-size="22">바람</text>
+    <text x="696" y="785" fill="#7A6122" font-size="22">보호막</text>
+    <text x="890" y="785" fill="#7A6122" font-size="22">지원</text>
+    <text x="114" y="815" fill="#C58B2A" font-size="16">LEGENDARY 2/3</text>
+    <text x="308" y="815" fill="#5F96D8" font-size="16">EPIC 1/3</text>
+    <text x="502" y="815" fill="#39A987" font-size="16">EPIC 2/3</text>
+    <text x="696" y="815" fill="#D86A84" font-size="16">RARE 3/3</text>
+    <text x="890" y="815" fill="#58A7BE" font-size="16">RARE 1/3</text>
+    <text x="1183" y="783" text-anchor="middle" fill="#5A9FD0" font-size="14">AUTO SKILL</text>
+    <text x="1183" y="818" text-anchor="middle" fill="#24567B" font-size="28" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">ON</text>
+    <text x="1406" y="783" text-anchor="middle" fill="#FFF2EA" font-size="14">MAIN ACTION</text>
+    <text x="1406" y="818" text-anchor="middle" fill="#FFFFFF" font-size="30" stroke="#D56B38" stroke-width="2" paint-order="stroke">소환 x10</text>
+  </g>
+</svg>

@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: unit_shield_override
+  m_Controller: {fileID: 9100000, guid: 161eaaebf39064bd799a2edae9c5da42, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 7ac9514b000a1484e8974566a0cec95c, type: 2}
+    m_OverrideClip: {fileID: 7337619264905598057, guid: cec18e56ff8d7475c8ca162733873a94, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: aac84c27636d14ff3873b50d0047134f, type: 2}
+    m_OverrideClip: {fileID: -7417736852736249898, guid: f79f80a123478465097344d936eeb325, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 1d48d8e9f3ffe45419070a876c2fa2c9, type: 2}
+    m_OverrideClip: {fileID: -7417736852736249898, guid: f79f80a123478465097344d936eeb325, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 356d8dc29b11b4311bf10798008d8298, type: 2}
+    m_OverrideClip: {fileID: -2563116694867859793, guid: d6ba63bd144d744b5a6400e16fcbf24e, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 5c31ed39cc27f4397a6db6e76e34cd88, type: 2}
+    m_OverrideClip: {fileID: -4169688685157253368, guid: 0aa320b24ab804c07a1005f77cd3248c, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 56bc42c882ef04348a19256a5e817843, type: 2}
+    m_OverrideClip: {fileID: -7417736852736249898, guid: f79f80a123478465097344d936eeb325, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: f3e02812b929247dd95e259760d4da31, type: 2}
+    m_OverrideClip: {fileID: -7417736852736249898, guid: f79f80a123478465097344d936eeb325, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: f4ec62364a65743d1bbd28ca34f9c064, type: 2}
+    m_OverrideClip: {fileID: 1827226128182048838, guid: b39365ff6c3daff4e8da62fd7ef943f5, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 3c2b399877c5943ea9117811949cfe81, type: 2}
+    m_OverrideClip: {fileID: -1367570532555742827, guid: ec491eb6421be479b9b6361912ad438c, type: 3}

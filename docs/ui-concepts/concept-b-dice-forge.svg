@@ -1,0 +1,137 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="b_bg" x1="80" y1="40" x2="1510" y2="860" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1D1312"/>
+      <stop offset="0.48" stop-color="#231824"/>
+      <stop offset="1" stop-color="#11141F"/>
+    </linearGradient>
+    <linearGradient id="b_bronze" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F3B267"/>
+      <stop offset="1" stop-color="#BD6F39"/>
+    </linearGradient>
+    <linearGradient id="b_blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#59D5FF"/>
+      <stop offset="1" stop-color="#3A6BFF"/>
+    </linearGradient>
+    <filter id="b_shadow" x="-40" y="-40" width="1680" height="980" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="#05070D" flood-opacity="0.48"/>
+    </filter>
+    <filter id="b_glow" x="-120" y="-120" width="420" height="420" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="56"/>
+    </filter>
+    <pattern id="b_grid" width="70" height="70" patternUnits="userSpaceOnUse">
+      <path d="M70 0H0V70" stroke="#F7B56E" stroke-opacity="0.05"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" rx="30" fill="url(#b_bg)"/>
+  <rect width="1600" height="900" rx="30" fill="url(#b_grid)"/>
+  <circle cx="1290" cy="170" r="140" fill="#F29C52" fill-opacity="0.18" filter="url(#b_glow)"/>
+  <circle cx="1380" cy="720" r="130" fill="#5ACFFF" fill-opacity="0.14" filter="url(#b_glow)"/>
+
+  <g filter="url(#b_shadow)">
+    <rect x="44" y="44" width="228" height="812" rx="34" fill="#15161F" stroke="#EAA45E" stroke-opacity="0.62" stroke-width="2"/>
+    <rect x="294" y="80" width="918" height="624" rx="34" fill="#121722" stroke="#F1A45B" stroke-opacity="0.34" stroke-width="2"/>
+    <rect x="1232" y="80" width="324" height="624" rx="34" fill="#141822" stroke="#F1A45B" stroke-opacity="0.34" stroke-width="2"/>
+    <rect x="294" y="724" width="1262" height="132" rx="34" fill="#141924" stroke="#58CBFF" stroke-opacity="0.22" stroke-width="2"/>
+  </g>
+
+  <text x="70" y="88" fill="#F5C58F" font-family="Orbitron, sans-serif" font-size="16" letter-spacing="4">CONCEPT B</text>
+  <text x="70" y="114" fill="#E9EEF8" font-family="Orbitron, sans-serif" font-size="26" letter-spacing="2">DICE FORGE HUD</text>
+  <text x="70" y="140" fill="#B69F92" font-family="Noto Sans KR, sans-serif" font-size="16">보드게임성 강화, 묵직한 합성 연출, 다이스 수집 화면과 자연스럽게 연결되는 버전</text>
+
+  <g font-family="Orbitron, sans-serif" fill="#F6C78C" letter-spacing="2">
+    <text x="70" y="204" font-size="13">ROUND CLOCK</text>
+    <text x="70" y="308" font-size="13">DEFENSE HEART</text>
+    <text x="70" y="412" font-size="13">GOLD POOL</text>
+    <text x="70" y="516" font-size="13">MERGE CHAIN</text>
+    <text x="70" y="646" font-size="13">BOARD BONUS</text>
+  </g>
+  <g font-family="Roboto Condensed, sans-serif" font-weight="700">
+    <text x="70" y="246" fill="#FFFFFF" font-size="46">01:24</text>
+    <text x="70" y="350" fill="#FFFFFF" font-size="46">17</text>
+    <text x="70" y="454" fill="#FFE0A8" font-size="46">128</text>
+    <text x="70" y="562" fill="#FFFFFF" font-size="32">RARE → EPIC</text>
+    <text x="70" y="692" fill="#82D8FF" font-size="34">LIGHT + WIND</text>
+  </g>
+  <g font-family="Noto Sans KR, sans-serif" font-size="16" fill="#BDA89A">
+    <text x="70" y="274">다음 웨이브 시작까지 남은 시간</text>
+    <text x="70" y="378">남은 생명 17 / 20</text>
+    <text x="70" y="482">합성, 소환, 업그레이드에 사용</text>
+    <text x="70" y="588">현재 추천 체인</text>
+    <text x="70" y="718">광역 둔화 시너지 활성화</text>
+  </g>
+
+  <g filter="url(#b_shadow)">
+    <rect x="324" y="108" width="856" height="76" rx="24" fill="#1B2230"/>
+    <rect x="346" y="128" width="160" height="36" rx="18" fill="url(#b_bronze)"/>
+    <rect x="522" y="128" width="216" height="36" rx="18" fill="#243248" stroke="#64CFFF" stroke-opacity="0.35"/>
+    <rect x="754" y="128" width="212" height="36" rx="18" fill="#243248" stroke="#64CFFF" stroke-opacity="0.35"/>
+    <rect x="982" y="128" width="174" height="36" rx="18" fill="#38212A" stroke="#FF8A7C" stroke-opacity="0.38"/>
+  </g>
+  <g font-family="Roboto Condensed, sans-serif" font-weight="700" font-size="20">
+    <text x="426" y="152" text-anchor="middle" fill="#1A1411">PLAYING</text>
+    <text x="630" y="152" text-anchor="middle" fill="#ECF7FF">SHOP / DICE BOOK</text>
+    <text x="860" y="152" text-anchor="middle" fill="#ECF7FF">FIELD / AUTO COMBAT</text>
+    <text x="1069" y="152" text-anchor="middle" fill="#FFF1EF">BOSS WARNING</text>
+  </g>
+
+  <g filter="url(#b_shadow)">
+    <rect x="332" y="206" width="840" height="454" rx="30" fill="#0C1118" stroke="#46546A" stroke-opacity="0.72"/>
+    <rect x="362" y="236" width="780" height="92" rx="26" fill="#181E2B"/>
+    <rect x="362" y="352" width="780" height="238" rx="30" fill="#10151F" stroke="#233046"/>
+    <rect x="362" y="606" width="780" height="30" rx="15" fill="#25344A"/>
+    <rect x="362" y="606" width="612" height="30" rx="15" fill="url(#b_blue)"/>
+  </g>
+
+  <text x="392" y="272" fill="#F6C58F" font-family="Orbitron, sans-serif" font-size="13" letter-spacing="2">BATTLE BOARD / DICE TOWER DEFENSE</text>
+  <text x="392" y="304" fill="#F2F7FF" font-family="Noto Sans KR, sans-serif" font-size="28" font-weight="700">합성 타이밍을 아래 액션 보드에서 직접 관리하는 HUD</text>
+
+  <g opacity="0.78">
+    <rect x="416" y="388" width="148" height="166" rx="28" fill="#172031" stroke="#FFB66B" stroke-opacity="0.25"/>
+    <rect x="588" y="388" width="148" height="166" rx="28" fill="#172031" stroke="#64CFFF" stroke-opacity="0.25"/>
+    <rect x="760" y="388" width="148" height="166" rx="28" fill="#172031" stroke="#78E6D3" stroke-opacity="0.25"/>
+    <rect x="932" y="388" width="148" height="166" rx="28" fill="#172031" stroke="#FF8E87" stroke-opacity="0.25"/>
+    <circle cx="490" cy="470" r="30" fill="url(#b_bronze)"/>
+    <circle cx="662" cy="470" r="30" fill="url(#b_blue)"/>
+    <circle cx="834" cy="470" r="30" fill="#32D8AF"/>
+    <circle cx="1006" cy="470" r="30" fill="#FF6D74"/>
+  </g>
+
+  <g filter="url(#b_shadow)">
+    <rect x="1258" y="108" width="272" height="148" rx="28" fill="#1C1E29"/>
+    <rect x="1258" y="274" width="272" height="170" rx="28" fill="#1A1D2A"/>
+    <rect x="1258" y="462" width="272" height="218" rx="28" fill="#191B27"/>
+  </g>
+  <text x="1280" y="140" fill="#F7C88C" font-family="Orbitron, sans-serif" font-size="13" letter-spacing="2">TACTIC SCORE</text>
+  <text x="1280" y="188" fill="#FFFFFF" font-family="Roboto Condensed, sans-serif" font-size="54" font-weight="700">92</text>
+  <text x="1280" y="220" fill="#BDA89A" font-family="Noto Sans KR, sans-serif" font-size="16">현재 보드 안정도 / 추천 체인 반영 점수</text>
+
+  <text x="1280" y="306" fill="#F7C88C" font-family="Orbitron, sans-serif" font-size="13" letter-spacing="2">RECOMMENDED CRAFT</text>
+  <text x="1280" y="348" fill="#FFFFFF" font-family="Noto Sans KR, sans-serif" font-size="28" font-weight="700">바람 + 번개 합성</text>
+  <text x="1280" y="378" fill="#BDA89A" font-family="Noto Sans KR, sans-serif" font-size="16">광역 타격 + 둔화로 다음 웨이브 정리</text>
+  <rect x="1280" y="396" width="220" height="12" rx="6" fill="#25344A"/>
+  <rect x="1280" y="396" width="184" height="12" rx="6" fill="url(#b_blue)"/>
+
+  <text x="1280" y="498" fill="#F7C88C" font-family="Orbitron, sans-serif" font-size="13" letter-spacing="2">BOSS PREVIEW</text>
+  <rect x="1280" y="520" width="228" height="48" rx="18" fill="#311F25" stroke="#FF8A7C" stroke-opacity="0.36"/>
+  <text x="1394" y="550" text-anchor="middle" fill="#FFF0ED" font-family="Noto Sans KR, sans-serif" font-size="24" font-weight="700">마법사 타워 / 라운드 20</text>
+  <text x="1280" y="596" fill="#BDA89A" font-family="Noto Sans KR, sans-serif" font-size="16">보호막 해제 후 폭발 투사체 3연사</text>
+  <text x="1280" y="622" fill="#BDA89A" font-family="Noto Sans KR, sans-serif" font-size="16">합성 보너스를 미리 저장하는 UI에 유리</text>
+
+  <g filter="url(#b_shadow)">
+    <rect x="324" y="746" width="420" height="90" rx="26" fill="#1C1E29"/>
+    <circle cx="532" cy="791" r="54" fill="url(#b_bronze)"/>
+    <circle cx="532" cy="791" r="40" fill="#2A1A16"/>
+    <text x="532" y="786" text-anchor="middle" fill="#FFEEDC" font-family="Orbitron, sans-serif" font-size="16" letter-spacing="2">MAIN</text>
+    <text x="532" y="812" text-anchor="middle" fill="#FFEEDC" font-family="Roboto Condensed, sans-serif" font-size="30" font-weight="700">SUMMON</text>
+    <rect x="768" y="746" width="340" height="90" rx="26" fill="#1C1E29"/>
+    <rect x="1128" y="746" width="404" height="90" rx="26" fill="#121F31" stroke="#5CCFFF" stroke-opacity="0.36"/>
+  </g>
+
+  <text x="794" y="779" fill="#F6C58F" font-family="Orbitron, sans-serif" font-size="13" letter-spacing="2">QUICK MERGE</text>
+  <text x="794" y="813" fill="#FFFFFF" font-family="Noto Sans KR, sans-serif" font-size="30" font-weight="700">같은 등급 3개 자동 추천</text>
+
+  <text x="1152" y="779" fill="#8CD7FF" font-family="Orbitron, sans-serif" font-size="13" letter-spacing="2">RESERVE BAR</text>
+  <text x="1152" y="813" fill="#EDF8FF" font-family="Noto Sans KR, sans-serif" font-size="30" font-weight="700">벤치 / 코스트 / 스킬 큐</text>
+</svg>

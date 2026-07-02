@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: unit_wind_controller
+  m_Controller: {fileID: 9100000, guid: 161eaaebf39064bd799a2edae9c5da42, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 7ac9514b000a1484e8974566a0cec95c, type: 2}
+    m_OverrideClip: {fileID: 7266307876934467370, guid: 8e8bf8190b8624914adfc7c3142c8a7d, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: aac84c27636d14ff3873b50d0047134f, type: 2}
+    m_OverrideClip: {fileID: 24010033717562196, guid: c5d342ac8637549819fdb1e14f099d8a, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 1d48d8e9f3ffe45419070a876c2fa2c9, type: 2}
+    m_OverrideClip: {fileID: 24010033717562196, guid: c5d342ac8637549819fdb1e14f099d8a, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 5c31ed39cc27f4397a6db6e76e34cd88, type: 2}
+    m_OverrideClip: {fileID: 3739205310942530025, guid: 5c5fe431b212f40a58d60df1321f8988, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 56bc42c882ef04348a19256a5e817843, type: 2}
+    m_OverrideClip: {fileID: 24010033717562196, guid: c5d342ac8637549819fdb1e14f099d8a, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: f3e02812b929247dd95e259760d4da31, type: 2}
+    m_OverrideClip: {fileID: 24010033717562196, guid: c5d342ac8637549819fdb1e14f099d8a, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: f4ec62364a65743d1bbd28ca34f9c064, type: 2}
+    m_OverrideClip: {fileID: 7266307876934467370, guid: 8e8bf8190b8624914adfc7c3142c8a7d, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 356d8dc29b11b4311bf10798008d8298, type: 2}
+    m_OverrideClip: {fileID: 4725201962329311419, guid: e4b092c11f9b54a5a8c6b7579e4b5dfd, type: 3}
+  - m_OriginalClip: {fileID: 7400000, guid: 3c2b399877c5943ea9117811949cfe81, type: 2}
+    m_OverrideClip: {fileID: 4725201962329311419, guid: e4b092c11f9b54a5a8c6b7579e4b5dfd, type: 3}

@@ -1,0 +1,133 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g_bg" x1="120" y1="40" x2="1480" y2="860" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#B9EBFF"/>
+      <stop offset="0.48" stop-color="#93D6FF"/>
+      <stop offset="1" stop-color="#86C3FF"/>
+    </linearGradient>
+    <linearGradient id="g_cream" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#F4F0E7"/>
+    </linearGradient>
+    <linearGradient id="g_orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFA96E"/>
+      <stop offset="1" stop-color="#FF7B45"/>
+    </linearGradient>
+    <linearGradient id="g_pink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF9FD3"/>
+      <stop offset="1" stop-color="#FF6EA2"/>
+    </linearGradient>
+    <linearGradient id="g_blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#61E2FF"/>
+      <stop offset="1" stop-color="#4B99FF"/>
+    </linearGradient>
+    <filter id="g_shadow" x="-60" y="-60" width="1720" height="1020" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="20" flood-color="#5A8FBF" flood-opacity="0.28"/>
+    </filter>
+    <filter id="g_soft" x="-120" y="-120" width="420" height="420" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="52"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" rx="30" fill="url(#g_bg)"/>
+  <circle cx="220" cy="130" r="80" fill="#FFFFFF" fill-opacity="0.36" filter="url(#g_soft)"/>
+  <circle cx="1370" cy="170" r="98" fill="#FFFFFF" fill-opacity="0.26" filter="url(#g_soft)"/>
+  <circle cx="1280" cy="760" r="96" fill="#B9FEE9" fill-opacity="0.28" filter="url(#g_soft)"/>
+
+  <g opacity="0.95">
+    <ellipse cx="180" cy="110" rx="84" ry="30" fill="#FFFFFF"/>
+    <ellipse cx="250" cy="120" rx="52" ry="22" fill="#FFFFFF"/>
+    <ellipse cx="1320" cy="126" rx="90" ry="32" fill="#FFFFFF"/>
+    <ellipse cx="1392" cy="136" rx="56" ry="24" fill="#FFFFFF"/>
+  </g>
+
+  <text x="72" y="84" fill="#FFFFFF" font-family="Poppins, Noto Sans KR, sans-serif" font-size="28" font-weight="700">Toybox Popup Direction</text>
+  <text x="72" y="114" fill="#EEF9FF" font-family="Noto Sans KR, sans-serif" font-size="18">운빨존많겜 / 롤롤 계열처럼 더 두껍고 입체적인 보상 팝업 톤으로 재구성한 버전</text>
+
+  <g filter="url(#g_shadow)">
+    <rect x="68" y="160" width="674" height="620" rx="50" fill="#E2F4FF"/>
+    <rect x="82" y="174" width="646" height="592" rx="44" fill="url(#g_cream)" stroke="#B8DDFF" stroke-width="5"/>
+    <rect x="856" y="160" width="674" height="620" rx="50" fill="#E2F4FF"/>
+    <rect x="870" y="174" width="646" height="592" rx="44" fill="url(#g_cream)" stroke="#B8DDFF" stroke-width="5"/>
+  </g>
+
+  <g filter="url(#g_shadow)">
+    <rect x="110" y="194" width="590" height="92" rx="32" fill="#FFF3F6" stroke="#FFABC1" stroke-width="4"/>
+    <rect x="898" y="194" width="590" height="92" rx="32" fill="#F1FBFF" stroke="#AEE7FF" stroke-width="4"/>
+    <rect x="136" y="184" width="170" height="44" rx="22" fill="url(#g_orange)"/>
+    <rect x="924" y="184" width="190" height="44" rx="22" fill="url(#g_blue)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="221" y="212" text-anchor="middle" fill="#FFF4EC" font-size="16" stroke="#D97239" stroke-width="2" paint-order="stroke">BOSS ALERT</text>
+    <text x="349" y="252" text-anchor="middle" fill="#5E5162" font-size="32">마법사 타워가 등장!</text>
+    <text x="1019" y="212" text-anchor="middle" fill="#F1FDFF" font-size="16" stroke="#438FD1" stroke-width="2" paint-order="stroke">MERGE SUCCESS</text>
+    <text x="1193" y="252" text-anchor="middle" fill="#456179" font-size="32">희귀 다이스가 에픽으로 진화!</text>
+  </g>
+
+  <g filter="url(#g_shadow)">
+    <circle cx="406" cy="404" r="128" fill="#FFF0F4"/>
+    <circle cx="406" cy="404" r="96" fill="url(#g_pink)"/>
+    <circle cx="1194" cy="404" r="128" fill="#EFFFFF"/>
+    <circle cx="1194" cy="404" r="96" fill="url(#g_blue)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="406" y="388" text-anchor="middle" fill="#FFF8FB" font-size="18">ROUND 20</text>
+    <text x="406" y="432" text-anchor="middle" fill="#FFF8FB" font-size="46" stroke="#FF6C98" stroke-width="2" paint-order="stroke">BOSS</text>
+    <text x="1194" y="388" text-anchor="middle" fill="#F7FEFF" font-size="18">EPIC</text>
+    <text x="1194" y="432" text-anchor="middle" fill="#F7FEFF" font-size="46" stroke="#3D8FE1" stroke-width="2" paint-order="stroke">UP!</text>
+  </g>
+
+  <g filter="url(#g_shadow)">
+    <rect x="124" y="496" width="564" height="148" rx="34" fill="#FFF9EE" stroke="#E9D09A" stroke-width="4"/>
+    <rect x="912" y="496" width="564" height="148" rx="34" fill="#F8FBFF" stroke="#CBE3FF" stroke-width="4"/>
+  </g>
+
+  <g font-family="Noto Sans KR, sans-serif" font-size="22" font-weight="700">
+    <text x="150" y="544" fill="#806750">보호막 생성 후 폭발 구체 3회</text>
+    <text x="150" y="580" fill="#806750">추천 대응: 바람 / 번개 / 감속 조합</text>
+    <text x="150" y="616" fill="#806750">희귀 합성을 아껴두면 훨씬 쉬워져요</text>
+
+    <text x="938" y="544" fill="#56718A">공격력 +32 / 치명타 확률 +8%</text>
+    <text x="938" y="580" fill="#56718A">새 특성: 연쇄 번개 탄환 추가</text>
+    <text x="938" y="616" fill="#56718A">스킬 슬롯 2개 개방</text>
+  </g>
+
+  <g filter="url(#g_shadow)">
+    <rect x="126" y="664" width="560" height="24" rx="12" fill="#F2E7EF"/>
+    <rect x="126" y="664" width="438" height="24" rx="12" fill="url(#g_pink)"/>
+    <rect x="914" y="664" width="560" height="24" rx="12" fill="#DFF0FF"/>
+    <rect x="914" y="664" width="494" height="24" rx="12" fill="url(#g_blue)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-weight="700">
+    <text x="126" y="726" fill="#625669" font-size="28" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">Boss HP 79%</text>
+    <text x="914" y="726" fill="#49657E" font-size="28" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">Upgrade Rate 87%</text>
+  </g>
+
+  <g filter="url(#g_shadow)">
+    <rect x="126" y="706" width="248" height="56" rx="24" fill="#FFF3F6" stroke="#FFABC1" stroke-width="4"/>
+    <rect x="390" y="706" width="248" height="56" rx="24" fill="url(#g_orange)"/>
+    <rect x="914" y="706" width="248" height="56" rx="24" fill="#F1FBFF" stroke="#AEE7FF" stroke-width="4"/>
+    <rect x="1178" y="706" width="248" height="56" rx="24" fill="url(#g_blue)"/>
+  </g>
+
+  <g font-family="Poppins, Noto Sans KR, sans-serif" font-size="24" font-weight="700">
+    <text x="250" y="744" text-anchor="middle" fill="#8B6070">패턴 보기</text>
+    <text x="514" y="744" text-anchor="middle" fill="#FFF7EE" stroke="#D96D3D" stroke-width="2" paint-order="stroke">전투 시작</text>
+    <text x="1038" y="744" text-anchor="middle" fill="#51718E">다음 합성 보기</text>
+    <text x="1302" y="744" text-anchor="middle" fill="#F7FEFF" stroke="#438FD1" stroke-width="2" paint-order="stroke">보드에 배치</text>
+  </g>
+
+  <g opacity="0.95" filter="url(#g_shadow)">
+    <rect x="974" y="322" width="64" height="64" rx="22" fill="#D7EEFF" stroke="#B4D9F6" stroke-width="3"/>
+    <rect x="1052" y="322" width="64" height="64" rx="22" fill="#D7EEFF" stroke="#B4D9F6" stroke-width="3"/>
+    <rect x="1130" y="322" width="64" height="64" rx="22" fill="#D7EEFF" stroke="#B4D9F6" stroke-width="3"/>
+    <path d="M1106 354H1142" stroke="#4F99E5" stroke-width="6" stroke-linecap="round"/>
+    <path d="M1142 354L1127 340" stroke="#4F99E5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M1142 354L1127 368" stroke="#4F99E5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="1154" y="300" width="134" height="108" rx="30" fill="url(#g_blue)"/>
+    <text x="1221" y="364" text-anchor="middle" fill="#F8FEFF" font-family="Poppins, Noto Sans KR, sans-serif" font-size="30" font-weight="700" stroke="#438FD1" stroke-width="2" paint-order="stroke">에픽</text>
+  </g>
+</svg>

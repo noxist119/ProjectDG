@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1bce0793b585d64fbf76defd5c6859f, type: 3}
+  m_Name: DefenseGameUiSkin_2DGameUIKit
+  m_EditorClassIdentifier: 
+  fontOverride: {fileID: 0}
+  panelSprite: {fileID: 21300000, guid: e8e366a51617f80419420ed85acc4935, type: 3}
+  modalSprite: {fileID: 21300000, guid: ab1e889bb43efca49ae3e9d0aa97f965, type: 3}
+  buttonSprite: {fileID: 21300000, guid: ea29607519568b644b2f6edf6692a370, type: 3}
+  cardSprite: {fileID: 21300000, guid: e8e366a51617f80419420ed85acc4935, type: 3}
+  accentSprite: {fileID: 21300000, guid: 91b1b27515f907640a56457be210ee4a, type: 3}
+  portraitSprite: {fileID: 21300000, guid: e8e366a51617f80419420ed85acc4935, type: 3}
+  iconPlateSprite: {fileID: 21300000, guid: 91b1b27515f907640a56457be210ee4a, type: 3}
+  progressBarSprite: {fileID: 21300000, guid: 79a7c2a9b21fe2b4aab44e29da8692ed, type: 3}
+  progressFillSprite: {fileID: 21300000, guid: 1f27228430d580e4eb7e178be08eff34, type: 3}
+  circleSprite: {fileID: 21300000, guid: e7e390b6178342c4ab22631786211c26, type: 3}
+  primaryButtonSprite: {fileID: 21300000, guid: ac53a09e048412e428c78cff13d8dc5e, type: 3}
+  positiveButtonSprite: {fileID: 21300000, guid: 3772024f21af6034fab8ded6c81c815a, type: 3}
+  dangerButtonSprite: {fileID: 21300000, guid: ac53a09e048412e428c78cff13d8dc5e, type: 3}
+  warningButtonSprite: {fileID: 21300000, guid: 5b5e31ec79e3edd4780c6df4a5317e5c, type: 3}
+  coinIconSprite: {fileID: 21300000, guid: 9ebf0c66c2c62094c8e1f7e1de73d891, type: 3}
+  gemIconSprite: {fileID: 21300000, guid: 4a799dbb13e341c4d8aefb5050666db7, type: 3}
+  closeIconSprite: {fileID: 21300000, guid: c860f469e684de9459b5ba786fdd9c3c, type: 3}
+  checkIconSprite: {fileID: 21300000, guid: 9603d584ba157f243ac34e8fef98caf9, type: 3}
+  plusIconSprite: {fileID: 0}
+  infoIconSprite: {fileID: 21300000, guid: 74d67316c9ff18e4eb8713a7556f35ac, type: 3}
+  deckIconSprite: {fileID: 21300000, guid: b46eb3276b3ab634881d938b1f4f0de7, type: 3}
+  battleIconSprite: {fileID: 21300000, guid: 01f14b9736aecc5418ab21c5233be9dd, type: 3}
+  heartIconSprite: {fileID: 21300000, guid: 7b12bed3bbed18e45b508fbc0aef477a, type: 3}
+  missionIconSprite: {fileID: 21300000, guid: 7031ed218ca48704eb55ae87b4c5ac52, type: 3}
+  heroIconSprite: {fileID: 21300000, guid: b46eb3276b3ab634881d938b1f4f0de7, type: 3}
+  preserveAspect: 0
