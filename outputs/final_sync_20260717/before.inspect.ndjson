@@ -1,0 +1,27 @@
+{"kind":"sheet","id":"ws/fd2096","name":"요약","index":0,"range":"A1:D37","address":"A1:D37"}
+{"kind":"sheet","id":"ws/wumirz","name":"초반튜닝_2026-06-16","index":1,"range":"A1:F26","address":"A1:F26"}
+{"kind":"sheet","id":"ws/ri2id4","name":"등급","index":2,"range":"A1:F18","address":"A1:F18"}
+{"kind":"sheet","id":"ws/gsmo1s","name":"영웅 스킬","index":3,"range":"A1:M31","address":"A1:M31"}
+{"kind":"sheet","id":"ws/x369mk","name":"이벤트키","index":4,"range":"A1:E11","address":"A1:E11"}
+{"kind":"sheet","id":"ws/bunwod","name":"아웃게임","index":5,"range":"A1:D15","address":"A1:D15"}
+{"kind":"sheet","id":"ws/qu9riv","name":"밸런스 기준","index":6,"range":"A1:E41","address":"A1:E41"}
+{"kind":"sheet","id":"ws/dqm5s9","name":"테이블 위치","index":7,"range":"A1:D29","address":"A1:D29"}
+{"kind":"sheet","id":"ws/bzyufz","name":"UI_사운드","index":8,"range":"A1:D14","address":"A1:D14"}
+{"kind":"sheet","id":"ws/pp7b9w","name":"미정_확인","index":9,"range":"A1:D10","address":"A1:D10"}
+{"kind":"sheet","id":"ws/gqkjds","name":"런변동성_1to6","index":10,"range":"A1:H60","address":"A1:H60"}
+{"kind":"sheet","id":"ws/tj718d","name":"아웃게임_인게임","index":11,"range":"A1:F32","address":"A1:F32"}
+{"kind":"sheet","id":"ws/ecgo1r","name":"영웅_등급표","index":12,"range":"A1:K112","address":"A1:K112"}
+{"kind":"sheet","id":"ws/f7afx2","name":"HeroAugments_V1","index":13,"range":"A1:F82","address":"A1:F82"}
+{"kind":"sheet","id":"ws/sxcu7n","name":"몬스터_전투스킬","index":14,"range":"A1:X16","address":"A1:X16"}
+{"kind":"sheet","id":"ws/srj418","name":"검증_2026-07-08","index":15,"range":"A1:D9","address":"A1:D9"}
+{"kind":"sheet","id":"ws/s1e2p9","name":"초반튜닝_최신","index":16,"range":"A1:D16","address":"A1:D16"}
+{"kind":"sheet","id":"ws/4vwnoh","name":"실측_5판","index":17,"range":"A1:U13","address":"A1:U13"}
+{"kind":"sheet","id":"ws/41v14n","name":"소환확률_R1-50","index":18,"range":"A1:I23","address":"A1:I23"}
+{"kind":"sheet","id":"ws/s57unr","name":"신규초월_55-57","index":19,"range":"A1:T25","address":"A1:T25"}
+{"kind":"sheet","id":"ws/5ibzxo","name":"몬스터전투스킬","index":20,"range":"A1:P21","address":"A1:P21"}
+{"kind":"sheet","id":"ws/6pohgq","name":"변경이력","index":21,"range":"A1:C16","address":"A1:C16"}
+{"kind":"sheet","id":"ws/969ulm","name":"운명카드_18","index":22,"range":"A1:I22","address":"A1:I22"}
+{"kind":"sheet","id":"ws/nrl6qq","name":"검증_2026-07-09","index":23,"range":"A1:F12","address":"A1:F12"}
+{"kind":"sheet","id":"ws/ayh232","name":"후속작업_9점","index":24,"range":"A1:F10","address":"A1:F10"}
+{"kind":"sheet","id":"ws/alyb1g","name":"Latest_2026-07-11","index":25,"range":"A1:F41","address":"A1:F41"}
+{"kind":"sheet","id":"ws/963ny7","name":"Validation_2026-07-11","index":26,"range":"A1:F14","address":"A1:F14"}

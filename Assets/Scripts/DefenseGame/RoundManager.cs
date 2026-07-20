@@ -37,23 +37,23 @@ namespace DefenseGame
         [Header("Round Balance Tables")]
         [SerializeField] private List<RoundSpawnBalanceStep> regularSpawnBalanceSteps = new List<RoundSpawnBalanceStep>
         {
-            new RoundSpawnBalanceStep { firstRound = 1, regularCountAtFirstRound = 6f, regularCountPerRound = 1.5f, pressureRoundFrequency = 5, pressureBonus = 2 },
-            new RoundSpawnBalanceStep { firstRound = 4, regularCountAtFirstRound = 6.5f, regularCountPerRound = 0.52f, pressureRoundFrequency = 5, pressureBonus = 0 },
+            new RoundSpawnBalanceStep { firstRound = 1, regularCountAtFirstRound = 4.5f, regularCountPerRound = 0.75f, pressureRoundFrequency = 5, pressureBonus = 0 },
+            new RoundSpawnBalanceStep { firstRound = 4, regularCountAtFirstRound = 7f, regularCountPerRound = 0.75f, pressureRoundFrequency = 5, pressureBonus = 0 },
             new RoundSpawnBalanceStep { firstRound = 10, regularCountAtFirstRound = 18f, regularCountPerRound = 1.8f, pressureRoundFrequency = 5, pressureBonus = 2 }
         };
         [SerializeField] private List<RoundSpawnTimingStep> regularSpawnTimingSteps = new List<RoundSpawnTimingStep>
         {
-            new RoundSpawnTimingStep { firstRound = 1, intervalAtFirstRound = 0.78f, intervalChangePerRound = -0.035f, maxIntervalChange = 0.07f, pressureIntervalPenalty = 0.035f },
-            new RoundSpawnTimingStep { firstRound = 4, intervalAtFirstRound = 0.74f, intervalChangePerRound = -0.006f, maxIntervalChange = 0.06f, pressureIntervalPenalty = 0f },
+            new RoundSpawnTimingStep { firstRound = 1, intervalAtFirstRound = 0.88f, intervalChangePerRound = -0.025f, maxIntervalChange = 0.05f, pressureIntervalPenalty = 0f },
+            new RoundSpawnTimingStep { firstRound = 4, intervalAtFirstRound = 0.80f, intervalChangePerRound = -0.008f, maxIntervalChange = 0.08f, pressureIntervalPenalty = 0f },
             new RoundSpawnTimingStep { firstRound = 10, intervalAtFirstRound = 0.48f, intervalChangePerRound = -0.006f, maxIntervalChange = 0.14f, pressureIntervalPenalty = 0.025f }
         };
         [SerializeField] private List<RoundSpawnTimingStep> bossSpawnTimingSteps = new List<RoundSpawnTimingStep>
         {
-            new RoundSpawnTimingStep { firstRound = 10, intervalAtFirstRound = 0.44f, intervalChangePerRound = -0.004f, maxIntervalChange = 0.14f }
+            new RoundSpawnTimingStep { firstRound = 10, intervalAtFirstRound = 0.40f, intervalChangePerRound = -0.004f, maxIntervalChange = 0.14f }
         };
         [SerializeField] private BossSupportBalanceStep bossSupportBalance = new BossSupportBalanceStep
         {
-            baseSupportCount = 4,
+            baseSupportCount = 9,
             firstBossRound = 10,
             supportCountPerBossEncounter = 2
         };
@@ -174,6 +174,29 @@ namespace DefenseGame
             OnCountdownChanged?.Invoke(0);
             OnRoundStateChanged?.Invoke(CurrentRound, IsBossRound, false);
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public void CompleteCurrentRoundForDebug()
+        {
+            if (!IsRoundRunning)
+            {
+                return;
+            }
+
+            if (roundRoutine != null)
+            {
+                StopCoroutine(roundRoutine);
+                roundRoutine = null;
+            }
+
+            ClearActiveMonsters();
+            CurrentRoundSpawnedCount = CurrentRoundTargetCount;
+            LastRoundEndedByDefeat = false;
+            IsRoundRunning = false;
+            OnCountdownChanged?.Invoke(0);
+            OnRoundStateChanged?.Invoke(CurrentRound, IsBossRound, false);
+        }
+#endif
 
         public void ResetRunState()
         {
@@ -300,6 +323,16 @@ namespace DefenseGame
             int regularCount = bossRound
                 ? CalculateBossSupportCount(round)
                 : Mathf.Max(3, CalculateRegularMonsterCount(round) - midBossCount * 2);
+            if (!bossRound)
+            {
+                float fateMonsterCountMultiplier = DefenseGameController.Active != null ? DefenseGameController.Active.GetFateMonsterCountMultiplierForRound(round) : 1f;
+                if (fateMonsterCountMultiplier > 1f)
+                {
+                    regularCount = Mathf.CeilToInt(regularCount * fateMonsterCountMultiplier);
+                }
+            }
+
+            regularCount = ApplyPreBossLeakEaseToRegularCount(round, bossRound, regularCount);
 
             return new RoundSpawnPlan
             {
@@ -309,6 +342,28 @@ namespace DefenseGame
                 interval = CalculateSpawnInterval(round, bossRound),
                 intervalVariance = Mathf.Max(0f, spawnIntervalVariance)
             };
+        }
+
+        private int ApplyPreBossLeakEaseToRegularCount(int round, bool bossRound, int count)
+        {
+            if (bossRound)
+            {
+                return count;
+            }
+
+            if (round >= 5 && round <= 9)
+            {
+                return Mathf.Max(3, count - 1);
+            }
+
+            return count;
+        }
+
+        private float ApplyPreBossLeakEaseToSpawnInterval(int round, bool bossRound, float interval)
+        {
+            return !bossRound && (round == 8 || round == 9)
+                ? interval + 0.04f
+                : interval;
         }
 
         private int CalculateRegularMonsterCount(int round)
@@ -432,7 +487,7 @@ namespace DefenseGame
                     tableInterval -= Mathf.Max(0f, timingStep.pressureIntervalPenalty);
                 }
 
-                return Mathf.Max(minimumSpawnInterval, tableInterval);
+                return Mathf.Max(minimumSpawnInterval, ApplyPreBossLeakEaseToSpawnInterval(round, bossRound, tableInterval));
             }
 
             float interval;
@@ -458,7 +513,7 @@ namespace DefenseGame
                 interval -= 0.06f;
             }
 
-            return Mathf.Max(minimumSpawnInterval, interval);
+            return Mathf.Max(minimumSpawnInterval, ApplyPreBossLeakEaseToSpawnInterval(round, bossRound, interval));
         }
 
         private int[] BuildMidBossSpawnIndices(int regularCount, int midBossCount)
@@ -676,8 +731,13 @@ namespace DefenseGame
             }
 
             Transform spawnPoint = GetNextSpawnPoint();
-            PlaySpawnEffect(spawnPoint);
-            GameObject spawnedObject = Instantiate(sourcePrefab, spawnPoint.position, spawnPoint.rotation);
+            Quaternion spawnRotation = spawnPoint != null ? spawnPoint.rotation : Quaternion.identity;
+            if (spawnPoint != null && goalPoint != null)
+            {
+                spawnRotation = RuntimeEffectUtility.FaceTowards(spawnPoint.position, goalPoint.position, spawnRotation);
+            }
+            PlaySpawnEffect(spawnPoint, spawnRotation);
+            GameObject spawnedObject = Instantiate(sourcePrefab, spawnPoint.position, spawnRotation);
             MonsterUnit monster = spawnedObject.GetComponent<MonsterUnit>();
             if (monster == null)
             {
@@ -694,7 +754,7 @@ namespace DefenseGame
             return true;
         }
 
-        private void PlaySpawnEffect(Transform spawnPoint)
+        private void PlaySpawnEffect(Transform spawnPoint, Quaternion spawnRotation)
         {
             if (spawnPoint == null || spawnEffectPrefab == null)
             {
@@ -704,7 +764,7 @@ namespace DefenseGame
             RuntimeEffectUtility.PlayOneShotTimed(
                 spawnEffectPrefab,
                 spawnPoint.position + spawnEffectOffset,
-                spawnPoint.rotation,
+                spawnRotation,
                 spawnEffectLifetime);
         }
 

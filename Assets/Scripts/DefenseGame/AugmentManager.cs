@@ -40,7 +40,13 @@ namespace DefenseGame
         Hero05GuardianProtocol = 29,
         Hero13ManaNetwork = 30,
         HeroSignature = 31,
-        HoardInterestGold = 32
+        HoardInterestGold = 32,
+        AttackHealthTradeoff = 33,
+        ExecuteDamage = 34,
+        LowHealthFury = 35,
+        CriticalDoubleTap = 36,
+        SkillManaRelay = 37,
+        SkillChainBlast = 38
     }
 
     public enum AugmentStyle
@@ -78,9 +84,10 @@ namespace DefenseGame
     public class AugmentManager : MonoBehaviour
     {
         [SerializeField] private DefenseGameController gameController;
-        [SerializeField] private int firstChoiceRound = 3;
-        [SerializeField] private int minChoiceInterval = 3;
+        [SerializeField] private int firstChoiceRound = 5;
+        [SerializeField] private int minChoiceInterval = 5;
         [SerializeField] private int maxChoiceInterval = 5;
+        [SerializeField] private int shopOverlapAllowedRound = 30;
         [SerializeField] private int rareHeroAugmentUnlockRound = 6;
         [SerializeField] private int mythicHeroAugmentUnlockRound = 10;
         [SerializeField] private float normalHeroAugmentOfferChance = 0.55f;
@@ -108,6 +115,7 @@ namespace DefenseGame
         private readonly HashSet<DefenderUnit> hero07ReaperActive = new HashSet<DefenderUnit>();
         private readonly Dictionary<DefenderUnit, float> hero11MaxHealthGrowth = new Dictionary<DefenderUnit, float>();
         private readonly Dictionary<DefenderUnit, float> hero31MaxHealthGrowth = new Dictionary<DefenderUnit, float>();
+        private int skillChainCastCount;
         private bool subscribed;
         private bool resolvingHeroAugmentDamage;
         private bool resolvingHeroSkillEcho;
@@ -123,7 +131,8 @@ namespace DefenseGame
         public event Action OnChoiceClosed;
 
         public bool IsChoiceOpen => panelRoot != null && panelRoot.activeSelf;
-        public bool HasPendingChoice => pendingChoiceRound > 0 && currentChoices.Count > 0;
+        public bool HasPendingChoice => HasPendingChoiceData && IsPendingChoiceReady();
+        private bool HasPendingChoiceData => pendingChoiceRound > 0 && currentChoices.Count > 0;
 
         public bool HasChosenAugment(string id)
         {
@@ -173,6 +182,7 @@ namespace DefenseGame
         {
             Unsubscribe();
             gameController = controller;
+            gameController?.RegisterAugmentManager(this);
             panelRoot = root;
             headerText = header;
             titleTexts = titles;
@@ -182,6 +192,13 @@ namespace DefenseGame
             accentImages = accents;
             closeButton = close;
             reopenButton = reopen;
+
+            // Scheduled augment rewards are free, mandatory picks. A close affordance would
+            // incorrectly imply that the player can skip them like a paid combat shop.
+            if (closeButton != null)
+            {
+                closeButton.gameObject.SetActive(false);
+            }
 
             EnsureDefaultPool();
             EnsureHeroSpecificAugments();
@@ -200,6 +217,7 @@ namespace DefenseGame
             hero07ReaperActive.Clear();
             hero11MaxHealthGrowth.Clear();
             hero31MaxHealthGrowth.Clear();
+            skillChainCastCount = 0;
             nextChoiceRound = -1;
             pendingChoiceRound = -1;
             hoardIncomeTimer = 0f;
@@ -229,7 +247,17 @@ namespace DefenseGame
 
         public void CloseChoice()
         {
-            HidePanel();
+            if (!HasPendingChoiceData)
+            {
+                HidePanel();
+                return;
+            }
+
+            SetChoiceOpen(true);
+            gameController?.RequestBanner(
+                "증강체는 무료이며 1개를 반드시 선택해야 합니다",
+                new Color(0.52f, 0.90f, 1f),
+                2.2f);
         }
 
         private void OnEnable()
@@ -384,6 +412,12 @@ namespace DefenseGame
 
         private void HandleRoundAugmentChoicePhase(int round)
         {
+            if (ShouldDelayChoiceForShop(round))
+            {
+                DelayChoiceForShop(round);
+                return;
+            }
+
             if (HasPendingChoice)
             {
                 OpenPendingChoice();
@@ -402,6 +436,7 @@ namespace DefenseGame
             hero07KillCounts.Clear();
             hero07StrikeCounts.Clear();
             hero07ReaperActive.Clear();
+            skillChainCastCount = 0;
             for (int i = 0; i < chosenAugments.Count; i++)
             {
                 AugmentDefinition augment = chosenAugments[i];
@@ -469,6 +504,64 @@ namespace DefenseGame
             }
 
             ResolveHero07ReaperStrike(source, target);
+            ResolveGeneralDamageAugments(source, target, damage, critical);
+        }
+
+        private void ResolveGeneralDamageAugments(DefenderUnit source, MonsterUnit target, float damage, bool critical)
+        {
+            if (source == null || target == null || target.CurrentHealth <= 0f || damage <= 0f)
+            {
+                return;
+            }
+
+            float extraDamage = 0f;
+            Color feedbackColor = new Color(1f, 0.66f, 0.24f);
+            for (int i = 0; i < chosenAugments.Count; i++)
+            {
+                AugmentDefinition augment = chosenAugments[i];
+                if (augment == null)
+                {
+                    continue;
+                }
+
+                if (augment.effectType == AugmentEffectType.ExecuteDamage && target.MaxHealth > 0f)
+                {
+                    float healthThreshold = Mathf.Clamp01(augment.value);
+                    if (target.CurrentHealth / target.MaxHealth <= healthThreshold)
+                    {
+                        float ratio = target.IsBoss ? Mathf.Max(0f, augment.duration) : Mathf.Max(0f, augment.secondaryValue);
+                        extraDamage += damage * ratio;
+                        feedbackColor = augment.accentColor;
+                    }
+                }
+                else if (augment.effectType == AugmentEffectType.LowHealthFury && source.HealthRatio <= Mathf.Clamp01(augment.value))
+                {
+                    extraDamage += damage * Mathf.Max(0f, augment.secondaryValue);
+                    feedbackColor = augment.accentColor;
+                }
+                else if (augment.effectType == AugmentEffectType.CriticalDoubleTap && critical && UnityEngine.Random.value <= Mathf.Clamp01(augment.value))
+                {
+                    extraDamage += damage * Mathf.Max(0f, augment.secondaryValue);
+                    feedbackColor = augment.accentColor;
+                }
+            }
+
+            if (extraDamage <= 0f)
+            {
+                return;
+            }
+
+            resolvingHeroAugmentDamage = true;
+            try
+            {
+                target.TakeDamage(extraDamage, false, source);
+            }
+            finally
+            {
+                resolvingHeroAugmentDamage = false;
+            }
+
+            RuntimeCombatFeedback.ShowGroundPulse(target.transform.position, feedbackColor, target.IsBoss ? 0.66f : 0.46f, 0.34f, 0.10f);
         }
 
         private void HandleDefenderSkillCast(DefenderUnit source, SkillDefinition skill, MonsterUnit target)
@@ -549,7 +642,7 @@ namespace DefenseGame
             }
             else if (string.Equals(heroId, "hero_32", StringComparison.OrdinalIgnoreCase))
             {
-                ResolveHero32SkillAugments(source);
+                ResolveHero32SkillAugments(source, target);
             }
             else if (string.Equals(heroId, "hero_33", StringComparison.OrdinalIgnoreCase))
             {
@@ -578,6 +671,40 @@ namespace DefenseGame
             else if (string.Equals(heroId, "hero_57", StringComparison.OrdinalIgnoreCase))
             {
                 ResolveHero57SkillAugments(source);
+            }
+
+            ResolveGeneralSkillAugments(source, target);
+        }
+
+        private void ResolveGeneralSkillAugments(DefenderUnit source, MonsterUnit target)
+        {
+            for (int i = 0; i < chosenAugments.Count; i++)
+            {
+                AugmentDefinition augment = chosenAugments[i];
+                if (augment == null)
+                {
+                    continue;
+                }
+
+                if (augment.effectType == AugmentEffectType.SkillManaRelay)
+                {
+                    RestoreLowestManaDefenders(source.transform.position, 99f, Mathf.Clamp01(augment.value), 1, source);
+                    RuntimeCombatFeedback.ShowGroundPulse(source.transform.position, augment.accentColor, 0.42f, 0.32f, 0.08f);
+                }
+                else if (augment.effectType == AugmentEffectType.SkillChainBlast)
+                {
+                    skillChainCastCount++;
+                    int requiredCasts = Mathf.Max(2, Mathf.RoundToInt(augment.value));
+                    if (skillChainCastCount >= requiredCasts)
+                    {
+                        skillChainCastCount = 0;
+                        Vector3 center = target != null ? target.transform.position : source.transform.position;
+                        float radius = Mathf.Max(0.5f, augment.duration);
+                        float blastDamage = source.EffectiveAttackPower * Mathf.Max(0f, augment.secondaryValue);
+                        ApplyHeroAreaDamage(source, null, center, radius, blastDamage);
+                        RuntimeCombatFeedback.ShowGroundPulse(center, augment.accentColor, radius, 0.48f, 0.10f);
+                    }
+                }
             }
         }
 
@@ -848,22 +975,19 @@ namespace DefenseGame
 
         private AugmentStyle[] BuildChoiceStyleSlots(int round)
         {
-            if (round <= 4)
+            int safeInterval = Mathf.Max(1, minChoiceInterval);
+            int choicePhase = Mathf.Max(0, round - Mathf.Max(1, firstChoiceRound)) / safeInterval;
+            switch (choicePhase % 4)
             {
-                return new[] { AugmentStyle.Stable, AugmentStyle.Growth, AugmentStyle.Gamble };
+                case 0:
+                    return new[] { AugmentStyle.Stable, AugmentStyle.Growth, AugmentStyle.Gamble };
+                case 1:
+                    return new[] { AugmentStyle.Growth, AugmentStyle.Buildup, AugmentStyle.Stable };
+                case 2:
+                    return new[] { AugmentStyle.Gamble, AugmentStyle.Buildup, AugmentStyle.Growth };
+                default:
+                    return new[] { AugmentStyle.Stable, AugmentStyle.Gamble, AugmentStyle.Buildup };
             }
-
-            if (round % 5 == 0)
-            {
-                return new[] { AugmentStyle.Buildup, AugmentStyle.Gamble, AugmentStyle.Stable };
-            }
-
-            if (round % 3 == 0)
-            {
-                return new[] { AugmentStyle.Growth, AugmentStyle.Buildup, AugmentStyle.Gamble };
-            }
-
-            return new[] { AugmentStyle.Stable, AugmentStyle.Growth, AugmentStyle.Buildup };
         }
 
         private AugmentDefinition PickChoice(AugmentStyle style)
@@ -988,6 +1112,51 @@ namespace DefenseGame
             UpdateReopenButton();
         }
 
+        private bool IsPendingChoiceReady()
+        {
+            if (!HasPendingChoiceData)
+            {
+                return false;
+            }
+
+            int currentRound = gameController != null ? gameController.CurrentRound : pendingChoiceRound;
+            return currentRound >= pendingChoiceRound;
+        }
+
+        private bool ShouldDelayChoiceForShop(int round)
+        {
+            return gameController != null &&
+                round < Mathf.Max(1, shopOverlapAllowedRound) &&
+                gameController.WasRoundShopOpened(round) &&
+                (HasPendingChoiceData || round >= nextChoiceRound);
+        }
+
+        private void DelayChoiceForShop(int round)
+        {
+            int delayedRound = Mathf.Max(round + 1, Mathf.Max(1, firstChoiceRound));
+            if (HasPendingChoiceData)
+            {
+                pendingChoiceRound = Mathf.Max(delayedRound, pendingChoiceRound);
+            }
+
+            if (nextChoiceRound <= round)
+            {
+                nextChoiceRound = delayedRound;
+            }
+
+            if (panelRoot != null && panelRoot.activeSelf)
+            {
+                panelRoot.SetActive(false);
+                OnChoiceClosed?.Invoke();
+            }
+
+            UpdateReopenButton();
+            if (gameController != null && round >= firstChoiceRound)
+            {
+                gameController.RequestBanner("증강체 선택은 다음 라운드로 연기됩니다", new Color(0.72f, 0.88f, 1f), 1.8f);
+            }
+        }
+
         private void UpdateReopenButton()
         {
             if (reopenButton != null)
@@ -1034,6 +1203,10 @@ namespace DefenseGame
                     break;
                 case AugmentEffectType.BossDamageMultiplier:
                     defender.AddBossDamageBonus(augment.value);
+                    break;
+                case AugmentEffectType.AttackHealthTradeoff:
+                    defender.AddAttackPowerBonus(Mathf.Max(0f, augment.value));
+                    defender.AddMaxHealthBonus(-Mathf.Abs(augment.secondaryValue));
                     break;
                 default:
                     if (IsBuildupEffect(augment.effectType))
@@ -1925,8 +2098,15 @@ namespace DefenseGame
             }
         }
 
-        private void ResolveHero32SkillAugments(DefenderUnit source)
+        private void ResolveHero32SkillAugments(DefenderUnit source, MonsterUnit target)
         {
+            float attackPower = GetHeroAttackPower(source);
+            source.ActivateTimedCombatBoost(0f, 0.25f, 5f);
+            if (target != null && target.CurrentHealth > 0f)
+            {
+                target.ApplyPoison(attackPower * 0.30f, 4f, 1f, source);
+            }
+
             if (HasChosen("hero32_predator_rhythm_n"))
             {
                 source.ActivateTimedCombatBoost(0.10f, 0.20f, 5f);
@@ -2190,7 +2370,7 @@ namespace DefenseGame
             }
         }
 
-        private void RestoreLowestManaDefenders(Vector3 center, float radius, float manaRatio, int count)
+        private void RestoreLowestManaDefenders(Vector3 center, float radius, float manaRatio, int count, DefenderUnit excludedDefender = null)
         {
             List<DefenderUnit> candidates = new List<DefenderUnit>();
             float radiusSqr = radius * radius;
@@ -2198,7 +2378,7 @@ namespace DefenseGame
             for (int i = 0; i < defenders.Length; i++)
             {
                 DefenderUnit defender = defenders[i];
-                if (defender == null || defender.MaxMana <= 0f)
+                if (defender == null || defender == excludedDefender || defender.MaxMana <= 0f || defender.CurrentHealth <= 0f)
                 {
                     continue;
                 }
@@ -2788,9 +2968,28 @@ namespace DefenseGame
 
         private void ScheduleNextChoice(int completedRound)
         {
+            nextChoiceRound = ResolveNextFixedChoiceRound(completedRound);
+        }
+
+        private int ResolveNextFixedChoiceRound(int completedRound)
+        {
+            int firstRound = Mathf.Max(1, firstChoiceRound);
+            int interval = ResolveFixedChoiceInterval();
+            int baselineRound = Mathf.Max(0, completedRound);
+            if (baselineRound < firstRound)
+            {
+                return firstRound;
+            }
+
+            int completedIntervals = Mathf.FloorToInt((baselineRound - firstRound) / (float)interval) + 1;
+            return firstRound + completedIntervals * interval;
+        }
+
+        private int ResolveFixedChoiceInterval()
+        {
             int minInterval = Mathf.Max(1, minChoiceInterval);
             int maxInterval = Mathf.Max(minInterval, maxChoiceInterval);
-            nextChoiceRound = completedRound + UnityEngine.Random.Range(minInterval, maxInterval + 1);
+            return Mathf.RoundToInt((minInterval + maxInterval) * 0.5f);
         }
 
         private string GetStyleLabel(AugmentStyle style)
@@ -2814,15 +3013,61 @@ namespace DefenseGame
         }
         private void EnsureDefaultPool()
         {
-            if (augmentPool.Count > 0)
+            if (augmentPool.Count == 0)
             {
-                return;
+                AddStableAugments();
+                AddGrowthAugments();
+                AddGambleAugments();
+                AddBuildupAugments();
             }
 
-            AddStableAugments();
-            AddGrowthAugments();
-            AddGambleAugments();
-            AddBuildupAugments();
+            RefreshGeneralAugmentPool();
+        }
+
+        private void RefreshGeneralAugmentPool()
+        {
+            string[] retiredDuplicateIds =
+            {
+                "sniper_window", "panic_barrier",
+                "senior_miner", "union_mine", "steady_contract", "coupon_storm", "first_wave_bonus",
+                "jackpot", "risky_vault", "bounty_flip", "mini_lotto", "rare_bounty", "boss_bet",
+                "overclock_growth", "fever_engine", "boss_tax_account"
+            };
+
+            for (int i = 0; i < retiredDuplicateIds.Length; i++)
+            {
+                RemoveAugmentById(retiredDuplicateIds[i]);
+            }
+
+            AddTacticalGeneralAugments();
+        }
+
+        private void AddTacticalGeneralAugments()
+        {
+            AddAugmentIfMissing(CreateAugment(
+                "devils_firepower_contract", "\uc545\ub9c8\uc758 \ud654\ub825 \uacc4\uc57d",
+                "\ubaa8\ub4e0 \uc720\ub2db \uacf5\uaca9\ub825 +30%, \ucd5c\ub300 \uccb4\ub825 -20%. \ubc84\ud2f0\ub294 \ud798\uc744 \ud314\uc544 \ube60\ub978 \ucc98\uce58\ub97c \ub178\ub9bd\ub2c8\ub2e4.",
+                AugmentStyle.Gamble, AugmentEffectType.AttackHealthTradeoff, 0.30f, 0.20f, 0f, new Color(1f, 0.30f, 0.24f)));
+            AddAugmentIfMissing(CreateAugment(
+                "execution_protocol", "\ucc98\ud615 \ud504\ub85c\ud1a0\ucf5c",
+                "\ub0a8\uc740 \uccb4\ub825 25% \uc774\ud558 \uc801\uc5d0\uac8c \uc9c1\uc804 \ud53c\ud574\uc758 35%\ub97c \ucd94\uac00\ub85c \uc90d\ub2c8\ub2e4. \ubcf4\uc2a4\ub294 12%\ub9cc \uc801\uc6a9\ub429\ub2c8\ub2e4.",
+                AugmentStyle.Stable, AugmentEffectType.ExecuteDamage, 0.25f, 0.35f, 0.12f, new Color(1f, 0.58f, 0.18f)));
+            AddAugmentIfMissing(CreateAugment(
+                "cliff_edge_counter", "\ubcbc\ub791 \ub05d \ubc18\uaca9",
+                "\uccb4\ub825\uc774 40% \uc774\ud558\uc778 \uc720\ub2db\uc740 \uc801\uc5d0\uac8c \uc8fc\ub294 \ud53c\ud574\uac00 45% \uc99d\uac00\ud569\ub2c8\ub2e4.",
+                AugmentStyle.Gamble, AugmentEffectType.LowHealthFury, 0.40f, 0.45f, 0f, new Color(1f, 0.34f, 0.42f)));
+            AddAugmentIfMissing(CreateAugment(
+                "critical_reload", "\uce58\uba85\ud0c0 \uc7ac\uc7a5\uc804",
+                "\uce58\uba85\ud0c0 \uc801\uc911 \uc2dc 18% \ud655\ub960\ub85c \uc9c1\uc804 \ud53c\ud574\uc758 70%\ub97c \ud55c \ubc88 \ub354 \uc90d\ub2c8\ub2e4.",
+                AugmentStyle.Gamble, AugmentEffectType.CriticalDoubleTap, 0.18f, 0.70f, 0f, new Color(1f, 0.82f, 0.24f)));
+            AddAugmentIfMissing(CreateAugment(
+                "mana_relay", "\ub9c8\ub098 \ub9b4\ub808\uc774",
+                "\uc544\uad70\uc774 \uc2a4\ud0ac\uc744 \uc4f8 \ub54c\ub9c8\ub2e4 \ub9c8\ub098\uac00 \uac00\uc7a5 \ub0ae\uc740 \ub2e4\ub978 \uc544\uad70 1\uba85\uc774 \ub9c8\ub098 6%\ub97c \ud68c\ubcf5\ud569\ub2c8\ub2e4.",
+                AugmentStyle.Growth, AugmentEffectType.SkillManaRelay, 0.06f, 0f, 0f, new Color(0.34f, 0.88f, 1f)));
+            AddAugmentIfMissing(CreateAugment(
+                "skill_chain_reactor", "\uc5f0\uc1c4 \ubc18\uc751\ub85c",
+                "\uc544\uad70\uc758 \ub9e4 5\ubc88\uc9f8 \uc2a4\ud0ac\uc774 \ub300\uc0c1 \uc8fc\ubcc0 2.4m\uc5d0 \uc2dc\uc804\uc790 \uacf5\uaca9\ub825 115% \ud53c\ud574\ub97c \uc90d\ub2c8\ub2e4.",
+                AugmentStyle.Growth, AugmentEffectType.SkillChainBlast, 5f, 1.15f, 2.4f, new Color(0.72f, 0.46f, 1f)));
         }
 
         private void EnsureHeroSpecificAugments()

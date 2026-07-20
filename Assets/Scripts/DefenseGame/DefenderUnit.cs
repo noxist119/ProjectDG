@@ -99,6 +99,7 @@ namespace DefenseGame
         internal static SkillDefinition CurrentDamageSkillContext { get; private set; }
 
         public CharacterDefinition Definition => definition;
+        public float EffectiveAttackPower => definition != null ? GetEffectiveAttackPower() : 0f;
         public CharacterGrade Grade => definition != null ? definition.grade : CharacterGrade.Normal;
         public CharacterRole Role => definition != null ? definition.role : CharacterRole.Vanguard;
         public BoardSlot CurrentSlot => currentSlot;
@@ -702,7 +703,32 @@ namespace DefenseGame
             stunTimer = Mathf.Max(stunTimer, duration);
             attackCooldown = Mathf.Max(attackCooldown, Mathf.Min(duration, 1.2f));
             hitFlashFeedback?.PlayHit(true);
-            ShowTimedSupportFeedback("기절", DebuffFeedbackColor, duration, null);
+            ShowTimedSupportFeedback("기절 · 행동 불가", DebuffFeedbackColor, duration, null);
+            RuntimeCombatFeedback.ShowGroundPulse(transform.position, DebuffFeedbackColor, 0.62f, 0.72f, 0.10f);
+        }
+
+        public void ApplyMergeInheritance(float inheritedAttackPower, float inheritedMaxHealth)
+        {
+            if (definition == null)
+            {
+                return;
+            }
+
+            float currentAttackPower = Mathf.Max(0.01f, GetEffectiveAttackPower());
+            float attackRatio = Mathf.Max(0f, inheritedAttackPower / currentAttackPower - 1f);
+            if (attackRatio > 0f)
+            {
+                AddAttackPowerBonus(attackRatio);
+            }
+
+            float currentMaximumHealth = Mathf.Max(0.01f, MaxHealth);
+            float healthRatio = Mathf.Max(0f, inheritedMaxHealth / currentMaximumHealth - 1f);
+            if (healthRatio > 0f)
+            {
+                AddMaxHealthBonus(healthRatio);
+            }
+
+            floatingUi?.ShowStatus("합성 능력 계승", new Color(1f, 0.86f, 0.30f, 1f), 1.25f);
         }
 
         public void KillByBossSkill()
@@ -984,7 +1010,8 @@ namespace DefenseGame
             RuntimeAudioUtility.PlayAttack();
             if (definition.attackBehavior != null && definition.attackBehavior.IsMelee)
             {
-                RuntimeEffectUtility.PlayOneShot(ResolveBasicHitEffectPrefab(), pending.target.transform.position, Quaternion.identity);
+                Quaternion hitRotation = RuntimeEffectUtility.FaceTowards(transform.position, pending.target.transform.position, transform.rotation);
+                RuntimeEffectUtility.PlayOneShot(ResolveBasicHitEffectPrefab(), pending.target.transform.position, hitRotation);
                 RuntimeAudioUtility.PlayHit();
                 pending.target.TakeDamage(pending.damage, pending.critical, this);
                 ApplyBasicAttackSplash(pending.target, pending.damage);
@@ -994,7 +1021,8 @@ namespace DefenseGame
             GameObject attackProjectilePrefab = ResolveBasicAttackProjectilePrefab();
             if (attackProjectilePrefab == null)
             {
-                RuntimeEffectUtility.PlayOneShot(ResolveBasicHitEffectPrefab(), pending.target.transform.position, Quaternion.identity);
+                Quaternion hitRotation = RuntimeEffectUtility.FaceTowards(transform.position, pending.target.transform.position, transform.rotation);
+                RuntimeEffectUtility.PlayOneShot(ResolveBasicHitEffectPrefab(), pending.target.transform.position, hitRotation);
                 RuntimeAudioUtility.PlayHit();
                 pending.target.TakeDamage(pending.damage, pending.critical, this);
                 ApplyBasicAttackSplash(pending.target, pending.damage);
@@ -1002,11 +1030,12 @@ namespace DefenseGame
             }
 
             Transform launchPoint = firePoint != null ? firePoint : transform;
-            RuntimeEffectUtility.PlayOneShot(ResolveBasicMuzzleEffectPrefab(), launchPoint.position, launchPoint.rotation);
-            Projectile projectile = InstantiateProjectile(attackProjectilePrefab, launchPoint.position);
+            Quaternion launchRotation = RuntimeEffectUtility.FaceTowards(launchPoint.position, pending.target.transform.position, launchPoint.rotation);
+            RuntimeEffectUtility.PlayOneShot(ResolveBasicMuzzleEffectPrefab(), launchPoint.position, launchRotation);
+            Projectile projectile = InstantiateProjectile(attackProjectilePrefab, launchPoint.position, launchRotation);
             if (projectile == null)
             {
-                RuntimeEffectUtility.PlayOneShot(ResolveBasicHitEffectPrefab(), pending.target.transform.position, Quaternion.identity);
+                RuntimeEffectUtility.PlayOneShot(ResolveBasicHitEffectPrefab(), pending.target.transform.position, launchRotation);
                 RuntimeAudioUtility.PlayHit();
                 pending.target.TakeDamage(pending.damage, pending.critical, this);
                 ApplyBasicAttackSplash(pending.target, pending.damage);
@@ -1039,27 +1068,9 @@ namespace DefenseGame
             return projectilePrefab != null ? projectilePrefab.gameObject : null;
         }
 
-        private Projectile InstantiateProjectile(GameObject projectileSource, Vector3 position)
+        private Projectile InstantiateProjectile(GameObject projectileSource, Vector3 position, Quaternion rotation)
         {
-            if (projectileSource == null)
-            {
-                return null;
-            }
-
-            GameObject projectileObject = Instantiate(projectileSource, position, Quaternion.identity);
-            if (projectileObject == null)
-            {
-                return null;
-            }
-
-            Projectile projectile = projectileObject.GetComponent<Projectile>();
-            if (projectile == null)
-            {
-                projectile = projectileObject.AddComponent<Projectile>();
-            }
-
-            projectileObject.SetActive(true);
-            return projectile;
+            return Projectile.Spawn(projectileSource, position, rotation);
         }
 
         private GameObject ResolveBasicMuzzleEffectPrefab()
@@ -1117,6 +1128,16 @@ namespace DefenseGame
             PendingSkillCast pending = pendingSkillCast;
             pendingSkillCast = default;
             CancelPendingSkillFallback();
+            if (pending.skill != null && pending.skill.effectType == SkillEffectType.HealLowestAllies &&
+                FindLowestHealthAllies(GetSkillHitCount(pending.skill)).Count == 0)
+            {
+                currentMana = MaxMana;
+                skillCooldowns[pending.skill.id] = 0f;
+                floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
+                animationDriver?.ForceIdle();
+                return;
+            }
+
             ApplySkillEffect(pending.skill, pending.target, pending.skillMultiplier);
         }
 
@@ -1171,6 +1192,11 @@ namespace DefenseGame
             {
                 return false;
             }
+            if (RequiresNearbyMonsterForActivation(skill.effectType) && !HasMonsterInSkillCastRange(skill))
+            {
+                return false;
+            }
+
 
             switch (skill.effectType)
             {
@@ -1219,6 +1245,33 @@ namespace DefenseGame
                     return true;
                 default:
                     return currentTarget != null;
+            }
+        }
+
+        private bool HasMonsterInSkillCastRange(SkillDefinition skill)
+        {
+            if (skill == null)
+            {
+                return false;
+            }
+
+            return FindNearestTarget(GetEffectiveSkillRange(skill)) != null;
+        }
+
+        private static bool RequiresNearbyMonsterForActivation(SkillEffectType effectType)
+        {
+            switch (effectType)
+            {
+                case SkillEffectType.ShieldAlly:
+                case SkillEffectType.AttackSpeedBoost:
+                case SkillEffectType.AllyAttackSpeedBoost:
+                case SkillEffectType.CriticalBoost:
+                case SkillEffectType.DefenseBuff:
+                case SkillEffectType.ThornsAura:
+                case SkillEffectType.Transform:
+                    return true;
+                default:
+                    return false;
             }
         }
 
@@ -1433,8 +1486,13 @@ namespace DefenseGame
             }
             else if (skill.effectType == SkillEffectType.HealLowestAllies)
             {
-                PlaySkillCasterEffect(skill);
                 List<DefenderUnit> allies = FindLowestHealthAllies(hitCount);
+                if (allies.Count == 0)
+                {
+                    return;
+                }
+
+                PlaySkillCasterEffect(skill);
                 for (int i = 0; i < allies.Count; i++)
                 {
                     allies[i].Heal(allies[i].MaxHealth * power * skillMultiplier, skill.areaEffectPrefab);
@@ -1630,8 +1688,9 @@ namespace DefenseGame
         private void LaunchSkillProjectile(MonsterUnit target, SkillDefinition skill, float skillMultiplier, GameObject skillProjectilePrefab)
         {
             Transform launchPoint = firePoint != null ? firePoint : transform;
-            RuntimeEffectUtility.PlayOneShot(ResolveSkillMuzzleEffectPrefab(skill), launchPoint.position, launchPoint.rotation);
-            Projectile projectile = InstantiateProjectile(skillProjectilePrefab, launchPoint.position);
+            Quaternion launchRotation = RuntimeEffectUtility.FaceTowards(launchPoint.position, target.transform.position, launchPoint.rotation);
+            RuntimeEffectUtility.PlayOneShot(ResolveSkillMuzzleEffectPrefab(skill), launchPoint.position, launchRotation);
+            Projectile projectile = InstantiateProjectile(skillProjectilePrefab, launchPoint.position, launchRotation);
             if (projectile == null)
             {
                 return;
@@ -1697,14 +1756,17 @@ namespace DefenseGame
                 return;
             }
 
-            RuntimeEffectUtility.PlayOneShot(ResolveSkillHitEffectPrefab(skill), target.transform.position, Quaternion.identity);
+            Quaternion effectRotation = RuntimeEffectUtility.FaceTowards(transform.position, target.transform.position, transform.rotation);
+            RuntimeEffectUtility.PlayOneShot(ResolveSkillHitEffectPrefab(skill), target.transform.position, effectRotation);
             RuntimeCombatFeedback.ShowGroundPulse(target.transform.position, definition != null ? definition.accentColor : Color.white, 0.36f, 0.34f, 0.08f);
             RuntimeAudioUtility.PlayHit();
         }
 
         private void PlaySkillCasterEffect(SkillDefinition skill)
         {
-            RuntimeEffectUtility.PlayOneShot(ResolveSkillMuzzleEffectPrefab(skill), transform.position, transform.rotation);
+            MonsterUnit target = FindNearestSkillTarget(skill);
+            Quaternion rotation = target != null ? RuntimeEffectUtility.FaceTowards(transform.position, target.transform.position, transform.rotation) : transform.rotation;
+            RuntimeEffectUtility.PlayOneShot(ResolveSkillMuzzleEffectPrefab(skill), transform.position, rotation);
             RuntimeCombatFeedback.ShowGroundPulse(transform.position, definition != null ? definition.accentColor : Color.white, 0.44f, 0.32f, 0.06f);
             RuntimeAudioUtility.PlayAttack();
         }
@@ -1716,12 +1778,13 @@ namespace DefenseGame
         }
         private void PlaySkillAreaEffect(SkillDefinition skill, Vector3 center, float minimumLifetime = 0f)
         {
-            RuntimeEffectUtility.PlayOneShot(ResolveSkillAreaEffectPrefab(skill), center, Quaternion.identity, minimumLifetime);
+            Quaternion effectRotation = RuntimeEffectUtility.FaceTowards(transform.position, center, transform.rotation);
+            RuntimeEffectUtility.PlayOneShot(ResolveSkillAreaEffectPrefab(skill), center, effectRotation, minimumLifetime);
         }
 
         private void ApplyProjectileSkillImpact(SkillDefinition skill, MonsterUnit hitTarget, float skillMultiplier)
         {
-            if (skill == null || hitTarget == null || !hitTarget.CanBeCombatTargeted)
+            if (this == null || !isActiveAndEnabled || definition == null || skill == null || hitTarget == null || !hitTarget.CanBeCombatTargeted)
             {
                 return;
             }
@@ -2432,7 +2495,7 @@ namespace DefenseGame
         private List<DefenderUnit> FindLowestHealthAllies(int count)
         {
             return FindObjectsOfType<DefenderUnit>()
-                .Where(defender => defender != null && defender.CurrentHealth > 0f && defender.CurrentHealth < defender.MaxHealth * 0.98f)
+                .Where(defender => defender != null && defender.CurrentHealth > 0f && defender.CurrentHealth < defender.MaxHealth - 0.01f)
                 .OrderBy(defender => defender.HealthRatio)
                 .Take(Mathf.Max(1, count))
                 .ToList();
@@ -2598,6 +2661,10 @@ namespace DefenseGame
             thornsTimer = 0f;
             shieldTimer = 0f;
             stunTimer = 0f;
+            if (definition != null)
+            {
+                floatingUi?.Configure(definition.displayName, definition.accentColor, definition.grade);
+            }
             ClearOwnedSupportEffects();
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
         }

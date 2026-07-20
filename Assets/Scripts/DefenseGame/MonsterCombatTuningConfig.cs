@@ -205,6 +205,26 @@ namespace DefenseGame
                 entry.skill03MuzzleEffectPrefab,
                 entry.skill03HitEffectPrefab,
                 entry.skill03AreaEffectPrefab);
+
+            if (definition.skills.Count <= 1 || definition.skills[0] == null)
+            {
+                return;
+            }
+
+            SkillDefinition visualFallback = definition.skills[0];
+            for (int i = 1; i < definition.skills.Count; i++)
+            {
+                SkillDefinition skill = definition.skills[i];
+                if (skill == null)
+                {
+                    continue;
+                }
+
+                if (skill.projectilePrefab == null) skill.projectilePrefab = visualFallback.projectilePrefab;
+                if (skill.muzzleEffectPrefab == null) skill.muzzleEffectPrefab = visualFallback.muzzleEffectPrefab;
+                if (skill.hitEffectPrefab == null) skill.hitEffectPrefab = visualFallback.hitEffectPrefab;
+                if (skill.areaEffectPrefab == null) skill.areaEffectPrefab = visualFallback.areaEffectPrefab;
+            }
         }
 
         private void ApplySkillResourceOverride(

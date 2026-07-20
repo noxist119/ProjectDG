@@ -1,0 +1,16 @@
+diff --git a/Assets/Scripts/DefenseGame/RoundManager.cs b/Assets/Scripts/DefenseGame/RoundManager.cs
+--- a/Assets/Scripts/DefenseGame/RoundManager.cs
++++ b/Assets/Scripts/DefenseGame/RoundManager.cs
+@@ -49,11 +49,11 @@ namespace DefenseGame
+         [SerializeField] private List<RoundSpawnTimingStep> bossSpawnTimingSteps = new List<RoundSpawnTimingStep>
+         {
+-            new RoundSpawnTimingStep { firstRound = 10, intervalAtFirstRound = 0.44f, intervalChangePerRound = -0.004f, maxIntervalChange = 0.14f }
++            new RoundSpawnTimingStep { firstRound = 10, intervalAtFirstRound = 0.40f, intervalChangePerRound = -0.004f, maxIntervalChange = 0.14f }
+         };
+         [SerializeField] private BossSupportBalanceStep bossSupportBalance = new BossSupportBalanceStep
+         {
+-            baseSupportCount = 6,
++            baseSupportCount = 9,
+             firstBossRound = 10,
+             supportCountPerBossEncounter = 2
+         };

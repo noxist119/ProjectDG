@@ -1,0 +1,26 @@
+diff --git a/Assets/Scripts/DefenseGame/DefenseGameController.cs b/Assets/Scripts/DefenseGame/DefenseGameController.cs
+--- a/Assets/Scripts/DefenseGame/DefenseGameController.cs
++++ b/Assets/Scripts/DefenseGame/DefenseGameController.cs
+@@ -215,7 +215,7 @@ namespace DefenseGame
+         [SerializeField] private int ultimateRecipeBingoFateGaugeBonus = 0;
+         [SerializeField] [Range(0f, 0.5f)] private float maxFateDebtShopCostPenalty = 0.20f;
+         [SerializeField] [Range(1f, 2f)] private float fateCardBacklashMonsterCountMultiplier = 1.50f;
+-        [SerializeField] [Range(0f, 1.2f)] private float maxFateDebtBossHealthBonus = 1.15f;
++        [SerializeField] [Range(0f, 1.2f)] private float maxFateDebtBossHealthBonus = 1.20f;
+         [SerializeField] [Range(0f, 0.95f)] private float fateCardMonsterStatCrushRatio = 0.90f;
+         [SerializeField] private int fateCardCombatGold = 60;
+         [SerializeField] private int fateCardMonsterCrushDebt = 94;
+diff --git a/Assets/Scripts/DefenseGame/MonsterDatabase.cs b/Assets/Scripts/DefenseGame/MonsterDatabase.cs
+--- a/Assets/Scripts/DefenseGame/MonsterDatabase.cs
++++ b/Assets/Scripts/DefenseGame/MonsterDatabase.cs
+@@ -69,10 +69,10 @@ namespace DefenseGame
+                 encounterIndex = 0,
+                 designerNote = "R10 / human 3-strategy target clear rate 65-75% / 2026-07 20-run baseline 95% fate-pressure retune",
+                 description = "Boss 1: requires a real summon-versus-shop commitment and punishes underbuilt boards.",
+-                healthScale = 3.35f,
+-                attackScale = 2.00f,
++                healthScale = 3.85f,
++                attackScale = 2.30f,
+                 manaScale = 1.05f,
+                 skillPowerScale = 1.45f,
+                 cooldownScale = 1.00f,

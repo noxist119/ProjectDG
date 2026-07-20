@@ -9,9 +9,9 @@ namespace DefenseGame.Editor
     public static class DefenseGameBatchTurboOverride
     {
         private const string BatchMethodToken = "DefenseGame.Editor.DefenseGameBatchPlaytest.RunHumanStrategies20";
-        private const float TurboTimeScale = 180f;
-        private const float TurboFixedDeltaTime = 0.05f;
-        private const float TurboMaximumDeltaTime = 0.75f;
+        private const float TurboTimeScale = 40f;
+        private const float TurboFixedDeltaTime = 0.025f;
+        private const float TurboMaximumDeltaTime = 0.33f;
         private static readonly bool Active;
 
         static DefenseGameBatchTurboOverride()

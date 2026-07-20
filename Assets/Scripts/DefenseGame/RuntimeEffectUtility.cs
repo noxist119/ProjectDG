@@ -8,6 +8,7 @@ namespace DefenseGame
     public static class RuntimeEffectUtility
     {
         private const float DefaultLifetime = 2f;
+        private const int MaxTrackedEffects = 72;
         private static readonly List<GameObject> trackedEffects = new List<GameObject>();
 
         public static GameObject PlayOneShot(GameObject prefab, Vector3 position, Quaternion rotation, float minimumLifetime = 0f)
@@ -24,6 +25,7 @@ namespace DefenseGame
             }
 
             GameObject effect = Object.Instantiate(prefab, position, rotation);
+            RuntimeParticleVfxCompatibility.Prepare(effect);
             effect.SetActive(true);
             TrackEffect(effect);
             Object.Destroy(effect, Mathf.Max(minimumLifetime, ResolveLifetime(effect)));
@@ -44,10 +46,23 @@ namespace DefenseGame
             }
 
             GameObject effect = Object.Instantiate(prefab, position, rotation);
+            RuntimeParticleVfxCompatibility.Prepare(effect);
             effect.SetActive(true);
             TrackEffect(effect);
             Object.Destroy(effect, Mathf.Max(0.1f, lifetime));
             return effect;
+        }
+
+        public static Quaternion FaceTowards(Vector3 origin, Vector3 target, Quaternion fallback)
+        {
+            Vector3 direction = target - origin;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.000001f)
+            {
+                return fallback;
+            }
+
+            return Quaternion.LookRotation(direction.normalized, Vector3.up);
         }
 
         public static GameObject PlayAttachedTimed(GameObject prefab, Transform parent, Vector3 localPosition, Quaternion localRotation, float lifetime)
@@ -66,6 +81,7 @@ namespace DefenseGame
             GameObject effect = Object.Instantiate(prefab, parent);
             effect.transform.localPosition = localPosition;
             effect.transform.localRotation = localRotation;
+            RuntimeParticleVfxCompatibility.Prepare(effect);
             ForceLocalParticleSimulation(effect);
             effect.SetActive(true);
             TrackEffect(effect);
@@ -155,6 +171,12 @@ namespace DefenseGame
             }
 
             PruneTrackedEffects();
+            while (trackedEffects.Count >= MaxTrackedEffects)
+            {
+                GameObject oldest = trackedEffects[0];
+                trackedEffects.RemoveAt(0);
+                DestroyEffect(oldest);
+            }
             trackedEffects.Add(effect);
         }
 
@@ -1101,6 +1123,212 @@ namespace DefenseGame
             {
                 float angle = Mathf.PI * 2f * i / count;
                 line.SetPosition(i, new Vector3(Mathf.Cos(angle) * currentRadius, Mathf.Sin(angle) * verticalRadius, 0f));
+            }
+        }
+    }
+
+    [DefaultExecutionOrder(-10000)]
+    public sealed class MobileFrameRateController : MonoBehaviour
+    {
+        public const int TargetFrameRate = 60;
+        private static MobileFrameRateController instance;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Bootstrap()
+        {
+            ApplyFrameRateSettings();
+            if (instance != null)
+            {
+                return;
+            }
+
+            GameObject host = new GameObject(nameof(MobileFrameRateController));
+            host.hideFlags = HideFlags.HideInHierarchy;
+            instance = host.AddComponent<MobileFrameRateController>();
+            DontDestroyOnLoad(host);
+        }
+
+        private void Awake()
+        {
+            if (instance != null && instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+            ApplyFrameRateSettings();
+        }
+
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (hasFocus)
+            {
+                ApplyFrameRateSettings();
+            }
+        }
+
+        private static void ApplyFrameRateSettings()
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = TargetFrameRate;
+        }
+    }
+
+    public static class RuntimeParticleVfxCompatibility
+    {
+        private const int MaxParticlesPerSystem = 96;
+        private const string UrpParticleShaderName = "Universal Render Pipeline/Particles/Unlit";
+        private static readonly Dictionary<Material, Material> compatibleMaterials = new Dictionary<Material, Material>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetCache()
+        {
+            compatibleMaterials.Clear();
+        }
+
+        public static void Prepare(GameObject effectRoot)
+        {
+            if (effectRoot == null)
+            {
+                return;
+            }
+
+            ParticleSystem[] systems = effectRoot.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < systems.Length; i++)
+            {
+                if (systems[i] == null)
+                {
+                    continue;
+                }
+
+                ParticleSystem.MainModule main = systems[i].main;
+                main.maxParticles = Mathf.Clamp(main.maxParticles, 1, MaxParticlesPerSystem);
+            }
+
+            ParticleSystemRenderer[] renderers = effectRoot.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                ParticleSystemRenderer renderer = renderers[i];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                Material[] materials = renderer.sharedMaterials;
+                bool changed = false;
+                bool incompatible = false;
+
+                for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
+                {
+                    Material source = materials[materialIndex];
+                    if (source == null || source.shader == null)
+                    {
+                        continue;
+                    }
+
+                    string shaderName = source.shader.name;
+                    bool legacyParticle = shaderName == "Mobile/Particles/Additive" ||
+                        shaderName == "Mobile/Particles/Alpha Blended";
+                    if (!legacyParticle &&
+                        (!source.shader.isSupported || shaderName == "Hidden/InternalErrorShader" || shaderName == "Shader Graphs/Decal"))
+                    {
+                        incompatible = true;
+                        break;
+                    }
+
+                    Material compatible = legacyParticle ? GetCompatibleMaterial(source, shaderName == "Mobile/Particles/Additive") : source;
+                    if (compatible == null)
+                    {
+                        incompatible = true;
+                        break;
+                    }
+
+                    if (compatible != source)
+                    {
+                        materials[materialIndex] = compatible;
+                        changed = true;
+                    }
+                }
+
+                if (incompatible)
+                {
+                    renderer.enabled = false;
+                }
+                else if (changed)
+                {
+                    renderer.sharedMaterials = materials;
+                }
+            }
+        }
+
+        private static Material GetCompatibleMaterial(Material source, bool additive)
+        {
+            if (compatibleMaterials.TryGetValue(source, out Material cached) && cached != null)
+            {
+                return cached;
+            }
+
+            Shader shader = Shader.Find(UrpParticleShaderName);
+            if (shader == null)
+            {
+                return null;
+            }
+
+            Material material = new Material(shader)
+            {
+                name = source.name + "_RuntimeURP",
+                hideFlags = HideFlags.HideAndDontSave,
+                enableInstancing = true
+            };
+
+            Texture texture = source.HasProperty("_MainTex") ? source.GetTexture("_MainTex") : null;
+            Color color = source.HasProperty("_TintColor")
+                ? source.GetColor("_TintColor")
+                : source.HasProperty("_Color") ? source.GetColor("_Color") : Color.white;
+            SetTexture(material, "_BaseMap", texture);
+            SetTexture(material, "_MainTex", texture);
+            SetColor(material, "_BaseColor", color);
+            SetColor(material, "_Color", color);
+            SetFloat(material, "_Surface", 1f);
+            SetFloat(material, "_Blend", additive ? 2f : 0f);
+            SetFloat(material, "_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            SetFloat(material, "_DstBlend", additive
+                ? (float)UnityEngine.Rendering.BlendMode.One
+                : (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            SetFloat(material, "_ZWrite", 0f);
+            SetFloat(material, "_Cull", (float)UnityEngine.Rendering.CullMode.Off);
+            material.SetOverrideTag("RenderType", "Transparent");
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.renderQueue = additive ? 3100 : 3000;
+            compatibleMaterials[source] = material;
+            return material;
+        }
+
+        private static void SetTexture(Material material, string propertyName, Texture texture)
+        {
+            if (material.HasProperty(propertyName))
+            {
+                material.SetTexture(propertyName, texture);
+            }
+        }
+
+        private static void SetFloat(Material material, string propertyName, float value)
+        {
+            if (material.HasProperty(propertyName))
+            {
+                material.SetFloat(propertyName, value);
+            }
+        }
+
+        private static void SetColor(Material material, string propertyName, Color value)
+        {
+            if (material.HasProperty(propertyName))
+            {
+                material.SetColor(propertyName, value);
             }
         }
     }

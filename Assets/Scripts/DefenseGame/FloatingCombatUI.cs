@@ -191,8 +191,8 @@ namespace DefenseGame
             GameObject statusObject = new GameObject("TimedStatus");
             statusObject.transform.SetParent(canvas.transform, false);
             RectTransform rect = statusObject.AddComponent<RectTransform>();
-            rect.anchoredPosition = new Vector2(0f, 52f);
-            rect.sizeDelta = new Vector2(154f, 28f);
+            rect.anchoredPosition = new Vector2(0f, 68f);
+            rect.sizeDelta = new Vector2(184f, 38f);
 
             Image background = statusObject.AddComponent<Image>();
             background.color = new Color(0.02f, 0.035f, 0.12f, 0.84f);
@@ -212,13 +212,13 @@ namespace DefenseGame
             Text label = textObject.AddComponent<Text>();
             label.font = RuntimeFontProvider.GetDefaultFont();
             label.alignment = TextAnchor.MiddleCenter;
-            label.fontSize = 15;
+            label.fontSize = 18;
             label.fontStyle = FontStyle.Bold;
             label.color = color;
             label.raycastTarget = false;
             label.resizeTextForBestFit = true;
             label.resizeTextMinSize = 10;
-            label.resizeTextMaxSize = 15;
+            label.resizeTextMaxSize = 18;
 
             Shadow shadow = textObject.AddComponent<Shadow>();
             shadow.effectColor = new Color(0f, 0f, 0f, 0.76f);
@@ -497,10 +497,12 @@ namespace DefenseGame
 
         private static Sprite LoadSprite(string resourcePath)
         {
-            if (SpriteCache.TryGetValue(resourcePath, out Sprite cachedSprite))
+            if (SpriteCache.TryGetValue(resourcePath, out Sprite cachedSprite) && cachedSprite != null && cachedSprite.texture != null)
             {
                 return cachedSprite;
             }
+
+            SpriteCache.Remove(resourcePath);
 
             Texture2D texture = Resources.Load<Texture2D>(resourcePath);
             if (texture == null)

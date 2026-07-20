@@ -98,6 +98,8 @@ namespace DefenseGame
         public SkillDeliveryType deliveryType = SkillDeliveryType.Auto;
         public bool useCustomCastRange;
         public float castRange = 6f;
+        [Tooltip("Monster skills only. Allows an explicitly designed boss mechanic to ignore distance when selecting defenders.")]
+        public bool isGlobalTargeting;
         public float power = 1f;
         public float secondaryPower = 0.35f;
         public float duration = 3f;

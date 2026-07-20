@@ -26,6 +26,8 @@ MonoBehaviour:
     projectileSpeed: 8
     overrideMoveSpeed: 1
     moveSpeed: 1.15
+    overrideVisualScale: 0
+    visualScale: 1
     overrideSplash: 0
     splashRadius: 0
     splashDamageRatio: 0
@@ -35,7 +37,7 @@ MonoBehaviour:
     basicAttackMuzzleEffectPrefab: {fileID: 1867004809648363667, guid: f8e91a298c616df42b179351337db6e0, type: 3}
     basicAttackHitEffectPrefab: {fileID: 6534055518381600651, guid: 158e9be2501871748ba8c0880832407e, type: 3}
     skill01ProjectilePrefab: {fileID: 0}
-    skill01MuzzleEffectPrefab: {fileID: 2381221871478740106, guid: 0288ede2ccc30e043965fb377274b26f, type: 3}
+    skill01MuzzleEffectPrefab: {fileID: 7727211166305907015, guid: c552d04b64b124b44b258ac6dd13c776, type: 3}
     skill01HitEffectPrefab: {fileID: 7727211166305907015, guid: c552d04b64b124b44b258ac6dd13c776, type: 3}
     skill01AreaEffectPrefab: {fileID: 7727211166305907015, guid: c552d04b64b124b44b258ac6dd13c776, type: 3}
     skill02ProjectilePrefab: {fileID: 0}
@@ -55,6 +57,8 @@ MonoBehaviour:
     projectileSpeed: 8
     overrideMoveSpeed: 1
     moveSpeed: 1.8
+    overrideVisualScale: 0
+    visualScale: 1
     overrideSplash: 0
     splashRadius: 0
     splashDamageRatio: 0
@@ -84,6 +88,8 @@ MonoBehaviour:
     projectileSpeed: 8
     overrideMoveSpeed: 1
     moveSpeed: 0.9
+    overrideVisualScale: 0
+    visualScale: 1
     overrideSplash: 0
     splashRadius: 0
     splashDamageRatio: 0
@@ -93,9 +99,9 @@ MonoBehaviour:
     basicAttackMuzzleEffectPrefab: {fileID: 2367681456742369808, guid: 4b994750aa5e1c448831938fb78b36dc, type: 3}
     basicAttackHitEffectPrefab: {fileID: 2367681456742369808, guid: 4b994750aa5e1c448831938fb78b36dc, type: 3}
     skill01ProjectilePrefab: {fileID: 0}
-    skill01MuzzleEffectPrefab: {fileID: 7149485859851509034, guid: 612896c08b8bbfb43a8c2eb0e7290d4a, type: 3}
-    skill01HitEffectPrefab: {fileID: 7149485859851509034, guid: 612896c08b8bbfb43a8c2eb0e7290d4a, type: 3}
-    skill01AreaEffectPrefab: {fileID: 7149485859851509034, guid: 612896c08b8bbfb43a8c2eb0e7290d4a, type: 3}
+    skill01MuzzleEffectPrefab: {fileID: 2367681456742369808, guid: 4b994750aa5e1c448831938fb78b36dc, type: 3}
+    skill01HitEffectPrefab: {fileID: 2367681456742369808, guid: 4b994750aa5e1c448831938fb78b36dc, type: 3}
+    skill01AreaEffectPrefab: {fileID: 2307518005921512091, guid: 2c97edd2d88141c45a04173f2d71620c, type: 3}
     skill02ProjectilePrefab: {fileID: 0}
     skill02MuzzleEffectPrefab: {fileID: 0}
     skill02HitEffectPrefab: {fileID: 0}
@@ -113,6 +119,8 @@ MonoBehaviour:
     projectileSpeed: 8
     overrideMoveSpeed: 1
     moveSpeed: 1.1
+    overrideVisualScale: 0
+    visualScale: 1
     overrideSplash: 0
     splashRadius: 0
     splashDamageRatio: 0
@@ -137,11 +145,13 @@ MonoBehaviour:
     overrideBasicAttackType: 1
     basicAttackType: 1
     overrideAttackRange: 1
-    attackRange: 6
+    attackRange: 3
     overrideProjectileSpeed: 1
     projectileSpeed: 9.5
     overrideMoveSpeed: 1
     moveSpeed: 1.35
+    overrideVisualScale: 0
+    visualScale: 1
     overrideSplash: 0
     splashRadius: 0
     splashDamageRatio: 0
@@ -171,6 +181,8 @@ MonoBehaviour:
     projectileSpeed: 8
     overrideMoveSpeed: 1
     moveSpeed: 1.2
+    overrideVisualScale: 0
+    visualScale: 1
     overrideSplash: 0
     splashRadius: 0
     splashDamageRatio: 0
@@ -195,11 +207,13 @@ MonoBehaviour:
     overrideBasicAttackType: 1
     basicAttackType: 1
     overrideAttackRange: 1
-    attackRange: 5.5
+    attackRange: 3
     overrideProjectileSpeed: 1
     projectileSpeed: 8.5
     overrideMoveSpeed: 1
     moveSpeed: 1.9
+    overrideVisualScale: 0
+    visualScale: 1
     overrideSplash: 0
     splashRadius: 0
     splashDamageRatio: 0
@@ -213,9 +227,9 @@ MonoBehaviour:
     skill01HitEffectPrefab: {fileID: 1723353008260530891, guid: 68e23a9b692253f4d8ef83385c3cfb60, type: 3}
     skill01AreaEffectPrefab: {fileID: 463065645093586908, guid: ba73e14bd9553714c91683662338716e, type: 3}
     skill02ProjectilePrefab: {fileID: 0}
-    skill02MuzzleEffectPrefab: {fileID: 216071063587088953, guid: 2eee76fa5fd86b2469a0aaa997759bf4, type: 3}
-    skill02HitEffectPrefab: {fileID: 9022636855794146652, guid: 6a6746af6956701489148222ca915885, type: 3}
-    skill02AreaEffectPrefab: {fileID: 1467080047196924948, guid: 107f2398eb5dcee4eaf0e109a8f2c43e, type: 3}
+    skill02MuzzleEffectPrefab: {fileID: 3836686415090640846, guid: b90d19a40fe82eb41a7829f1eee30779, type: 3}
+    skill02HitEffectPrefab: {fileID: 3836686415090640846, guid: b90d19a40fe82eb41a7829f1eee30779, type: 3}
+    skill02AreaEffectPrefab: {fileID: 3836686415090640846, guid: b90d19a40fe82eb41a7829f1eee30779, type: 3}
     skill03ProjectilePrefab: {fileID: 0}
     skill03MuzzleEffectPrefab: {fileID: 3836686415090640846, guid: b90d19a40fe82eb41a7829f1eee30779, type: 3}
     skill03HitEffectPrefab: {fileID: 8839644433024613703, guid: c2361221c4fd8b3478cf7df839a6026c, type: 3}
@@ -229,6 +243,8 @@ MonoBehaviour:
     projectileSpeed: 8
     overrideMoveSpeed: 1
     moveSpeed: 0.95
+    overrideVisualScale: 0
+    visualScale: 1
     overrideSplash: 0
     splashRadius: 0
     splashDamageRatio: 0
@@ -258,6 +274,8 @@ MonoBehaviour:
     projectileSpeed: 8
     overrideMoveSpeed: 1
     moveSpeed: 1.12
+    overrideVisualScale: 0
+    visualScale: 1
     overrideSplash: 0
     splashRadius: 0
     splashDamageRatio: 0

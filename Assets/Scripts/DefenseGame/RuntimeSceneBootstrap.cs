@@ -23,6 +23,7 @@ namespace DefenseGame
         [SerializeField] private float slotSpacing = 1.2f;
         [SerializeField] private GamePresentationConfig presentationConfig;
         [SerializeField] private CharacterCombatTuningConfig characterCombatTuningConfig;
+        [SerializeField] private MonsterCombatTuningConfig monsterCombatTuningConfig;
         [SerializeField] private OutgameProgressionConfig outgameProgressionConfig;
         [SerializeField] private bool hideDefaultStageDecorWhenUsingBackground = true;
         [SerializeField] private bool playMainBgm = true;
@@ -62,7 +63,10 @@ namespace DefenseGame
         {
             if (buildOnStart)
             {
+                float buildStartedAt = Time.realtimeSinceStartup;
                 BuildScene();
+                Debug.Log("[RuntimeSceneBootstrap] Runtime stage ready in " +
+                    (Time.realtimeSinceStartup - buildStartedAt).ToString("F2") + "s");
             }
         }
 
@@ -92,6 +96,7 @@ namespace DefenseGame
             characterDatabase.ApplyCombatTuningConfig(characterCombatTuningConfig);
             outgameProgression.Configure(outgameProgressionConfig, characterDatabase);
             monsterDatabase.ApplyPresentationConfig(presentationConfig);
+            monsterDatabase.ApplyCombatTuningConfig(monsterCombatTuningConfig);
 
             Transform root = EnsureRoot("RuntimeStageRoot");
             Transform boardRoot = EnsureChild(root, "BoardSlots");
@@ -742,15 +747,18 @@ namespace DefenseGame
 
         private void BuildCanvas(Transform root, SimpleGameHUD hud, DefenseGameController gameController, DefenseBoardManager boardManager, GameUIButtonBinder binder, AugmentManager augmentManager, CharacterCollectionUI collectionUI, MetaFlowUI metaFlowUI, BoardSynergySystem synergySystem, TacticalMissionSystem missionSystem, BoardTileModifierSystem tileModifierSystem, RunShopSystem runShopSystem, CharacterDatabase characterDatabase, OutgameProgressionSystem outgameProgression)
         {
-            Canvas existingCanvas = FindObjectOfType<Canvas>();
-            if (existingCanvas != null)
+            Transform existingCanvasTransform = root.Find("RuntimeCanvas");
+            if (existingCanvasTransform != null)
             {
-                SafeDestroy(existingCanvas.gameObject);
+                SafeDestroy(existingCanvasTransform.gameObject);
             }
 
             EnsureEventSystem();
 
             GameObject canvasObject = new GameObject("RuntimeCanvas", typeof(RectTransform));
+            // Building hundreds of active UI objects causes repeated mobile Canvas rebuilds.
+            // Assemble the complete hierarchy off-screen, then enable it once it is configured.
+            canvasObject.SetActive(false);
             canvasObject.transform.SetParent(root, false);
             Canvas canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -762,12 +770,15 @@ namespace DefenseGame
             canvasObject.AddComponent<GraphicRaycaster>();
             canvasObject.AddComponent<RuntimeKoreanTextCleaner>();
             Transform hudRoot = CreateSafeAreaRoot(canvas.transform);
+            Transform metaFlowRoot = CreateSafeAreaRoot(canvas.transform, "MetaFlowSafeAreaRoot");
 
             Font font = RuntimeUiSkinUtility.ResolveFont(presentationConfig);
             Color textColor = presentationConfig != null ? presentationConfig.hudTextColor : Color.white;
-            string hintValue = presentationConfig != null && !string.IsNullOrWhiteSpace(presentationConfig.hintText)
-                ? presentationConfig.hintText
-                : "Space Round | S Summon | 1-5 Merge";
+            bool showKeyboardHint = !Application.isMobilePlatform;
+            string hintValue = showKeyboardHint
+                ? (presentationConfig != null && !string.IsNullOrWhiteSpace(presentationConfig.hintText)
+                    ? presentationConfig.hintText : "Space Round | S Summon | 1-5 Merge")
+                : string.Empty;
 
             CreatePanel(hudRoot, "TopSafeBackdrop", new Vector2(0f, -12f), new Vector2(0f, 232f), new Color(0.03f, 0.05f, 0.17f, 0.74f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), false, true);
             CreatePanel(hudRoot, "TopGlow", new Vector2(0f, -224f), new Vector2(0f, 8f), new Color(0.17f, 0.42f, 0.72f, 0.35f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), false, false);
@@ -785,12 +796,9 @@ namespace DefenseGame
             Mask lifeProgressMask = lifeProgressTrack.gameObject.AddComponent<Mask>();
             lifeProgressMask.showMaskGraphic = true;
             Image lifeProgressFill = CreatePanel(lifeProgressTrack.transform, "Fill", Vector2.zero, Vector2.zero, new Color(0.20f, 0.90f, 0.36f, 1f), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), true, false);
-            lifeProgressFill.type = Image.Type.Filled;
-            lifeProgressFill.fillMethod = Image.FillMethod.Horizontal;
-            lifeProgressFill.fillOrigin = 0;
+            lifeProgressFill.type = Image.Type.Sliced;
             lifeProgressFill.fillAmount = 1f;
-            CreatePanel(lifeProgressBack.transform, "LifeIcon", new Vector2(18f, -12f), new Vector2(44f, 44f), new Color(0.20f, 0.85f, 0.42f, 0.95f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
-            Text content = CreateText(lifeProgressBack.transform, font, Color.white, "TopHpText", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(18f, 0f), new Vector2(-36f, 0f), "HP 10/10", 28, TextAnchor.MiddleCenter, true);
+            Text content = CreateText(lifeProgressBack.transform, font, Color.white, "TopHpText", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, "HP 10/10", 28, TextAnchor.MiddleCenter, true);
             AddStrongTextOutline(content);
             Image optionsMenu = CreatePanel(hudRoot, "OptionsMenu", new Vector2(-34f, -112f), new Vector2(274f, 322f), new Color(0.06f, 0.08f, 0.24f, 0.98f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), true, true);
             Canvas optionsCanvas = optionsMenu.gameObject.AddComponent<Canvas>();
@@ -798,16 +806,19 @@ namespace DefenseGame
             optionsCanvas.sortingOrder = 200;
             optionsMenu.gameObject.AddComponent<GraphicRaycaster>();
             Text state = null;
-            Button optionsButton = CreateButton(hudRoot, font, "OptionsButton", "\u2630", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-38f, -36f), new Vector2(76f, 64f), new Color(0.08f, 0.14f, 0.31f, 0.96f), Color.white, null, out Text optionsLabel);
+            Button optionsButton = CreateButton(hudRoot, font, "OptionsButton", string.Empty, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-38f, -36f), new Vector2(76f, 64f), new Color(0.08f, 0.14f, 0.31f, 0.96f), Color.white, null, out Text optionsLabel);
             optionsLabel.fontSize = 19;
             optionsLabel.resizeTextForBestFit = true;
             optionsLabel.resizeTextMinSize = 12;
             optionsLabel.resizeTextMaxSize = 19;
+            optionsLabel.enabled = false;
+            BuildHamburgerIcon(optionsButton.transform);
             optionsButton.onClick.AddListener(() => optionsMenu.gameObject.SetActive(!optionsMenu.gameObject.activeSelf));
             optionsMenu.gameObject.SetActive(false);
 
-            Image mergeStrip = CreatePanel(hudRoot, "MergeResultStrip", new Vector2(-148f, -116f), new Vector2(740f, 30f), new Color(0.10f, 0.12f, 0.30f, 0.72f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            Text mergeResult = CreateText(mergeStrip.transform, font, new Color(1f, 0.89f, 0.36f), "MergeResultText", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, "합성 대기 중", 17, TextAnchor.MiddleCenter, true);
+            Image mergeStrip = CreatePanel(hudRoot, "MergeResultStrip", new Vector2(-80f, -116f), new Vector2(865f, 30f), new Color(0.10f, 0.12f, 0.30f, 0.72f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            Text mergeResult = CreateText(mergeStrip.transform, font, new Color(1f, 0.89f, 0.36f), "MergeResultText", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, string.Empty, 17, TextAnchor.MiddleCenter, true);
+            mergeStrip.gameObject.SetActive(false);
 
             Image bottomPanel = CreatePanel(hudRoot, "BottomCommandDock", new Vector2(0f, 0f), new Vector2(0f, 340f), new Color(0.05f, 0.06f, 0.18f, 0.86f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), false, true);
             CreatePanel(bottomPanel.transform, "DockTopLine", new Vector2(0f, 334f), new Vector2(0f, 8f), new Color(0.37f, 0.85f, 1f, 0.42f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), false, false);
@@ -850,42 +861,60 @@ namespace DefenseGame
             Text recipeInsight = CreateBuildInsightCell(buildReadoutPanel.transform, font, "ActionInsight", "추천 행동", Vector2.zero, new Color(0.36f, 0.92f, 1f));
             Text tileInsight = CreateBuildInsightCell(buildReadoutPanel.transform, font, "DealerInsight", "핵심 딜러", new Vector2(292f, 0f), new Color(1f, 0.76f, 0.26f));
 
-            Image fatePanel = CreatePanel(hudRoot, "FateInterventionPanel", new Vector2(0f, 434f), new Vector2(920f, 132f), new Color(0.06f, 0.07f, 0.22f, 0.94f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), true, true);
-            CreatePanel(fatePanel.transform, "FateAccent", new Vector2(-443f, 0f), new Vector2(12f, 108f), new Color(1f, 0.42f, 0.92f, 0.96f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, false);
-            CreateText(fatePanel.transform, font, new Color(1f, 0.74f, 0.96f), "FatePanelTitle", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-354f, 50f), new Vector2(196f, 32f), "\uC6B4\uBA85 \uAC1C\uC785", 25, TextAnchor.MiddleLeft, true);
-            Image fateGaugeFill = CreateProgressBar(fatePanel.transform, new Vector2(-336f, 20f), new Vector2(232f, 22f));
-            fateGaugeFill.color = new Color(1f, 0.44f, 0.92f, 0.96f);
-            Text fateGaugeText = CreateText(fatePanel.transform, font, Color.white, "FateGaugeText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-332f, -10f), new Vector2(264f, 32f), "\uC6B4\uBA85 0/100 | \uBE5A 0/100", 20, TextAnchor.MiddleCenter, true);
+            Image fatePanel = CreatePanel(hudRoot, "FateInterventionPanel", new Vector2(0f, 434f), new Vector2(1000f, 560f), new Color(0.06f, 0.05f, 0.18f, 0.98f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), true, true);
+            CanvasGroup fatePanelCanvasGroup = fatePanel.gameObject.AddComponent<CanvasGroup>();
+            CreatePanel(fatePanel.transform, "FateAccent", new Vector2(-488f, 0f), new Vector2(12f, 516f), new Color(1f, 0.30f, 0.88f, 0.96f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, false);
+            CreateText(fatePanel.transform, font, new Color(1f, 0.74f, 0.96f), "FatePanelTitle", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 228f), new Vector2(620f, 42f), "마지막 계약 · 위기 탈출 카드", 30, TextAnchor.MiddleCenter, true);
+            Image fateGaugeFill = CreateProgressBar(fatePanel.transform, new Vector2(-350f, 148f), new Vector2(220f, 16f));
+            fateGaugeFill.color = new Color(1f, 0.36f, 0.92f, 0.96f);
+            Text fateGaugeText = CreateText(fatePanel.transform, font, Color.white, "FateGaugeText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-350f, 120f), new Vector2(264f, 28f), "마지막 계약 1/1", 18, TextAnchor.MiddleCenter, true);
             fateGaugeText.resizeTextForBestFit = true;
             fateGaugeText.resizeTextMinSize = 16;
             fateGaugeText.resizeTextMaxSize = 20;
-            Text fateDebtText = CreateText(fatePanel.transform, font, new Color(1f, 0.82f, 0.42f), "FateDebtText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-332f, -42f), new Vector2(248f, 28f), "Boss x1.00", 18, TextAnchor.MiddleCenter, true);
-            Text fateCostBenefit = CreateText(fatePanel.transform, font, new Color(0.84f, 0.94f, 1f), "FateCostBenefitText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-124f, 0f), new Vector2(230f, 104f), "\uC774\uB4DD/\uB300\uAC00 \uB300\uAE30", 18, TextAnchor.MiddleCenter, true);
+            Text fateDebtText = CreateText(fatePanel.transform, font, new Color(1f, 0.82f, 0.42f), "FateDebtText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-350f, 90f), new Vector2(248f, 24f), "카드 보유 1/1", 16, TextAnchor.MiddleCenter, true);
+            Text fateCostBenefit = CreateText(fatePanel.transform, font, new Color(0.84f, 0.94f, 1f), "FateCostBenefitText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(90f, 174f), new Vector2(620f, 34f), "전투는 0.1배로 흐릅니다 · 3장 중 1장 선택", 19, TextAnchor.MiddleCenter, true);
             fateCostBenefit.resizeTextForBestFit = true;
-            fateCostBenefit.resizeTextMinSize = 15;
-            fateCostBenefit.resizeTextMaxSize = 18;
+            fateCostBenefit.resizeTextMinSize = 16;
+            fateCostBenefit.resizeTextMaxSize = 19;
             Text earlyRunInsight = null;
 
-            Button fateSurvivalButton = CreateButton(fatePanel.transform, font, "FateSurvivalButton", "\uBE5A\uC9C0\uACE0\n\uC0B4\uAE30", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(58f, 0f), new Vector2(126f, 82f), new Color(1f, 0.48f, 0.20f, 0.98f), Color.white, () => gameController.TryActivateFateSurvival(), out Text fateSurvivalLabel);
-            Button fateGradeLockButton = CreateButton(fatePanel.transform, font, "FateGradeLockButton", "Rare+\n18F", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(180f, 0f), new Vector2(108f, 82f), new Color(0.76f, 0.32f, 1f, 0.96f), Color.white, () => gameController.TryActivateFateGradeLock(CharacterGrade.Rare, 3), out Text fateGradeLockLabel);
-            Button fateNormalBanButton = CreateButton(fatePanel.transform, font, "FateNormalBanButton", "No\nNormal", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(290f, 0f), new Vector2(108f, 82f), new Color(0.20f, 0.78f, 0.56f, 0.96f), Color.white, () => gameController.TryActivateFateNormalBan(4), out Text fateNormalBanLabel);
-            Button fateForceShopButton = CreateButton(fatePanel.transform, font, "FateForceShopButton", "Shop\n14F", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(400f, 0f), new Vector2(108f, 82f), new Color(0.22f, 0.58f, 1f, 0.96f), Color.white, () => gameController.TryActivateFateForcedShop(), out Text fateForceShopLabel);
-            fateSurvivalLabel.fontSize = 18;
-            fateGradeLockLabel.fontSize = 17;
-            fateNormalBanLabel.fontSize = 17;
-            fateForceShopLabel.fontSize = 17;
+            Button fateSurvivalButton = CreateButton(fatePanel.transform, font, "FateChoiceCard0", "운명 카드\n선택 1", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-320f, -52f), new Vector2(300f, 250f), new Color(0.70f, 0.24f, 1f, 0.98f), Color.white, () => gameController.TryActivateFateSurvival(), out Text fateSurvivalLabel);
+            Button fateGradeLockButton = CreateButton(fatePanel.transform, font, "FateChoiceCard1", "운명 카드\n선택 2", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -52f), new Vector2(300f, 250f), new Color(0.18f, 0.68f, 1f, 0.96f), Color.white, () => gameController.TryActivateFateGradeLock(CharacterGrade.Rare, 3), out Text fateGradeLockLabel);
+            Button fateNormalBanButton = CreateButton(fatePanel.transform, font, "FateChoiceCard2", "운명 카드\n선택 3", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(320f, -52f), new Vector2(300f, 250f), new Color(1f, 0.34f, 0.24f, 0.96f), Color.white, () => gameController.TryActivateFateNormalBan(4), out Text fateNormalBanLabel);
+            Button fateForceShopButton = CreateButton(fatePanel.transform, font, "FateUnusedHiddenCard", string.Empty, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(9999f, 0f), new Vector2(1f, 1f), new Color(0f, 0f, 0f, 0f), Color.white, null, out Text fateForceShopLabel);
+            fateForceShopButton.gameObject.SetActive(false);
+            fateSurvivalLabel.fontSize = 22;
+            fateGradeLockLabel.fontSize = 22;
+            fateNormalBanLabel.fontSize = 22;
+            fateForceShopLabel.fontSize = 1;
             fateSurvivalLabel.resizeTextForBestFit = true;
             fateGradeLockLabel.resizeTextForBestFit = true;
             fateNormalBanLabel.resizeTextForBestFit = true;
             fateForceShopLabel.resizeTextForBestFit = true;
-            fateSurvivalLabel.resizeTextMinSize = 13;
-            fateGradeLockLabel.resizeTextMinSize = 12;
-            fateNormalBanLabel.resizeTextMinSize = 12;
-            fateForceShopLabel.resizeTextMinSize = 12;
-            fateSurvivalLabel.resizeTextMaxSize = 18;
-            fateGradeLockLabel.resizeTextMaxSize = 17;
-            fateNormalBanLabel.resizeTextMaxSize = 17;
-            fateForceShopLabel.resizeTextMaxSize = 17;
+            fateSurvivalLabel.resizeTextMinSize = 18;
+            fateGradeLockLabel.resizeTextMinSize = 18;
+            fateNormalBanLabel.resizeTextMinSize = 18;
+            fateForceShopLabel.resizeTextMinSize = 1;
+            fateSurvivalLabel.resizeTextMaxSize = 22;
+            fateGradeLockLabel.resizeTextMaxSize = 22;
+            fateNormalBanLabel.resizeTextMaxSize = 22;
+            fateForceShopLabel.resizeTextMaxSize = 1;
+            Button fatePanelReopenButton = CreateButton(hudRoot, font, "FatePanelReopenButton", "계약", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-42f, 356f), new Vector2(154f, 48f), new Color(0.45f, 0.14f, 0.62f, 0.94f), Color.white, null, out Text fatePanelReopenLabel);
+            fatePanelReopenLabel.fontSize = 18;
+            fatePanelReopenLabel.resizeTextForBestFit = true;
+            fatePanelReopenLabel.resizeTextMinSize = 13;
+            fatePanelReopenLabel.resizeTextMaxSize = 18;
+            RectTransform fateEntryRect = fatePanelReopenButton.GetComponent<RectTransform>();
+            fateEntryRect.sizeDelta = new Vector2(250f, 84f);
+            fateEntryRect.anchoredPosition = new Vector2(-54f, 356f);
+            fatePanelReopenLabel.fontSize = 28;
+            fatePanelReopenLabel.resizeTextMinSize = 22;
+            fatePanelReopenLabel.resizeTextMaxSize = 28;
+            Outline fateEntryOutline = fatePanelReopenButton.gameObject.AddComponent<Outline>();
+            fateEntryOutline.effectColor = new Color(1f, 0.72f, 0.20f, 0.94f);
+            fateEntryOutline.effectDistance = new Vector2(3f, -3f);
+            fateEntryOutline.useGraphicAlpha = false;
+            fatePanelReopenButton.gameObject.SetActive(false);
 
             Text summonCost = CreateText(summonButton.transform, font, new Color(0.13f, 0.28f, 0.12f), "SummonCostText", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 7f), new Vector2(0f, 24f), "10", 18, TextAnchor.MiddleCenter, true);
             summonLabel.fontSize = 36;
@@ -939,6 +968,7 @@ namespace DefenseGame
             unitSellPanel.gameObject.SetActive(false);
 
             Text hint = CreateText(hudRoot, font, new Color(0.84f, 0.92f, 1f, 0.86f), "HintText", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 780f), new Vector2(860f, 32f), hintValue, 17, TextAnchor.MiddleCenter, false);
+            hint.gameObject.SetActive(showKeyboardHint);
 
             Text countdown = CreateText(hudRoot, font, new Color(1f, 0.95f, 0.58f, 0f), "CountdownText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(220f, 120f), string.Empty, 96, TextAnchor.MiddleCenter, true);
             Text roundBanner = CreateText(hudRoot, font, new Color(0.48f, 1f, 0.72f, 0f), "RoundBannerText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 136f), new Vector2(620f, 70f), string.Empty, 40, TextAnchor.MiddleCenter, true);
@@ -947,18 +977,18 @@ namespace DefenseGame
             Text mergeCelebrationSub = CreateText(hudRoot, font, new Color(1f, 0.98f, 0.9f, 0f), "MergeCelebrationSubText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 154f), new Vector2(820f, 42f), string.Empty, 25, TextAnchor.MiddleCenter, true);
 
             BuildSynergyPanelExpanded(hudRoot, font, synergySystem, gameController, boardManager);
-            BuildTacticalMissionPanel(canvas.transform, hudRoot, font, missionSystem, gameController, boardManager);
-            BuildRunShopPanel(canvas.transform, font, runShopSystem, gameController, boardManager, tileModifierSystem, augmentManager);
+            BuildTacticalMissionPanel(hudRoot, hudRoot, font, missionSystem, gameController, boardManager);
+            BuildRunShopPanel(hudRoot, font, runShopSystem, gameController, boardManager, tileModifierSystem, augmentManager);
 
-            BuildAugmentPanel(canvas.transform, font, augmentManager, gameController);
+            BuildAugmentPanel(hudRoot, font, augmentManager, gameController);
             if (collectionUI != null)
             {
-                collectionUI.Configure(characterDatabase, outgameProgression, font, canvas.transform, presentationConfig != null ? presentationConfig.uiSkin : null);
+                collectionUI.Configure(characterDatabase, outgameProgression, font, metaFlowRoot, presentationConfig != null ? presentationConfig.uiSkin : null);
             }
 
             if (metaFlowUI != null)
             {
-                metaFlowUI.Configure(gameController, binder, augmentManager, characterDatabase, outgameProgression, collectionUI, font, canvas.transform, hudRoot.gameObject, battleButton, lobbyButton, loadoutButton, presentationConfig != null ? presentationConfig.uiSkin : null);
+                metaFlowUI.Configure(gameController, binder, augmentManager, characterDatabase, outgameProgression, collectionUI, font, metaFlowRoot, hudRoot.gameObject, battleButton, lobbyButton, loadoutButton, presentationConfig != null ? presentationConfig.uiSkin : null);
                 if (infoButton != null)
                 {
                     infoButton.onClick.RemoveAllListeners();
@@ -971,7 +1001,7 @@ namespace DefenseGame
             }
 
             GameObject bossWarningPanel = BuildBossWarningPanel(hudRoot, font, out CanvasGroup bossWarningGroup, out Text bossWarningTitle, out Text bossWarningSub);
-            ultimateRecipeSelection = BuildUltimateRecipeSelectionPanel(canvas.transform, font, gameController);
+            ultimateRecipeSelection = BuildUltimateRecipeSelectionPanel(hudRoot, font, gameController);
 
             hud.Configure(
                 gameController,
@@ -1020,6 +1050,10 @@ namespace DefenseGame
                 fateForceShopLabel,
                 fateSurvivalButton,
                 fateSurvivalLabel,
+                fatePanel.gameObject,
+                fatePanelCanvasGroup,
+                fatePanelReopenButton,
+                fatePanelReopenLabel,
                 roundProgressFill,
                 battleButton,
                 summonButton,
@@ -1034,6 +1068,7 @@ namespace DefenseGame
                 unitSellButton,
                 unitSellButtonLabel,
                 lifeProgressFill);
+            canvasObject.SetActive(true);
         }
 
         private UltimateRecipeSelectionUI BuildUltimateRecipeSelectionPanel(Transform parent, Font font, DefenseGameController gameController)
@@ -1058,7 +1093,7 @@ namespace DefenseGame
             CreatePanel(drawer.transform, "DrawerTopGlow", new Vector2(0f, -20f), new Vector2(900f, 94f), new Color(0.72f, 0.22f, 1f, 0.28f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             CreatePanel(drawer.transform, "DrawerGoldLine", new Vector2(0f, -6f), new Vector2(860f, 8f), new Color(1f, 0.82f, 0.22f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             Text header = CreateText(drawer.transform, font, Color.white, "UltimateRecipeSelectionHeader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -42f), new Vector2(720f, 46f), "초월 조합 선택", 34, TextAnchor.MiddleCenter, true);
-            Text instruction = CreateText(drawer.transform, font, new Color(0.90f, 0.90f, 1f), "UltimateRecipeSelectionInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -94f), new Vector2(760f, 30f), "준비된 레시피를 선택하세요.", 20, TextAnchor.MiddleCenter, false);
+            Text instruction = CreateText(drawer.transform, font, new Color(0.90f, 0.90f, 1f), "UltimateRecipeSelectionInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -94f), new Vector2(760f, 30f), "전체 레시피와 부족한 재료를 언제든 확인할 수 있습니다.", 20, TextAnchor.MiddleCenter, false);
             Button closeButton = CreateButton(drawer.transform, font, "UltimateRecipeSelectionClose", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-28f, -40f), new Vector2(58f, 58f), new Color(0.90f, 0.26f, 0.34f, 0.98f), Color.white, null, out _);
 
             const int optionCapacity = 11;
@@ -1071,6 +1106,10 @@ namespace DefenseGame
                 float x = column == 0 ? -226f : 226f;
                 float y = -146f - row * 91f;
                 optionButtons[i] = CreateButton(drawer.transform, font, "UltimateRecipeOption_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(x, y), new Vector2(430f, 80f), new Color(0.12f, 0.12f, 0.34f, 0.98f), Color.white, null, out Text optionLabel);
+                Outline readyOutline = optionButtons[i].gameObject.AddComponent<Outline>();
+                readyOutline.effectColor = Color.clear;
+                readyOutline.effectDistance = new Vector2(3f, -3f);
+                readyOutline.useGraphicAlpha = false;
                 optionLabel.alignment = TextAnchor.MiddleLeft;
                 optionLabel.resizeTextForBestFit = true;
                 optionLabel.resizeTextMinSize = 12;
@@ -1128,13 +1167,18 @@ namespace DefenseGame
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
-            Image modal = CreatePanel(root.transform, "AugmentModal", new Vector2(0f, 80f), new Vector2(860f, 650f), new Color(0.10f, 0.11f, 0.30f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
-            CreatePanel(modal.transform, "HeaderGlow", new Vector2(0f, -16f), new Vector2(790f, 94f), new Color(0.45f, 0.26f, 0.84f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            Image modal = CreatePanel(root.transform, "AugmentModal", new Vector2(0f, 80f), new Vector2(940f, 900f), new Color(0.10f, 0.11f, 0.30f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            CreatePanel(modal.transform, "HeaderGlow", new Vector2(0f, -16f), new Vector2(830f, 104f), new Color(0.45f, 0.26f, 0.84f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             Text header = CreateText(modal.transform, font, Color.white, "AugmentHeader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(720f, 48f), "증강체 선택", 34, TextAnchor.MiddleCenter, true);
+            header.fontSize = 44;
             CreateText(modal.transform, font, new Color(0.83f, 0.88f, 1f), "AugmentSubtitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -92f), new Vector2(740f, 32f), "전투 흐름을 바꿀 보너스 하나를 고르세요.", 20, TextAnchor.MiddleCenter, false);
-            Button closeButton = CreateButton(modal.transform, font, "AugmentCloseButton", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-28f, -36f), new Vector2(58f, 58f), new Color(0.94f, 0.36f, 0.30f, 0.98f), Color.white, null, out _);
+            Button closeButton = CreateButton(modal.transform, font, "AugmentCloseButton", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -40f), new Vector2(66f, 66f), new Color(0.94f, 0.36f, 0.30f, 0.98f), Color.white, null, out _);
+            Text augmentSubtitle = modal.transform.Find("AugmentSubtitle").GetComponent<Text>();
+            augmentSubtitle.fontSize = 26;
+            augmentSubtitle.rectTransform.sizeDelta = new Vector2(780f, 42f);
             Button reopenButton = CreateButton(parent, font, "AugmentReopenButton", "증강체", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-136f, -206f), new Vector2(180f, 62f), new Color(0.50f, 0.28f, 0.96f, 0.96f), Color.white, null, out Text reopenLabel);
-            reopenLabel.fontSize = 24;
+            reopenLabel.fontSize = 28;
+            reopenButton.GetComponent<RectTransform>().sizeDelta = new Vector2(210f, 72f);
             reopenButton.gameObject.SetActive(false);
 
             Button[] buttons = new Button[3];
@@ -1144,13 +1188,18 @@ namespace DefenseGame
             Text[] descriptions = new Text[3];
             for (int i = 0; i < 3; i++)
             {
-                float y = -152f - i * 145f;
-                Button choiceButton = CreateButton(modal.transform, font, "AugmentChoice_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(760f, 118f), new Color(0.16f, 0.18f, 0.43f, 0.96f), Color.white, null, out _);
-                accents[i] = CreatePanel(choiceButton.transform, "IconPlate", new Vector2(26f, -22f), new Vector2(74f, 74f), new Color(0.82f, 0.48f, 1f, 0.92f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                float y = -154f - i * 212f;
+                Button choiceButton = CreateButton(modal.transform, font, "AugmentChoice_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(840f, 188f), new Color(0.16f, 0.18f, 0.43f, 0.96f), Color.white, null, out _);
+                accents[i] = CreatePanel(choiceButton.transform, "IconPlate", new Vector2(26f, -38f), new Vector2(96f, 96f), new Color(0.82f, 0.48f, 1f, 0.92f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
                 styles[i] = CreateText(choiceButton.transform, font, Color.white, "Style", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(26f, -44f), new Vector2(74f, 30f), "확정", 21, TextAnchor.MiddleCenter, true);
-                titles[i] = CreateText(choiceButton.transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(124f, -18f), new Vector2(-160f, 34f), "Augment", 25, TextAnchor.MiddleLeft, true);
-                descriptions[i] = CreateText(choiceButton.transform, font, new Color(0.91f, 0.93f, 1f), "Description", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(124f, -58f), new Vector2(-156f, 44f), "Description", 19, TextAnchor.MiddleLeft, false);
+                titles[i] = CreateText(choiceButton.transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(140f, -18f), new Vector2(-220f, 46f), "Augment", 35, TextAnchor.MiddleLeft, true);
+                descriptions[i] = CreateText(choiceButton.transform, font, new Color(0.91f, 0.93f, 1f), "Description", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(140f, -70f), new Vector2(-214f, 98f), "Description", 28, TextAnchor.UpperLeft, false);
+                styles[i].fontSize = 24;
+                styles[i].rectTransform.sizeDelta = new Vector2(84f, 36f);
+                styles[i].rectTransform.anchoredPosition = new Vector2(26f, -50f);
                 CreateText(choiceButton.transform, font, new Color(0.66f, 1f, 0.78f), "PickLabel", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-28f, 0f), new Vector2(90f, 34f), "선택", 20, TextAnchor.MiddleRight, true);
+                Text pickLabel = choiceButton.transform.Find("PickLabel").GetComponent<Text>();
+                pickLabel.fontSize = 24;
                 buttons[i] = choiceButton;
             }
 
@@ -1174,13 +1223,17 @@ namespace DefenseGame
             Image dim = root.AddComponent<Image>();
             dim.color = new Color(0.02f, 0.04f, 0.16f, 0.76f);
 
-            Image modal = CreatePanel(root.transform, "RunShopModal", new Vector2(0f, 70f), new Vector2(850f, 660f), new Color(0.08f, 0.14f, 0.36f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
-            CreatePanel(modal.transform, "RunShopTopGlow", new Vector2(0f, -36f), new Vector2(720f, 72f), new Color(0.32f, 0.86f, 1f, 0.20f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            Image modal = CreatePanel(root.transform, "RunShopModal", new Vector2(0f, 70f), new Vector2(940f, 900f), new Color(0.08f, 0.14f, 0.36f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            CreatePanel(modal.transform, "RunShopTopGlow", new Vector2(0f, -38f), new Vector2(780f, 82f), new Color(0.32f, 0.86f, 1f, 0.20f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             Text header = CreateText(modal.transform, font, Color.white, "RunShopHeader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -42f), new Vector2(460f, 46f), "전투 상점", 36, TextAnchor.MiddleCenter, true);
+            header.fontSize = 44;
             Text subtitle = CreateText(modal.transform, font, new Color(0.84f, 0.92f, 1f), "RunShopSubtitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -94f), new Vector2(720f, 32f), "이번 판 전용 상품입니다.", 21, TextAnchor.MiddleCenter, false);
-            Button closeButton = CreateButton(modal.transform, font, "RunShopCloseButton", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-28f, -36f), new Vector2(58f, 58f), new Color(0.94f, 0.36f, 0.30f, 0.98f), Color.white, null, out _);
+            subtitle.fontSize = 28;
+            subtitle.rectTransform.sizeDelta = new Vector2(780f, 42f);
+            Button closeButton = CreateButton(modal.transform, font, "RunShopCloseButton", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -40f), new Vector2(66f, 66f), new Color(0.94f, 0.36f, 0.30f, 0.98f), Color.white, null, out _);
             Button reopenButton = CreateButton(parent, font, "RunShopReopenButton", "상점", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-136f, -278f), new Vector2(180f, 62f), new Color(0.14f, 0.66f, 0.92f, 0.96f), Color.white, null, out Text reopenLabel);
-            reopenLabel.fontSize = 24;
+            reopenLabel.fontSize = 28;
+            reopenButton.GetComponent<RectTransform>().sizeDelta = new Vector2(210f, 72f);
             reopenButton.gameObject.SetActive(false);
 
             Button[] buttons = new Button[3];
@@ -1191,13 +1244,27 @@ namespace DefenseGame
 
             for (int i = 0; i < buttons.Length; i++)
             {
-                float y = -154f - i * 154f;
-                buttons[i] = CreateButton(modal.transform, font, "RunShopOffer_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(740f, 130f), new Color(0.10f, 0.18f, 0.42f, 0.96f), Color.white, null, out _);
-                accents[i] = CreatePanel(buttons[i].transform, "RunShopOfferAccent", new Vector2(28f, -28f), new Vector2(80f, 80f), new Color(0.38f, 0.82f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
-                CreateText(accents[i].transform, font, Color.white, "RunShopOfferIcon", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, "SHOP", 18, TextAnchor.MiddleCenter, true);
+                float y = -154f - i * 212f;
+                buttons[i] = CreateButton(modal.transform, font, "RunShopOffer_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(840f, 188f), new Color(0.10f, 0.18f, 0.42f, 0.96f), Color.white, null, out _);
+                accents[i] = CreatePanel(buttons[i].transform, "RunShopOfferAccent", new Vector2(28f, -38f), new Vector2(96f, 96f), new Color(0.38f, 0.82f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                CreateText(accents[i].transform, font, Color.white, "RunShopOfferIcon", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, "SHOP", 20, TextAnchor.MiddleCenter, true);
                 titles[i] = CreateText(buttons[i].transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(120f, -18f), new Vector2(-238f, 34f), "상품", 27, TextAnchor.MiddleLeft, true);
                 descriptions[i] = CreateText(buttons[i].transform, font, new Color(0.84f, 0.91f, 1f), "Description", new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(0f, 0.5f), new Vector2(120f, -12f), new Vector2(-250f, 54f), "설명", 20, TextAnchor.MiddleLeft, false);
                 prices[i] = CreateText(buttons[i].transform, font, new Color(1f, 0.91f, 0.38f), "Price", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-30f, 0f), new Vector2(126f, 48f), "0G", 30, TextAnchor.MiddleCenter, true);
+                titles[i].fontSize = 35;
+                titles[i].rectTransform.anchoredPosition = new Vector2(140f, -18f);
+                titles[i].rectTransform.sizeDelta = new Vector2(-284f, 46f);
+
+                descriptions[i].fontSize = 28;
+                descriptions[i].alignment = TextAnchor.UpperLeft;
+                descriptions[i].rectTransform.anchorMin = new Vector2(0f, 1f);
+                descriptions[i].rectTransform.pivot = new Vector2(0f, 1f);
+                descriptions[i].rectTransform.anchoredPosition = new Vector2(140f, -70f);
+                descriptions[i].rectTransform.sizeDelta = new Vector2(-286f, 98f);
+
+                prices[i].fontSize = 38;
+                prices[i].rectTransform.anchoredPosition = new Vector2(-32f, 0f);
+                prices[i].rectTransform.sizeDelta = new Vector2(142f, 54f);
             }
 
             root.SetActive(false);
@@ -1230,6 +1297,11 @@ namespace DefenseGame
             debugDefeatLabel.resizeTextForBestFit = true;
             debugDefeatLabel.resizeTextMinSize = 13;
             debugDefeatLabel.resizeTextMaxSize = 17;
+            Button debugNextRoundButton = CreateButton(hudRoot, font, "DebugNextRoundButton", "DEV 다음 R  [F9]", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(224f, -224f), new Vector2(194f, 48f), new Color(0.12f, 0.42f, 0.78f, 0.96f), Color.white, gameController.TriggerDebugAdvanceRound, out Text debugNextRoundLabel);
+            debugNextRoundLabel.fontSize = 17;
+            debugNextRoundLabel.resizeTextForBestFit = true;
+            debugNextRoundLabel.resizeTextMinSize = 13;
+            debugNextRoundLabel.resizeTextMaxSize = 17;
 #endif
 
             GameObject root = new GameObject("TacticalMissionOverlay", typeof(RectTransform));
@@ -1311,10 +1383,10 @@ namespace DefenseGame
             for (int i = 0; i < rowCount; i++)
             {
                 float y = -58f - i * 40f;
-                Image row = CreatePanel(panel.transform, "SynergyRow_" + i, new Vector2(0f, y), new Vector2(282f, 34f), new Color(0.12f, 0.16f, 0.36f, 0.82f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+                Image row = CreatePanel(panel.transform, "SynergyRow_" + i, new Vector2(0f, y), new Vector2(282f, 38f), new Color(0.12f, 0.16f, 0.36f, 0.82f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
                 accents[i] = CreatePanel(row.transform, "Accent", new Vector2(14f, -17f), new Vector2(10f, 22f), new Color(0.42f, 0.48f, 0.64f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
-                titles[i] = CreateText(row.transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(32f, -4f), new Vector2(224f, 14f), string.Empty, 14, TextAnchor.MiddleLeft, true);
-                descriptions[i] = CreateText(row.transform, font, new Color(0.84f, 0.91f, 1f), "Description", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(32f, -18f), new Vector2(224f, 14f), string.Empty, 11, TextAnchor.MiddleLeft, false);
+                titles[i] = CreateText(row.transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(32f, -3f), new Vector2(224f, 18f), string.Empty, 17, TextAnchor.MiddleLeft, true);
+                descriptions[i] = CreateText(row.transform, font, new Color(0.84f, 0.91f, 1f), "Description", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(32f, -21f), new Vector2(224f, 16f), string.Empty, 14, TextAnchor.MiddleLeft, false);
             }
 
             synergySystem.Configure(gameController, boardManager, panel.gameObject, header, titles, descriptions, accents);
@@ -1363,9 +1435,9 @@ namespace DefenseGame
             synergySystem.Configure(gameController, boardManager, summaryButton, summaryHeader, expandedPanel.gameObject, expandedHeader, titles, descriptions, accents, icons, closeButton);
         }
 
-        private Transform CreateSafeAreaRoot(Transform parent)
+        private Transform CreateSafeAreaRoot(Transform parent, string rootName = "SafeAreaRoot")
         {
-            GameObject safeAreaRoot = new GameObject("SafeAreaRoot", typeof(RectTransform));
+            GameObject safeAreaRoot = new GameObject(rootName, typeof(RectTransform));
             safeAreaRoot.transform.SetParent(parent, false);
             RectTransform rect = safeAreaRoot.GetComponent<RectTransform>();
             rect.anchorMin = Vector2.zero;
@@ -1503,6 +1575,7 @@ namespace DefenseGame
             image.color = color;
             image.raycastTarget = false;
             RuntimeUiSkinUtility.ApplyImageSkin(image, presentationConfig != null ? presentationConfig.uiSkin : null, name, false, rounded);
+            ApplyRuntimeRoundedShape(image, rounded);
 
             RectTransform rect = image.rectTransform;
             rect.anchorMin = anchorMin;
@@ -1528,6 +1601,7 @@ namespace DefenseGame
             Image image = buttonObject.AddComponent<Image>();
             image.color = backgroundColor;
             RuntimeUiSkinUtility.ApplyImageSkin(image, presentationConfig != null ? presentationConfig.uiSkin : null, name, true, true);
+            ApplyRuntimeRoundedShape(image, true);
             image.raycastTarget = true;
 
             Shadow shadow = buttonObject.AddComponent<Shadow>();
@@ -1551,6 +1625,18 @@ namespace DefenseGame
             labelText = CreateText(buttonObject.transform, font, labelColor, "Label", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, label, 27, TextAnchor.MiddleCenter, true);
             TryAddButtonIcon(buttonObject.transform, name, label, size, labelText);
             return button;
+        }
+
+        private void ApplyRuntimeRoundedShape(Image image, bool rounded)
+        {
+            if (image == null || !rounded)
+            {
+                return;
+            }
+
+            image.sprite = GetRoundedPanelSprite();
+            image.type = Image.Type.Sliced;
+            image.preserveAspect = false;
         }
 
         private Image CreateSkinIcon(Transform parent, string name, string iconKey, Vector2 anchoredPosition, Vector2 size, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Color color)
@@ -1578,6 +1664,15 @@ namespace DefenseGame
             rect.anchoredPosition = anchoredPosition;
             rect.sizeDelta = size;
             return image;
+        }
+
+        private void BuildHamburgerIcon(Transform parent)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                float y = 10f - i * 10f;
+                CreatePanel(parent, "HamburgerLine_" + i, new Vector2(0f, y), new Vector2(34f, 5f), new Color(0.92f, 0.96f, 1f, 0.96f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, false);
+            }
         }
 
         private void TryAddButtonIcon(Transform buttonTransform, string name, string label, Vector2 size, Text labelText)
@@ -1867,14 +1962,14 @@ namespace DefenseGame
                 return;
             }
 
-            options = gameController.GetReadyUltimateRecipeOptions();
+            options = gameController.GetAllUltimateRecipeOptions();
             if (options == null || options.Length == 0)
             {
-                gameController.RequestBanner("현재 실행 가능한 초월 레시피가 없습니다", new Color(0.72f, 0.82f, 1f), 1.8f);
+                gameController.RequestBanner("초월 레시피 정보를 불러오지 못했습니다", new Color(0.72f, 0.82f, 1f), 1.8f);
                 return;
             }
 
-            selectedIndex = options.Length == 1 ? 0 : -1;
+            selectedIndex = -1;
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
             slideProgress = 0f;
@@ -1929,12 +2024,52 @@ namespace DefenseGame
                 canvasGroup.alpha = eased;
             }
 
+            RefreshReadyOutlinePulse();
             if (!targetOpen && slideProgress <= 0f)
             {
                 gameObject.SetActive(false);
             }
         }
 
+        private void RefreshReadyOutlinePulse()
+        {
+            if (optionButtons == null)
+            {
+                return;
+            }
+
+            int optionCount = options != null ? options.Length : 0;
+            float pulse = (Mathf.Sin(Time.unscaledTime * 5.2f) + 1f) * 0.5f;
+            Color lowGlow = new Color(0.70f, 0.24f, 1f, 0.72f);
+            Color highGlow = new Color(1f, 0.86f, 0.24f, 1f);
+            for (int i = 0; i < optionButtons.Length; i++)
+            {
+                Button button = optionButtons[i];
+                if (button == null)
+                {
+                    continue;
+                }
+
+                Outline outline = button.GetComponent<Outline>();
+                if (outline == null)
+                {
+                    continue;
+                }
+
+                bool ready = i < optionCount && options[i].isReady && button.gameObject.activeSelf;
+                if (!ready)
+                {
+                    outline.effectColor = Color.clear;
+                    continue;
+                }
+
+                float selectedBoost = i == selectedIndex ? 0.18f : 0f;
+                outline.effectColor = Color.Lerp(lowGlow, highGlow, Mathf.Clamp01(pulse + selectedBoost));
+                float width = 2.5f + pulse * 2.5f + selectedBoost * 3f;
+
+                outline.effectDistance = new Vector2(width, -width);
+            }
+        }
         private void SelectOption(int index)
         {
             if (index < 0 || index >= options.Length)
@@ -1960,7 +2095,7 @@ namespace DefenseGame
 
         private void ConfirmSelection()
         {
-            if (gameController == null || selectedIndex < 0 || selectedIndex >= options.Length)
+            if (gameController == null || selectedIndex < 0 || selectedIndex >= options.Length || !options[selectedIndex].isReady)
             {
                 return;
             }
@@ -1973,7 +2108,7 @@ namespace DefenseGame
             }
 
             gameController.RequestBanner("초월 재료 상태가 변경되었습니다. 다시 선택하세요", new Color(1f, 0.58f, 0.24f), 2.0f);
-            options = gameController.GetReadyUltimateRecipeOptions();
+            options = gameController.GetAllUltimateRecipeOptions();
             selectedIndex = options != null && options.Length == 1 ? 0 : -1;
             RefreshOptionVisuals();
             PreviewSelectedRecipe();
@@ -1982,16 +2117,26 @@ namespace DefenseGame
         private void RefreshOptionVisuals()
         {
             int optionCount = options != null ? options.Length : 0;
+            int readyCount = 0;
+            for (int i = 0; i < optionCount; i++)
+            {
+                if (options[i].isReady)
+                {
+                    readyCount++;
+                }
+            }
             if (headerText != null)
             {
-                headerText.text = "초월 조합 선택  READY ×" + optionCount;
+                headerText.text = "초월 레시피  READY " + readyCount + " / " + optionCount;
             }
 
             if (instructionText != null)
             {
                 instructionText.text = selectedIndex >= 0
-                    ? "선택한 재료가 보드에서 빛납니다. 확인 후 실행하세요."
-                    : optionCount > 1 ? "준비된 레시피가 여러 개입니다. 하나를 선택하세요." : "레시피를 확인하세요.";
+                    ? options[selectedIndex].isReady
+                        ? "재료가 모두 준비됐습니다. 보드의 빛나는 재료를 확인하고 실행하세요."
+                        : "부족 재료: " + options[selectedIndex].missingSummary
+                    : "레시피를 누르면 보유 재료와 부족한 유닛을 확인할 수 있습니다.";
             }
 
             for (int i = 0; i < optionButtons.Length; i++)
@@ -2011,7 +2156,8 @@ namespace DefenseGame
 
                 UltimateRecipeOption option = options[i];
                 bool selected = i == selectedIndex;
-                Color baseColor = Color.Lerp(option.accentColor, new Color(0.08f, 0.07f, 0.24f, 1f), selected ? 0.36f : 0.76f);
+                Color readinessColor = option.isReady ? option.accentColor : new Color(0.36f, 0.40f, 0.58f, 1f);
+                Color baseColor = Color.Lerp(readinessColor, new Color(0.08f, 0.07f, 0.24f, 1f), selected ? 0.36f : 0.76f);
                 Graphic graphic = button.targetGraphic;
                 if (graphic != null)
                 {
@@ -2026,14 +2172,15 @@ namespace DefenseGame
 
                 if (i < optionLabels.Length && optionLabels[i] != null)
                 {
-                    optionLabels[i].text = (selected ? "▶ " : string.Empty) + option.displayName +
+                    string state = option.isReady ? "READY" : option.progress + "/" + option.required;
+                    optionLabels[i].text = (selected ? "▶ " : string.Empty) + "[" + state + "] " + option.displayName +
                         "\n결과  " + Compact(option.resultSummary, 32) +
-                        "\n소모  " + Compact(option.materialSummary, 46);
+                        "\n" + (option.isReady ? "소모  " + Compact(option.materialSummary, 46) : "부족  " + Compact(option.missingSummary, 46));
                     optionLabels[i].color = selected ? new Color(1f, 0.94f, 0.58f) : Color.white;
                 }
             }
 
-            bool canConfirm = selectedIndex >= 0 && selectedIndex < optionCount;
+            bool canConfirm = selectedIndex >= 0 && selectedIndex < optionCount && options[selectedIndex].isReady;
             if (confirmButton != null)
             {
                 confirmButton.interactable = canConfirm;

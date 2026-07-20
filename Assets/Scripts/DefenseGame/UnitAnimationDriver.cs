@@ -40,8 +40,10 @@ namespace DefenseGame
         [SerializeField] private float skill03LoopHoldDuration = 0.35f;
         [SerializeField] private float winHoldDuration = 2f;
         [SerializeField] private float attackImpactFallbackDelay = 0.18f;
-        [SerializeField] private float attackEventFallbackDelay = 0.55f;
+        [SerializeField] private float attackEventFallbackDelay = 0.85f;
         [SerializeField] private float skillImpactFallbackDelay = 0.32f;
+        [SerializeField] private float skillEventFallbackDelay = 0.90f;
+        [SerializeField] private float skillSequenceImpactFallbackDelay = 2.20f;
 
         private Coroutine returnRoutine;
         private Coroutine actionRoutine;
@@ -52,11 +54,14 @@ namespace DefenseGame
         private bool movementLoopActive;
         private AnimationImpactType activeImpactType = AnimationImpactType.Auto;
         private float activeAttackImpactFallbackDelay;
+        private float activeSkillImpactFallbackDelay;
         private bool lastPlayedActionHasImpactEvent;
+        private bool lastPlayedActionIsSkillSequence;
+        private float lastPlayedImpactEventTime = -1f;
 
         public bool IsLocked => actionInProgress || Time.time < lockUntilTime;
         public float AttackImpactFallbackDelay => Mathf.Max(0.02f, activeAttackImpactFallbackDelay > 0f ? activeAttackImpactFallbackDelay : attackImpactFallbackDelay);
-        public float SkillImpactFallbackDelay => Mathf.Max(0.02f, skillImpactFallbackDelay);
+        public float SkillImpactFallbackDelay => Mathf.Max(0.02f, activeSkillImpactFallbackDelay > 0f ? activeSkillImpactFallbackDelay : skillImpactFallbackDelay);
 
         public event System.Action<AnimationImpactType> ImpactTriggered;
 
@@ -124,7 +129,7 @@ namespace DefenseGame
             bool played = TryPlayAction(attackStates, attackTriggers, attackIndexInts, defaultAttackIndex, attackReturnDelay);
             if (played && lastPlayedActionHasImpactEvent)
             {
-                activeAttackImpactFallbackDelay = Mathf.Max(attackImpactFallbackDelay, attackEventFallbackDelay);
+                activeAttackImpactFallbackDelay = Mathf.Max(attackEventFallbackDelay, lastPlayedImpactEventTime + 0.20f);
             }
 
             return played;
@@ -132,23 +137,48 @@ namespace DefenseGame
 
         public bool PlaySkill()
         {
+            return PlaySkill(1);
+        }
+
+        public bool PlaySkill(int skillSlot)
+        {
             activeImpactType = AnimationImpactType.Skill;
-            if (TryPlaySkillSlot(skill01States, 1))
+            activeSkillImpactFallbackDelay = 0f;
+            lastPlayedActionHasImpactEvent = false;
+            lastPlayedActionIsSkillSequence = false;
+            lastPlayedImpactEventTime = -1f;
+
+            bool played;
+            if (skillSlot <= 1)
             {
-                return true;
+                played = TryPlaySkillSlot(skill01States, 1)
+                    || TryPlaySkillSlot(skill02States, 2)
+                    || TryPlaySkill03Sequence()
+                    || TryPlaySkillStartOnly();
+            }
+            else if (skillSlot == 2)
+            {
+                played = TryPlaySkillSlot(skill02States, 2)
+                    || TryPlaySkill03Sequence()
+                    || TryPlaySkillStartOnly()
+                    || TryPlaySkillSlot(skill01States, 1);
+            }
+            else
+            {
+                played = TryPlaySkill03Sequence()
+                    || TryPlaySkillStartOnly()
+                    || TryPlaySkillSlot(skill01States, 1)
+                    || TryPlaySkillSlot(skill02States, 2);
             }
 
-            if (TryPlaySkillSlot(skill02States, 2))
+            if (played && lastPlayedActionHasImpactEvent)
             {
-                return true;
+                activeSkillImpactFallbackDelay = lastPlayedActionIsSkillSequence
+                    ? skillSequenceImpactFallbackDelay
+                    : Mathf.Max(skillEventFallbackDelay, lastPlayedImpactEventTime + 0.25f);
             }
 
-            if (TryPlaySkill03Sequence())
-            {
-                return true;
-            }
-
-            return TryPlaySkillStartOnly();
+            return played;
         }
 
         public void NotifyAnimationImpact(AnimationImpactType impactType)
@@ -424,6 +454,10 @@ namespace DefenseGame
                 return false;
             }
 
+            lastPlayedActionIsSkillSequence = true;
+            lastPlayedActionHasImpactEvent = true;
+            lastPlayedImpactEventTime = 0f;
+
             CancelScheduledReturn();
             CancelActionRoutine();
             actionRoutine = StartCoroutine(PlaySkill03Sequence(startState, loopState, endState));
@@ -557,6 +591,7 @@ namespace DefenseGame
         private bool TryPlayResolvedActionState(string actionState, string[] stateNames, float fallbackDuration)
         {
             lastPlayedActionHasImpactEvent = false;
+            lastPlayedActionIsSkillSequence = false;
 
             if (animator == null || IsLocked || string.IsNullOrWhiteSpace(actionState))
             {
@@ -863,6 +898,7 @@ namespace DefenseGame
         private bool TryPlayAction(string[] stateNames, string[] triggerNames, string[] intParameterNames, int intValue, float fallbackDuration)
         {
             lastPlayedActionHasImpactEvent = false;
+            lastPlayedActionIsSkillSequence = false;
 
             if (IsLocked)
             {
@@ -899,6 +935,8 @@ namespace DefenseGame
 
         private bool HasImpactEventForAction(string actionState, AnimationImpactType impactType, string[] stateNames)
         {
+            lastPlayedImpactEventTime = -1f;
+
             if (animator == null || animator.runtimeAnimatorController == null)
             {
                 return false;
@@ -923,12 +961,19 @@ namespace DefenseGame
                     continue;
                 }
 
+                bool found = false;
                 for (int j = 0; j < clip.events.Length; j++)
                 {
                     if (IsImpactEventFunction(clip.events[j].functionName, impactType))
                     {
-                        return true;
+                        lastPlayedImpactEventTime = Mathf.Max(lastPlayedImpactEventTime, clip.events[j].time);
+                        found = true;
                     }
+                }
+
+                if (found)
+                {
+                    return true;
                 }
             }
 

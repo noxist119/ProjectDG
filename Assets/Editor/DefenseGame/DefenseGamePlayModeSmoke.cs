@@ -112,8 +112,20 @@ namespace DefenseGame.Editor
                 notes.Add("SafeAreaRoot 또는 RuntimeSafeAreaFitter/anchor가 유효하지 않습니다.");
             }
 
+            bool portraitProfilesValid = ValidatePortraitSafeAreaProfiles();
+            if (!portraitProfilesValid)
+            {
+                notes.Add("세로 실기기 Safe Area 프로필의 정규화 anchor 검증에 실패했습니다.");
+            }
+
             DefenseGameController controller = UnityEngine.Object.FindObjectOfType<DefenseGameController>();
             bool hpTen = controller != null && controller.Life == 10 && controller.MaxLife == 10;
+            bool simultaneousDeathPolicyValid = ValidateSimultaneousDeathPolicy();
+            if (!simultaneousDeathPolicyValid)
+            {
+                notes.Add("동시사망 승리 우선 정책 회귀 검증에 실패했습니다.");
+            }
+
             Text hpText = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(text => text != null && text.name == "TopHpText");
             bool hpTextTen = hpText != null && hpText.text.Contains("10/10");
             if (!hpTen || !hpTextTen)
@@ -133,6 +145,18 @@ namespace DefenseGame.Editor
             }
 
             CharacterDatabase database = UnityEngine.Object.FindObjectOfType<CharacterDatabase>();
+            CharacterDefinition hero32 = database != null ? database.GetCharacterById("hero_32") : null;
+            SkillDefinition hero32Skill = hero32 != null && hero32.skills != null && hero32.skills.Count > 0 ? hero32.skills[0] : null;
+            bool hero32SignatureValid = hero32Skill != null &&
+                                        hero32Skill.effectType == SkillEffectType.DamageSlow &&
+                                        Mathf.Approximately(hero32Skill.power, 2.2f) &&
+                                        Mathf.Approximately(hero32Skill.secondaryPower, 0.35f) &&
+                                        Mathf.Approximately(hero32Skill.duration, 4f);
+            if (!hero32SignatureValid)
+            {
+                notes.Add("hero_32 야성의 추적탄 프리셋이 확정 수치와 일치하지 않습니다.");
+            }
+
             PrefabSmokeResult[] prefabResults = new PrefabSmokeResult[PrefabPaths.Length];
             for (int i = 0; i < PrefabPaths.Length; i++)
             {
@@ -143,7 +167,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && hpTen && hpTextTen && defaultVfxConfigured && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && simultaneousDeathPolicyValid && hero32SignatureValid && defaultVfxConfigured && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -155,8 +179,11 @@ namespace DefenseGame.Editor
                 passed = passed,
                 safeAreaExists = safeAreaExists,
                 safeAreaAnchorsValid = safeAreaAnchorsValid,
+                portraitProfilesValid = portraitProfilesValid,
                 hpTen = hpTen,
                 hpTextTen = hpTextTen,
+                simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
+                hero32SignatureValid = hero32SignatureValid,
                 defaultVfxConfigured = defaultVfxConfigured,
                 runtimeErrors = runtimeErrors,
                 prefabs = prefabResults,
@@ -296,6 +323,34 @@ namespace DefenseGame.Editor
             return count;
         }
 
+        private static bool ValidatePortraitSafeAreaProfiles()
+        {
+            return ValidatePortraitSafeAreaProfile(new Vector2Int(720, 1600), new Rect(0f, 48f, 720f, 1504f)) &&
+                   ValidatePortraitSafeAreaProfile(new Vector2Int(1080, 2400), new Rect(0f, 96f, 1080f, 2220f)) &&
+                   ValidatePortraitSafeAreaProfile(new Vector2Int(1179, 2556), new Rect(0f, 102f, 1179f, 2277f));
+        }
+
+        private static bool ValidateSimultaneousDeathPolicy()
+        {
+            return DefenseGameController.IsSimultaneousDeathVictory(12, 11, 1) &&
+                   DefenseGameController.IsSimultaneousDeathVictory(12, 10, 2) &&
+                   DefenseGameController.IsSimultaneousDeathVictory(12, 12, 0) &&
+                   !DefenseGameController.IsSimultaneousDeathVictory(12, 11, 0) &&
+                   !DefenseGameController.IsSimultaneousDeathVictory(12, 9, 2) &&
+                   !DefenseGameController.IsSimultaneousDeathVictory(0, 0, 1);
+        }
+
+        private static bool ValidatePortraitSafeAreaProfile(Vector2Int screenSize, Rect safeArea)
+        {
+            RuntimeSafeAreaFitter.CalculateSafeAreaAnchors(safeArea, screenSize, out Vector2 anchorMin, out Vector2 anchorMax);
+            return screenSize.y > screenSize.x &&
+                   anchorMin.x >= 0f && anchorMin.y >= 0f &&
+                   anchorMax.x <= 1f && anchorMax.y <= 1f &&
+                   anchorMin.x < anchorMax.x && anchorMin.y < anchorMax.y &&
+                   Approximately(anchorMin, new Vector2(safeArea.xMin / screenSize.x, safeArea.yMin / screenSize.y)) &&
+                   Approximately(anchorMax, new Vector2(safeArea.xMax / screenSize.x, safeArea.yMax / screenSize.y));
+        }
+
         private static bool Approximately(Vector2 left, Vector2 right)
         {
             return Vector2.SqrMagnitude(left - right) <= 0.0001f;
@@ -336,8 +391,11 @@ namespace DefenseGame.Editor
             public bool passed;
             public bool safeAreaExists;
             public bool safeAreaAnchorsValid;
+            public bool portraitProfilesValid;
             public bool hpTen;
             public bool hpTextTen;
+            public bool simultaneousDeathPolicyValid;
+            public bool hero32SignatureValid;
             public bool defaultVfxConfigured;
             public int runtimeErrors;
             public PrefabSmokeResult[] prefabs = Array.Empty<PrefabSmokeResult>();

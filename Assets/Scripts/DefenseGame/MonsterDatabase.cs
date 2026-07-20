@@ -67,18 +67,18 @@ namespace DefenseGame
             new BossEncounterBalanceStep
             {
                 encounterIndex = 0,
-                designerNote = "R10 / human 3-strategy target clear rate 65-75%",
+                designerNote = "R10 / human 3-strategy target clear rate 65-75% / 2026-07 20-run baseline 90% decisive pressure retune",
                 description = "Boss 1: requires a real summon-versus-shop commitment and punishes underbuilt boards.",
-                healthScale = 1.50f,
-                attackScale = 1.32f,
+                healthScale = 5.00f,
+                attackScale = 3.00f,
                 manaScale = 1.05f,
-                skillPowerScale = 1.12f,
-                cooldownScale = 1.00f,
-                manaThresholdOffset = 0f,
+                skillPowerScale = 1.85f,
+                cooldownScale = 0.85f,
+                manaThresholdOffset = -10f,
                 convertedDeathPactPower = 1.50f,
-                maxMassStunTargets = 1,
-                maxStunDuration = 1.05f,
-                maxAreaDamagePower = 1.25f,
+                maxMassStunTargets = 2,
+                maxStunDuration = 1.25f,
+                maxAreaDamagePower = 1.60f,
                 maxAreaRadius = 3.20f,
                 maxManaBurnTargets = 1,
                 maxManaBurnRatio = 0.22f,
@@ -846,6 +846,7 @@ namespace DefenseGame
                 deliveryType = source.deliveryType,
                 useCustomCastRange = source.useCustomCastRange,
                 castRange = source.castRange,
+                isGlobalTargeting = source.isGlobalTargeting,
                 power = source.power,
                 secondaryPower = source.secondaryPower,
                 duration = source.duration,
@@ -888,7 +889,7 @@ namespace DefenseGame
             definition.rosterIndex = seed;
             definition.variantIndex = 0;
             definition.isBoss = false;
-            definition.rewardGold = 4 + (int)grade * 2;
+            definition.rewardGold = 3 + (int)grade;
             definition.accentColor = ResolveColor(grade, role);
             definition.stats = BuildStats(grade, role, seed, false);
             definition.skills = BuildSkills(name, grade, role, MonsterThreatLevel.Regular, seed);
@@ -1158,7 +1159,7 @@ namespace DefenseGame
             }
             else if (pattern == 2)
             {
-                result.Add(CreateBossSkill(ownerName, SkillEffectType.MonsterRally, "돌격 명령", "주변 몬스터 무리를 잠시 강화합니다.", 0.16f, 4f, 0f, 1, 78f, 8f, 0));
+                result.Add(CreateBossSkill(ownerName, SkillEffectType.MonsterRally, "돌격 명령", "5.5m 안의 몬스터 무리를 잠시 강화합니다.", 0.16f, 4f, 0f, 1, 78f, 8f, 0));
                 result.Add(CreateBossSkill(ownerName, SkillEffectType.SummonRush, "파쇄 돌진", "여러 유닛에게 빠르게 피해를 줍니다.", 0.72f, 0f, 0f, 3, 96f, 9f, 1));
             }
             else if (pattern == 3)
@@ -1202,7 +1203,7 @@ namespace DefenseGame
             }
             else if (pattern == 3)
             {
-                result.Add(CreateBossSkill(ownerName, SkillEffectType.MonsterRally, "군단 집결", "모든 몬스터의 이동속도와 공격속도를 잠시 올립니다.", 0.22f, 5.5f, 0f, 1, 80f, 9f, 0));
+                result.Add(CreateBossSkill(ownerName, SkillEffectType.MonsterRally, "군단 집결", "5.5m 안의 몬스터 이동속도와 공격속도를 잠시 올립니다.", 0.22f, 5.5f, 0f, 1, 80f, 9f, 0));
                 result.Add(CreateBossSkill(ownerName, SkillEffectType.GoldDrain, "탐욕의 징수", "보유 골드를 강제로 빼앗습니다.", 18f, 0f, 0f, 1, 92f, 11f, 1));
             }
             else
@@ -1222,8 +1223,8 @@ namespace DefenseGame
             int pattern = Mathf.Abs(seed) % 8;
             if (pattern == 0)
             {
-                result.Add(CreateBossSkill(ownerName, SkillEffectType.MassStun, "대지 균열", "무작위 유닛을 짧게 기절시킵니다.", 0f, 1.45f, 0f, 2, 82f, 8.5f, 0));
-                result.Add(CreateBossSkill(ownerName, SkillEffectType.AreaDamage, "파멸의 포효", "주변 유닛에게 광역 피해를 줍니다.", 1.35f, 0f, 3.8f, 1, 95f, 7.5f, 1));
+                result.Add(CreateBossSkill(ownerName, SkillEffectType.MassStun, "대지 균열", "무작위 유닛 2기에 공격력 85% 피해를 주고 짧게 기절시킵니다.", 0.85f, 1.45f, 0f, 2, 82f, 8.5f, 0));
+                result.Add(CreateBossSkill(ownerName, SkillEffectType.BossFortify, "암석 방벽", "체력을 10% 회복하고 잠시 공격 속도를 높입니다.", 0.10f, 4.5f, 0f, 1, 95f, 9.5f, 1));
             }
             else if (pattern == 1)
             {
@@ -1232,12 +1233,12 @@ namespace DefenseGame
             }
             else if (pattern == 2)
             {
-                result.Add(CreateBossSkill(ownerName, SkillEffectType.BossFortify, "심해 장갑", "체력을 회복하고 잠시 공격 속도를 올립니다.", 0.12f, 5f, 0f, 1, 80f, 10f, 0));
-                result.Add(CreateBossSkill(ownerName, SkillEffectType.ManaBurn, "마나 침식", "무작위 유닛의 마나를 태웁니다.", 0.45f, 0f, 0f, 3, 92f, 9f, 1));
+                result.Add(CreateBossSkill(ownerName, SkillEffectType.AreaDamage, "운석 낙하", "주변 유닛에게 공격력 125%의 광역 피해를 줍니다.", 1.25f, 0f, 4.0f, 1, 80f, 9.5f, 0));
+                result.Add(CreateBossSkill(ownerName, SkillEffectType.ManaBurn, "마나 침식", "무작위 유닛 3기의 마나를 45% 태웁니다.", 0.45f, 0f, 0f, 3, 92f, 9f, 1));
             }
             else if (pattern == 3)
             {
-                result.Add(CreateBossSkill(ownerName, SkillEffectType.MonsterRally, "군단 집결", "모든 몬스터의 이동속도와 공격속도를 잠시 올립니다.", 0.22f, 5.5f, 0f, 1, 80f, 9f, 0));
+                result.Add(CreateBossSkill(ownerName, SkillEffectType.MonsterRally, "군단 집결", "5.5m 안의 몬스터 이동속도와 공격속도를 잠시 올립니다.", 0.22f, 5.5f, 0f, 1, 80f, 9f, 0));
                 result.Add(CreateBossSkill(ownerName, SkillEffectType.GoldDrain, "탐욕의 징수", "보유 골드를 강제로 빼앗습니다.", 18f, 0f, 0f, 1, 92f, 11f, 1));
             }
             else if (pattern == 4)
@@ -1248,7 +1249,7 @@ namespace DefenseGame
             else if (pattern == 5)
             {
                 result.Add(CreateBossSkill(ownerName, SkillEffectType.ManaBurn, "마나 약탈", "마나가 쌓인 유닛들의 마나를 태웁니다.", 0.38f, 0f, 0f, 2, 78f, 7.8f, 0));
-                result.Add(CreateBossSkill(ownerName, SkillEffectType.MonsterRally, "돌격 북소리", "몬스터 무리를 잠시 가속시킵니다.", 0.18f, 4.6f, 0f, 1, 88f, 8.8f, 1));
+                result.Add(CreateBossSkill(ownerName, SkillEffectType.MonsterRally, "돌격 북소리", "5.5m 안의 몬스터 무리를 잠시 가속시킵니다.", 0.18f, 4.6f, 0f, 1, 88f, 8.8f, 1));
             }
             else if (pattern == 6)
             {
@@ -1297,7 +1298,46 @@ namespace DefenseGame
             skill.hitCount = hitCount;
             skill.manaThreshold = manaThreshold;
             skill.cooldown = cooldown;
+            skill.isGlobalTargeting = UsesGlobalMonsterTargeting(effectType);
+            ApplyMonsterSkillRangeDefaults(skill);
             return skill;
+        }
+
+        private static bool UsesGlobalMonsterTargeting(SkillEffectType effectType)
+        {
+            return effectType == SkillEffectType.DeathPact ||
+                effectType == SkillEffectType.MassStun ||
+                effectType == SkillEffectType.GoldDrain ||
+                effectType == SkillEffectType.ManaBurn;
+        }
+
+        private static void ApplyMonsterSkillRangeDefaults(SkillDefinition skill)
+        {
+            if (skill == null)
+            {
+                return;
+            }
+
+            if (skill.effectType == SkillEffectType.DirectDamage ||
+                skill.effectType == SkillEffectType.Stun)
+            {
+                skill.useCustomCastRange = true;
+                skill.castRange = 3f;
+            }
+            else if (skill.effectType == SkillEffectType.AreaDamage)
+            {
+                skill.useCustomCastRange = true;
+                skill.castRange = Mathf.Max(0.5f, skill.radius);
+            }
+            else if (skill.effectType == SkillEffectType.SummonRush)
+            {
+                skill.useCustomCastRange = true;
+                skill.castRange = 3.6f;
+            }
+            else if (skill.effectType == SkillEffectType.MonsterRally && skill.radius <= 0.1f)
+            {
+                skill.radius = 5.5f;
+            }
         }
 
         private SkillDefinition CreateSkill(string ownerName, SkillEffectType effectType, bool isBoss, int index)
@@ -1371,6 +1411,7 @@ namespace DefenseGame
                 skill.cooldown = 8f;
             }
 
+            ApplyMonsterSkillRangeDefaults(skill);
             return skill;
         }
 

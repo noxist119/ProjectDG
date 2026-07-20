@@ -12,14 +12,22 @@ namespace DefenseGame
         public readonly string materialSummary;
         public readonly string resultSummary;
         public readonly Color accentColor;
+        public readonly bool isReady;
+        public readonly int progress;
+        public readonly int required;
+        public readonly string missingSummary;
 
-        public UltimateRecipeOption(string recipeName, string displayName, string materialSummary, string resultSummary, Color accentColor)
+        public UltimateRecipeOption(string recipeName, string displayName, string materialSummary, string resultSummary, Color accentColor, bool isReady = true, int progress = 0, int required = 0, string missingSummary = "")
         {
             this.recipeName = recipeName;
             this.displayName = displayName;
             this.materialSummary = materialSummary;
             this.resultSummary = resultSummary;
             this.accentColor = accentColor;
+            this.isReady = isReady;
+            this.progress = progress;
+            this.required = required;
+            this.missingSummary = missingSummary ?? string.Empty;
         }
     }
 
@@ -54,11 +62,11 @@ namespace DefenseGame
             new UltimateMergeRecipe("Soul Battery Rite", "Drain + Mana + Heal + Guard + Speed", 0, 0, 0, new[] { "hero_11", "hero_13", "hero_02", "hero_05", "hero_14" }, new[] { "hero_54" }),
             new UltimateMergeRecipe("Venom Bulwark Rite", "Mythic Venom + Poison + Freeze Zone", 0, 0, 0, new[] { "hero_33", "hero_04", "hero_22" }, new[] { "hero_52", "hero_54" }),
             new UltimateMergeRecipe("Thunder Control Rite", "Mythic Fighter + Life Chain + Petrify", 0, 0, 0, new[] { "hero_31", "hero_07", "hero_08" }, new[] { "hero_51" }),
-            new UltimateMergeRecipe("Iron Bastion Rite", "Mythic Combat + Shield + Thornshield", 0, 0, 0, new[] { "hero_31", "hero_05", "hero_22" }, new[] { "hero_55" }),
-            new UltimateMergeRecipe("Clockwork Barrage Rite", "Mythic Wolf + Battery + Wind", 0, 0, 0, new[] { "hero_32", "hero_13", "hero_10" }, new[] { "hero_56" }),
-            new UltimateMergeRecipe("Fractured Arsenal Rite", "Mythic Infection + Assassin + Assault", 0, 0, 0, new[] { "hero_33", "hero_12", "hero_06" }, new[] { "hero_57" }),
+            new UltimateMergeRecipe("Iron Bastion Rite", "Mythic Combat + Shield (완화 조합)", 0, 0, 0, new[] { "hero_31", "hero_05" }, new[] { "hero_55" }),
+            new UltimateMergeRecipe("Clockwork Barrage Rite", "Mythic Wolf + Battery (완화 조합)", 0, 0, 0, new[] { "hero_32", "hero_13" }, new[] { "hero_56" }),
+            new UltimateMergeRecipe("Fractured Arsenal Rite", "Mythic Infection + Assassin (완화 조합)", 0, 0, 0, new[] { "hero_33", "hero_12" }, new[] { "hero_57" }),
             new UltimateMergeRecipe("Crown Overflow Rite", "Mythic 2 + Legendary 1", 2, 1, 0, null, new[] { "hero_51", "hero_52", "hero_53" }),
-            new UltimateMergeRecipe("Eclipse Overflow Rite", "Mythic 1 + Legendary 2 + Epic 1", 1, 2, 1, null, new[] { "hero_52", "hero_54" }),
+            new UltimateMergeRecipe("Eclipse Overflow Rite", "Mythic 1 + Legendary 1 + Epic 1", 1, 1, 1, null, new[] { "hero_51", "hero_52", "hero_53", "hero_54", "hero_55", "hero_56", "hero_57" }),
             new UltimateMergeRecipe("Dragon Overflow Rite", "Mythic 2 + Epic 2", 2, 0, 2, null, new[] { "hero_53", "hero_54" })
         };
 
@@ -100,6 +108,7 @@ namespace DefenseGame
         public int UnlockedSlotCount => slots.Count(slot => slot != null && slot.IsAvailable);
         public int LockedSlotCount => slots.Count(slot => slot != null && slot.IsLocked);
         public DefenderUnit SelectedUnit => selectedRangeUnit;
+        public string LastMergeFailureReason { get; private set; } = string.Empty;
 
         private void Awake()
         {
@@ -241,6 +250,7 @@ namespace DefenseGame
         public bool TryMergeUnitsOfGrade(CharacterGrade grade, CharacterDatabase database, out MergeResultInfo mergeResult, DefenderUnit prefabOverride = null)
         {
             mergeResult = default;
+            LastMergeFailureReason = string.Empty;
             if (grade == CharacterGrade.Mythic)
             {
                 return TryMergeUltimate(database, out mergeResult, prefabOverride);
@@ -248,6 +258,7 @@ namespace DefenseGame
 
             if (grade == CharacterGrade.Transcendent)
             {
+                LastMergeFailureReason = "\uCD08\uC6D4 \uB4F1\uAE09\uC740 \uC77C\uBC18 \uD569\uC131\uC744 \uC9C4\uD589\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.";
                 return false;
             }
 
@@ -262,26 +273,25 @@ namespace DefenseGame
 
             if (sameGradeUnits.Count < 3)
             {
+                LastMergeFailureReason = "\uD569\uC131 \uC7AC\uB8CC\uAC00 \uBD80\uC871\uD569\uB2C8\uB2E4.  " + sameGradeUnits.Count + "/3";
                 return false;
             }
 
             CharacterGrade nextGrade = (CharacterGrade)((int)grade + 1);
-            CharacterDefinition mergedCharacter = database.GetRandomCharacterByGrade(nextGrade, true);
+            // Merging is an in-run progression path. The outgame collection only limits
+            // direct summons, never a valid merge result earned from deployed materials.
+            CharacterDefinition mergedCharacter = database.GetRandomCharacterByGrade(nextGrade, false);
             if (mergedCharacter == null)
             {
+                LastMergeFailureReason = "\uC0C1\uC704 \uB4F1\uAE09 \uACB0\uACFC \uC720\uB2DB \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.";
                 return false;
             }
 
             BoardSlot spawnSlot = sameGradeUnits[0].CurrentSlot;
             if (spawnSlot == null)
             {
+                LastMergeFailureReason = "\uD569\uC131 \uACB0\uACFC\uB97C \uBC30\uCE58\uD560 \uC2AC\uB86F\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.";
                 return false;
-            }
-
-            for (int i = 0; i < sameGradeUnits.Count; i++)
-            {
-                sameGradeUnits[i].RemoveFromBoard();
-                Destroy(sameGradeUnits[i].gameObject);
             }
 
             GameObject sourcePrefab = mergedCharacter.prefab != null
@@ -290,8 +300,18 @@ namespace DefenseGame
 
             if (sourcePrefab == null)
             {
+                LastMergeFailureReason = "\uC0C1\uC704 \uB4F1\uAE09 \uC720\uB2DB \uD504\uB9AC\uD339\uC744 \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.";
                 Debug.LogError("No DefenderUnit prefab assigned for merge result.");
                 return false;
+            }
+
+            float inheritedAttackPower = sameGradeUnits.Sum(unit => unit != null ? unit.EffectiveAttackPower : 0f) * 0.98f;
+            float inheritedMaxHealth = sameGradeUnits.Sum(unit => unit != null ? unit.MaxHealth : 0f) * 0.94f;
+
+            for (int i = 0; i < sameGradeUnits.Count; i++)
+            {
+                sameGradeUnits[i].RemoveFromBoard();
+                Destroy(sameGradeUnits[i].gameObject);
             }
 
             GameObject spawnedObject = Instantiate(sourcePrefab, spawnSlot.UnitAnchor.position, Quaternion.identity);
@@ -305,6 +325,7 @@ namespace DefenseGame
             unit.gameObject.SetActive(true);
             spawnSlot.AssignUnit(unit);
             unit.Initialize(mergedCharacter);
+            unit.ApplyMergeInheritance(inheritedAttackPower, inheritedMaxHealth);
             SpawnMergeVfx(spawnSlot, mergedCharacter.accentColor, nextGrade, false);
             mergeResult = new MergeResultInfo
             {
@@ -452,10 +473,105 @@ namespace DefenseGame
                     CompactRecipeName(recipe.name),
                     materialSummary,
                     resultSummary,
-                    accentColor));
+                    accentColor,
+                    true,
+                    GetUltimateRecipeRequiredCount(recipe),
+                    GetUltimateRecipeRequiredCount(recipe),
+                    string.Empty));
             }
 
             return options.ToArray();
+        }
+
+        public UltimateRecipeOption[] GetAllUltimateRecipeOptions(CharacterDatabase database = null)
+        {
+            List<UltimateRecipeOption> options = new List<UltimateRecipeOption>();
+            for (int i = 0; i < UltimateRecipes.Length; i++)
+            {
+                UltimateMergeRecipe recipe = UltimateRecipes[i];
+                if (recipe == null)
+                {
+                    continue;
+                }
+
+                List<CharacterDefinition> results = ResolveUltimateMergeResultCandidates(database, recipe)
+                    .Where(character => !IsBlockedTranscendentResult(character))
+                    .ToList();
+                string resultSummary = results.Count > 0
+                    ? string.Join(" / ", results.Select(character => character.displayName).Distinct().ToArray())
+                    : "결과 유닛 확인 필요";
+                Color accentColor = results.Count > 0
+                    ? results[0].accentColor
+                    : CharacterGradeUtility.GetColor(CharacterGrade.Transcendent, new Color(0.92f, 0.42f, 1f));
+                string materialSummary = recipe.requiredCharacterIds != null && recipe.requiredCharacterIds.Length > 0
+                    ? string.Join(" + ", recipe.requiredCharacterIds.Select(id => ResolveCharacterName(database, id)).ToArray())
+                    : BuildGradeRecipeStatus(recipe);
+                int progress = GetUltimateRecipeProgress(recipe);
+                int required = Mathf.Max(1, GetUltimateRecipeRequiredCount(recipe));
+                bool ready = progress >= required && HasAvailableUltimateResult(database, recipe);
+                options.Add(new UltimateRecipeOption(
+                    recipe.name,
+                    CompactRecipeName(recipe.name),
+                    materialSummary,
+                    resultSummary,
+                    accentColor,
+                    ready,
+                    progress,
+                    required,
+                    BuildMissingRecipeMaterialSummary(recipe, database)));
+            }
+
+            options.Sort((left, right) =>
+            {
+                if (left.isReady != right.isReady)
+                {
+                    return left.isReady ? -1 : 1;
+                }
+
+                int scaledLeft = left.progress * Mathf.Max(1, right.required);
+                int scaledRight = right.progress * Mathf.Max(1, left.required);
+                return scaledRight != scaledLeft ? scaledRight.CompareTo(scaledLeft) : left.displayName.CompareTo(right.displayName);
+            });
+            return options.ToArray();
+        }
+
+        private string BuildMissingRecipeMaterialSummary(UltimateMergeRecipe recipe, CharacterDatabase database)
+        {
+            List<string> missing = new List<string>();
+            if (recipe.requiredCharacterIds != null && recipe.requiredCharacterIds.Length > 0)
+            {
+                List<DefenderUnit> candidates = GetRecipeCandidateUnits();
+                for (int i = 0; i < recipe.requiredCharacterIds.Length; i++)
+                {
+                    string id = recipe.requiredCharacterIds[i];
+                    DefenderUnit match = candidates.FirstOrDefault(unit => unit.Definition.id == id);
+                    if (match == null)
+                    {
+                        missing.Add(ResolveCharacterName(database, id));
+                    }
+                    else
+                    {
+                        candidates.Remove(match);
+                    }
+                }
+            }
+            else
+            {
+                AddMissingGradeSummary(missing, CharacterGrade.Mythic, recipe.mythicCount);
+                AddMissingGradeSummary(missing, CharacterGrade.Legendary, recipe.legendaryCount);
+                AddMissingGradeSummary(missing, CharacterGrade.Epic, recipe.epicCount);
+            }
+
+            return missing.Count > 0 ? string.Join(", ", missing.ToArray()) : "없음";
+        }
+
+        private void AddMissingGradeSummary(List<string> missing, CharacterGrade grade, int requiredCount)
+        {
+            int shortage = Mathf.Max(0, requiredCount - CountUnitsOfGrade(grade));
+            if (shortage > 0)
+            {
+                missing.Add(CharacterGradeUtility.GetDisplayName(grade) + " ×" + shortage);
+            }
         }
 
         public void SetUltimateRecipePreview(string recipeName, bool previewActive = false)
@@ -500,6 +616,9 @@ namespace DefenseGame
                 return false;
             }
 
+            float inheritedAttackPower = selectedUnits.Sum(unit => unit != null ? unit.EffectiveAttackPower : 0f) * 0.90f;
+            float inheritedMaxHealth = selectedUnits.Sum(unit => unit != null ? unit.MaxHealth : 0f) * 0.86f;
+
             for (int i = 0; i < selectedUnits.Count; i++)
             {
                 selectedUnits[i].RemoveFromBoard();
@@ -527,6 +646,7 @@ namespace DefenseGame
             unit.gameObject.SetActive(true);
             spawnSlot.AssignUnit(unit);
             unit.Initialize(mergedCharacter);
+            unit.ApplyMergeInheritance(inheritedAttackPower, inheritedMaxHealth);
             SpawnMergeVfx(spawnSlot, mergedCharacter.accentColor, mergedCharacter.grade, true);
             mergeResult = new MergeResultInfo
             {
@@ -573,7 +693,7 @@ namespace DefenseGame
                 return candidates[Random.Range(0, candidates.Count)];
             }
 
-            CharacterDefinition mythicFallback = database.GetRandomCharacterByGrade(CharacterGrade.Mythic, true);
+            CharacterDefinition mythicFallback = database.GetRandomCharacterByGrade(CharacterGrade.Mythic, false);
             return mythicFallback != null && !IsBlockedTranscendentResult(mythicFallback) ? mythicFallback : null;
         }
 
@@ -599,7 +719,7 @@ namespace DefenseGame
 
             if (candidates.Count == 0)
             {
-                candidates.AddRange(database.GetCharactersByGrade(CharacterGrade.Transcendent, true));
+                candidates.AddRange(database.GetCharactersByGrade(CharacterGrade.Transcendent, false));
             }
 
             return candidates;
@@ -607,8 +727,7 @@ namespace DefenseGame
 
         private static bool IsDeployableUltimateResult(CharacterDefinition character)
         {
-            return character != null &&
-                (OutgameProgressionSystem.Active == null || OutgameProgressionSystem.Active.CanDeployCharacter(character));
+            return character != null;
         }
 
         private bool IsBlockedTranscendentResult(CharacterDefinition character)

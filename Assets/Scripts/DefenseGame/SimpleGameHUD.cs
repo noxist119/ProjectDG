@@ -57,6 +57,10 @@ namespace DefenseGame
         [SerializeField] private Text fateForceShopButtonText;
         [SerializeField] private Button fateSurvivalButton;
         [SerializeField] private Text fateSurvivalButtonText;
+        [SerializeField] private GameObject fatePanelRoot;
+        [SerializeField] private CanvasGroup fatePanelCanvasGroup;
+        [SerializeField] private Button fatePanelReopenButton;
+        [SerializeField] private Text fatePanelReopenButtonText;
         [SerializeField] private Image roundProgressFill;
         [SerializeField] private Image lifeProgressFill;
         [SerializeField] private Button battleButton;
@@ -83,6 +87,9 @@ namespace DefenseGame
         private const float OpeningTutorialStageDuration = OpeningTutorialDuration / 4f;
         private const float DefeatCinematicDuration = DefenseGameController.DefeatSlowMotionDurationRealtime;
         private const float DefeatCinematicFadeOutDuration = 0.25f;
+        private const float FatePanelClosedYOffset = 226f;
+        private const float FatePanelSlideSpeed = 13f;
+        private const float FatePanelFadeSpeed = 6f;
 
         [Header("Opening Tutorial")]
         [SerializeField] private bool enableOpeningTutorial = true;
@@ -100,6 +107,18 @@ namespace DefenseGame
         private bool fateSurvivalVisualInitialized;
         private Vector3 fateSurvivalBaseScale = Vector3.one;
         private Color fateSurvivalBaseColor = Color.white;
+        private RectTransform fatePanelRect;
+        private Vector2 fatePanelOpenPosition;
+        private Vector2 fatePanelClosedPosition;
+        private bool fatePanelMotionInitialized;
+        private bool fateEntryButtonEmphasisActive;
+        private bool fateEntryButtonVisualInitialized;
+        private Vector3 fateEntryButtonBaseScale = Vector3.one;
+        private Color fateEntryButtonBaseColor = Color.white;
+        private bool fatePanelTargetOpen = true;
+        private bool fatePanelVisible = true;
+        private GameObject fateChoiceBackdrop;
+        private CanvasGroup fateChoiceBackdropCanvasGroup;
         private GameObject defeatCinematicPanel;
         private CanvasGroup defeatCinematicCanvasGroup;
         private Text defeatCinematicTitleText;
@@ -163,6 +182,10 @@ namespace DefenseGame
             Text fateForceShopLabel = null,
             Button fateSurvival = null,
             Text fateSurvivalLabel = null,
+            GameObject fatePanel = null,
+            CanvasGroup fatePanelGroup = null,
+            Button fatePanelReopen = null,
+            Text fatePanelReopenLabel = null,
             Image progressFill = null,
             Button battle = null,
             Button summon = null,
@@ -226,6 +249,10 @@ namespace DefenseGame
             fateForceShopButtonText = fateForceShopLabel;
             fateSurvivalButton = fateSurvival;
             fateSurvivalButtonText = fateSurvivalLabel;
+            fatePanelRoot = fatePanel;
+            fatePanelCanvasGroup = fatePanelGroup;
+            fatePanelReopenButton = fatePanelReopen;
+            fatePanelReopenButtonText = fatePanelReopenLabel;
             roundProgressFill = progressFill;
             battleButton = battle;
             summonButton = summon;
@@ -240,12 +267,19 @@ namespace DefenseGame
             unitSellButtonText = sellButtonLabel;
             lifeProgressFill = lifeProgress;
 
+            if (lifeProgressFill != null && lifeProgressFill.type == Image.Type.Filled)
+            {
+                lifeProgressFill.type = Image.Type.Sliced;
+            }
+
             if (!string.IsNullOrWhiteSpace(overrideHint))
             {
                 hintMessage = overrideHint;
             }
 
             WireUnitSellButton();
+            WireFatePanelControls();
+            InitializeFatePanelMotionIfNeeded();
             ResetOpeningTutorial();
             Subscribe();
             Refresh();
@@ -282,6 +316,8 @@ namespace DefenseGame
             UpdateSellConfirmationTimer();
             UpdateDefeatCinematic();
             UpdateUltimateReadyEmphasis();
+            UpdateFatePanelMotion();
+            UpdateFateEntryButtonEmphasis();
         }
 
         public void Refresh()
@@ -298,20 +334,46 @@ namespace DefenseGame
             SetText(roundText, "ROUND " + Mathf.Max(1, gameController.CurrentRound));
             SetText(boardText, gameController.BoardUnitCount + " / " + gameController.BoardCapacity);
             SetText(contentText, gameController.LifeHudSummary);
-            if (lifeProgressFill != null)
-            {
-                lifeProgressFill.fillAmount = gameController.MaxLife > 0 ? Mathf.Clamp01((float)gameController.Life / gameController.MaxLife) : 0f;
-            }
+            RefreshLifeProgressFill();
 
             SetText(hintText, hintMessage);
 
             if (mergeBannerTextAvailable() && string.IsNullOrWhiteSpace(mergeBannerMessage))
             {
-                SetText(mergeResultText, "합성 대기 중");
+                SetMergeBannerVisible(false);
             }
 
             RefreshDynamicState();
             ApplyOpeningTutorialHint();
+        }
+
+        private void RefreshLifeProgressFill()
+        {
+            if (lifeProgressFill == null)
+            {
+                return;
+            }
+
+            float ratio = gameController != null && gameController.MaxLife > 0
+                ? Mathf.Clamp01((float)gameController.Life / gameController.MaxLife)
+                : 0f;
+
+            if (lifeProgressFill.type == Image.Type.Filled)
+            {
+                lifeProgressFill.fillAmount = ratio;
+                return;
+            }
+
+            RectTransform rect = lifeProgressFill.rectTransform;
+            if (rect == null)
+            {
+                return;
+            }
+
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = new Vector2(ratio, 1f);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
         }
 
         private void Subscribe()
@@ -481,8 +543,9 @@ namespace DefenseGame
 
             bool roundRunning = gameController.IsRoundRunning;
             bool combatLocked = gameController.IsCombatInteractionLocked;
-            SetText(stateText, combatLocked ? "\uC804\uD22C \uC9C4\uD589 \uC911" : roundRunning ? "\uC804\uD22C \uC900\uBE44" : "\uC900\uBE44 \uB2E8\uACC4");
-            SetColor(stateText, combatLocked ? new Color(1f, 0.82f, 0.36f) : new Color(0.42f, 1f, 0.72f));
+            bool fateEditing = gameController.FateCombatEditingActive;
+            SetText(stateText, fateEditing ? "계약 편집 중" : combatLocked ? "\uC804\uD22C \uC9C4\uD589 \uC911" : roundRunning ? "\uC804\uD22C \uC900\uBE44" : "\uC900\uBE44 \uB2E8\uACC4");
+            SetColor(stateText, fateEditing ? new Color(1f, 0.54f, 1f) : combatLocked ? new Color(1f, 0.82f, 0.36f) : new Color(0.42f, 1f, 0.72f));
             string battleLabel = roundRunning ? (combatLocked ? "\uC804\uD22C \uC911" : "\uC804\uD22C \uC900\uBE44") : gameController.CurrentRound <= 0 ? "\uC804\uD22C \uC2DC\uC791" : "\uB2E4\uC74C \uB77C\uC6B4\uB4DC";
             SetText(battleButtonText, battleLabel);
             SetInteractable(battleButton, !roundRunning);
@@ -505,10 +568,11 @@ namespace DefenseGame
             if (transcendentMergeText != null)
             {
                 int readyCount = gameController.ReadyUltimateRecipeCount;
-                bool canMergeUltimate = !combatLocked && readyCount > 0;
+                bool canOpenUltimateRecipes = !combatLocked;
+                bool canMergeUltimate = canOpenUltimateRecipes && readyCount > 0;
                 SetText(transcendentMergeText, readyCount > 0 ? "READY ×" + readyCount : gameController.GetUltimateMergeStatus());
                 SetColor(transcendentMergeText, canMergeUltimate ? new Color(0.92f, 0.42f, 1f) : combatLocked ? new Color(0.58f, 0.62f, 0.78f) : Color.white);
-                SetGradeCardInteractable(transcendentMergeText, canMergeUltimate);
+                SetGradeCardInteractable(transcendentMergeText, canOpenUltimateRecipes);
                 SetUltimateReadyState(readyCount);
             }
 
@@ -536,7 +600,8 @@ namespace DefenseGame
                 }
                 else
                 {
-                    SetText(bossRoundHudText, "다음 보스 ROUND " + nextBossRound + "  |  " + gameController.CurrentBuildGoalSummary);
+                    string bossRoundSummary = roundsLeft > 0 ? "보스 R" + nextBossRound + "까지 " + roundsLeft + "R" : "보스 R" + nextBossRound;
+                    SetText(bossRoundHudText, bossRoundSummary + "  |  " + BuildCompactBossGoalHud(gameController.CurrentBuildGoalSummary));
                     SetColor(bossRoundHudText, roundsLeft <= 1 ? new Color(1f, 0.45f, 0.28f) : roundsLeft <= 3 ? new Color(1f, 0.86f, 0.28f) : new Color(0.76f, 0.94f, 1f));
                 }
             }
@@ -570,14 +635,34 @@ namespace DefenseGame
                 return;
             }
 
+            bool shouldShowFatePanel = gameController.ShouldShowFatePanel;
+            bool shouldShowFateEntryButton = gameController.ShouldShowFateCardEntryButton;
+            UpdateFatePanelAvailability(shouldShowFatePanel, shouldShowFateEntryButton);
+
             if (fateGaugeFill != null)
             {
                 fateGaugeFill.fillAmount = gameController.FateGauge01;
             }
 
             SetText(fateGaugeText, gameController.FateHudSummary);
-            SetText(fateDebtText, "보스HP x" + gameController.FateDebtBossHealthMultiplier.ToString("0.00"));
+            SetText(fateDebtText, gameController.FateCardStatusSummary);
             SetText(fateCostBenefitText, CompactHudLines(gameController.FateCostBenefitSummary, 3, 32));
+            if (!shouldShowFatePanel)
+            {
+                string lockedLabel = shouldShowFateEntryButton ? "봉인\n카드 개방 후 공개" : "봉인\n전투 중 공개";
+                string cardLabel = shouldShowFateEntryButton ? "운명카드\n꺼내기 대기" : "운명카드\n전투 중 개방";
+                SetText(fateGradeLockButtonText, lockedLabel);
+                SetText(fateNormalBanButtonText, lockedLabel);
+                SetText(fateForceShopButtonText, cardLabel);
+                SetText(fateSurvivalButtonText, cardLabel);
+                SetInteractable(fateGradeLockButton, false);
+                SetInteractable(fateNormalBanButton, false);
+                SetInteractable(fateForceShopButton, false);
+                SetInteractable(fateSurvivalButton, false);
+                ApplyFateSurvivalEmphasis(false);
+                return;
+            }
+
             SetText(fateGradeLockButtonText, gameController.FateGradeLockHudLabel);
             SetText(fateNormalBanButtonText, gameController.FateNormalBanHudLabel);
             SetText(fateForceShopButtonText, gameController.FateForceShopHudLabel);
@@ -586,7 +671,330 @@ namespace DefenseGame
             SetInteractable(fateNormalBanButton, gameController.CanUseFateNormalBan);
             SetInteractable(fateForceShopButton, gameController.CanUseFateForcedShop);
             SetInteractable(fateSurvivalButton, gameController.CanUseFateSurvival);
+            ApplyFateChoiceButtonVisuals();
             ApplyFateSurvivalEmphasis(gameController.FateSurvivalCrisisActive);
+        }
+
+        private void WireFatePanelControls()
+        {
+            if (fatePanelReopenButton == null)
+            {
+                return;
+            }
+
+            fatePanelReopenButton.onClick.RemoveListener(ExpandFatePanel);
+            fatePanelReopenButton.onClick.RemoveListener(HandleFateEntryButtonPressed);
+            fatePanelReopenButton.onClick.AddListener(HandleFateEntryButtonPressed);
+            fatePanelReopenButton.gameObject.SetActive(false);
+        }
+
+        private void InitializeFatePanelMotionIfNeeded()
+        {
+            if (fatePanelMotionInitialized)
+            {
+                return;
+            }
+
+            if (fatePanelRoot == null)
+            {
+                return;
+            }
+
+            fatePanelRect = fatePanelRoot.GetComponent<RectTransform>();
+            if (fatePanelCanvasGroup == null)
+            {
+                fatePanelCanvasGroup = fatePanelRoot.GetComponent<CanvasGroup>();
+            }
+
+            if (fatePanelRect != null)
+            {
+                fatePanelRect.anchorMin = new Vector2(0.5f, 0.5f);
+                fatePanelRect.anchorMax = new Vector2(0.5f, 0.5f);
+                fatePanelRect.pivot = new Vector2(0.5f, 0.5f);
+                fatePanelOpenPosition = Vector2.zero;
+                RectTransform parentRect = fatePanelRect.parent as RectTransform;
+                float parentHeight = parentRect != null ? parentRect.rect.height : 1920f;
+                fatePanelClosedPosition = fatePanelOpenPosition + new Vector2(0f, -(parentHeight * 0.5f + fatePanelRect.rect.height + FatePanelClosedYOffset));
+            }
+
+            if (fateChoiceBackdrop == null && fatePanelRoot.transform.parent != null)
+            {
+                fateChoiceBackdrop = new GameObject("FateChoiceBackdrop", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+                fateChoiceBackdrop.transform.SetParent(fatePanelRoot.transform.parent, false);
+                RectTransform backdropRect = fateChoiceBackdrop.GetComponent<RectTransform>();
+                backdropRect.anchorMin = Vector2.zero;
+                backdropRect.anchorMax = Vector2.one;
+                backdropRect.offsetMin = Vector2.zero;
+                backdropRect.offsetMax = Vector2.zero;
+                Image backdropImage = fateChoiceBackdrop.GetComponent<Image>();
+                backdropImage.color = new Color(0.01f, 0.01f, 0.04f, 0.72f);
+                backdropImage.raycastTarget = true;
+                fateChoiceBackdropCanvasGroup = fateChoiceBackdrop.GetComponent<CanvasGroup>();
+                fateChoiceBackdropCanvasGroup.alpha = 0f;
+                fateChoiceBackdropCanvasGroup.blocksRaycasts = false;
+                fateChoiceBackdropCanvasGroup.interactable = false;
+                fateChoiceBackdrop.transform.SetSiblingIndex(Mathf.Max(0, fatePanelRoot.transform.GetSiblingIndex()));
+                fatePanelRoot.transform.SetAsLastSibling();
+            }
+
+            fatePanelVisible = fatePanelRoot.activeSelf;
+            fatePanelTargetOpen = fatePanelVisible;
+            if (fatePanelCanvasGroup != null)
+            {
+                fatePanelCanvasGroup.alpha = fatePanelVisible ? 1f : 0f;
+                fatePanelCanvasGroup.interactable = fatePanelVisible;
+                fatePanelCanvasGroup.blocksRaycasts = fatePanelVisible;
+            }
+            if (fateChoiceBackdrop != null)
+            {
+                fateChoiceBackdrop.SetActive(fatePanelVisible);
+            }
+
+            fatePanelMotionInitialized = true;
+        }
+
+        private void UpdateFatePanelAvailability(bool shouldShow, bool shouldShowEntryButton)
+        {
+            InitializeFatePanelMotionIfNeeded();
+
+            if (shouldShow)
+            {
+                if (fatePanelRoot != null && !fatePanelRoot.activeSelf)
+                {
+                    ExpandFatePanel();
+                }
+                else if (!fatePanelTargetOpen && !fatePanelVisible)
+                {
+                    ExpandFatePanel();
+                }
+            }
+            else if (fatePanelTargetOpen || fatePanelVisible)
+            {
+                CollapseFatePanel();
+            }
+
+            if (fatePanelReopenButton != null)
+            {
+                bool showReopen = shouldShowEntryButton && !shouldShow;
+                if (!showReopen)
+                {
+                    showReopen = shouldShow && !fatePanelTargetOpen;
+                }
+
+                fatePanelReopenButton.gameObject.SetActive(showReopen);
+                fateEntryButtonEmphasisActive = shouldShowEntryButton && !shouldShow && showReopen;
+                SetText(fatePanelReopenButtonText, shouldShowEntryButton && !shouldShow ? "운명 카드\n꺼내기" : "계약");
+            }
+        }
+
+        private void HandleFateEntryButtonPressed()
+        {
+            if (gameController == null)
+            {
+                return;
+            }
+
+            if (gameController.TryOpenFateCardChoicePanel())
+            {
+                ExpandFatePanel();
+            }
+        }
+
+        private void ExpandFatePanel()
+        {
+            InitializeFatePanelMotionIfNeeded();
+            fatePanelTargetOpen = true;
+            fatePanelVisible = true;
+            if (fateChoiceBackdrop != null)
+            {
+                fateChoiceBackdrop.SetActive(true);
+                fateChoiceBackdrop.transform.SetSiblingIndex(Mathf.Max(0, fatePanelRoot.transform.GetSiblingIndex()));
+            }
+            fatePanelRoot?.transform.SetAsLastSibling();
+            if (fateChoiceBackdropCanvasGroup != null)
+            {
+                fateChoiceBackdropCanvasGroup.blocksRaycasts = true;
+                fateChoiceBackdropCanvasGroup.interactable = true;
+            }
+            if (fatePanelRoot != null && !fatePanelRoot.activeSelf)
+            {
+                fatePanelRoot.SetActive(true);
+            }
+
+            if (fatePanelCanvasGroup != null)
+            {
+                fatePanelCanvasGroup.interactable = true;
+                fatePanelCanvasGroup.blocksRaycasts = true;
+            }
+
+            if (fatePanelReopenButton != null)
+            {
+                fatePanelReopenButton.gameObject.SetActive(false);
+            }
+        }
+
+        private void CollapseFatePanel()
+        {
+            InitializeFatePanelMotionIfNeeded();
+            fatePanelTargetOpen = false;
+            fatePanelVisible = true;
+            if (fatePanelRoot != null && !fatePanelRoot.activeSelf)
+            {
+                fatePanelRoot.SetActive(true);
+            }
+
+            if (fatePanelCanvasGroup != null)
+            {
+                fatePanelCanvasGroup.interactable = false;
+                fatePanelCanvasGroup.blocksRaycasts = false;
+            }
+        }
+
+        private void UpdateFateEntryButtonEmphasis()
+        {
+            if (fatePanelReopenButton == null)
+            {
+                return;
+            }
+
+            if (!fateEntryButtonVisualInitialized)
+            {
+                fateEntryButtonVisualInitialized = true;
+                fateEntryButtonBaseScale = fatePanelReopenButton.transform.localScale;
+                Graphic graphic = fatePanelReopenButton.targetGraphic;
+                fateEntryButtonBaseColor = graphic != null ? graphic.color : Color.white;
+            }
+
+            Graphic targetGraphic = fatePanelReopenButton.targetGraphic;
+            if (!fateEntryButtonEmphasisActive || !fatePanelReopenButton.gameObject.activeInHierarchy)
+            {
+                fatePanelReopenButton.transform.localScale = fateEntryButtonBaseScale;
+                if (targetGraphic != null)
+                {
+                    targetGraphic.color = fateEntryButtonBaseColor;
+                }
+                if (fatePanelReopenButtonText != null)
+                {
+                    SetColor(fatePanelReopenButtonText, Color.white);
+                }
+                return;
+            }
+
+            float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5.4f);
+            fatePanelReopenButton.transform.localScale = fateEntryButtonBaseScale * Mathf.Lerp(1.04f, 1.12f, pulse);
+            if (targetGraphic != null)
+            {
+                Color brightColor = new Color(0.94f, 0.38f, 1f, 1f);
+                targetGraphic.color = Color.Lerp(fateEntryButtonBaseColor, brightColor, 0.36f + pulse * 0.34f);
+            }
+            if (fatePanelReopenButtonText != null)
+            {
+                SetColor(fatePanelReopenButtonText, Color.Lerp(Color.white, new Color(1f, 0.90f, 0.30f), pulse));
+            }
+        }
+        private void UpdateFatePanelMotion()
+        {
+            InitializeFatePanelMotionIfNeeded();
+            if (fatePanelRect == null || fatePanelRoot == null)
+            {
+                return;
+            }
+
+            if (!fatePanelRoot.activeSelf && !fatePanelTargetOpen)
+            {
+                return;
+            }
+
+            if (!fatePanelRoot.activeSelf)
+            {
+                fatePanelRoot.SetActive(true);
+            }
+
+            Vector2 targetPosition = fatePanelTargetOpen ? fatePanelOpenPosition : fatePanelClosedPosition;
+            float slideT = 1f - Mathf.Exp(-FatePanelSlideSpeed * Time.unscaledDeltaTime);
+            fatePanelRect.anchoredPosition = Vector2.Lerp(fatePanelRect.anchoredPosition, targetPosition, slideT);
+
+            if (fatePanelCanvasGroup != null)
+            {
+                float targetAlpha = fatePanelTargetOpen ? 1f : 0f;
+                fatePanelCanvasGroup.alpha = Mathf.MoveTowards(fatePanelCanvasGroup.alpha, targetAlpha, FatePanelFadeSpeed * Time.unscaledDeltaTime);
+            }
+            if (fateChoiceBackdropCanvasGroup != null)
+            {
+                float targetBackdropAlpha = fatePanelTargetOpen ? 1f : 0f;
+                fateChoiceBackdropCanvasGroup.alpha = Mathf.MoveTowards(
+                    fateChoiceBackdropCanvasGroup.alpha,
+                    targetBackdropAlpha,
+                    FatePanelFadeSpeed * Time.unscaledDeltaTime);
+            }
+
+            bool alphaReady = fatePanelCanvasGroup == null || fatePanelCanvasGroup.alpha <= 0.02f;
+            if (!fatePanelTargetOpen && Vector2.Distance(fatePanelRect.anchoredPosition, fatePanelClosedPosition) <= 0.8f && alphaReady)
+            {
+                fatePanelRect.anchoredPosition = fatePanelClosedPosition;
+                fatePanelVisible = false;
+                fatePanelRoot.SetActive(false);
+                if (fateChoiceBackdrop != null)
+                {
+                    fateChoiceBackdrop.SetActive(false);
+                }
+                return;
+            }
+
+            bool openedAlphaReady = fatePanelCanvasGroup == null || fatePanelCanvasGroup.alpha >= 0.98f;
+            if (fatePanelTargetOpen && Vector2.Distance(fatePanelRect.anchoredPosition, fatePanelOpenPosition) <= 0.8f && openedAlphaReady)
+            {
+                fatePanelRect.anchoredPosition = fatePanelOpenPosition;
+                fatePanelVisible = true;
+                if (fatePanelCanvasGroup != null)
+                {
+                    fatePanelCanvasGroup.alpha = 1f;
+                    fatePanelCanvasGroup.interactable = true;
+                    fatePanelCanvasGroup.blocksRaycasts = true;
+                }
+            }
+        }
+
+        private void ApplyFateChoiceButtonVisuals()
+        {
+            if (gameController == null)
+            {
+                return;
+            }
+
+            ApplyFateChoiceButtonColor(fateSurvivalButton, gameController.FateSurvivalHudColor, true);
+            ApplyFateChoiceButtonColor(fateGradeLockButton, gameController.FateGradeLockHudColor, false);
+            ApplyFateChoiceButtonColor(fateNormalBanButton, gameController.FateNormalBanHudColor, false);
+        }
+
+        private void ApplyFateChoiceButtonColor(Button target, Color color, bool isSurvivalButton)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            Graphic targetGraphic = target.targetGraphic;
+            if (targetGraphic != null && targetGraphic.color != color)
+            {
+                targetGraphic.color = color;
+            }
+
+            ColorBlock colors = target.colors;
+            Color highlighted = Color.Lerp(color, Color.white, 0.16f);
+            Color pressed = Color.Lerp(color, Color.black, 0.18f);
+            Color disabled = new Color(color.r * 0.34f, color.g * 0.34f, color.b * 0.34f, 0.48f);
+            colors.normalColor = color;
+            colors.highlightedColor = highlighted;
+            colors.selectedColor = highlighted;
+            colors.pressedColor = pressed;
+            colors.disabledColor = disabled;
+            target.colors = colors;
+
+            if (isSurvivalButton && fateSurvivalVisualInitialized)
+            {
+                fateSurvivalBaseColor = color;
+            }
         }
 
         private void ApplyFateSurvivalEmphasis(bool active)
@@ -637,7 +1045,9 @@ namespace DefenseGame
             bool canMerge = !combatLocked && count >= 3;
             SetText(target, count + " / 3");
             SetColor(target, canMerge ? new Color(0.42f, 1f, 0.72f) : combatLocked ? new Color(0.58f, 0.62f, 0.78f) : Color.white);
-            SetGradeCardInteractable(target, canMerge);
+            // Keep grade cards touchable so mobile taps can report the exact failure reason.
+            // Readiness is still communicated through the card color.
+            SetGradeCardInteractable(target, true);
         }
 
         private void SetOwnedGradeCount(Text target, CharacterGrade grade)
@@ -805,6 +1215,7 @@ namespace DefenseGame
                 mergeBannerTimer -= Time.deltaTime;
                 if (mergeBannerTextAvailable())
                 {
+                    SetMergeBannerVisible(true);
                     Color color = mergeResultText.color;
                     color.a = Mathf.Lerp(0.2f, 1f, Mathf.Clamp01(mergeBannerTimer / MergeBannerDuration));
                     mergeResultText.color = color;
@@ -813,10 +1224,15 @@ namespace DefenseGame
             else if (mergeBannerTextAvailable() && !string.IsNullOrEmpty(mergeBannerMessage))
             {
                 mergeBannerMessage = string.Empty;
-                SetText(mergeResultText, "합성 대기 중");
+                SetText(mergeResultText, string.Empty);
                 Color color = mergeResultText.color;
-                color.a = 0.72f;
+                color.a = 1f;
                 mergeResultText.color = color;
+                SetMergeBannerVisible(false);
+            }
+            else
+            {
+                SetMergeBannerVisible(false);
             }
         }
 
@@ -1010,6 +1426,16 @@ namespace DefenseGame
                         ? normalMergeText.transform.parent
                         : normalMergeText != null ? normalMergeText.transform : null;
                 default:
+                    if (recipeInsightText != null && recipeInsightText.transform.parent != null)
+                    {
+                        return recipeInsightText.transform.parent;
+                    }
+
+                    if (bossRoundHudText != null && bossRoundHudText.transform.parent != null)
+                    {
+                        return bossRoundHudText.transform.parent;
+                    }
+
                     return mergeResultText != null && mergeResultText.transform.parent != null
                         ? mergeResultText.transform.parent
                         : mergeResultText != null ? mergeResultText.transform : null;
@@ -1275,6 +1701,7 @@ namespace DefenseGame
             mergeBannerMessage = result.BuildMessage();
             mergeBannerTimer = MergeBannerDuration;
             mergeCelebrationTimer = MergeCelebrationDuration;
+            SetMergeBannerVisible(true);
 
             if (result.isFinalMerge)
             {
@@ -1371,12 +1798,58 @@ namespace DefenseGame
             return mergeResultText != null;
         }
 
+        private void SetMergeBannerVisible(bool visible)
+        {
+            if (!mergeBannerTextAvailable() || mergeResultText.transform == null)
+            {
+                return;
+            }
+
+            GameObject bannerRoot = mergeResultText.transform.parent != null
+                ? mergeResultText.transform.parent.gameObject
+                : mergeResultText.gameObject;
+            if (bannerRoot != null && bannerRoot.activeSelf != visible)
+            {
+                bannerRoot.SetActive(visible);
+            }
+        }
+
         private void SetText(Text target, string value)
         {
             if (target != null && target.text != value)
             {
                 target.text = value;
             }
+        }
+
+        private static string BuildCompactBossGoalHud(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return "전력 점검";
+            }
+
+            string compact = value.Trim()
+                .Replace("초월 준비 완료: 초월 조합을 실행하세요.", "초월 READY")
+                .Replace("초월 목표: ", "초월 ")
+                .Replace("보스 대비: ", "보스 대비 ")
+                .Replace("시너지 목표: ", "시너지 ")
+                .Replace("딜러 목표: ", "딜러 ")
+                .Replace("초반 목표: ", "초반 ")
+                .Replace(" 찾기", string.Empty);
+            while (compact.Contains("  "))
+            {
+                compact = compact.Replace("  ", " ");
+            }
+
+            compact = compact.Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' ').Trim();
+            const int MaxBossGoalHudChars = 22;
+            if (compact.Length > MaxBossGoalHudChars)
+            {
+                compact = compact.Substring(0, MaxBossGoalHudChars - 3) + "...";
+            }
+
+            return string.IsNullOrWhiteSpace(compact) ? "전력 점검" : compact;
         }
 
         private static string CompactHudLines(string value, int maxLines, int maxCharsPerLine)

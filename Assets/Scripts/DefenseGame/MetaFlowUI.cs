@@ -395,8 +395,8 @@ namespace DefenseGame
             CreatePanel(modal.transform, "ResultRibbon", new Vector2(0f, -126f), new Vector2(620f, 112f), new Color(0.17f, 0.42f, 1f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
 
             resultTitleText = CreateText(modal.transform, "ResultTitle", "승리", new Color(1f, 0.84f, 0.18f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -132f), new Vector2(500f, 66f), 56, TextAnchor.MiddleCenter, true);
-            resultSummaryText = CreateText(modal.transform, "ResultSummary", "라운드 1 클리어", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -204f), new Vector2(520f, 34f), 24, TextAnchor.MiddleCenter, true);
-            resultMetaText = CreateText(modal.transform, "ResultMeta", "연속 클리어 +1", new Color(0.95f, 0.90f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -254f), new Vector2(660f, 44f), 18, TextAnchor.MiddleCenter, true);
+            resultSummaryText = CreateText(modal.transform, "ResultSummary", "라운드 1 클리어", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -204f), new Vector2(620f, 40f), 28, TextAnchor.MiddleCenter, true);
+            resultMetaText = CreateText(modal.transform, "ResultMeta", "연속 클리어 +1", new Color(0.95f, 0.90f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -254f), new Vector2(700f, 48f), 24, TextAnchor.MiddleCenter, true);
 
             Image recapPanel = CreatePanel(modal.transform, "ResultRecapPanel", new Vector2(0f, -356f), new Vector2(730f, 390f), new Color(0.08f, 0.13f, 0.35f, 0.86f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             resultScoreText = CreateText(recapPanel.transform, "ResultScore", "RUN SCORE A / 000점", new Color(1f, 0.85f, 0.24f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(660f, 44f), 34, TextAnchor.MiddleCenter, true);
@@ -416,14 +416,19 @@ namespace DefenseGame
             resultRewardCoreText = CreateRewardChip(rewardPanel.transform, "RewardCore", "다이아", new Vector2(130f, -58f), new Color(0.28f, 0.88f, 1f), "+000");
 
             resultRetryButton = CreateButton(modal.transform, "ResultRetryButton", "새 판 다시하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-120f, 58f), new Vector2(306f, 78f), new Color(0.30f, 0.86f, 0.36f, 1f), RetryFromResult, 27);
-            resultContinueButton = CreateButton(modal.transform, "ResultContinueButton", "계속", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(190f, 58f), new Vector2(220f, 72f), new Color(0.30f, 0.62f, 1f, 1f), ContinueFromResult, 24);
+            resultContinueButton = CreateButton(modal.transform, "ResultContinueButton", "계속하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(190f, 58f), new Vector2(240f, 78f), new Color(0.30f, 0.62f, 1f, 1f), ContinueFromResult, 28);
         }
 
         private void ApplyReadableResultTextLayout()
         {
-            ConfigureResultText(resultScoreText, new Vector2(0f, -40f), new Vector2(660f, 56f), 34, TextAnchor.MiddleCenter, 34, 34);
-            ConfigureResultText(resultRecapText, new Vector2(0f, -98f), new Vector2(660f, 166f), 24, TextAnchor.UpperLeft, 18, 24);
-            ConfigureResultText(resultNextText, new Vector2(0f, -270f), new Vector2(660f, 106f), 19, TextAnchor.UpperLeft, 12, 19);
+            ConfigureResultText(resultScoreText, new Vector2(0f, -38f), new Vector2(680f, 62f), 38, TextAnchor.MiddleCenter, 38, 38);
+            ConfigureResultText(resultRecapText, new Vector2(0f, -104f), new Vector2(680f, 170f), 26, TextAnchor.UpperLeft, 22, 26);
+            ConfigureResultText(resultNextText, new Vector2(0f, -278f), new Vector2(680f, 102f), 22, TextAnchor.UpperLeft, 18, 22);
+            AddReadableOutline(resultScoreText);
+            AddReadableOutline(resultRecapText);
+            AddReadableOutline(resultNextText);
+            AddReadableOutline(resultSummaryText);
+            AddReadableOutline(resultMetaText);
         }
 
         private static void ConfigureResultText(Text text, Vector2 position, Vector2 size, int fontSize, TextAnchor alignment, int minSize, int maxSize)
@@ -530,10 +535,11 @@ namespace DefenseGame
                 float y = -848f - row * 132f;
                 Image card = CreatePanel(parent, "LoadoutRosterCard_" + i, new Vector2(x, y), new Vector2(360f, 112f), new Color(0.14f, 0.18f, 0.42f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
                 Image accent = CreatePanel(card.transform, "Accent", new Vector2(18f, -16f), new Vector2(76f, 78f), Color.white, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                Image portrait = CreatePanel(card.transform, "Portrait", new Vector2(18f, -16f), new Vector2(76f, 78f), new Color(0.86f, 0.91f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
                 Text nameText = CreateText(card.transform, "Name", "Hero", Color.white, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(114f, -18f), new Vector2(-144f, 28f), 18, TextAnchor.MiddleLeft, true);
                 Text detailText = CreateText(card.transform, "Detail", "등급 / 역할 / 스킬", new Color(0.85f, 0.90f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(114f, -52f), new Vector2(-144f, 44f), 15, TextAnchor.MiddleLeft, false);
                 loadoutRosterAccentImages.Add(accent);
-                loadoutRosterPortraitImages.Add(accent);
+                loadoutRosterPortraitImages.Add(portrait);
                 loadoutRosterNameTexts.Add(nameText);
                 loadoutRosterDetailTexts.Add(detailText);
             }
@@ -817,6 +823,16 @@ namespace DefenseGame
                 return;
             }
 
+            if (augmentManager != null && augmentManager.HasPendingChoice)
+            {
+                augmentManager.OpenPendingChoice();
+                gameController.RequestBanner(
+                    "무료 증강체 1개를 선택해야 다음 라운드로 진행할 수 있습니다",
+                    new Color(0.52f, 0.90f, 1f),
+                    2.2f);
+                return;
+            }
+
             if (matchmakingRoutine != null)
             {
                 StopCoroutine(matchmakingRoutine);
@@ -949,19 +965,7 @@ namespace DefenseGame
 
         private IEnumerator ShowRoundResultAfterFlow(int round)
         {
-            if (augmentManager != null && (augmentManager.IsChoiceOpen || augmentManager.WillOfferChoice(round)))
-            {
-                while (augmentManager.IsChoiceOpen)
-                {
-                    yield return null;
-                }
-
-                yield return new WaitForSeconds(0.25f);
-            }
-            else
-            {
-                yield return new WaitForSeconds(0.35f);
-            }
+            yield return new WaitForSeconds(0.35f);
 
             if (gameController != null && gameController.Life > 0 && !defeatPresented)
             {
@@ -1002,6 +1006,7 @@ namespace DefenseGame
                 return;
             }
 
+            BuildPresets();
             ApplyRecommendedPreset();
             SetGameplayHudVisible(false);
             if (lobbyOverlay != null)
@@ -1609,7 +1614,7 @@ namespace DefenseGame
                         metaRect.sizeDelta = new Vector2(660f, 44f);
                     }
 
-                    resultMetaText.fontSize = 22;
+                    resultMetaText.fontSize = 24;
                     resultMetaText.alignment = TextAnchor.MiddleCenter;
                     resultMetaText.text = victory ? "이번 결과: 라운드 " + round + " 클리어" : "이번 결과: 라운드 " + round + " 패배";
                 }
@@ -1718,7 +1723,12 @@ namespace DefenseGame
 
         private void ContinueFromResult()
         {
+            bool completedRound = !defeatPresented;
             HideResult();
+            if (completedRound)
+            {
+                gameController?.ReleasePostRoundChoiceFlow();
+            }
             if (gameController != null && !gameController.IsRoundRunning && defeatPresented)
             {
                 defeatPresented = false;
@@ -1949,6 +1959,9 @@ namespace DefenseGame
             {
                 return;
             }
+            portraitImage.gameObject.SetActive(true);
+            portraitImage.enabled = true;
+            portraitImage.raycastTarget = false;
 
             Sprite sprite = RollRollUiResource.ResolveCharacterSprite(definition);
             if (sprite != null && definition != null)

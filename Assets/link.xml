@@ -1,0 +1,6 @@
+<linker>
+  <!-- Runtime-created Cylinder/Capsule primitives add this component by reflection. -->
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all" />
+  </assembly>
+</linker>

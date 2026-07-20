@@ -28,7 +28,7 @@ namespace DefenseGame
             new DailyFortuneRule
             {
                 title = "합성 예감",
-                summary = "Epic 소환률 +5%, 보스 체력 +8%",
+                summary = "Epic 소환률 최대 +5%(초반 제한), 보스 체력 +8%",
                 epicSummonChanceBonus = 0.05f,
                 bossHealthBonus = 0.08f
             },
@@ -56,7 +56,7 @@ namespace DefenseGame
             new DailyFortuneRule
             {
                 title = "대박 기류",
-                summary = "Epic 소환률 +3%, 상점 가격 -8%",
+                summary = "Epic 소환률 최대 +3%(초반 제한), 상점 가격 -8%",
                 epicSummonChanceBonus = 0.03f,
                 shopDiscountRate = 0.08f
             }
@@ -113,21 +113,22 @@ namespace DefenseGame
         [SerializeField] private MonsterDatabase monsterDatabase;
         [SerializeField] private DefenseBoardManager boardManager;
         [SerializeField] private RoundManager roundManager;
+        private AugmentManager augmentManager;
         [SerializeField] private DefenderUnit defaultUnitPrefab;
 
         [Header("Economy")]
-        [SerializeField] private int startGold = 30;
+        [SerializeField] private int startGold = 36;
         [SerializeField] private int summonCost = 10;
         [SerializeField] private int summonCostIncreasePerSummon = 1;
         [SerializeField] private int earlySummonCostRampRoundLimit = 5;
-        [SerializeField] private int earlySummonCostIncreasePerSummon = 0;
+        [SerializeField] private int earlySummonCostIncreasePerSummon = 1;
         [SerializeField] private int maxSummonCost = 80;
         [SerializeField] private int life = 10;
-        [SerializeField] private int roundStartGold = 3;
-        [SerializeField] [Range(0f, 2f)] private float roundStartGoldPerRoundMultiplier = 0.7f;
-        [SerializeField] private int roundClearBaseGold = 7;
-        [SerializeField] private int roundClearPerRoundGold = 1;
-        [SerializeField] private int victoryStreakGoldBonus = 1;
+        [SerializeField] private int roundStartGold = 1;
+        [SerializeField] [Range(0f, 2f)] private float roundStartGoldPerRoundMultiplier = 0.40f;
+        [SerializeField] private int roundClearBaseGold = 5;
+        [SerializeField] private float roundClearPerRoundGold = 0.75f;
+        [SerializeField] private int victoryStreakGoldBonus = 0;
 
         [Header("Unit Selling")]
         [SerializeField] private bool enableUnitSelling = true;
@@ -142,20 +143,22 @@ namespace DefenseGame
         [Header("Early Run Fun Pacing")]
         [SerializeField] private bool enableEarlyRunFunPacing = true;
         [SerializeField] private int earlyFunRoundLimit = 5;
-        [SerializeField] private int earlyPitySummonCount = 2;
+        [SerializeField] private int earlyPitySummonCount = 7;
         [SerializeField] private CharacterGrade earlyPityMinimumGrade = CharacterGrade.Rare;
-        [SerializeField] [Range(0f, 1f)] private float earlyPityEpicChance = 0.12f;
+        [SerializeField] [Range(0f, 1f)] private float earlyPityEpicChance = 0.02f;
         [SerializeField] private int earlyFallbackRewardRound = 3;
-        [SerializeField] private CharacterGrade earlyFallbackRewardGrade = CharacterGrade.Rare;
-        [SerializeField] private int earlyFallbackGoldReward = 22;
+        [SerializeField] private CharacterGrade earlyFallbackRewardGrade = CharacterGrade.Normal;
+        [SerializeField] private int earlyFallbackGoldReward = 4;
         [SerializeField] private int earlyCrisisRound = 5;
         [SerializeField] private int earlyBossPrepRewardRound = 4;
-        [SerializeField] private int earlyBossPrepGoldReward = 18;
+        [SerializeField] private int earlyBossPrepGoldReward = 0;
         [SerializeField] private bool enableBadLuckInsurance = true;
-        [SerializeField] private int badLuckInsuranceSummonThreshold = 4;
-        [SerializeField] private int badLuckInsuranceLastSummon = 6;
+        [SerializeField] private int badLuckInsuranceSummonThreshold = 5;
+        [SerializeField] private int badLuckInsuranceLastSummon = 7;
         [SerializeField] private int badLuckInsuranceEarliestRound = 3;
         [SerializeField] private CharacterGrade badLuckInsuranceMinimumGoodGrade = CharacterGrade.Rare;
+        [SerializeField] private int earlyLeakGraceRoundLimit = 4;
+        [SerializeField] private int earlyRoundLeakDamageCap = 3;
         [SerializeField] private bool enableFirstBossSummonRushBonus = true;
         [SerializeField] private int firstBossSummonRushRound = 10;
         [SerializeField] private int firstBossSummonRushMinSummons = 34;
@@ -184,13 +187,15 @@ namespace DefenseGame
 
         [Header("Fate Intervention")]
         [SerializeField] private bool enableFateIntervention = true;
+        [SerializeField] private bool useOneShotFateCard = true;
         [SerializeField] private int maxFateGauge = 100;
-        [SerializeField] private int startingFateGauge = 42;
+        [SerializeField] [Range(0.02f, 1f)] private float fateChoiceTimeScale = 0.10f;
+        [SerializeField] private int startingFateGauge = 0;
         [SerializeField] private int maxFateDebt = 100;
-        [SerializeField] private int fateGaugeOnLowSummon = 10;
-        [SerializeField] private int fateGaugeOnRoundClear = 10;
-        [SerializeField] private int fateGaugeOnBossKill = 18;
-        [SerializeField] private int fateGaugeOnLowLife = 28;
+        [SerializeField] private int fateGaugeOnLowSummon = 0;
+        [SerializeField] private int fateGaugeOnRoundClear = 0;
+        [SerializeField] private int fateGaugeOnBossKill = 0;
+        [SerializeField] private int fateGaugeOnLowLife = 0;
         [SerializeField] private int fateDebtPerContractLife = 14;
         [SerializeField] private int fateDebtRepayPerRound = 10;
         [SerializeField] private int fateDebtRepayPerBossRound = 10;
@@ -207,26 +212,101 @@ namespace DefenseGame
         [SerializeField] private int fateSurvivalLifeRecover = 4;
         [SerializeField] private int fateSurvivalGold = 12;
         [SerializeField] private int fateSurvivalNormalBanSummons = 3;
-        [SerializeField] private int ultimateRecipeBingoFateGaugeBonus = 20;
-        [SerializeField] [Range(0f, 0.5f)] private float maxFateDebtShopCostPenalty = 0.08f;
-        [SerializeField] [Range(0f, 0.5f)] private float maxFateDebtBossHealthBonus = 0.10f;
+        [SerializeField] private int ultimateRecipeBingoFateGaugeBonus = 0;
+        [SerializeField] [Range(0f, 0.5f)] private float maxFateDebtShopCostPenalty = 0.20f;
+        [SerializeField] [Range(1f, 2f)] private float fateCardBacklashMonsterCountMultiplier = 1.50f;
+        [SerializeField] [Range(0f, 1.2f)] private float maxFateDebtBossHealthBonus = 1.20f;
+        [SerializeField] [Range(0f, 0.95f)] private float fateCardMonsterStatCrushRatio = 0.90f;
+        [SerializeField] private int fateCardCombatGold = 60;
+        [SerializeField] private int fateCardMonsterCrushDebt = 94;
+        [SerializeField] private int fateCardCombatDraftDebt = 80;
+        [SerializeField] private int fateCardFullHealDebt = 82;
+        [SerializeField] private int fateCardForbiddenSummonDebt = 82;
+        [SerializeField] private int fateCardGamblerDebt = 58;
+        [SerializeField] private int fateCardLastBarrierDebt = 72;
+        [SerializeField] [Range(0f, 1f)] private float fateCardForbiddenSummonCostPenalty = 0.40f;
+        [SerializeField] private int fateCardForbiddenSummonTaxRounds = 3;
+        [SerializeField] [Range(0f, 1f)] private float fateCardGamblerGoldSuccessRate = 0.70f;
+        [SerializeField] private int fateCardGamblerGoldFallbackGain = 20;
+        [SerializeField] private int fateCardGamblerFailLifeCost = 2;
+        [SerializeField] private float fateCardGamblerFailStunDuration = 2f;
+        [SerializeField] private int fateCardGoldLoanDebt = 82;
+        [SerializeField] private int fateCardGoldLoanGold = 60;
+        [SerializeField] private int fateCardRareMercenaryDebt = 68;
+        [SerializeField] private int fateCardRareMercenaryCount = 2;
+        [SerializeField] private int fateCardEpicAdvanceDebt = 72;
+        [SerializeField] private int fateCardEpicAdvanceGold = 25;
+        [SerializeField] [Range(0f, 1f)] private float fateCardEpicAdvanceCostPenalty = 0.30f;
+        [SerializeField] private int fateCardMythicLeaseDebt = 96;
+        [SerializeField] private int fateCardBlackMarketDebt = 58;
+        [SerializeField] private int fateCardBlackMarketGold = 45;
+        [SerializeField] [Range(0f, 1f)] private float fateCardBlackMarketManaRestoreRatio = 0.60f;
+        [SerializeField] private int fateCardTimeStopDebt = 64;
+        [SerializeField] private float fateCardTimeStopDuration = 4f;
+        [SerializeField] private int fateCardThunderDebt = 68;
+        [SerializeField] [Range(0f, 1f)] private float fateCardThunderDamageRatio = 0.25f;
+        [SerializeField] private int fateCardManaFloodDebt = 54;
+        [SerializeField] private int fateCardManaFloodLifeCost = 2;
+        [SerializeField] private int fateCardWallRepairDebt = 68;
+        [SerializeField] private int fateCardWallRepairLife = 3;
+        [SerializeField] [Range(0f, 1f)] private float fateCardWallRepairCostPenalty = 0.25f;
+        [SerializeField] private int fateCardSmugglerRouteDebt = 62;
+        [SerializeField] [Range(0f, 1f)] private float fateCardSmugglerRouteDiscount = 0.40f;
+        [SerializeField] private int fateCardSmugglerRouteRounds = 3;
+        [SerializeField] private int fateCardSmugglerRouteGold = 45;
+        [SerializeField] private int fateCardLifeForgeDebt = 70;
+        [SerializeField] private int fateCardLifeForgeMaxLife = 3;
+        [SerializeField] private int fateCardGradeRiggingDebt = 74;
+        [SerializeField] private int fateCardGradeRiggingSummons = 4;
+        [SerializeField] private int fateCardGradeRiggingGold = 35;
 
         private int maxLife;
         private int currentSummonBaseCost;
         private int roundGoldBonus;
+        private int currentRoundLeakDamageTaken;
         private int victoryStreak;
         private float summonCostDiscountRate;
         private int currentRoundResolvedMonsters;
+        private int currentRoundKilledMonsters;
+        private int lastRoundShopOpenRound = -1;
         private bool gameOverRaised;
+        private bool debugRoundAdvanceInProgress;
+        private Coroutine defeatAdjudicationRoutine;
         private Coroutine defeatFinalizeRoutine;
         private float defeatPreviousTimeScale = 1f;
         private float defeatPreviousFixedDeltaTime = 0.02f;
         private bool defeatTimeScaleCaptured;
+        private bool fateChoiceSlowMotionActive;
+        private float fateChoicePreviousTimeScale = 1f;
+        private float fateChoicePreviousFixedDeltaTime = 0.02f;
 
         public const float DefeatSlowMotionDurationRealtime = 5f;
         public const float DefeatSlowMotionTargetScale = 0.10f;
         private const float DefeatFinalizePaddingRealtime = 0.10f;
         public static bool IsDefeatSlowMotionActive { get; private set; }
+
+        private enum FateCardType
+        {
+            MonsterCrush,
+            CombatDraft,
+            FullHeal,
+            ForbiddenSummon,
+            GamblerGold,
+            LastBarrier,
+            GoldLoan,
+            RareMercenaries,
+            EpicAdvance,
+            MythicLease,
+            BlackMarket,
+            TimeStop,
+            ThunderStrike,
+            ManaFlood,
+            WallRepair,
+            SmugglerRoute,
+            LifeForge,
+            GradeRigging
+        }
+
         private readonly Dictionary<string, float> damageByHero = new Dictionary<string, float>();
         private readonly Dictionary<string, float> currentRoundDamageByHero = new Dictionary<string, float>();
         private string topDamageHeroName = "없음";
@@ -245,6 +325,8 @@ namespace DefenseGame
         private int earnedGrowthCurrency;
         private float nextCriticalBannerTime;
         private int earlySummonAttempts;
+        private int initialPreparationSummons;
+        private bool initialPreparationClosed;
         private bool earlyRunMomentTriggered;
         private bool earlyFallbackRewardGranted;
         private bool earlyBossPrepRewardGranted;
@@ -336,10 +418,36 @@ namespace DefenseGame
         private int runFateDebtRepaid;
         private int runFateShopCostPenaltyGold;
         private int runPeakFateDebt;
+        private int fateBossDebtAnchor;
         private int fateGradeLockSummonsRemaining;
         private CharacterGrade fateGradeLockMinimum = CharacterGrade.Normal;
         private int fateNormalBanSummonsRemaining;
         private bool fateForceNextShop;
+        private bool fateCardUsed;
+        private bool fateCardChoicePanelOpen;
+        private int pendingPostRoundChoiceRound = -1;
+        private int fateMonsterSurgeRound = -1;
+        private readonly FateCardType[] fateCardChoices = new FateCardType[3];
+        private bool fateCardChoicesInitialized;
+        private int fateLeakShieldRound = -1;
+        private bool fateLeakShieldFeedbackShown;
+        private int fateSummonTaxUntilRound = -1;
+        private float fateSummonTaxRate;
+        private int fateSummonDiscountUntilRound = -1;
+        private float fateSummonDiscountRate;
+        private string fateCardLastTitle = "미사용";
+        private string fateCardLastDetail = "운명 카드 대기";
+        private int fateCardLastDebt;
+        private int fateMonsterCrushRound = -1;
+        private int fateTimeStopRound = -1;
+        private int fateTimeStopAppliedCount;
+        private int fateThunderStrikeRound = -1;
+        private int fateThunderStrikeAppliedCount;
+        private int fateCombatEditingRound = -1;
+        private bool fateCombatEditingUnlocked;
+        private int runFateMonsterCrushCount;
+        private int runFateCombatDraftCount;
+        private int runFateFullHealCount;
         private bool firstLegendaryMergeRecorded;
         private bool lifeOneClutchRecorded;
         private bool fateSurvivalClutchRecorded;
@@ -419,7 +527,7 @@ namespace DefenseGame
         public int SummonCost => ResolveSummonCost();
         public int CurrentRound => roundManager != null ? roundManager.CurrentRound : 0;
         public bool IsRoundRunning => roundManager != null && roundManager.IsRoundRunning;
-        public bool IsCombatInteractionLocked => IsRoundRunning && CurrentRound > 0 && roundManager != null && roundManager.CurrentRoundSpawnedCount > 0;
+        public bool IsCombatInteractionLocked => IsRoundRunning && CurrentRound > 0 && roundManager != null && roundManager.CurrentRoundSpawnedCount > 0 && !FateCombatEditingActive;
         public bool IsBossRound => roundManager != null && roundManager.IsBossRound;
         public int NextBossRound => roundManager != null ? roundManager.GetNextBossRound(CurrentRound) : 10;
         public int RoundsUntilNextBoss => Mathf.Max(0, NextBossRound - CurrentRound);
@@ -433,6 +541,7 @@ namespace DefenseGame
         public float RoundProgress01 => RoundTargetCount <= 0
             ? CurrentRound > 0 && !IsRoundRunning ? 1f : 0f
             : Mathf.Clamp01((float)currentRoundResolvedMonsters / RoundTargetCount);
+        public bool WasRoundShopOpened(int round) => round > 0 && lastRoundShopOpenRound == round;
         public string CurrentStateSummary => "Gold " + Gold + " | Life " + Life + " | Round " + CurrentRound + (IsBossRound ? " Boss" : string.Empty);
         public int LastRoundClearGoldReward { get; private set; }
         public MergeResultInfo? LastMergeResult { get; private set; }
@@ -478,24 +587,60 @@ namespace DefenseGame
         public string FateInterventionSummary => BuildReadableFateInterventionSummary();
         public string FateResultSummary => BuildReadableFateResultSummary();
         public string FateCostBenefitSummary => BuildReadableFateCostBenefitSummary();
+        public bool FateCardWasUsed => fateCardUsed;
+        public string FateCardLastTitle => fateCardLastTitle;
+        public string FateCardLastDetail => fateCardLastDetail;
+        public int FateCardLastDebt => fateCardLastDebt;
         public float FateDebtBossHealthMultiplier => ResolveFateDebtBossHealthMultiplier();
         public int FateGauge => fateGauge;
         public int MaxFateGauge => Mathf.Max(1, maxFateGauge);
         public int FateDebt => fateDebt;
         public int MaxFateDebt => Mathf.Max(1, maxFateDebt);
-        public float FateGauge01 => enableFateIntervention ? Mathf.Clamp01((float)fateGauge / MaxFateGauge) : 0f;
+        public float FateGauge01 => enableFateIntervention ? (useOneShotFateCard ? (CanOpenFateCard ? 1f : 0f) : Mathf.Clamp01((float)fateGauge / MaxFateGauge)) : 0f;
         public string FateHudSummary => BuildReadableFateHudSummary();
-        public string FateGradeLockHudLabel => BuildFateActionLabel("Rare+", fateGradeLockGaugeCost, fateGradeLockDebt);
-        public string FateNormalBanHudLabel => BuildFateActionLabel("No Normal", fateNormalBanGaugeCost, fateNormalBanDebt);
-        public string FateForceShopHudLabel => BuildFateActionLabel("Force Shop", fateForceShopGaugeCost, fateForceShopDebt);
+        public string FateCardStatusSummary => useOneShotFateCard
+            ? fateCardUsed
+                ? "계약 완료: " + fateCardLastTitle
+                : CanUseFateCard ? "선택 중: 전투 0.1배" : CanOpenFateCard ? "운명카드 준비: 눌러서 선택" : "전투 중 위기 시 개방"
+            : "보스HP x" + FateDebtBossHealthMultiplier.ToString("0.00");
+        public string FateGradeLockHudLabel => useOneShotFateCard
+            ? CanUseFateCard ? GetFateCardChoiceLabel(1) : CanOpenFateCard ? "봉인\n카드 개방 후 공개" : "봉인\n전투 중 공개"
+            : BuildFateActionLabel("Rare+", fateGradeLockGaugeCost, fateGradeLockDebt);
+        public string FateNormalBanHudLabel => useOneShotFateCard
+            ? CanUseFateCard ? GetFateCardChoiceLabel(2) : CanOpenFateCard ? "봉인\n카드 개방 후 공개" : "봉인\n전투 중 공개"
+            : BuildFateActionLabel("No Normal", fateNormalBanGaugeCost, fateNormalBanDebt);
+        public string FateForceShopHudLabel => useOneShotFateCard
+            ? fateCardUsed ? "계약 완료\n재등장 없음" : CanUseFateCard ? "선택 후 사라짐\n0.1배 슬로우" : CanOpenFateCard ? "운명카드\n눌러서 개방" : "운명카드\n전투 중 개방"
+            : BuildFateActionLabel("Force Shop", fateForceShopGaugeCost, fateForceShopDebt);
         public bool FateSurvivalCrisisActive => IsFateSurvivalCrisisActive();
-        public string FateSurvivalHudLabel => FateSurvivalCrisisActive
-            ? "빚지고 살기\n지금 " + Mathf.Max(0, fateSurvivalGaugeCost) + "F/+" + Mathf.Max(0, fateSurvivalDebt)
-            : "빚지고 살기\n" + Mathf.Max(0, fateSurvivalGaugeCost) + "F / +" + Mathf.Max(0, fateSurvivalDebt);
-        public bool CanUseFateGradeLock => CanSpendFateGauge(fateGradeLockGaugeCost);
-        public bool CanUseFateNormalBan => CanSpendFateGauge(fateNormalBanGaugeCost);
-        public bool CanUseFateForcedShop => CanSpendFateGauge(fateForceShopGaugeCost);
-        public bool CanUseFateSurvival => CanSpendFateGauge(fateSurvivalGaugeCost) && (CurrentRound >= 4 || Life < MaxLife);
+        public string FateSurvivalHudLabel => useOneShotFateCard
+            ? CanUseFateCard ? GetFateCardChoiceLabel(0) : CanOpenFateCard ? "운명카드\n눌러서 개방" : "운명카드\n전투 중 개방"
+            : FateSurvivalCrisisActive
+                ? "빚지고 살기\n지금 " + Mathf.Max(0, fateSurvivalGaugeCost) + "F/+" + Mathf.Max(0, fateSurvivalDebt)
+                : "빚지고 살기\n" + Mathf.Max(0, fateSurvivalGaugeCost) + "F / +" + Mathf.Max(0, fateSurvivalDebt);
+        public Color FateSurvivalHudColor => ResolveFateCardChoiceColor(0);
+        public Color FateGradeLockHudColor => ResolveFateCardChoiceColor(1);
+        public Color FateNormalBanHudColor => ResolveFateCardChoiceColor(2);
+        public string GetFateCardChoiceHudLabel(int index) => useOneShotFateCard ? GetFateCardChoiceLabel(index) : string.Empty;
+        public bool CanOpenFateCard => IsFateCardCombatChoiceAvailable();
+        public bool CanUseFateCard => IsFateCardCombatChoiceAvailable() && fateCardChoicePanelOpen;
+        public bool CanUseFateGradeLock => useOneShotFateCard ? IsFateCardChoiceAvailable(1) : CanSpendFateGauge(fateGradeLockGaugeCost);
+        public bool CanUseFateNormalBan => useOneShotFateCard ? IsFateCardChoiceAvailable(2) : CanSpendFateGauge(fateNormalBanGaugeCost);
+        public float GetFateMonsterCountMultiplierForRound(int round)
+        {
+            return enableFateIntervention && useOneShotFateCard && fateMonsterSurgeRound > 0 && round == fateMonsterSurgeRound ? Mathf.Max(1f, fateCardBacklashMonsterCountMultiplier) : 1f;
+        }
+
+        public bool CanUseFateForcedShop => !useOneShotFateCard && CanSpendFateGauge(fateForceShopGaugeCost);
+        public bool CanUseFateSurvival => useOneShotFateCard ? IsFateCardChoiceAvailable(0) : CanSpendFateGauge(fateSurvivalGaugeCost) && (CurrentRound >= 4 || Life < MaxLife);
+        public bool ShouldShowFatePanel => enableFateIntervention && (!useOneShotFateCard || CanUseFateCard);
+        public bool ShouldShowFateCardEntryButton => enableFateIntervention && useOneShotFateCard && CanOpenFateCard && !fateCardChoicePanelOpen;
+        public bool FateChoiceSlowMotionActive => fateChoiceSlowMotionActive;
+        public bool FateCardChoicePanelOpen => fateCardChoicePanelOpen;
+        public bool FateLeakShieldActive => enableFateIntervention && useOneShotFateCard && fateLeakShieldRound > 0 && CurrentRound == fateLeakShieldRound;
+        public bool FateMonsterStatCrushActive => enableFateIntervention && useOneShotFateCard && fateMonsterCrushRound > 0 && CurrentRound == fateMonsterCrushRound;
+        public float FateMonsterStatCrushRatio => Mathf.Clamp01(fateCardMonsterStatCrushRatio);
+        public bool FateCombatEditingActive => enableFateIntervention && useOneShotFateCard && fateCombatEditingUnlocked && fateCombatEditingRound > 0 && CurrentRound == fateCombatEditingRound;
         public string EarlyRunTuningDecisionSummary => BuildEarlyRunTuningDecisionSummary();
         public int EarlyRunTuningSampleCount => GetEarlyRunLogSampleCount();
         public int EarlyRunTuningTargetSampleCount => Mathf.Max(1, earlyTelemetryTargetSampleCount);
@@ -526,6 +671,7 @@ namespace DefenseGame
 
         private void OnEnable()
         {
+            MonsterUnit.OnMonsterSpawned += HandleMonsterSpawned;
             MonsterUnit.OnMonsterKilled += HandleMonsterKilled;
             MonsterUnit.OnMonsterEscaped += HandleMonsterEscaped;
             DefenderUnit.OnDamageDealt += HandleDamageDealt;
@@ -535,7 +681,10 @@ namespace DefenseGame
 
         private void OnDisable()
         {
+            RestoreFateChoiceSlowMotion();
+            CancelPendingDefeatAdjudication();
             CancelPendingDefeatFinalization();
+            MonsterUnit.OnMonsterSpawned -= HandleMonsterSpawned;
             MonsterUnit.OnMonsterKilled -= HandleMonsterKilled;
             MonsterUnit.OnMonsterEscaped -= HandleMonsterEscaped;
             DefenderUnit.OnDamageDealt -= HandleDamageDealt;
@@ -557,15 +706,24 @@ namespace DefenseGame
             NotifyStateChanged();
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
         private void Update()
         {
+            UpdateFateChoiceSlowMotion();
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (Input.GetKeyDown(KeyCode.F8))
             {
                 TriggerDebugDefeat();
             }
+
+            if (Input.GetKeyDown(KeyCode.F9))
+            {
+                TriggerDebugAdvanceRound();
+            }
+#endif
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         public void TriggerDebugDefeat()
         {
             if (gameOverRaised)
@@ -575,6 +733,30 @@ namespace DefenseGame
 
             life = 0;
             TriggerLeakDefeat();
+        }
+
+        public void TriggerDebugAdvanceRound()
+        {
+            if (gameOverRaised || life <= 0 || roundManager == null)
+            {
+                return;
+            }
+
+            if (roundManager.IsRoundRunning)
+            {
+                debugRoundAdvanceInProgress = true;
+                try
+                {
+                    roundManager.CompleteCurrentRoundForDebug();
+                }
+                finally
+                {
+                    debugRoundAdvanceInProgress = false;
+                }
+            }
+
+            StartRound();
+            OnBannerRequested?.Invoke("DEV  ROUND " + CurrentRound + " 시작", new Color(0.34f, 0.78f, 1f), 1.5f);
         }
 #endif
 
@@ -631,6 +813,11 @@ namespace DefenseGame
             {
                 return false;
             }
+            if (!initialPreparationClosed && initialPreparationSummons >= 3)
+            {
+                OnBannerRequested?.Invoke("초반 준비 소환은 3마리까지입니다. 전투 중 성장 선택을 시작하세요.", new Color(1f, 0.78f, 0.28f), 1.8f);
+                return false;
+            }
 
             int cost = SummonCost;
             if (Gold < cost || characterDatabase == null || boardManager == null)
@@ -651,6 +838,10 @@ namespace DefenseGame
             }
 
             Gold -= cost;
+            if (!initialPreparationClosed)
+            {
+                initialPreparationSummons++;
+            }
             currentSummonBaseCost = Mathf.Min(maxSummonCost, currentSummonBaseCost + ResolveSummonCostIncrease());
             if (summon.grade != CharacterGrade.Transcendent)
             {
@@ -678,6 +869,7 @@ namespace DefenseGame
 
         public void ResetRunForRetry()
         {
+            CancelPendingDefeatAdjudication();
             CancelPendingDefeatFinalization();
             if (roundManager != null)
             {
@@ -707,6 +899,7 @@ namespace DefenseGame
 
         public void ExitToOutgame()
         {
+            CancelPendingDefeatAdjudication();
             CancelPendingDefeatFinalization();
             if (roundManager != null)
             {
@@ -788,13 +981,32 @@ namespace DefenseGame
             return true;
         }
 
+        public void RegisterAugmentManager(AugmentManager manager)
+        {
+            augmentManager = manager;
+        }
+
         public void StartRound()
         {
             if (roundManager == null)
             {
                 return;
             }
+            if (augmentManager != null && augmentManager.HasPendingChoice)
+            {
+                augmentManager.OpenPendingChoice();
+                RequestBanner(
+                    "무료 증강체 1개를 선택해야 다음 라운드로 진행할 수 있습니다",
+                    new Color(0.52f, 0.90f, 1f),
+                    2.2f);
+                return;
+            }
 
+
+            if (CurrentRound <= 0)
+            {
+                initialPreparationClosed = true;
+            }
             Gold += CalculateRoundStartGold();
             RuntimeAudioUtility.PlayBattleStart();
             roundManager.StartNextRound();
@@ -814,6 +1026,16 @@ namespace DefenseGame
             Gold += reward;
             RegisterEarlyGoldExcitement(reward);
             NotifyStateChanged();
+        }
+
+        public void RecordRoundShopOpened(int round)
+        {
+            if (round <= 0)
+            {
+                return;
+            }
+
+            lastRoundShopOpenRound = round;
         }
 
         public void RecoverLife(int amount)
@@ -889,6 +1111,11 @@ namespace DefenseGame
 
         public bool TryActivateFateGradeLock(CharacterGrade minimumGrade, int summonCount)
         {
+            if (useOneShotFateCard)
+            {
+                return TryActivateFateCardChoice(1);
+            }
+
             if (!TrySpendFateGauge(fateGradeLockGaugeCost, fateGradeLockDebt, "등급 잠금", "다음 " + Mathf.Max(1, summonCount) + "회 소환 최소 " + CharacterGradeUtility.GetDisplayName(minimumGrade)))
             {
                 return false;
@@ -908,6 +1135,11 @@ namespace DefenseGame
 
         public bool TryActivateFateNormalBan(int summonCount)
         {
+            if (useOneShotFateCard)
+            {
+                return TryActivateFateCardChoice(2);
+            }
+
             if (!TrySpendFateGauge(fateNormalBanGaugeCost, fateNormalBanDebt, "일반 금지", "다음 " + Mathf.Max(1, summonCount) + "회 소환에서 일반 제외"))
             {
                 return false;
@@ -936,6 +1168,11 @@ namespace DefenseGame
 
         public bool TryActivateFateSurvival()
         {
+            if (useOneShotFateCard)
+            {
+                return TryActivateFateCardChoice(0);
+            }
+
             if (!TrySpendFateGauge(fateSurvivalGaugeCost, fateSurvivalDebt, "빚지고 살기", "생명 회복 / 골드 보급 / 다음 상점 확정"))
             {
                 return false;
@@ -960,6 +1197,1138 @@ namespace DefenseGame
             OnBannerRequested?.Invoke("빚지고 살기  생명 +" + recovered + " / 골드 +" + gainedGold, new Color(1f, 0.62f, 0.22f), 2.4f);
             NotifyStateChanged();
             return true;
+        }
+
+        public bool TryOpenFateCardChoicePanel()
+        {
+            if (!IsFateCardCombatChoiceAvailable())
+            {
+                OnBannerRequested?.Invoke("운명카드는 전투 중 몬스터가 있을 때만 꺼낼 수 있습니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            EnsureFateCardChoices();
+            fateCardChoicePanelOpen = true;
+            RuntimeAudioUtility.PlayReroll();
+            OnBannerRequested?.Invoke("마지막 계약 개방  3장 중 1장 선택", new Color(1f, 0.36f, 0.92f), 2.0f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardChoice(int index)
+        {
+            if (!IsFateCardCombatChoiceAvailable())
+            {
+                OnBannerRequested?.Invoke("운명카드는 전투 중 위기 상황에서만 사용할 수 있습니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            if (!fateCardChoicePanelOpen)
+            {
+                OnBannerRequested?.Invoke("먼저 운명카드를 꺼내 선택지를 열어야 합니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            if (!IsFateCardChoiceAvailable(index))
+            {
+                OnBannerRequested?.Invoke("선택할 운명 카드가 없습니다", new Color(1f, 0.42f, 0.30f), 1.6f);
+                return false;
+            }
+
+            FateCardType choice = ResolveFateCardChoice(index);
+            switch (choice)
+            {
+                case FateCardType.CombatDraft:
+                    return TryActivateFateCardCombatDraft();
+                case FateCardType.FullHeal:
+                    return TryActivateFateCardFullHeal();
+                case FateCardType.ForbiddenSummon:
+                    return TryActivateFateCardForbiddenSummon();
+                case FateCardType.GamblerGold:
+                    return TryActivateFateCardGamblerGold();
+                case FateCardType.LastBarrier:
+                    return TryActivateFateCardLastBarrier();
+                case FateCardType.GoldLoan:
+                    return TryActivateFateCardGoldLoan();
+                case FateCardType.RareMercenaries:
+                    return TryActivateFateCardRareMercenaries();
+                case FateCardType.EpicAdvance:
+                    return TryActivateFateCardEpicAdvance();
+                case FateCardType.MythicLease:
+                    return TryActivateFateCardMythicLease();
+                case FateCardType.BlackMarket:
+                    return TryActivateFateCardBlackMarket();
+                case FateCardType.TimeStop:
+                    return TryActivateFateCardTimeStop();
+                case FateCardType.ThunderStrike:
+                    return TryActivateFateCardThunderStrike();
+                case FateCardType.ManaFlood:
+                    return TryActivateFateCardManaFlood();
+                case FateCardType.WallRepair:
+                    return TryActivateFateCardWallRepair();
+                case FateCardType.SmugglerRoute:
+                    return TryActivateFateCardSmugglerRoute();
+                case FateCardType.LifeForge:
+                    return TryActivateFateCardLifeForge();
+                case FateCardType.GradeRigging:
+                    return TryActivateFateCardGradeRigging();
+                case FateCardType.MonsterCrush:
+                default:
+                    return TryActivateFateCardMonsterCrush();
+            }
+        }
+
+        private void EnsureFateCardChoices()
+        {
+            if (fateCardChoicesInitialized)
+            {
+                return;
+            }
+
+            List<FateCardType> pool = new List<FateCardType>
+            {
+                FateCardType.MonsterCrush,
+                FateCardType.CombatDraft,
+                FateCardType.FullHeal,
+                FateCardType.ForbiddenSummon,
+                FateCardType.GamblerGold,
+                FateCardType.LastBarrier,
+                FateCardType.GoldLoan,
+                FateCardType.RareMercenaries,
+                FateCardType.EpicAdvance,
+                FateCardType.MythicLease,
+                FateCardType.BlackMarket,
+                FateCardType.TimeStop,
+                FateCardType.ThunderStrike,
+                FateCardType.ManaFlood,
+                FateCardType.WallRepair,
+                FateCardType.SmugglerRoute,
+                FateCardType.LifeForge,
+                FateCardType.GradeRigging
+            };
+
+            if (EmptySlotCount <= 0)
+            {
+                pool.Remove(FateCardType.ForbiddenSummon);
+                pool.Remove(FateCardType.RareMercenaries);
+                pool.Remove(FateCardType.EpicAdvance);
+                pool.Remove(FateCardType.MythicLease);
+            }
+
+            if (fateCardChoices.Length > 0)
+            {
+                fateCardChoices[0] = TakeRandomFateCard(pool, IsFateSurvivalCard);
+            }
+
+            if (fateCardChoices.Length > 1)
+            {
+                fateCardChoices[1] = TakeRandomFateCard(pool, IsFateCombatCard);
+            }
+
+            if (fateCardChoices.Length > 2)
+            {
+                fateCardChoices[2] = TakeRandomFateCard(pool, IsFateGrowthCard);
+            }
+
+            for (int i = fateCardChoices.Length - 1; i > 0; i--)
+            {
+                int swapIndex = UnityEngine.Random.Range(0, i + 1);
+                FateCardType temp = fateCardChoices[i];
+                fateCardChoices[i] = fateCardChoices[swapIndex];
+                fateCardChoices[swapIndex] = temp;
+            }
+
+            fateCardChoicesInitialized = true;
+        }
+
+        private static FateCardType TakeRandomFateCard(List<FateCardType> pool, System.Predicate<FateCardType> predicate)
+        {
+            List<FateCardType> candidates = predicate != null ? pool.FindAll(predicate) : pool;
+            if (candidates.Count <= 0)
+            {
+                candidates = pool;
+            }
+
+            if (candidates.Count <= 0)
+            {
+                return FateCardType.MonsterCrush;
+            }
+
+            FateCardType selected = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            pool.Remove(selected);
+            return selected;
+        }
+
+        private static bool IsFateSurvivalCard(FateCardType card)
+        {
+            return card == FateCardType.FullHeal ||
+                   card == FateCardType.LastBarrier ||
+                   card == FateCardType.WallRepair ||
+                   card == FateCardType.LifeForge;
+        }
+
+        private static bool IsFateCombatCard(FateCardType card)
+        {
+            return card == FateCardType.MonsterCrush ||
+                   card == FateCardType.TimeStop ||
+                   card == FateCardType.ThunderStrike ||
+                   card == FateCardType.ManaFlood;
+        }
+
+        private static bool IsFateGrowthCard(FateCardType card)
+        {
+            return !IsFateSurvivalCard(card) && !IsFateCombatCard(card);
+        }
+
+        private FateCardType ResolveFateCardChoice(int index)
+        {
+            EnsureFateCardChoices();
+            int safeIndex = Mathf.Clamp(index, 0, fateCardChoices.Length - 1);
+            return fateCardChoices[safeIndex];
+        }
+
+        private bool IsFateCardChoiceAvailable(int index)
+        {
+            if (!CanUseFateCard || index < 0 || index >= fateCardChoices.Length)
+            {
+                return false;
+            }
+
+            EnsureFateCardChoices();
+            return true;
+        }
+
+        private string GetFateCardChoiceLabel(int index)
+        {
+            FateCardType choice = ResolveFateCardChoice(index);
+            return GetFateCardShortName(choice) + "\n즉시: " + GetFateCardShortEffect(choice) + "\n대가: 운명 빚 +" + Mathf.Max(0, GetFateCardDebt(choice));
+        }
+
+        private int GetFateCardDebt(FateCardType choice)
+        {
+            switch (choice)
+            {
+                case FateCardType.CombatDraft:
+                    return fateCardCombatDraftDebt;
+                case FateCardType.FullHeal:
+                    return fateCardFullHealDebt;
+                case FateCardType.ForbiddenSummon:
+                    return fateCardForbiddenSummonDebt;
+                case FateCardType.GamblerGold:
+                    return fateCardGamblerDebt;
+                case FateCardType.LastBarrier:
+                    return fateCardLastBarrierDebt;
+                case FateCardType.GoldLoan:
+                    return fateCardGoldLoanDebt;
+                case FateCardType.RareMercenaries:
+                    return fateCardRareMercenaryDebt;
+                case FateCardType.EpicAdvance:
+                    return fateCardEpicAdvanceDebt;
+                case FateCardType.MythicLease:
+                    return fateCardMythicLeaseDebt;
+                case FateCardType.BlackMarket:
+                    return fateCardBlackMarketDebt;
+                case FateCardType.TimeStop:
+                    return fateCardTimeStopDebt;
+                case FateCardType.ThunderStrike:
+                    return fateCardThunderDebt;
+                case FateCardType.ManaFlood:
+                    return fateCardManaFloodDebt;
+                case FateCardType.WallRepair:
+                    return fateCardWallRepairDebt;
+                case FateCardType.SmugglerRoute:
+                    return fateCardSmugglerRouteDebt;
+                case FateCardType.LifeForge:
+                    return fateCardLifeForgeDebt;
+                case FateCardType.GradeRigging:
+                    return fateCardGradeRiggingDebt;
+                case FateCardType.MonsterCrush:
+                default:
+                    return fateCardMonsterCrushDebt;
+            }
+        }
+
+        private Color ResolveFateCardChoiceColor(int index)
+        {
+            if (!useOneShotFateCard)
+            {
+                switch (Mathf.Clamp(index, 0, 2))
+                {
+                    case 1:
+                        return new Color(0.18f, 0.68f, 1f, 0.96f);
+                    case 2:
+                        return new Color(1f, 0.34f, 0.24f, 0.96f);
+                    case 0:
+                    default:
+                        return new Color(0.70f, 0.24f, 1f, 0.98f);
+                }
+            }
+
+            FateCardType choice = ResolveFateCardChoice(index);
+            switch (choice)
+            {
+                case FateCardType.CombatDraft:
+                    return new Color(0.22f, 0.82f, 1f, 0.98f);
+                case FateCardType.FullHeal:
+                    return new Color(1f, 0.28f, 0.46f, 0.98f);
+                case FateCardType.ForbiddenSummon:
+                    return new Color(1f, 0.62f, 0.16f, 0.98f);
+                case FateCardType.GamblerGold:
+                    return new Color(1f, 0.82f, 0.18f, 0.98f);
+                case FateCardType.LastBarrier:
+                    return new Color(0.34f, 0.92f, 0.62f, 0.98f);
+                case FateCardType.GoldLoan:
+                    return new Color(1f, 0.70f, 0.18f, 0.98f);
+                case FateCardType.RareMercenaries:
+                    return new Color(0.18f, 0.58f, 1f, 0.98f);
+                case FateCardType.EpicAdvance:
+                    return new Color(0.74f, 0.36f, 1f, 0.98f);
+                case FateCardType.MythicLease:
+                    return new Color(1f, 0.24f, 0.70f, 0.98f);
+                case FateCardType.BlackMarket:
+                    return new Color(0.24f, 0.42f, 0.92f, 0.98f);
+                case FateCardType.TimeStop:
+                    return new Color(0.42f, 0.92f, 1f, 0.98f);
+                case FateCardType.ThunderStrike:
+                    return new Color(1f, 0.54f, 0.16f, 0.98f);
+                case FateCardType.ManaFlood:
+                    return new Color(0.18f, 0.78f, 1f, 0.98f);
+                case FateCardType.WallRepair:
+                    return new Color(0.26f, 0.92f, 0.46f, 0.98f);
+                case FateCardType.SmugglerRoute:
+                    return new Color(0.22f, 0.92f, 0.74f, 0.98f);
+                case FateCardType.LifeForge:
+                    return new Color(1f, 0.34f, 0.58f, 0.98f);
+                case FateCardType.GradeRigging:
+                    return new Color(0.92f, 0.34f, 1f, 0.98f);
+                case FateCardType.MonsterCrush:
+                default:
+                    return new Color(0.74f, 0.26f, 1f, 0.98f);
+            }
+        }
+
+        private string GetFateCardShortName(FateCardType choice)
+        {
+            switch (choice)
+            {
+                case FateCardType.CombatDraft:
+                    return "전장 개방";
+                case FateCardType.FullHeal:
+                    return "피의 계약";
+                case FateCardType.ForbiddenSummon:
+                    return "금단 소환";
+                case FateCardType.GamblerGold:
+                    return "도박사의 판";
+                case FateCardType.LastBarrier:
+                    return "최후의 방벽";
+                case FateCardType.GoldLoan:
+                    return "황금 대출";
+                case FateCardType.RareMercenaries:
+                    return "용병 호출";
+                case FateCardType.EpicAdvance:
+                    return "에픽 선불";
+                case FateCardType.MythicLease:
+                    return "신화 임대";
+                case FateCardType.BlackMarket:
+                    return "암시장 개장";
+                case FateCardType.TimeStop:
+                    return "시간 정지";
+                case FateCardType.ThunderStrike:
+                    return "심판 번개";
+                case FateCardType.ManaFlood:
+                    return "마나 폭주";
+                case FateCardType.WallRepair:
+                    return "응급 방벽";
+                case FateCardType.SmugglerRoute:
+                    return "밀수 루트";
+                case FateCardType.LifeForge:
+                    return "생명 주조";
+                case FateCardType.GradeRigging:
+                    return "등급 조작";
+                case FateCardType.MonsterCrush:
+                default:
+                    return "왕의 공포";
+            }
+        }
+
+        private string GetFateCardShortEffect(FateCardType choice)
+        {
+            switch (choice)
+            {
+                case FateCardType.CombatDraft:
+                    return "+" + Mathf.Max(0, fateCardCombatGold) + "G·편집·HP절반";
+                case FateCardType.FullHeal:
+                    return "HP회복·보스강화";
+                case FateCardType.ForbiddenSummon:
+                    return "전설1·소환비+" + Mathf.RoundToInt(Mathf.Clamp01(fateCardForbiddenSummonCostPenalty) * 100f) + "%";
+                case FateCardType.GamblerGold:
+                    return Mathf.RoundToInt(Mathf.Clamp01(fateCardGamblerGoldSuccessRate) * 100f) + "% 편집·실패기절";
+                case FateCardType.LastBarrier:
+                    return "누수무효·다음+" + GetFateBacklashPercent() + "%";
+                case FateCardType.GoldLoan:
+                    return "+" + Mathf.Max(0, fateCardGoldLoanGold) + "G·전투편집";
+                case FateCardType.RareMercenaries:
+                    return "레어×" + Mathf.Max(1, fateCardRareMercenaryCount) + "·HP-2";
+                case FateCardType.EpicAdvance:
+                    return "에픽1·소환비+" + Mathf.RoundToInt(Mathf.Clamp01(fateCardEpicAdvanceCostPenalty) * 100f) + "%";
+                case FateCardType.MythicLease:
+                    return "신화1·HP1";
+                case FateCardType.BlackMarket:
+                    return "+" + Mathf.Max(0, fateCardBlackMarketGold) + "G·마나" + Mathf.RoundToInt(Mathf.Clamp01(fateCardBlackMarketManaRestoreRatio) * 100f) + "%";
+                case FateCardType.TimeStop:
+                    return "등장전체 " + Mathf.RoundToInt(Mathf.Max(0.5f, fateCardTimeStopDuration)) + "초기절";
+                case FateCardType.ThunderStrike:
+                    return "등장전체 " + Mathf.RoundToInt(Mathf.Clamp01(fateCardThunderDamageRatio) * 100f) + "%피해";
+                case FateCardType.ManaFlood:
+                    return "마나회복·HP-" + Mathf.Max(1, fateCardManaFloodLifeCost);
+                case FateCardType.WallRepair:
+                    return "HP+" + Mathf.Max(1, fateCardWallRepairLife) + "·소환비+" + Mathf.RoundToInt(Mathf.Clamp01(fateCardWallRepairCostPenalty) * 100f) + "%";
+                case FateCardType.SmugglerRoute:
+                    return "+" + Mathf.Max(0, fateCardSmugglerRouteGold) + "G·편집·할인";
+                case FateCardType.LifeForge:
+                    return "최대HP+" + Mathf.Max(1, fateCardLifeForgeMaxLife) + "·유닛회복";
+                case FateCardType.GradeRigging:
+                    return "+" + Mathf.Max(0, fateCardGradeRiggingGold) + "G·Rare+" + Mathf.Max(1, fateCardGradeRiggingSummons) + "회";
+                case FateCardType.MonsterCrush:
+                default:
+                    return "적-" + Mathf.RoundToInt(FateMonsterStatCrushRatio * 100f) + "%·다음+" + GetFateBacklashPercent() + "%";
+            }
+        }
+
+        private string BuildFateCardChoiceSummary()
+        {
+            EnsureFateCardChoices();
+            List<string> summaries = new List<string>();
+            for (int i = 0; i < fateCardChoices.Length; i++)
+            {
+                FateCardType choice = fateCardChoices[i];
+                summaries.Add(GetFateCardShortName(choice) + "(" + GetFateCardShortEffect(choice) + ")");
+            }
+
+            return string.Join(" / ", summaries);
+        }
+
+        public bool TryActivateFateCardMonsterCrush()
+        {
+            Color color = new Color(0.78f, 0.28f, 1f);
+            if (!TryConsumeFateCard(
+                "왕의 공포",
+                "이 라운드 몬스터 체력·공격·이속·공속 " + Mathf.RoundToInt(FateMonsterStatCrushRatio * 100f) + "% 붕괴 / " + BuildFateBacklashText(),
+                Mathf.Max(0, fateCardMonsterCrushDebt),
+                color))
+            {
+                return false;
+            }
+
+            fateMonsterCrushRound = ResolveFateCardTargetRound();
+            fateMonsterSurgeRound = fateMonsterCrushRound + 1;
+            ApplyFateMonsterCrushToActiveMonsters();
+            runFateMonsterCrushCount++;
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardCombatDraft()
+        {
+            Color color = new Color(0.26f, 0.88f, 1f);
+            if (!TryConsumeFateCard(
+                "전장 개방",
+                "이 라운드 전투 중 소환·합성 허용 / 골드 +" + Mathf.Max(0, fateCardCombatGold) + " / HP 절반 지불",
+                Mathf.Max(0, fateCardCombatDraftDebt),
+                color))
+            {
+                return false;
+            }
+
+            UnlockFateCombatEditingForCurrentRound();
+            Gold += Mathf.Max(0, fateCardCombatGold);
+            int lifePaid = life > 1 ? Mathf.Max(1, Mathf.FloorToInt(life * 0.5f)) : 0;
+            if (lifePaid > 0)
+            {
+                life = Mathf.Max(1, life - lifePaid);
+                AddRunHighlightCard("전장 개방 대가", "HP -" + lifePaid + " / 전투 편집");
+            }
+
+            runFateCombatDraftCount++;
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardFullHeal()
+        {
+            Color color = new Color(1f, 0.36f, 0.24f);
+            if (!TryConsumeFateCard(
+                "피의 계약",
+                "HP 전부 회복 / 모든 유닛 체력 회복 / 다음 보스 강화",
+                Mathf.Max(0, fateCardFullHealDebt),
+                color))
+            {
+                return false;
+            }
+
+            life = MaxLife;
+            HealAllDefenders();
+            runFateFullHealCount++;
+            runFateSurvivalCount++;
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardForbiddenSummon()
+        {
+            if (boardManager == null || EmptySlotCount <= 0)
+            {
+                OnBannerRequested?.Invoke("금단 소환 실패: 빈 슬롯이 없습니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            Color color = new Color(1f, 0.48f, 0.92f);
+            if (!TryConsumeFateCard(
+                "금단의 소환",
+                "전설 유닛 1개 즉시 획득 / 다음 " + Mathf.Max(1, fateCardForbiddenSummonTaxRounds) + "라운드 소환비 +" + Mathf.RoundToInt(Mathf.Clamp01(fateCardForbiddenSummonCostPenalty) * 100f) + "%",
+                Mathf.Max(0, fateCardForbiddenSummonDebt),
+                color))
+            {
+                return false;
+            }
+
+            int targetRound = ResolveFateCardTargetRound();
+            fateSummonTaxRate = Mathf.Max(fateSummonTaxRate, Mathf.Clamp01(fateCardForbiddenSummonCostPenalty));
+            fateSummonTaxUntilRound = Mathf.Max(fateSummonTaxUntilRound, targetRound + Mathf.Max(1, fateCardForbiddenSummonTaxRounds) - 1);
+            bool granted = TryGrantRandomUnitByGrade(CharacterGrade.Legendary);
+            if (!granted)
+            {
+                granted = TryGrantRandomUnitByGrade(CharacterGrade.Epic);
+            }
+
+            AddRunHighlightCard("금단의 소환", granted ? "전설 유닛 획득 / 소환비 +" + Mathf.RoundToInt(fateSummonTaxRate * 100f) + "%" : "빈 슬롯 없음 / 소환 실패");
+            OnBannerRequested?.Invoke(granted ? "금단의 소환  전설 유닛 등장" : "금단의 소환  소환 실패", color, 2.4f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardGamblerGold()
+        {
+            Color color = new Color(1f, 0.82f, 0.24f);
+            if (!TryConsumeFateCard(
+                "도박사의 판",
+                Mathf.RoundToInt(Mathf.Clamp01(fateCardGamblerGoldSuccessRate) * 100f) + "% 확률로 현재 골드만큼 획득하고 전투 편집 / 실패 시 HP -" + Mathf.Max(1, fateCardGamblerFailLifeCost) + "·현재 적 " + Mathf.Max(0.1f, fateCardGamblerFailStunDuration).ToString("0.#") + "초 기절",
+                Mathf.Max(0, fateCardGamblerDebt),
+                color))
+            {
+                return false;
+            }
+
+            bool jackpot = UnityEngine.Random.value <= Mathf.Clamp01(fateCardGamblerGoldSuccessRate);
+            if (jackpot)
+            {
+                int gainedGold = Mathf.Max(Mathf.Max(0, fateCardGamblerGoldFallbackGain), Gold);
+                UnlockFateCombatEditingForCurrentRound();
+                Gold += gainedGold;
+                AddRunHighlightCard("도박사의 판 성공", "골드 +" + gainedGold);
+                OnBannerRequested?.Invoke("도박 성공!  골드 +" + gainedGold + " / 전투 편집", color, 2.4f);
+            }
+            else
+            {
+                int lifeCost = life > 1 ? Mathf.Min(Mathf.Max(1, fateCardGamblerFailLifeCost), life - 1) : 0;
+                if (lifeCost > 0)
+                {
+                    life = Mathf.Max(1, life - lifeCost);
+                }
+
+                int stunned = StunActiveMonstersForFate(fateCardGamblerFailStunDuration);
+                AddRunHighlightCard("도박사의 판 실패", "HP -" + lifeCost + " / 현재 적 " + stunned + "기 기절");
+                OnBannerRequested?.Invoke("도박 실패...  HP -" + lifeCost + " / 적 " + stunned + "기 기절", new Color(1f, 0.36f, 0.24f), 2.4f);
+            }
+
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardLastBarrier()
+        {
+            int targetRound = ResolveFateCardTargetRound();
+            Color color = new Color(0.45f, 0.78f, 1f);
+            if (!TryConsumeFateCard(
+                "최후의 방벽",
+                "이번 라운드 방어선 돌파 피해 0 / 다음 라운드 적 +" + Mathf.RoundToInt((Mathf.Max(1f, fateCardBacklashMonsterCountMultiplier) - 1f) * 100f) + "%",
+                Mathf.Max(0, fateCardLastBarrierDebt),
+                color))
+            {
+                return false;
+            }
+
+            fateLeakShieldRound = targetRound;
+            fateLeakShieldFeedbackShown = false;
+            fateMonsterSurgeRound = targetRound + 1;
+            runFateSurvivalCount++;
+            AddRunHighlightCard("최후의 방벽", "R" + targetRound + " 누수 피해 0 / 다음 적 +" + Mathf.RoundToInt((Mathf.Max(1f, fateCardBacklashMonsterCountMultiplier) - 1f) * 100f) + "%");
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardGoldLoan()
+        {
+            int targetRound = ResolveFateCardTargetRound();
+            Color color = new Color(1f, 0.74f, 0.22f);
+            if (!TryConsumeFateCard(
+                "황금 대출",
+                "골드 +" + Mathf.Max(0, fateCardGoldLoanGold) + "·이번 라운드 전투 편집 / " + BuildFateBacklashText(),
+                Mathf.Max(0, fateCardGoldLoanDebt),
+                color))
+            {
+                return false;
+            }
+
+            Gold += Mathf.Max(0, fateCardGoldLoanGold);
+            UnlockFateCombatEditingForCurrentRound();
+            fateMonsterSurgeRound = targetRound + 1;
+            AddRunHighlightCard("황금 대출", "골드 +" + Mathf.Max(0, fateCardGoldLoanGold) + " / 전투 편집 / " + BuildFateBacklashText());
+            OnBannerRequested?.Invoke("황금 대출  골드 +" + Mathf.Max(0, fateCardGoldLoanGold) + " / 전투 편집", color, 2.3f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardRareMercenaries()
+        {
+            if (boardManager == null || EmptySlotCount <= 0)
+            {
+                OnBannerRequested?.Invoke("용병 호출 실패: 빈 슬롯이 없습니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            Color color = new Color(0.34f, 0.72f, 1f);
+            if (!TryConsumeFateCard(
+                "용병 호출",
+                "레어 유닛 최대 " + Mathf.Max(1, fateCardRareMercenaryCount) + "개 즉시 획득 / HP -2",
+                Mathf.Max(0, fateCardRareMercenaryDebt),
+                color))
+            {
+                return false;
+            }
+
+            int granted = GrantFateUnitsByGrade(CharacterGrade.Rare, Mathf.Max(1, fateCardRareMercenaryCount));
+            int paid = PayFateLife(2);
+            AddRunHighlightCard("용병 호출", "레어 +" + granted + " / HP -" + paid);
+            OnBannerRequested?.Invoke("용병 호출  레어 +" + granted + " / HP -" + paid, color, 2.3f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardEpicAdvance()
+        {
+            if (boardManager == null || EmptySlotCount <= 0)
+            {
+                OnBannerRequested?.Invoke("에픽 선불 실패: 빈 슬롯이 없습니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            Color color = new Color(0.76f, 0.40f, 1f);
+            if (!TryConsumeFateCard(
+                "에픽 선불",
+                "에픽 유닛 1개 + 골드 +" + Mathf.Max(0, fateCardEpicAdvanceGold) + " / 다음 2라운드 소환비 +" + Mathf.RoundToInt(Mathf.Clamp01(fateCardEpicAdvanceCostPenalty) * 100f) + "%",
+                Mathf.Max(0, fateCardEpicAdvanceDebt),
+                color))
+            {
+                return false;
+            }
+
+            int granted = GrantFateUnitsByGrade(CharacterGrade.Epic, 1);
+            Gold += Mathf.Max(0, fateCardEpicAdvanceGold);
+            ApplyFateSummonTax(fateCardEpicAdvanceCostPenalty, 2);
+            AddRunHighlightCard("에픽 선불", "에픽 +" + granted + " / 골드 +" + Mathf.Max(0, fateCardEpicAdvanceGold));
+            OnBannerRequested?.Invoke("에픽 선불  에픽 +" + granted, color, 2.4f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardMythicLease()
+        {
+            if (boardManager == null || EmptySlotCount <= 0)
+            {
+                OnBannerRequested?.Invoke("신화 임대 실패: 빈 슬롯이 없습니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            Color color = new Color(1f, 0.30f, 0.34f);
+            if (!TryConsumeFateCard(
+                "신화 임대",
+                "신화 유닛 1개 즉시 획득 / HP가 1로 감소 / 다음 라운드 적 +" + Mathf.RoundToInt((Mathf.Max(1f, fateCardBacklashMonsterCountMultiplier) - 1f) * 100f) + "%",
+                Mathf.Max(0, fateCardMythicLeaseDebt),
+                color))
+            {
+                return false;
+            }
+
+            int targetRound = ResolveFateCardTargetRound();
+            int granted = GrantFateUnitsByGrade(CharacterGrade.Mythic, 1);
+            if (granted <= 0)
+            {
+                granted = GrantFateUnitsByGrade(CharacterGrade.Legendary, 1);
+            }
+
+            life = Mathf.Max(1, Mathf.Min(life, 1));
+            fateMonsterSurgeRound = targetRound + 1;
+            AddRunHighlightCard("신화 임대", "신화 +" + granted + " / HP 1");
+            OnBannerRequested?.Invoke("신화 임대  HP 1, 신화 유닛 등장", color, 2.6f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardBlackMarket()
+        {
+            Color color = new Color(0.32f, 0.52f, 1f);
+            if (!TryConsumeFateCard(
+                "암시장 개장",
+                "골드 +" + Mathf.Max(0, fateCardBlackMarketGold) + " / 모든 유닛 마나 " + Mathf.RoundToInt(Mathf.Clamp01(fateCardBlackMarketManaRestoreRatio) * 100f) + "% 회복 / 다음 전투상점 확정·가격 상승",
+                Mathf.Max(0, fateCardBlackMarketDebt),
+                color))
+            {
+                return false;
+            }
+
+            Gold += Mathf.Max(0, fateCardBlackMarketGold);
+            fateForceNextShop = true;
+            int restored = RestoreAllDefenderManaForFate(fateCardBlackMarketManaRestoreRatio);
+            runFateForcedShopCount++;
+            AddRunHighlightCard("암시장 개장", "골드 +" + Mathf.Max(0, fateCardBlackMarketGold) + " / 마나 회복 " + restored + "기 / 다음 상점 확정");
+            OnBannerRequested?.Invoke("암시장 개장  " + restored + "기 마나 회복 / 다음 상점 확정", color, 2.3f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardTimeStop()
+        {
+            int targetRound = ResolveFateCardTargetRound();
+            Color color = new Color(0.48f, 0.90f, 1f);
+            string backlashText = BuildFateBacklashText();
+            string detail = "현재 필드 + 이번 라운드 이후 등장 몬스터 전체 " + Mathf.RoundToInt(Mathf.Max(0.5f, fateCardTimeStopDuration)) + "초 기절 / " + backlashText;
+            if (!TryConsumeFateCard(
+                "시간 정지",
+                detail,
+                Mathf.Max(0, fateCardTimeStopDebt),
+                color))
+            {
+                return false;
+            }
+
+            fateTimeStopRound = targetRound;
+            int affected = StunActiveMonstersForFate(fateCardTimeStopDuration);
+            fateTimeStopAppliedCount = affected;
+
+            AddRunHighlightCard("시간 정지", "현재 " + affected + "기 + 이후 등장 전체 기절 / " + backlashText);
+            OnBannerRequested?.Invoke(
+                "시간 정지  현재 " + affected + "기 + 이후 등장 전체",
+                color,
+                2.3f);
+
+            fateMonsterSurgeRound = targetRound + 1;
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardThunderStrike()
+        {
+            int targetRound = ResolveFateCardTargetRound();
+            Color color = new Color(1f, 0.62f, 0.22f);
+            string backlashText = BuildFateBacklashText();
+            string detail = "현재 필드 + 이번 라운드 이후 등장 몬스터 전체 최대 체력의 " + Mathf.RoundToInt(Mathf.Clamp01(fateCardThunderDamageRatio) * 100f) + "% 피해 / " + backlashText;
+            if (!TryConsumeFateCard(
+                "심판 번개",
+                detail,
+                Mathf.Max(0, fateCardThunderDebt),
+                color))
+            {
+                return false;
+            }
+
+            fateThunderStrikeRound = targetRound;
+            int affected = DamageActiveMonstersForFate(fateCardThunderDamageRatio);
+            fateThunderStrikeAppliedCount = affected;
+
+            AddRunHighlightCard("심판 번개", "현재 " + affected + "기 + 이후 등장 전체 타격 / " + backlashText);
+            OnBannerRequested?.Invoke(
+                "심판 번개  현재 " + affected + "기 + 이후 등장 전체",
+                color,
+                2.3f);
+
+            fateMonsterSurgeRound = targetRound + 1;
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardManaFlood()
+        {
+            Color color = new Color(0.28f, 0.82f, 1f);
+            if (!TryConsumeFateCard(
+                "마나 폭주",
+                "모든 유닛 마나 회복 / HP -" + Mathf.Max(1, fateCardManaFloodLifeCost),
+                Mathf.Max(0, fateCardManaFloodDebt),
+                color))
+            {
+                return false;
+            }
+
+            int paid = PayFateLife(Mathf.Max(1, fateCardManaFloodLifeCost));
+            int restored = RestoreAllDefenderManaForFate(1f);
+            AddRunHighlightCard("마나 폭주", "마나 회복 " + restored + "기 / HP -" + paid);
+            OnBannerRequested?.Invoke("마나 폭주  " + restored + "기 충전", color, 2.3f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardWallRepair()
+        {
+            Color color = new Color(0.38f, 1f, 0.58f);
+            if (!TryConsumeFateCard(
+                "응급 방벽",
+                "HP +" + Mathf.Max(1, fateCardWallRepairLife) + " / 모든 유닛 회복 / 다음 2라운드 소환비 +" + Mathf.RoundToInt(Mathf.Clamp01(fateCardWallRepairCostPenalty) * 100f) + "%",
+                Mathf.Max(0, fateCardWallRepairDebt),
+                color))
+            {
+                return false;
+            }
+
+            int recovered = Mathf.Max(1, fateCardWallRepairLife);
+            life = Mathf.Min(MaxLife, life + recovered);
+            HealAllDefenders();
+            ApplyFateSummonTax(fateCardWallRepairCostPenalty, 2);
+            AddRunHighlightCard("응급 방벽", "HP +" + recovered + " / 유닛 회복");
+            OnBannerRequested?.Invoke("응급 방벽  HP +" + recovered, color, 2.3f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardSmugglerRoute()
+        {
+            int targetRound = ResolveFateCardTargetRound();
+            Color color = new Color(0.30f, 1f, 0.82f);
+            if (!TryConsumeFateCard(
+                "밀수 루트",
+                "골드 +" + Mathf.Max(0, fateCardSmugglerRouteGold) + "·이번 라운드 전투 편집 / 이번 포함 " + Mathf.Max(1, fateCardSmugglerRouteRounds) + "라운드 소환비 -" + Mathf.RoundToInt(Mathf.Clamp01(fateCardSmugglerRouteDiscount) * 100f) + "% / " + BuildFateBacklashText(),
+                Mathf.Max(0, fateCardSmugglerRouteDebt),
+                color))
+            {
+                return false;
+            }
+
+            Gold += Mathf.Max(0, fateCardSmugglerRouteGold);
+            UnlockFateCombatEditingForCurrentRound();
+            ApplyFateSummonDiscount(fateCardSmugglerRouteDiscount, Mathf.Max(1, fateCardSmugglerRouteRounds));
+            fateMonsterSurgeRound = targetRound + 1;
+            AddRunHighlightCard("밀수 루트", "골드 +" + Mathf.Max(0, fateCardSmugglerRouteGold) + " / 전투 편집 / 소환비 -" + Mathf.RoundToInt(Mathf.Clamp01(fateCardSmugglerRouteDiscount) * 100f) + "% / " + BuildFateBacklashText());
+            OnBannerRequested?.Invoke("밀수 루트  골드 +" + Mathf.Max(0, fateCardSmugglerRouteGold) + " / 전투 편집", color, 2.3f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardLifeForge()
+        {
+            Color color = new Color(1f, 0.38f, 0.62f);
+            if (!TryConsumeFateCard(
+                "생명 주조",
+                "최대 HP +" + Mathf.Max(1, fateCardLifeForgeMaxLife) + "·모든 유닛 전부 회복 / 현재 골드 절반 소모",
+                Mathf.Max(0, fateCardLifeForgeDebt),
+                color))
+            {
+                return false;
+            }
+
+            int oldGold = Gold;
+            int removedGold = Mathf.FloorToInt(oldGold * 0.5f);
+            Gold = Mathf.Max(0, Gold - removedGold);
+            int lifeGain = Mathf.Max(1, fateCardLifeForgeMaxLife);
+            maxLife += lifeGain;
+            life = Mathf.Min(MaxLife, life + lifeGain);
+            HealAllDefenders();
+            AddRunHighlightCard("생명 주조", "최대HP +" + lifeGain + " / 유닛 전부 회복 / 골드 -" + removedGold);
+            OnBannerRequested?.Invoke("생명 주조  최대HP +" + lifeGain + " / 유닛 전부 회복", color, 2.4f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public bool TryActivateFateCardGradeRigging()
+        {
+            int targetRound = ResolveFateCardTargetRound();
+            Color color = new Color(0.92f, 0.42f, 1f);
+            if (!TryConsumeFateCard(
+                "등급 조작",
+                "골드 +" + Mathf.Max(0, fateCardGradeRiggingGold) + "·이번 라운드 전투 편집 / 다음 " + Mathf.Max(1, fateCardGradeRiggingSummons) + "회 소환 최소 레어 / " + BuildFateBacklashText(),
+                Mathf.Max(0, fateCardGradeRiggingDebt),
+                color))
+            {
+                return false;
+            }
+
+            Gold += Mathf.Max(0, fateCardGradeRiggingGold);
+            UnlockFateCombatEditingForCurrentRound();
+            fateGradeLockSummonsRemaining = Mathf.Max(fateGradeLockSummonsRemaining, Mathf.Max(1, fateCardGradeRiggingSummons));
+            fateGradeLockMinimum = CharacterGrade.Rare;
+            fateMonsterSurgeRound = targetRound + 1;
+            runFateGradeLockCount++;
+            AddRunHighlightCard("등급 조작", "골드 +" + Mathf.Max(0, fateCardGradeRiggingGold) + " / 전투 편집 / Rare+ " + fateGradeLockSummonsRemaining + "회 / " + BuildFateBacklashText());
+            OnBannerRequested?.Invoke("등급 조작  골드 +" + Mathf.Max(0, fateCardGradeRiggingGold) + " / Rare+ " + fateGradeLockSummonsRemaining + "회", color, 2.4f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        private void UnlockFateCombatEditingForCurrentRound()
+        {
+            fateCombatEditingRound = ResolveFateCardTargetRound();
+            fateCombatEditingUnlocked = true;
+        }
+
+        private void ApplyFateSummonTax(float rate, int rounds)
+        {
+            int targetRound = ResolveFateCardTargetRound();
+            fateSummonTaxRate = Mathf.Max(fateSummonTaxRate, Mathf.Clamp01(rate));
+            fateSummonTaxUntilRound = Mathf.Max(fateSummonTaxUntilRound, targetRound + Mathf.Max(1, rounds) - 1);
+        }
+
+        private void ApplyFateSummonDiscount(float rate, int rounds)
+        {
+            int targetRound = ResolveFateCardTargetRound();
+            fateSummonDiscountRate = Mathf.Max(fateSummonDiscountRate, Mathf.Clamp01(rate));
+            fateSummonDiscountUntilRound = Mathf.Max(fateSummonDiscountUntilRound, targetRound + Mathf.Max(1, rounds) - 1);
+        }
+
+        private int PayFateLife(int amount)
+        {
+            int safeAmount = Mathf.Max(0, amount);
+            int paid = life > 1 ? Mathf.Min(safeAmount, life - 1) : 0;
+            if (paid > 0)
+            {
+                life = Mathf.Max(1, life - paid);
+            }
+
+            return paid;
+        }
+
+        private int GrantFateUnitsByGrade(CharacterGrade grade, int count)
+        {
+            int granted = 0;
+            int attempts = Mathf.Max(0, count);
+            for (int i = 0; i < attempts; i++)
+            {
+                if (EmptySlotCount <= 0)
+                {
+                    break;
+                }
+
+                if (TryGrantRandomUnitByGrade(grade))
+                {
+                    granted++;
+                }
+            }
+
+            return granted;
+        }
+
+        private int StunActiveMonstersForFate(float duration)
+        {
+            List<MonsterUnit> monsters = new List<MonsterUnit>(MonsterUnit.ActiveInstances);
+            int affected = 0;
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                MonsterUnit monster = monsters[i];
+                if (monster == null || !monster.CanBeCombatTargeted)
+                {
+                    continue;
+                }
+
+                monster.ApplyStun(Mathf.Max(0.1f, duration));
+                affected++;
+            }
+
+            return affected;
+        }
+
+        private int DamageActiveMonstersForFate(float maxHealthRatio)
+        {
+            List<MonsterUnit> monsters = new List<MonsterUnit>(MonsterUnit.ActiveInstances);
+            int affected = 0;
+            float ratio = Mathf.Clamp01(maxHealthRatio);
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                MonsterUnit monster = monsters[i];
+                if (monster == null || !monster.CanBeCombatTargeted)
+                {
+                    continue;
+                }
+
+                monster.TakeDamage(monster.MaxHealth * ratio, true, null);
+                affected++;
+            }
+
+            return affected;
+        }
+
+        private int RestoreAllDefenderManaForFate(float ratio)
+        {
+            DefenderUnit[] defenders = boardManager != null ? boardManager.GetAliveDefenders() : FindObjectsOfType<DefenderUnit>();
+            int restored = 0;
+            for (int i = 0; i < defenders.Length; i++)
+            {
+                if (defenders[i] == null)
+                {
+                    continue;
+                }
+
+                defenders[i].RestoreMana(Mathf.Clamp01(ratio));
+                restored++;
+            }
+
+            return restored;
+        }
+
+        private bool TryConsumeFateCard(string title, string detail, int debt, Color color)
+        {
+            if (!enableFateIntervention || !useOneShotFateCard)
+            {
+                OnBannerRequested?.Invoke("마지막 계약 비활성", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            if (!IsFateCardCombatChoiceAvailable())
+            {
+                OnBannerRequested?.Invoke("운명카드는 전투 중 위기 상황에서만 사용할 수 있습니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            if (!fateCardChoicePanelOpen)
+            {
+                OnBannerRequested?.Invoke("운명카드를 먼저 꺼내야 합니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            if (fateCardUsed)
+            {
+                OnBannerRequested?.Invoke("마지막 계약은 이미 사용했습니다", new Color(1f, 0.42f, 0.30f), 1.8f);
+                return false;
+            }
+
+            fateCardUsed = true;
+            fateCardChoicePanelOpen = false;
+            RestoreFateChoiceSlowMotion();
+            fateCardLastTitle = title;
+            fateCardLastDetail = detail;
+            fateCardLastDebt = Mathf.Max(0, debt);
+            fateGauge = 0;
+            fateInterventionCount++;
+            fateContractCount++;
+            runFateInterventionCount++;
+            runFateContractCount++;
+            AddFateDebt(fateCardLastDebt, title);
+            ApplyFateDebtPressureToActiveBosses();
+            AddRunHighlightCard("마지막 계약", title + " / " + detail + " / 빚 +" + fateCardLastDebt);
+            RuntimeAudioUtility.PlayJackpotMajor();
+            OnBannerRequested?.Invoke("마지막 계약: " + title, color, 2.8f);
+            RuntimeGameFeel.ShowJackpotReveal("마지막 계약", title, "악마의 카드가 발동되었습니다", color, detail + " / 대가: 빚 +" + fateCardLastDebt, 2.8f);
+            return true;
+        }
+
+        private void ApplyFateDebtPressureToActiveBosses()
+        {
+            IReadOnlyList<MonsterUnit> monsters = MonsterUnit.ActiveInstances;
+            int strengthened = 0;
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                MonsterUnit monster = monsters[i];
+                if (monster != null && monster.RefreshFateDebtBossHealthPressure())
+                {
+                    strengthened++;
+                }
+            }
+
+            if (strengthened > 0)
+            {
+                AddRunHighlightCard("운명 대가 즉시 청구", "현재 보스 " + strengthened + "기 HP 강화");
+                OnBannerRequested?.Invoke("운명 대가 청구  현재 보스 HP 강화", new Color(0.92f, 0.24f, 0.34f), 2.2f);
+            }
+        }
+
+        private bool IsFateCardCombatChoiceAvailable()
+        {
+            return enableFateIntervention && useOneShotFateCard && !fateCardUsed && !gameOverRaised && roundManager != null && roundManager.IsRoundRunning && CurrentRound > 0 && MonsterUnit.ActiveCount > 0;
+        }
+
+        private int ResolveFateCardTargetRound()
+        {
+            return Mathf.Max(1, IsRoundRunning ? CurrentRound : CurrentRound + 1);
+        }
+
+        private string BuildFateBacklashText()
+        {
+            return "다음 적 +" + GetFateBacklashPercent() + "%";
+        }
+
+        private int GetFateBacklashPercent()
+        {
+            return Mathf.RoundToInt((Mathf.Max(1f, fateCardBacklashMonsterCountMultiplier) - 1f) * 100f);
+        }
+
+        private void ApplyFateMonsterCrushToActiveMonsters()
+        {
+            IReadOnlyList<MonsterUnit> monsters = MonsterUnit.ActiveInstances;
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                if (monsters[i] != null)
+                {
+                    monsters[i].ApplyFateStatCrush(FateMonsterStatCrushRatio);
+                }
+            }
+        }
+
+        private void HandleMonsterSpawned(MonsterUnit monster)
+        {
+            if (monster == null || !monster.CanBeCombatTargeted)
+            {
+                return;
+            }
+
+            int round = CurrentRound;
+            if (round <= 0 || !IsRoundRunning)
+            {
+                return;
+            }
+
+            if (fateTimeStopRound == round)
+            {
+                monster.ApplyStun(Mathf.Max(0.1f, fateCardTimeStopDuration));
+                fateTimeStopAppliedCount++;
+                if (fateTimeStopAppliedCount == 1)
+                {
+                    OnBannerRequested?.Invoke("시간 정지 발동  이번 라운드 등장 전체", new Color(0.48f, 0.90f, 1f), 2.0f);
+                }
+            }
+
+            if (fateThunderStrikeRound == round)
+            {
+                float ratio = Mathf.Clamp01(fateCardThunderDamageRatio);
+                monster.TakeDamage(monster.MaxHealth * ratio, true, null);
+                fateThunderStrikeAppliedCount++;
+                if (fateThunderStrikeAppliedCount == 1)
+                {
+                    OnBannerRequested?.Invoke("심판 번개 발동  이번 라운드 등장 전체", new Color(1f, 0.62f, 0.22f), 2.0f);
+                }
+            }
+
+            if (CanOpenFateCard)
+            {
+                NotifyStateChanged();
+            }
+        }
+
+        private void HealAllDefenders()
+        {
+            DefenderUnit[] defenders = boardManager != null ? boardManager.GetAliveDefenders() : FindObjectsOfType<DefenderUnit>();
+            for (int i = 0; i < defenders.Length; i++)
+            {
+                if (defenders[i] != null)
+                {
+                    defenders[i].Heal(defenders[i].MaxHealth);
+                }
+            }
         }
 
         public bool ConsumeFateForcedShopRequest(int round)
@@ -1025,7 +2394,7 @@ namespace DefenseGame
 
         private void AddFateGauge(int amount, string reason)
         {
-            if (!enableFateIntervention || amount <= 0)
+            if (!enableFateIntervention || useOneShotFateCard || amount <= 0)
             {
                 return;
             }
@@ -1050,6 +2419,10 @@ namespace DefenseGame
             int added = Mathf.Max(0, fateDebt - previous);
             runFateDebtAdded += added;
             runPeakFateDebt = Mathf.Max(runPeakFateDebt, fateDebt);
+            if (useOneShotFateCard)
+            {
+                fateBossDebtAnchor = Mathf.Max(fateBossDebtAnchor, fateDebt);
+            }
         }
 
         private void RepayFateDebt(int amount, string reason)
@@ -1071,12 +2444,13 @@ namespace DefenseGame
 
         private float ResolveFateDebtBossHealthMultiplier()
         {
-            if (!enableFateIntervention || fateDebt <= 0)
+            int effectiveDebt = useOneShotFateCard ? Mathf.Max(fateDebt, fateBossDebtAnchor) : fateDebt;
+            if (!enableFateIntervention || effectiveDebt <= 0)
             {
                 return 1f;
             }
 
-            return 1f + Mathf.Clamp01((float)fateDebt / Mathf.Max(1, maxFateDebt)) * maxFateDebtBossHealthBonus;
+            return 1f + Mathf.Clamp01((float)effectiveDebt / Mathf.Max(1, maxFateDebt)) * maxFateDebtBossHealthBonus;
         }
 
         public bool CanSellUnit(DefenderUnit unit, out string reason)
@@ -1487,6 +2861,8 @@ namespace DefenseGame
             return boardManager != null ? boardManager.CountUnitsOfGrade(grade) : 0;
         }
 
+        public string LastMergeFailureReason => boardManager != null ? boardManager.LastMergeFailureReason : string.Empty;
+
         public bool CanMergeUltimate()
         {
             return boardManager != null && boardManager.CanMergeUltimate(characterDatabase);
@@ -1500,6 +2876,13 @@ namespace DefenseGame
         {
             return boardManager != null
                 ? boardManager.GetReadyUltimateRecipeOptions(characterDatabase)
+                : new UltimateRecipeOption[0];
+        }
+
+        public UltimateRecipeOption[] GetAllUltimateRecipeOptions()
+        {
+            return boardManager != null
+                ? boardManager.GetAllUltimateRecipeOptions(characterDatabase)
                 : new UltimateRecipeOption[0];
         }
 
@@ -1574,6 +2957,7 @@ namespace DefenseGame
             }
 
             RegisterKillCombo(monster);
+            currentRoundKilledMonsters = Mathf.Min(currentRoundKilledMonsters + 1, Mathf.Max(0, RoundTargetCount));
             MarkRoundMonsterResolved();
             NotifyStateChanged();
         }
@@ -1599,36 +2983,152 @@ namespace DefenseGame
 
         private int ResolveMonsterLeakDamage(MonsterUnit monster)
         {
+            if (FateLeakShieldActive)
+            {
+                if (!fateLeakShieldFeedbackShown)
+                {
+                    fateLeakShieldFeedbackShown = true;
+                    AddRunHighlightCard("최후의 방벽", "이번 라운드 누수 피해 무효");
+                    OnBannerRequested?.Invoke("최후의 방벽  누수 피해 0", new Color(0.45f, 0.78f, 1f), 1.8f);
+                }
+
+                return 0;
+            }
+
+            int rawDamage;
             if (monster == null || monster.Definition == null)
             {
-                return 1;
+                rawDamage = 1;
+                return ApplyEarlyLeakGrace(rawDamage);
             }
 
             switch (monster.Definition.threatLevel)
             {
                 case MonsterThreatLevel.Boss:
-                    return Mathf.Max(5, Mathf.CeilToInt(MaxLife * 0.30f));
+                    rawDamage = Mathf.Max(5, Mathf.CeilToInt(MaxLife * 0.30f));
+                    break;
                 case MonsterThreatLevel.MidBoss:
-                    return 2;
+                    rawDamage = 2;
+                    break;
                 default:
-                    return 1;
+                    rawDamage = 1;
+                    break;
             }
+
+            return ApplyEarlyLeakGrace(rawDamage);
+        }
+
+        private int ApplyEarlyLeakGrace(int rawDamage)
+        {
+            int damage = Mathf.Max(0, rawDamage);
+            if (damage <= 0)
+            {
+                return 0;
+            }
+
+            if (CurrentRound <= Mathf.Max(0, earlyLeakGraceRoundLimit) && earlyRoundLeakDamageCap > 0)
+            {
+                int remaining = Mathf.Max(0, earlyRoundLeakDamageCap - currentRoundLeakDamageTaken);
+                damage = Mathf.Min(damage, remaining);
+            }
+
+            currentRoundLeakDamageTaken += damage;
+            return damage;
         }
 
         private void TriggerLeakDefeat()
         {
-            if (gameOverRaised)
+            RequestDefeatAdjudication(false);
+        }
+
+        private void RequestDefeatAdjudication(bool defenderWipe)
+        {
+            if (gameOverRaised || defeatAdjudicationRoutine != null)
             {
                 return;
             }
 
+            defeatAdjudicationRoutine = StartCoroutine(AdjudicateDefeatAfterCombatFrame(defenderWipe));
+        }
+
+        private IEnumerator AdjudicateDefeatAfterCombatFrame(bool defenderWipe)
+        {
+            yield return new WaitForEndOfFrame();
+
+            defeatAdjudicationRoutine = null;
+            if (ShouldResolveSimultaneousDeathAsVictory())
+            {
+                life = Mathf.Max(1, life);
+                gameOverRaised = false;
+                AddRunHighlightCard("동시 격파 승리", "HP 1 생존 / 라운드 승리 우선");
+                OnBannerRequested?.Invoke("동시 격파!  HP 1로 승리", new Color(1f, 0.82f, 0.24f), 2.8f);
+                RuntimeAudioUtility.PlayJackpotMajor();
+                NotifyStateChanged();
+                yield break;
+            }
+
             gameOverRaised = true;
-            AddRunHighlightCard("\uBC29\uC5B4\uC120 \uBD95\uAD34", "HP 0 / \uBAAC\uC2A4\uD130 \uB3CC\uD30C");
+            victoryStreak = 0;
+            earnedGrowthCurrency = CalculateGrowthCurrency();
+            if (defenderWipe)
+            {
+                AddRunHighlightCard("아군 전멸", "HP 0 / 전투 지속 불가");
+                OnBannerRequested?.Invoke("아군 전멸", new Color(1f, 0.38f, 0.26f), 2.2f);
+            }
+            else
+            {
+                AddRunHighlightCard("\uBC29\uC5B4\uC120 \uBD95\uAD34", "HP 0 / \uBAAC\uC2A4\uD130 \uB3CC\uD30C");
+            }
+
             BeginDefeatSequence();
+        }
+
+        private bool ShouldResolveSimultaneousDeathAsVictory()
+        {
+            if (roundManager == null || RoundTargetCount <= 0)
+            {
+                return false;
+            }
+
+            int fatalMonstersPendingResolution = 0;
+            IReadOnlyList<MonsterUnit> activeMonsters = MonsterUnit.ActiveInstances;
+            for (int i = 0; i < activeMonsters.Count; i++)
+            {
+                MonsterUnit monster = activeMonsters[i];
+                if (monster != null && monster.CurrentHealth <= 0f)
+                {
+                    fatalMonstersPendingResolution++;
+                }
+            }
+
+            return IsSimultaneousDeathVictory(
+                RoundTargetCount,
+                currentRoundKilledMonsters,
+                fatalMonstersPendingResolution);
+        }
+
+        public static bool IsSimultaneousDeathVictory(int targetMonsterCount, int killedMonsterCount, int fatalMonstersPendingResolution)
+        {
+            int target = Mathf.Max(0, targetMonsterCount);
+            int killed = Mathf.Clamp(killedMonsterCount, 0, target);
+            int pendingFatal = Mathf.Max(0, fatalMonstersPendingResolution);
+            return target > 0 && killed + pendingFatal >= target;
+        }
+
+        private void CancelPendingDefeatAdjudication()
+        {
+            if (defeatAdjudicationRoutine == null)
+            {
+                return;
+            }
+
+            StopCoroutine(defeatAdjudicationRoutine);
+            defeatAdjudicationRoutine = null;
         }
 
         private void BeginDefeatSequence()
         {
+            RestoreFateChoiceSlowMotion();
             NotifyStateChanged();
             if (roundManager != null && roundManager.IsRoundRunning)
             {
@@ -1708,22 +3208,127 @@ namespace DefenseGame
             defeatTimeScaleCaptured = false;
         }
 
+        private void UpdateFateChoiceSlowMotion()
+        {
+            if (fateCardChoicePanelOpen && !IsFateCardCombatChoiceAvailable())
+            {
+                fateCardChoicePanelOpen = false;
+                RestoreFateChoiceSlowMotion();
+                NotifyStateChanged();
+            }
+
+            bool shouldSlow = CanUseFateCard && !IsDefeatSlowMotionActive;
+            if (!shouldSlow)
+            {
+                RestoreFateChoiceSlowMotion();
+                return;
+            }
+
+            CaptureFateChoiceSlowMotion();
+            float targetScale = Mathf.Clamp(fateChoiceTimeScale, 0.02f, 1f);
+            Time.timeScale = targetScale;
+            float baseScale = Mathf.Max(0.0001f, fateChoicePreviousTimeScale);
+            Time.fixedDeltaTime = Mathf.Max(0.001f, fateChoicePreviousFixedDeltaTime * targetScale / baseScale);
+        }
+
+        private void CaptureFateChoiceSlowMotion()
+        {
+            if (fateChoiceSlowMotionActive)
+            {
+                return;
+            }
+
+            float observedScale = Mathf.Max(0.0001f, Time.timeScale);
+            fateChoicePreviousTimeScale = observedScale;
+            fateChoicePreviousFixedDeltaTime = Time.fixedDeltaTime > 0f ? Time.fixedDeltaTime : 0.02f * observedScale;
+            fateChoiceSlowMotionActive = true;
+        }
+
+        private void RestoreFateChoiceSlowMotion()
+        {
+            if (!fateChoiceSlowMotionActive)
+            {
+                return;
+            }
+
+            Time.timeScale = fateChoicePreviousTimeScale > 0f ? fateChoicePreviousTimeScale : 1f;
+            Time.fixedDeltaTime = fateChoicePreviousFixedDeltaTime > 0f ? fateChoicePreviousFixedDeltaTime : 0.02f;
+            fateChoicePreviousTimeScale = 1f;
+            fateChoicePreviousFixedDeltaTime = 0.02f;
+            fateChoiceSlowMotionActive = false;
+        }
+
         private void HandleRoundStateChanged(int round, bool bossRound, bool running)
         {
+            fateCardChoicePanelOpen = false;
             if (running)
             {
                 DismissTemporarySummons();
+                currentRoundKilledMonsters = 0;
                 currentRoundResolvedMonsters = 0;
+                currentRoundLeakDamageTaken = 0;
                 ResetRoundTileContribution();
                 BeginEarlyRoundTelemetry(round);
                 TryApplyFirstBossSummonRushBonus(round, bossRound);
+                if (FateMonsterStatCrushActive)
+                {
+                    ApplyFateMonsterCrushToActiveMonsters();
+                }
                 AnnounceEarlyCrisisRound(round);
                 OnRoundStarted?.Invoke(round);
             }
             else
             {
+                RestoreFateChoiceSlowMotion();
                 currentRoundResolvedMonsters = Mathf.Max(currentRoundResolvedMonsters, RoundTargetCount);
                 ClearRoundCombatEffects();
+                if (fateMonsterCrushRound == round)
+                {
+                    fateMonsterCrushRound = -1;
+                }
+
+                if (fateMonsterSurgeRound == round)
+                {
+                    fateMonsterSurgeRound = -1;
+                }
+
+                if (fateTimeStopRound == round)
+                {
+                    AddRunHighlightCard("시간 정지 결과", "R" + round + " " + fateTimeStopAppliedCount + "기 기절");
+                    fateTimeStopRound = -1;
+                    fateTimeStopAppliedCount = 0;
+                }
+
+                if (fateThunderStrikeRound == round)
+                {
+                    AddRunHighlightCard("심판 번개 결과", "R" + round + " " + fateThunderStrikeAppliedCount + "기 타격");
+                    fateThunderStrikeRound = -1;
+                    fateThunderStrikeAppliedCount = 0;
+                }
+
+                if (fateLeakShieldRound == round)
+                {
+                    fateLeakShieldRound = -1;
+                    fateLeakShieldFeedbackShown = false;
+                }
+
+                if (fateSummonTaxUntilRound > 0 && round >= fateSummonTaxUntilRound)
+                {
+                    fateSummonTaxUntilRound = -1;
+                    fateSummonTaxRate = 0f;
+                }
+
+                if (fateSummonDiscountUntilRound > 0 && round >= fateSummonDiscountUntilRound)
+                {
+                    fateSummonDiscountUntilRound = -1;
+                    fateSummonDiscountRate = 0f;
+                }
+
+                if (fateCombatEditingRound == round)
+                {
+                    fateCombatEditingUnlocked = false;
+                    fateCombatEditingRound = -1;
+                }
             }
 
             if (!running && boardManager != null)
@@ -1741,7 +3346,10 @@ namespace DefenseGame
                 LastRoundClearGoldReward = clearReward;
                 Gold += clearReward;
                 victoryStreak++;
-                CompleteEarlyRoundTelemetry(round, bossRound, true);
+                if (!debugRoundAdvanceInProgress)
+                {
+                    CompleteEarlyRoundTelemetry(round, bossRound, true);
+                }
                 ResolveFateRoundClear(bossRound);
                 int unlockedFrontSlots = boardManager.RefreshSlotLocks(round, true);
 
@@ -1768,8 +3376,7 @@ namespace DefenseGame
                 ResolveEarlyRunFallback(round);
                 ResolveEarlyBossPrepReward(round);
                 OnRoundBoardPreparation?.Invoke(round);
-                OnRoundShopPhase?.Invoke(round);
-                OnRoundAugmentChoicePhase?.Invoke(round);
+                pendingPostRoundChoiceRound = round;
                 OnRoundCompleted?.Invoke(round);
             }
 
@@ -1806,17 +3413,14 @@ namespace DefenseGame
 
         private void HandleDefenderRemoved(DefenderUnit defender)
         {
-            if (!IsRoundRunning || gameOverRaised || CountAliveDefendersInScene() > 0)
+            if (!IsRoundRunning || gameOverRaised || defeatAdjudicationRoutine != null || CountAliveDefendersInScene() > 0)
             {
                 return;
             }
 
             life = 0;
-            gameOverRaised = true;
-            victoryStreak = 0;
-            earnedGrowthCurrency = CalculateGrowthCurrency();
-            OnBannerRequested?.Invoke("아군 전멸", new Color(1f, 0.38f, 0.26f), 2.2f);
-            BeginDefeatSequence();
+            NotifyStateChanged();
+            RequestDefeatAdjudication(true);
         }
 
         private int CountAliveDefendersInScene()
@@ -1877,6 +3481,20 @@ namespace DefenseGame
         private void NotifyStateChanged()
         {
             OnStateChanged?.Invoke();
+        }
+
+        public void ReleasePostRoundChoiceFlow()
+        {
+            int round = pendingPostRoundChoiceRound;
+            if (round <= 0)
+            {
+                return;
+            }
+
+            pendingPostRoundChoiceRound = -1;
+            OnRoundShopPhase?.Invoke(round);
+            OnRoundAugmentChoicePhase?.Invoke(round);
+            NotifyStateChanged();
         }
 
         private void HandleDamageDealt(DefenderUnit source, MonsterUnit target, float damage, bool critical)
@@ -1960,6 +3578,8 @@ namespace DefenseGame
 
         private void ResetRunStats()
         {
+            RestoreFateChoiceSlowMotion();
+            fateCardChoicePanelOpen = false;
             damageByHero.Clear();
             currentRoundDamageByHero.Clear();
             topDamageHeroName = "없음";
@@ -1978,6 +3598,8 @@ namespace DefenseGame
             earnedGrowthCurrency = 0;
             nextCriticalBannerTime = 0f;
             earlySummonAttempts = 0;
+            initialPreparationSummons = 0;
+            initialPreparationClosed = false;
             earlyRunMomentTriggered = false;
             earlyFallbackRewardGranted = false;
             earlyBossPrepRewardGranted = false;
@@ -1985,6 +3607,7 @@ namespace DefenseGame
             currentRoundStartTime = 0f;
             currentRoundStartGold = 0;
             currentRoundSummonCount = 0;
+            fateMonsterSurgeRound = -1;
             currentRoundMergeCount = 0;
             currentRoundHadMerge = false;
             currentRoundHighestMergeGrade = CharacterGrade.Normal;
@@ -2015,6 +3638,7 @@ namespace DefenseGame
             runInsuranceClaimed = false;
             runR10BossHealthRemaining01 = -1f;
             firstRarePlusRound = -1;
+            lastRoundShopOpenRound = -1;
             firstMergeRound = -1;
             fateGauge = enableFateIntervention ? Mathf.Clamp(startingFateGauge, 0, Mathf.Max(1, maxFateGauge)) : 0;
             fateDebt = 0;
@@ -2027,14 +3651,37 @@ namespace DefenseGame
             runFateNormalBanCount = 0;
             runFateForcedShopCount = 0;
             runFateSurvivalCount = 0;
+            runFateMonsterCrushCount = 0;
+            runFateCombatDraftCount = 0;
+            runFateFullHealCount = 0;
             runFateDebtAdded = 0;
             runFateDebtRepaid = 0;
             runFateShopCostPenaltyGold = 0;
             runPeakFateDebt = 0;
             fateGradeLockSummonsRemaining = 0;
+            fateBossDebtAnchor = 0;
             fateGradeLockMinimum = CharacterGrade.Normal;
             fateNormalBanSummonsRemaining = 0;
             fateForceNextShop = false;
+            fateCardUsed = false;
+            fateCardChoicesInitialized = false;
+            pendingPostRoundChoiceRound = -1;
+            fateCardLastTitle = "미사용";
+            fateCardLastDetail = "운명 카드 대기";
+            fateCardLastDebt = 0;
+            fateMonsterCrushRound = -1;
+            fateTimeStopRound = -1;
+            fateTimeStopAppliedCount = 0;
+            fateThunderStrikeRound = -1;
+            fateThunderStrikeAppliedCount = 0;
+            fateLeakShieldRound = -1;
+            fateLeakShieldFeedbackShown = false;
+            fateSummonTaxUntilRound = -1;
+            fateSummonTaxRate = 0f;
+            fateSummonDiscountUntilRound = -1;
+            fateSummonDiscountRate = 0f;
+            fateCombatEditingRound = -1;
+            fateCombatEditingUnlocked = false;
             firstLegendaryMergeRecorded = false;
             lifeOneClutchRecorded = false;
             fateSurvivalClutchRecorded = false;
@@ -2123,7 +3770,17 @@ namespace DefenseGame
         {
             int baseCost = currentSummonBaseCost > 0 ? currentSummonBaseCost : summonCost;
             float discounted = baseCost * (1f - Mathf.Clamp01(summonCostDiscountRate));
-            return Mathf.Max(1, Mathf.RoundToInt(discounted));
+            int cost = Mathf.Max(1, Mathf.RoundToInt(discounted));
+            if (enableFateIntervention && useOneShotFateCard && fateSummonDiscountUntilRound >= GetSummonRateRound() && fateSummonDiscountRate > 0f)
+            {
+                cost = Mathf.Max(1, Mathf.RoundToInt(cost * (1f - Mathf.Clamp01(fateSummonDiscountRate))));
+            }
+            if (enableFateIntervention && useOneShotFateCard && fateSummonTaxUntilRound >= GetSummonRateRound() && fateSummonTaxRate > 0f)
+            {
+                cost = Mathf.Max(1, Mathf.CeilToInt(cost * (1f + Mathf.Clamp01(fateSummonTaxRate))));
+            }
+
+            return cost;
         }
 
         private int ResolveSummonCostIncrease()
@@ -2150,8 +3807,8 @@ namespace DefenseGame
 
         private int CalculateRoundClearGold(int round)
         {
-            return roundClearBaseGold +
-                Mathf.Max(0, round) * roundClearPerRoundGold +
+            return Mathf.Max(0, roundClearBaseGold) +
+                Mathf.FloorToInt(Mathf.Max(0, round) * Mathf.Max(0f, roundClearPerRoundGold)) +
                 victoryStreak * victoryStreakGoldBonus +
                 roundGoldBonus;
         }
@@ -2171,6 +3828,15 @@ namespace DefenseGame
 
             int repay = Mathf.Max(0, fateDebtRepayPerRound) + (bossRound ? Mathf.Max(0, fateDebtRepayPerBossRound) : 0);
             RepayFateDebt(repay, bossRound ? "보스 라운드 클리어" : "라운드 클리어");
+            if (bossRound && useOneShotFateCard && fateBossDebtAnchor > 0)
+            {
+                int settledDebt = fateBossDebtAnchor;
+                fateBossDebtAnchor = 0;
+                if (fateCardUsed)
+                {
+                    AddRunHighlightCard("운명 대가 정산", "보스 강화 빚 " + settledDebt + " 종료");
+                }
+            }
         }
 
         private CharacterDefinition SelectSummonDefinition(out bool earlyPitySummon)
@@ -3575,11 +5241,16 @@ namespace DefenseGame
 
         private bool CanSpendFateGauge(int cost)
         {
-            return enableFateIntervention && fateGauge >= Mathf.Max(0, cost);
+            return enableFateIntervention && !useOneShotFateCard && fateGauge >= Mathf.Max(0, cost);
         }
 
         private bool IsFateSurvivalCrisisActive()
         {
+            if (useOneShotFateCard)
+            {
+                return CanOpenFateCard;
+            }
+
             if (!enableFateIntervention || !CanUseFateSurvival || MaxLife <= 0)
             {
                 return false;
@@ -3599,6 +5270,18 @@ namespace DefenseGame
             if (!enableFateIntervention)
             {
                 return "운명 비활성";
+            }
+
+            if (useOneShotFateCard)
+            {
+                if (fateCardUsed)
+                {
+                    return "마지막 계약 완료: " + fateCardLastTitle + " | 빚 " + fateCardLastDebt;
+                }
+
+                return CanUseFateCard
+                    ? "마지막 계약 선택 중: 18장 덱 중 3장"
+                    : CanOpenFateCard ? "마지막 계약 준비: 운명카드를 눌러 개방" : "마지막 계약 1/1: 전투 중 대기";
             }
 
             string pending = fateGradeLockSummonsRemaining > 0
@@ -3639,6 +5322,18 @@ namespace DefenseGame
                 return "운명 비활성";
             }
 
+            if (useOneShotFateCard)
+            {
+                if (fateCardUsed)
+                {
+                    return "마지막 계약 사용 완료: " + fateCardLastTitle;
+                }
+
+                return CanUseFateCard
+                    ? "마지막 계약 선택 중 · 전투 0.1배"
+                    : CanOpenFateCard ? "마지막 계약 준비 · 눌러서 개방" : "마지막 계약 대기 · 전투 중 개방";
+            }
+
             string pending = fateGradeLockSummonsRemaining > 0
                 ? " / Rare+ x" + fateGradeLockSummonsRemaining
                 : fateNormalBanSummonsRemaining > 0
@@ -3656,6 +5351,26 @@ namespace DefenseGame
             if (!enableFateIntervention)
             {
                 return "운명 비활성";
+            }
+
+            if (useOneShotFateCard)
+            {
+                if (!fateCardUsed)
+                {
+                    if (CanUseFateCard)
+                    {
+                        return "선택 중 전투 0.1배: " + BuildFateCardChoiceSummary() + " | 선택 후 UI가 내려가고 대가가 남습니다";
+                    }
+
+                    if (CanOpenFateCard)
+                    {
+                        return "운명카드 준비: 버튼을 누르면 3장이 공개되고 선택할 때까지 전투가 0.1배로 느려집니다";
+                    }
+
+                    return "전투 중 몬스터가 등장하면 작은 운명카드 버튼이 올라옵니다";
+                }
+
+                return "이득: " + fateCardLastDetail + " | 대가: 빚 +" + fateCardLastDebt + ", 다음 보스HP x" + FateDebtBossHealthMultiplier.ToString("0.00");
             }
 
             if (runFateInterventionCount <= 0)
@@ -3736,6 +5451,18 @@ namespace DefenseGame
                 return "운명 비활성";
             }
 
+            if (useOneShotFateCard)
+            {
+                if (fateCardUsed)
+                {
+                    return "계약 사용: " + fateCardLastTitle;
+                }
+
+                return CanUseFateCard
+                    ? "마지막 계약 선택 중 · 3/18"
+                    : CanOpenFateCard ? "운명카드 준비" : "마지막 계약 대기";
+            }
+
             string pending = fateGradeLockSummonsRemaining > 0
                 ? " / Rare+ lock x" + fateGradeLockSummonsRemaining
                 : fateNormalBanSummonsRemaining > 0
@@ -3758,6 +5485,26 @@ namespace DefenseGame
             if (!enableFateIntervention)
             {
                 return "운명 비활성";
+            }
+
+            if (useOneShotFateCard)
+            {
+                if (!fateCardUsed)
+                {
+                    if (CanUseFateCard)
+                    {
+                        return "마지막 계약 선택 중 | 18장 덱 중 이번 3장: " + BuildFateCardChoiceSummary();
+                    }
+
+                    if (CanOpenFateCard)
+                    {
+                        return "마지막 계약 미사용 | 버튼을 누르면 3장 공개";
+                    }
+
+                    return "마지막 계약 미사용 | 전투 중 몬스터 등장 시 카드 버튼 표시";
+                }
+
+                return "이득: " + fateCardLastDetail + " | 대가: 빚 +" + fateCardLastDebt + ", 보스 HP +" + Mathf.RoundToInt((FateDebtBossHealthMultiplier - 1f) * 100f) + "%";
             }
 
             if (runFateInterventionCount <= 0)

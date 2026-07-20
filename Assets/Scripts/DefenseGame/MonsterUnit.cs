@@ -23,6 +23,12 @@ namespace DefenseGame
         [SerializeField] private float bossDeathPresentationDelay = 1.35f;
         [SerializeField] private float bossDeathPulseRadius = 2.25f;
 
+        [Header("Ranged Combat Safety")]
+        [SerializeField, Min(0.5f)] private float maximumRangedAttackRange = 3f;
+        [SerializeField, Range(0f, 0.5f)] private float retaliationRangeMargin = 0.12f;
+        [SerializeField, Min(0.5f)] private float defaultRushCastRange = 3.6f;
+        [SerializeField, Min(0.5f)] private float defaultRallyRadius = 5.5f;
+
         private MonsterDefinition definition;
         private Transform goal;
         private Vector3 laneGoalPosition;
@@ -32,6 +38,7 @@ namespace DefenseGame
         private DefenseGameController gameController;
         private float currentHealth;
         private float outgameHealthMultiplier = 1f;
+        private float appliedFateBossHealthMultiplier = 1f;
         private float outgameAttackMultiplier = 1f;
         private float currentMana;
         private float attackCooldown;
@@ -45,6 +52,7 @@ namespace DefenseGame
         private float moveSpeedBuffTimer;
         private float slowRatio;
         private float slowTimer;
+        private float fateStatCrushRatio;
         private float stunTimer;
         private float petrifyTimer;
         private DefenderUnit tauntTarget;
@@ -185,6 +193,7 @@ namespace DefenseGame
         public float MaxHealth => definition != null ? definition.stats.maxHealth * outgameHealthMultiplier : 0f;
         public float CurrentMana => currentMana;
         public bool IsBoss => definition != null && definition.IsBossLike;
+        public bool IsStatusEffectImmune => IsBoss;
         private bool IsMajorBoss => definition != null && definition.IsMajorBoss;
         public bool IsStunned => IsControlLocked;
         public bool IsPetrified => petrifyTimer > 0f;
@@ -297,7 +306,11 @@ namespace DefenseGame
 
         private static bool CanReceiveControlStatus(MonsterUnit monster, bool excludeBosses = false)
         {
-            return monster != null && !monster.isDying && monster.currentHealth > 0f && (!excludeBosses || !monster.IsBoss);
+            return monster != null &&
+                !monster.isDying &&
+                monster.currentHealth > 0f &&
+                !monster.IsStatusEffectImmune &&
+                (!excludeBosses || !monster.IsBoss);
         }
 
         private void RegisterActiveMonster()
@@ -405,7 +418,9 @@ namespace DefenseGame
             if (target != null)
             {
                 float distance = Vector3.Distance(transform.position, target.transform.position);
-                if (distance <= GetEffectiveAttackRange())
+                bool isInsideAttackRange = distance <= GetEffectiveAttackRange();
+                bool canBeCounterAttacked = !IsRangedAttacker() || CanAnyLivingDefenderRetaliate();
+                if (isInsideAttackRange && canBeCounterAttacked)
                 {
                     if (attackCooldown <= 0f && CanStartActionAnimation())
                     {
@@ -413,6 +428,12 @@ namespace DefenseGame
                     }
 
                     animationDriver?.PlayMoving(false);
+                    return;
+                }
+
+                if (isInsideAttackRange && !canBeCounterAttacked)
+                {
+                    MoveTowardsDefender(target);
                     return;
                 }
 
@@ -430,6 +451,7 @@ namespace DefenseGame
         {
             definition = newDefinition;
             outgameHealthMultiplier = 1f;
+            appliedFateBossHealthMultiplier = 1f;
             outgameAttackMultiplier = 1f;
             if (OutgameProgressionSystem.Active != null)
             {
@@ -444,13 +466,15 @@ namespace DefenseGame
 
             if (definition != null && definition.IsBossLike && DefenseGameController.Active != null)
             {
-                outgameHealthMultiplier *= DefenseGameController.Active.FateDebtBossHealthMultiplier;
+                appliedFateBossHealthMultiplier = Mathf.Max(1f, DefenseGameController.Active.FateDebtBossHealthMultiplier);
+                outgameHealthMultiplier *= appliedFateBossHealthMultiplier;
             }
 
             goal = goalPoint;
             laneGoalPosition = goal != null
                 ? new Vector3(transform.position.x, goal.position.y, goal.position.z)
                 : transform.position;
+            FaceTarget(laneGoalPosition);
             currentHealth = MaxHealth;
             currentMana = 0f;
             attackCooldown = 0f;
@@ -464,6 +488,7 @@ namespace DefenseGame
             moveSpeedBuffTimer = 0f;
             slowRatio = 0f;
             slowTimer = 0f;
+            fateStatCrushRatio = 0f;
             stunTimer = 0f;
             petrifyTimer = 0f;
             tauntTarget = null;
@@ -487,9 +512,41 @@ namespace DefenseGame
             EnsureAnimationDriver();
             EnsureHitFlashFeedback();
             floatingUi = FloatingCombatUI.Attach(transform, definition.displayName, definition.accentColor, definition.grade, GetFloatingUiFallbackHeight());
+            if (gameController != null && gameController.FateMonsterStatCrushActive)
+            {
+                ApplyFateStatCrush(gameController.FateMonsterStatCrushRatio);
+            }
             floatingUi.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
             animationDriver?.PlaySpawn();
             OnMonsterSpawned?.Invoke(this);
+        }
+
+        public bool RefreshFateDebtBossHealthPressure()
+        {
+            if (!IsBoss || currentHealth <= 0f || DefenseGameController.Active == null)
+            {
+                return false;
+            }
+
+            float targetMultiplier = Mathf.Max(1f, DefenseGameController.Active.FateDebtBossHealthMultiplier);
+            float previousMultiplier = Mathf.Max(1f, appliedFateBossHealthMultiplier);
+            if (targetMultiplier <= previousMultiplier + 0.001f)
+            {
+                return false;
+            }
+
+            float previousMaxHealth = MaxHealth;
+            outgameHealthMultiplier *= targetMultiplier / previousMultiplier;
+            appliedFateBossHealthMultiplier = targetMultiplier;
+            float addedHealth = Mathf.Max(0f, MaxHealth - previousMaxHealth);
+            currentHealth = Mathf.Min(MaxHealth, currentHealth + addedHealth);
+            floatingUi?.ShowStatus(
+                "운명 대가  HP +" + Mathf.RoundToInt((targetMultiplier - previousMultiplier) * 100f) + "%",
+                new Color(1f, 0.30f, 0.38f),
+                1.8f);
+            floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
+            RuntimeCombatFeedback.ShowGroundPulse(transform.position, new Color(0.95f, 0.20f, 0.32f), 1.25f, 0.70f, 0.12f);
+            return addedHealth > 0f;
         }
 
         private float GetFloatingUiFallbackHeight()
@@ -624,7 +681,7 @@ namespace DefenseGame
 
         public void ApplySlow(float ratio, float duration)
         {
-            if (!CanBeCombatTargeted)
+            if (!CanBeCombatTargeted || IsStatusEffectImmune)
             {
                 return;
             }
@@ -636,7 +693,7 @@ namespace DefenseGame
 
         public void ApplyAttackSpeedSlow(float ratio, float duration)
         {
-            if (!CanBeCombatTargeted)
+            if (!CanBeCombatTargeted || IsStatusEffectImmune)
             {
                 return;
             }
@@ -646,20 +703,49 @@ namespace DefenseGame
             hitFlashFeedback?.PlayHit(false);
         }
 
-        public void ApplyStun(float duration)
+        public void ApplyFateStatCrush(float ratio)
         {
             if (!CanBeCombatTargeted)
             {
                 return;
             }
 
+            float safeRatio = Mathf.Clamp01(ratio);
+            fateStatCrushRatio = Mathf.Max(fateStatCrushRatio, safeRatio);
+            currentHealth = Mathf.Max(1f, currentHealth * (1f - safeRatio));
+            currentMana = 0f;
+            attackCooldown = Mathf.Max(attackCooldown, 1.2f);
+            hitFlashFeedback?.PlayHit(true);
+            floatingUi?.ShowDamage(MaxHealth * safeRatio, true, false);
+            floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
+        }
+
+        public void ApplyStun(float duration)
+        {
+            if (!CanBeCombatTargeted || IsStatusEffectImmune)
+            {
+                return;
+            }
+
             float effectiveDuration = ResolveControlDuration(duration);
+            if (effectiveDuration <= 0f)
+            {
+                return;
+            }
+
             stunTimer = Mathf.Max(stunTimer, effectiveDuration);
             hitFlashFeedback?.PlayHit(true);
+            floatingUi?.ShowTimedStatus("STUN · 행동 불가", new Color(1f, 0.88f, 0.22f, 1f), effectiveDuration);
+            RuntimeCombatFeedback.ShowGroundPulse(transform.position, new Color(1f, 0.82f, 0.18f, 1f), IsBoss ? 0.82f : 0.58f, 0.62f, 0.10f);
         }
 
         public void ApplyPetrify(float duration, Material materialOverride = null)
         {
+            if (!CanReceiveControlStatus(this))
+            {
+                return;
+            }
+
             float effectiveDuration = ResolveControlDuration(duration);
             if (effectiveDuration <= 0f)
             {
@@ -680,7 +766,7 @@ namespace DefenseGame
 
         private float ResolveControlDuration(float duration)
         {
-            if (duration <= 0f)
+            if (duration <= 0f || IsStatusEffectImmune)
             {
                 return 0f;
             }
@@ -690,7 +776,7 @@ namespace DefenseGame
 
         public void ApplyKnockback(float distance, Vector3 sourcePosition)
         {
-            if (!CanBeCombatTargeted || distance <= 0f)
+            if (!CanBeCombatTargeted || IsStatusEffectImmune || distance <= 0f)
             {
                 return;
             }
@@ -717,7 +803,7 @@ namespace DefenseGame
 
         public void ApplyTaunt(DefenderUnit source, float duration)
         {
-            if (!CanBeCombatTargeted || source == null || source.CurrentHealth <= 0f || duration <= 0f)
+            if (!CanBeCombatTargeted || IsStatusEffectImmune || source == null || source.CurrentHealth <= 0f || duration <= 0f)
             {
                 return;
             }
@@ -729,7 +815,7 @@ namespace DefenseGame
 
         public void ApplyPoison(float damagePerTick, float duration, float tickInterval, DefenderUnit source)
         {
-            if (!CanBeCombatTargeted)
+            if (!CanBeCombatTargeted || IsStatusEffectImmune)
             {
                 return;
             }
@@ -767,7 +853,7 @@ namespace DefenseGame
 
             Vector3 moveTarget = BuildMoveTarget();
             FaceTarget(moveTarget);
-            float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus) * (1f - slowRatio) * globalMoveSpeedMultiplier;
+            float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus) * (1f - slowRatio) * (1f - fateStatCrushRatio) * globalMoveSpeedMultiplier;
             transform.position = Vector3.MoveTowards(transform.position, moveTarget, moveSpeed * Time.deltaTime);
             animationDriver?.PlayMoving(true);
 
@@ -788,7 +874,7 @@ namespace DefenseGame
             Vector3 moveTarget = target.transform.position;
             moveTarget.y = transform.position.y;
             FaceTarget(moveTarget);
-            float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus) * (1f - slowRatio) * globalMoveSpeedMultiplier;
+            float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus) * (1f - slowRatio) * (1f - fateStatCrushRatio) * globalMoveSpeedMultiplier;
             transform.position = Vector3.MoveTowards(transform.position, moveTarget, moveSpeed * Time.deltaTime);
             animationDriver?.PlayMoving(true);
         }
@@ -801,7 +887,7 @@ namespace DefenseGame
             }
 
             FaceTarget(target.transform.position);
-            float effectiveAttackSpeed = Mathf.Max(0.2f, definition.stats.attackSpeed * (1f + attackSpeedBonus) * (1f - attackSpeedSlowRatio));
+            float effectiveAttackSpeed = Mathf.Max(0.2f, definition.stats.attackSpeed * (1f + attackSpeedBonus) * (1f - attackSpeedSlowRatio) * (1f - fateStatCrushRatio));
             attackCooldown = 1f / effectiveAttackSpeed;
 
             bool critical = Random.value <= Mathf.Clamp01(definition.stats.criticalChance + critChanceBonus);
@@ -855,7 +941,7 @@ namespace DefenseGame
                 return;
             }
 
-            PlayBasicAttackMuzzleEffect();
+            PlayBasicAttackMuzzleEffect(pending.target);
             PlayBasicAttackHitEffect(pending.target);
             pending.target.TakeDamage(pending.damage, pending.critical, this);
             ApplyBasicAttackExtensions(pending.target, pending.damage);
@@ -869,7 +955,7 @@ namespace DefenseGame
                 return false;
             }
 
-            PlayBasicAttackMuzzleEffect();
+            PlayBasicAttackMuzzleEffect(pending.target);
             StartCoroutine(BasicAttackProjectileRoutine(projectilePrefab, pending));
             return true;
         }
@@ -877,7 +963,10 @@ namespace DefenseGame
         private IEnumerator BasicAttackProjectileRoutine(GameObject projectilePrefab, PendingMonsterAttack pending)
         {
             Vector3 startPosition = transform.position + Vector3.up * ResolveBasicAttackEffectHeight();
-            GameObject projectile = Instantiate(projectilePrefab, startPosition, transform.rotation);
+            Quaternion launchRotation = pending.target != null
+                ? RuntimeEffectUtility.FaceTowards(startPosition, pending.target.transform.position + Vector3.up * ResolveBasicAttackEffectHeight(), transform.rotation)
+                : transform.rotation;
+            GameObject projectile = Instantiate(projectilePrefab, startPosition, launchRotation);
             if (projectile == null)
             {
                 ResolveBasicAttackDamage(pending);
@@ -892,6 +981,7 @@ namespace DefenseGame
             {
                 Vector3 targetPosition = pending.target.transform.position + Vector3.up * ResolveBasicAttackEffectHeight();
                 Vector3 direction = targetPosition - projectile.transform.position;
+                direction.y = 0f;
                 if (direction.sqrMagnitude <= 0.04f)
                 {
                     break;
@@ -932,7 +1022,7 @@ namespace DefenseGame
             return IsBoss ? 0.72f : 0.48f;
         }
 
-        private void PlayBasicAttackMuzzleEffect()
+        private void PlayBasicAttackMuzzleEffect(DefenderUnit target)
         {
             GameObject effectPrefab = ResolveBasicAttackMuzzleEffectPrefab();
             if (effectPrefab == null)
@@ -940,7 +1030,9 @@ namespace DefenseGame
                 return;
             }
 
-            RuntimeEffectUtility.PlayOneShot(effectPrefab, transform.position + Vector3.up * 0.06f, transform.rotation, IsBoss ? 0.48f : 0.28f);
+            Vector3 origin = transform.position + Vector3.up * 0.06f;
+            Quaternion rotation = target != null ? RuntimeEffectUtility.FaceTowards(origin, target.transform.position, transform.rotation) : transform.rotation;
+            RuntimeEffectUtility.PlayOneShot(effectPrefab, origin, rotation, IsBoss ? 0.48f : 0.28f);
         }
 
         private void PlayBasicAttackHitEffect(DefenderUnit target)
@@ -951,12 +1043,17 @@ namespace DefenseGame
             }
 
             GameObject effectPrefab = ResolveBasicAttackHitEffectPrefab();
-            if (effectPrefab == null)
+            if (effectPrefab != null)
             {
-                return;
+                Quaternion rotation = RuntimeEffectUtility.FaceTowards(transform.position, target.transform.position, transform.rotation);
+                RuntimeEffectUtility.PlayOneShot(effectPrefab, target.transform.position + Vector3.up * 0.06f, rotation, IsBoss ? 0.54f : 0.30f);
             }
 
-            RuntimeEffectUtility.PlayOneShot(effectPrefab, target.transform.position + Vector3.up * 0.06f, Quaternion.identity, IsBoss ? 0.54f : 0.30f);
+            RuntimeAudioUtility.PlayHit();
+            if (IsBoss)
+            {
+                RuntimeCameraShake.Request(IsMajorBoss ? 0.045f : 0.025f, IsMajorBoss ? 0.13f : 0.09f);
+            }
         }
 
         private GameObject ResolveBasicAttackProjectilePrefab()
@@ -1041,9 +1138,56 @@ namespace DefenseGame
                 yield return new WaitForSeconds(warningDelay);
             }
 
+            if (skill != null && skill.effectType == SkillEffectType.SummonRush && !skill.isGlobalTargeting)
+            {
+                yield return PerformRushApproach(skill);
+            }
+
             CastSkill(skill);
             skillCastLocked = false;
         }
+
+        private IEnumerator PerformRushApproach(SkillDefinition skill)
+        {
+            DefenderUnit target = FindNearestDefenderForSkill(skill);
+            if (target == null)
+            {
+                yield break;
+            }
+
+            Vector3 startPosition = transform.position;
+            Vector3 direction = target.transform.position - startPosition;
+            direction.y = 0f;
+            float distance = direction.magnitude;
+            if (distance <= 0.1f)
+            {
+                yield break;
+            }
+
+            float desiredStopDistance = Mathf.Clamp(GetEffectiveAttackRange() * 0.55f, 0.9f, 1.45f);
+            float travelDistance = Mathf.Min(1.25f, Mathf.Max(0f, distance - desiredStopDistance));
+            if (travelDistance <= 0.05f)
+            {
+                yield break;
+            }
+
+            Vector3 endPosition = startPosition + direction.normalized * travelDistance;
+            FaceTarget(target.transform.position);
+            animationDriver?.PlayMoving(true);
+
+            const float lungeDuration = 0.18f;
+            float elapsed = 0f;
+            while (elapsed < lungeDuration && target != null)
+            {
+                elapsed += Time.deltaTime;
+                transform.position = Vector3.Lerp(startPosition, endPosition, Mathf.Clamp01(elapsed / lungeDuration));
+                yield return null;
+            }
+
+            transform.position = endPosition;
+            animationDriver?.PlayMoving(false);
+        }
+
 
         private bool CanCastSkill(SkillDefinition skill)
         {
@@ -1052,16 +1196,19 @@ namespace DefenseGame
                 return false;
             }
 
-            if (skill.effectType == SkillEffectType.DeathPact ||
-                skill.effectType == SkillEffectType.Stun ||
-                skill.effectType == SkillEffectType.MassStun ||
-                skill.effectType == SkillEffectType.SummonRush ||
-                skill.effectType == SkillEffectType.DirectDamage ||
-                skill.effectType == SkillEffectType.AreaDamage ||
-                skill.effectType == SkillEffectType.GoldDrain ||
-                skill.effectType == SkillEffectType.ManaBurn)
+            if (skill.effectType == SkillEffectType.GoldDrain)
             {
-                return CountLivingDefenders() > 0;
+                return skill.isGlobalTargeting && CountLivingDefenders() > 0;
+            }
+
+            if (SkillTargetsDefenders(skill))
+            {
+                if (CountLivingDefenders() <= 0)
+                {
+                    return false;
+                }
+
+                return skill.isGlobalTargeting || HasDefenderWithinSkillRange(skill);
             }
 
             if (skill.effectType == SkillEffectType.HealSelf)
@@ -1075,11 +1222,20 @@ namespace DefenseGame
         private void CastSkill(SkillDefinition skill)
         {
             QueueSkillImpact(skill);
-            bool animationStarted = animationDriver != null && animationDriver.PlaySkill();
+            int skillSlot = definition != null && definition.skills != null ? Mathf.Max(1, definition.skills.IndexOf(skill) + 1) : 1;
+            bool usedAttackAnimationFallback = false;
+            bool animationStarted = animationDriver != null && animationDriver.PlaySkill(skillSlot);
+            if (!animationStarted && animationDriver != null)
+            {
+                usedAttackAnimationFallback = animationDriver.PlayAttack();
+                animationStarted = usedAttackAnimationFallback;
+            }
+
             NotifySkillPresentation(skill);
             if (animationStarted)
             {
-                SchedulePendingSkillFallback(pendingSkillCast.sequence);
+                float fallbackDelay = usedAttackAnimationFallback ? animationDriver.AttackImpactFallbackDelay : animationDriver.SkillImpactFallbackDelay;
+                SchedulePendingSkillFallback(pendingSkillCast.sequence, fallbackDelay);
             }
             else
             {
@@ -1100,7 +1256,9 @@ namespace DefenseGame
 
             if (skill.effectType == SkillEffectType.DirectDamage)
             {
-                DefenderUnit singleTarget = FindNearestDefender();
+                DefenderUnit singleTarget = skill.isGlobalTargeting
+                    ? FindNearestDefender()
+                    : FindNearestDefenderForSkill(skill);
                 if (singleTarget != null)
                 {
                     FaceTarget(singleTarget.transform.position);
@@ -1113,21 +1271,19 @@ namespace DefenseGame
             }
             else if (skill.effectType == SkillEffectType.AreaDamage)
             {
-                DefenderUnit[] targets = FindObjectsOfType<DefenderUnit>();
-                if (targets.Length > 0)
+                List<DefenderUnit> targets = GetLivingDefendersWithinRange(Mathf.Max(0.1f, skill.radius));
+                if (targets.Count > 0)
                 {
                     FaceTarget(targets[0].transform.position);
                 }
+
                 ShowSkillImpactFeedback(transform.position, skill, Mathf.Max(0.8f, skill.radius), IsBoss);
-                for (int i = 0; i < targets.Length; i++)
+                for (int i = 0; i < targets.Count; i++)
                 {
-                    if (Vector3.Distance(transform.position, targets[i].transform.position) <= skill.radius)
-                    {
-                        float damage = GetEffectiveAttackPower() * skill.power;
-                        targets[i].TakeDamage(damage, false, this);
-                        bossAffectedTargets++;
-                        bossDamageDone += damage;
-                    }
+                    float damage = GetEffectiveAttackPower() * skill.power;
+                    targets[i].TakeDamage(damage, false, this);
+                    bossAffectedTargets++;
+                    bossDamageDone += damage;
                 }
             }
             else if (skill.effectType == SkillEffectType.HealSelf)
@@ -1165,7 +1321,10 @@ namespace DefenseGame
             }
             else if (skill.effectType == SkillEffectType.SummonRush)
             {
-                List<DefenderUnit> targets = defenders.Where(defender => defender != null)
+                float rushRange = ResolveSkillCastRange(skill);
+                List<DefenderUnit> targets = defenders
+                    .Where(defender => IsLivingDefender(defender) &&
+                        Vector3.Distance(transform.position, defender.transform.position) <= rushRange)
                     .OrderBy(defender => Vector3.Distance(transform.position, defender.transform.position))
                     .Take(skill.hitCount)
                     .ToList();
@@ -1186,7 +1345,9 @@ namespace DefenseGame
             }
             else if (skill.effectType == SkillEffectType.Stun)
             {
-                DefenderUnit target = FindNearestDefender();
+                DefenderUnit target = skill.isGlobalTargeting
+                    ? FindNearestDefender()
+                    : FindNearestDefenderForSkill(skill);
                 if (target != null)
                 {
                     FaceTarget(target.transform.position);
@@ -1197,7 +1358,14 @@ namespace DefenseGame
             }
             else if (skill.effectType == SkillEffectType.MassStun)
             {
-                List<DefenderUnit> targets = GetRandomDefenders(Mathf.Max(1, skill.hitCount));
+                if (IsBoss)
+                {
+                    ShowSkillImpactFeedback(transform.position, skill, ResolveSkillFeedbackRadius(skill), true);
+                }
+
+                List<DefenderUnit> targets = skill.isGlobalTargeting
+                    ? GetRandomDefenders(Mathf.Max(1, skill.hitCount))
+                    : GetRandomDefendersWithinRange(Mathf.Max(1, skill.hitCount), ResolveSkillCastRange(skill));
                 if (targets.Count > 0)
                 {
                     FaceTarget(targets[0].transform.position);
@@ -1207,12 +1375,21 @@ namespace DefenseGame
                 {
                     ShowSkillImpactFeedback(targets[i].transform.position, skill, 0.66f, i == 0 && IsBoss);
                     targets[i].ApplyStun(skill.duration);
+                    float damage = GetEffectiveAttackPower() * Mathf.Max(0f, skill.power);
+                    if (damage > 0f)
+                    {
+                        targets[i].TakeDamage(damage, false, this);
+                        bossDamageDone += damage;
+                    }
+
                     bossAffectedTargets++;
                 }
             }
             else if (skill.effectType == SkillEffectType.DeathPact)
             {
-                DefenderUnit target = GetRandomDefender();
+                DefenderUnit target = skill.isGlobalTargeting
+                    ? GetRandomDefender()
+                    : GetRandomDefenderWithinRange(ResolveSkillCastRange(skill));
                 if (target != null)
                 {
                     FaceTarget(target.transform.position);
@@ -1244,7 +1421,9 @@ namespace DefenseGame
             }
             else if (skill.effectType == SkillEffectType.ManaBurn)
             {
-                List<DefenderUnit> targets = GetRandomDefenders(Mathf.Max(1, skill.hitCount));
+                List<DefenderUnit> targets = skill.isGlobalTargeting
+                    ? GetRandomDefenders(Mathf.Max(1, skill.hitCount))
+                    : GetRandomDefendersWithinRange(Mathf.Max(1, skill.hitCount), ResolveSkillCastRange(skill));
                 if (targets.Count > 0)
                 {
                     FaceTarget(targets[0].transform.position);
@@ -1260,9 +1439,11 @@ namespace DefenseGame
             else if (skill.effectType == SkillEffectType.MonsterRally)
             {
                 IReadOnlyList<MonsterUnit> allies = ActiveInstances;
+                float rallyRadius = skill.radius > 0.1f ? skill.radius : defaultRallyRadius;
                 for (int i = 0; i < allies.Count; i++)
                 {
-                    if (allies[i] != null)
+                    if (allies[i] != null &&
+                        (skill.isGlobalTargeting || Vector3.Distance(transform.position, allies[i].transform.position) <= rallyRadius))
                     {
                         allies[i].ApplyRally(skill.power, skill.duration);
                         ShowSkillImpactFeedback(allies[i].transform.position, skill, allies[i] == this ? 0.92f : 0.62f, allies[i] == this && IsBoss);
@@ -1274,6 +1455,19 @@ namespace DefenseGame
             if (IsBoss && gameController != null)
             {
                 gameController.RecordBossSkillImpact(skill, bossAffectedTargets, bossDamageDone, bossGoldDrained, IsMajorBoss);
+                if (IsMajorBoss)
+                {
+                    string result = bossAffectedTargets > 0
+                        ? bossAffectedTargets + "기 적중"
+                        : "범위 밖";
+                    if (bossDamageDone > 0f)
+                    {
+                        result += "  |  피해 " + Mathf.RoundToInt(bossDamageDone);
+                    }
+                    else result += bossAffectedTargets > 0 ? "  |  상태/버프 적용" : "  |  피해 없음";
+
+                    gameController.RequestBanner("보스 적중: " + skill.displayName + "  |  " + result, ResolveSkillFeedbackColor(skill), 2.1f);
+                }
             }
         }
 
@@ -1309,7 +1503,11 @@ namespace DefenseGame
                 return;
             }
 
-            if (impactType == AnimationImpactType.Skill && pendingSkillCast.isValid)
+            bool skillCompatibleImpact = impactType == AnimationImpactType.Skill ||
+                impactType == AnimationImpactType.Attack ||
+                impactType == AnimationImpactType.AttackHit ||
+                impactType == AnimationImpactType.FireProjectile;
+            if (skillCompatibleImpact && pendingSkillCast.isValid && !pendingBasicAttack.isValid)
             {
                 ResolvePendingSkillCast();
                 return;
@@ -1363,10 +1561,10 @@ namespace DefenseGame
             }
         }
 
-        private void SchedulePendingSkillFallback(int sequence)
+        private void SchedulePendingSkillFallback(int sequence, float fallbackDelay = -1f)
         {
             CancelPendingSkillFallback();
-            float delay = animationDriver != null ? animationDriver.SkillImpactFallbackDelay : 0.2f;
+            float delay = fallbackDelay > 0f ? fallbackDelay : animationDriver != null ? animationDriver.SkillImpactFallbackDelay : 0.2f;
             pendingSkillImpactRoutine = StartCoroutine(ResolvePendingSkillAfterDelay(sequence, delay));
         }
 
@@ -1549,12 +1747,151 @@ namespace DefenseGame
                 skill.effectType == SkillEffectType.DeathPact ||
                 skill.effectType == SkillEffectType.MassStun ||
                 skill.effectType == SkillEffectType.BossFortify ||
+                skill.effectType == SkillEffectType.DirectDamage ||
+                skill.effectType == SkillEffectType.AreaDamage ||
+                skill.effectType == SkillEffectType.SummonRush ||
                 skill.effectType == SkillEffectType.GoldDrain ||
                 skill.effectType == SkillEffectType.ManaBurn ||
                 skill.effectType == SkillEffectType.MonsterRally;
             string prefix = IsMajorBoss ? "보스 스킬: " : "중간보스 스킬: ";
             gameController.RecordBossSkillCast(skill, IsMajorBoss);
             gameController.RequestBanner(prefix + skill.displayName + " 발동!", definition.accentColor, majorBossSkill ? 2.6f : 2.0f);
+        }
+
+        private bool IsRangedAttacker()
+        {
+            return definition != null &&
+                definition.attackBehavior != null &&
+                definition.attackBehavior.basicAttackType == BasicAttackType.Ranged;
+        }
+
+        private bool CanAnyLivingDefenderRetaliate()
+        {
+            for (int i = defenders.Count - 1; i >= 0; i--)
+            {
+                DefenderUnit defender = defenders[i];
+                if (!IsLivingDefender(defender))
+                {
+                    if (defender == null)
+                    {
+                        defenders.RemoveAt(i);
+                    }
+
+                    continue;
+                }
+
+                float safeCounterRange = Mathf.Max(0.1f, defender.CurrentAttackRange - retaliationRangeMargin);
+                if (Vector3.Distance(transform.position, defender.transform.position) <= safeCounterRange)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsLivingDefender(DefenderUnit defender)
+        {
+            return defender != null && defender.CurrentHealth > 0f;
+        }
+
+        private static bool SkillTargetsDefenders(SkillDefinition skill)
+        {
+            if (skill == null)
+            {
+                return false;
+            }
+
+            return skill.effectType == SkillEffectType.DeathPact ||
+                skill.effectType == SkillEffectType.Stun ||
+                skill.effectType == SkillEffectType.MassStun ||
+                skill.effectType == SkillEffectType.SummonRush ||
+                skill.effectType == SkillEffectType.DirectDamage ||
+                skill.effectType == SkillEffectType.AreaDamage ||
+                skill.effectType == SkillEffectType.ManaBurn;
+        }
+
+        private bool HasDefenderWithinSkillRange(SkillDefinition skill)
+        {
+            return FindNearestDefenderForSkill(skill) != null;
+        }
+
+        private DefenderUnit FindNearestDefenderForSkill(SkillDefinition skill)
+        {
+            float castRange = ResolveSkillCastRange(skill);
+            DefenderUnit bestTarget = null;
+            float bestDistance = float.MaxValue;
+            for (int i = defenders.Count - 1; i >= 0; i--)
+            {
+                DefenderUnit defender = defenders[i];
+                if (!IsLivingDefender(defender))
+                {
+                    if (defender == null)
+                    {
+                        defenders.RemoveAt(i);
+                    }
+
+                    continue;
+                }
+
+                float distance = Vector3.Distance(transform.position, defender.transform.position);
+                if (distance <= castRange && distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestTarget = defender;
+                }
+            }
+
+            return bestTarget;
+        }
+
+        private List<DefenderUnit> GetLivingDefendersWithinRange(float range)
+        {
+            float safeRange = Mathf.Max(0.1f, range);
+            return defenders
+                .Where(defender => IsLivingDefender(defender) &&
+                    Vector3.Distance(transform.position, defender.transform.position) <= safeRange)
+                .OrderBy(defender => Vector3.Distance(transform.position, defender.transform.position))
+                .ToList();
+        }
+
+        private DefenderUnit GetRandomDefenderWithinRange(float range)
+        {
+            List<DefenderUnit> candidates = GetLivingDefendersWithinRange(range);
+            return candidates.Count > 0 ? candidates[Random.Range(0, candidates.Count)] : null;
+        }
+
+        private List<DefenderUnit> GetRandomDefendersWithinRange(int count, float range)
+        {
+            return GetLivingDefendersWithinRange(range)
+                .OrderBy(_ => Random.value)
+                .Take(Mathf.Max(0, count))
+                .ToList();
+        }
+
+        private float ResolveSkillCastRange(SkillDefinition skill)
+        {
+            if (skill == null)
+            {
+                return 0f;
+            }
+
+            if (skill.effectType == SkillEffectType.AreaDamage)
+            {
+                return Mathf.Max(0.1f, skill.radius);
+            }
+
+            if (skill.useCustomCastRange)
+            {
+                return Mathf.Max(0.5f, skill.castRange);
+            }
+
+            if (skill.effectType == SkillEffectType.SummonRush)
+            {
+                return Mathf.Max(GetEffectiveAttackRange(), defaultRushCastRange);
+            }
+
+            return Mathf.Max(0.5f, GetEffectiveAttackRange());
         }
 
         private void NotifySkillWarning(SkillDefinition skill, float duration)
@@ -1580,9 +1917,12 @@ namespace DefenseGame
 
             Color color = ResolveSkillFeedbackColor(skill);
             float radius = ResolveSkillFeedbackRadius(skill);
-            RuntimeCombatFeedback.ShowGroundPulse(transform.position, color, radius, IsBoss ? 0.62f : 0.34f);
-            RuntimeEffectUtility.PlayOneShot(skill.muzzleEffectPrefab, transform.position + Vector3.up * 0.06f, Quaternion.identity, IsBoss ? 0.65f : 0.30f);
-            floatingUi?.ShowStatus(skill.displayName, Color.Lerp(color, Color.white, 0.25f), IsBoss ? 1.0f : 0.62f);
+            RuntimeCombatFeedback.ShowGroundPulse(transform.position, color, radius, IsMajorBoss ? 0.80f : IsBoss ? 0.62f : 0.34f);
+            DefenderUnit target = FindNearestDefender();
+            Vector3 origin = transform.position + Vector3.up * 0.06f;
+            Quaternion rotation = target != null ? RuntimeEffectUtility.FaceTowards(origin, target.transform.position, transform.rotation) : transform.rotation;
+            RuntimeEffectUtility.PlayOneShot(skill.muzzleEffectPrefab, origin, rotation, IsMajorBoss ? 0.85f : IsBoss ? 0.65f : 0.30f);
+            floatingUi?.ShowStatus(skill.displayName, Color.Lerp(color, Color.white, 0.25f), IsMajorBoss ? 1.25f : IsBoss ? 1.0f : 0.62f);
 
             if (IsBoss)
             {
@@ -1609,13 +1949,14 @@ namespace DefenseGame
                 return;
             }
 
-            RuntimeCombatFeedback.ShowGroundPulse(position, ResolveSkillFeedbackColor(skill), Mathf.Max(0.18f, radius), IsBoss ? 0.46f : 0.30f);
-            RuntimeEffectUtility.PlayOneShot(ResolveSkillImpactEffectPrefab(skill), position + Vector3.up * 0.06f, Quaternion.identity, IsBoss ? 0.65f : 0.30f);
+            RuntimeCombatFeedback.ShowGroundPulse(position, ResolveSkillFeedbackColor(skill), Mathf.Max(0.18f, radius), IsMajorBoss ? 0.70f : IsBoss ? 0.46f : 0.30f);
+            Quaternion rotation = RuntimeEffectUtility.FaceTowards(transform.position, position, transform.rotation);
+            RuntimeEffectUtility.PlayOneShot(ResolveSkillImpactEffectPrefab(skill), position + Vector3.up * 0.06f, rotation, IsMajorBoss ? 0.90f : IsBoss ? 0.65f : 0.30f);
             RuntimeAudioUtility.PlayHit();
 
             if (shake)
             {
-                RuntimeCameraShake.Request(IsMajorBoss ? 0.08f : 0.045f, IsMajorBoss ? 0.22f : 0.14f);
+                RuntimeCameraShake.Request(IsMajorBoss ? 0.12f : 0.045f, IsMajorBoss ? 0.30f : 0.14f);
             }
         }
 
@@ -1705,6 +2046,9 @@ namespace DefenseGame
                 skill.effectType == SkillEffectType.DeathPact ||
                 skill.effectType == SkillEffectType.MassStun ||
                 skill.effectType == SkillEffectType.BossFortify ||
+                skill.effectType == SkillEffectType.DirectDamage ||
+                skill.effectType == SkillEffectType.AreaDamage ||
+                skill.effectType == SkillEffectType.SummonRush ||
                 skill.effectType == SkillEffectType.GoldDrain ||
                 skill.effectType == SkillEffectType.ManaBurn ||
                 skill.effectType == SkillEffectType.MonsterRally;
@@ -2259,47 +2603,13 @@ namespace DefenseGame
 
         private void PlayDeathEffect()
         {
-            if (deathEffectPrefab == null)
-            {
-                return;
-            }
-
-            GameObject effect = Instantiate(deathEffectPrefab, transform.position + deathEffectOffset, Quaternion.identity);
-            effect.SetActive(true);
-            Destroy(effect, ResolveEffectLifetime(effect));
+            RuntimeEffectUtility.PlayOneShot(deathEffectPrefab, transform.position + deathEffectOffset, Quaternion.identity, 3f);
         }
 
-        private float ResolveEffectLifetime(GameObject effect)
-        {
-            float lifetime = 3f;
-            ParticleSystem[] particleSystems = effect.GetComponentsInChildren<ParticleSystem>(true);
-            for (int i = 0; i < particleSystems.Length; i++)
-            {
-                ParticleSystem particleSystem = particleSystems[i];
-                ParticleSystem.MainModule main = particleSystem.main;
-                float duration = main.duration;
-                if (main.startLifetime.mode == ParticleSystemCurveMode.TwoConstants)
-                {
-                    duration += Mathf.Max(main.startLifetime.constantMin, main.startLifetime.constantMax);
-                }
-                else if (main.startLifetime.mode == ParticleSystemCurveMode.Constant)
-                {
-                    duration += main.startLifetime.constant;
-                }
-                else
-                {
-                    duration += 1f;
-                }
-
-                lifetime = Mathf.Max(lifetime, duration + 0.5f);
-            }
-
-            return lifetime;
-        }
 
         private float GetEffectiveAttackPower()
         {
-            return definition != null ? definition.stats.attackPower * outgameAttackMultiplier : 0f;
+            return definition != null ? definition.stats.attackPower * outgameAttackMultiplier * (1f - fateStatCrushRatio) : 0f;
         }
 
         private float GetEffectiveAttackRange()
@@ -2309,7 +2619,10 @@ namespace DefenseGame
                 return 0f;
             }
 
-            return definition.attackBehavior.ResolveAttackRange(definition.stats.attackRange);
+            float resolvedRange = definition.attackBehavior.ResolveAttackRange(definition.stats.attackRange);
+            return IsRangedAttacker()
+                ? Mathf.Min(Mathf.Max(0.5f, maximumRangedAttackRange), resolvedRange)
+                : resolvedRange;
         }
 
         private void ApplyBasicAttackExtensions(DefenderUnit primaryTarget, float damage)

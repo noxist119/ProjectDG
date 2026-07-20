@@ -1,0 +1,142 @@
+diff --git a/Assets/Editor/DefenseGame/DefenseGameBatchPlaytest.cs b/Assets/Editor/DefenseGame/DefenseGameBatchPlaytest.cs
+--- a/Assets/Editor/DefenseGame/DefenseGameBatchPlaytest.cs
++++ b/Assets/Editor/DefenseGame/DefenseGameBatchPlaytest.cs
+@@ -12,7 +12,7 @@ namespace DefenseGame.Editor
+ {
+     public static class DefenseGameBatchPlaytest
+     {
+-        private const int TargetRuns = 5;
++        private const int TargetRuns = 20;
+         private const int TargetRound = 10;
+         private const float BatchTimeScale = 40f;
+         private const float BatchFixedDeltaTime = 0.025f;
+@@ -21,7 +21,7 @@ namespace DefenseGame.Editor
+         private const double RunTimeoutSeconds = 300d;
+         private const string ScenePath = "Assets/Scenes/DG.unity";
+         private const string OutputDirectoryName = "BatchPlaytestResults";
+-        private const string OutputFileName = "DefenseGame_Playtest5_Human3.json";
++        private const string OutputFileName = "DefenseGame_Playtest20_Human3.json";
+         private const string MissingScriptReportFileName = "RuntimeMissingScripts.json";
+         private static string OutputDirectory => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName));
+         private static string OutputPath => Path.Combine(OutputDirectory, OutputFileName);
+@@ -48,9 +48,10 @@ namespace DefenseGame.Editor
+         private static int previousVSyncCount;
+         private static bool previousRunInBackground;
+         private static int missingScriptWarningsObserved;
++        private static readonly List<string> MissingScriptWarningSamples = new List<string>();
+ 
+-        [MenuItem("DefenseGame/Batch Playtest/Run Human Strategies 5 Total")]
+-        public static void RunHumanStrategies5()
++        [MenuItem("DefenseGame/Batch Playtest/Run Human Strategies 20 Total")]
++        public static void RunHumanStrategies20()
+         {
+             Results.Clear();
+             controller = null;
+@@ -63,6 +64,7 @@ namespace DefenseGame.Editor
+             waitingRoundEnd = false;
+             started = false;
+             missingScriptWarningsObserved = 0;
++            MissingScriptWarningSamples.Clear();
+ 
+             Directory.CreateDirectory(OutputDirectory);
+             if (File.Exists(OutputPath))
+@@ -1063,6 +1065,10 @@ namespace DefenseGame.Editor
+             if (type == LogType.Warning && !string.IsNullOrEmpty(condition) && condition.Contains("referenced script") && condition.Contains("missing"))
+             {
+                 missingScriptWarningsObserved++;
++                if (MissingScriptWarningSamples.Count < 12 && !MissingScriptWarningSamples.Contains(condition))
++                {
++                    MissingScriptWarningSamples.Add(condition);
++                }
+             }
+         }
+ 
+@@ -1104,6 +1110,23 @@ namespace DefenseGame.Editor
+             builder.AppendLine("  \"warningsObserved\": " + missingScriptWarningsObserved + ",");
+             builder.AppendLine("  \"liveObjectsWithMissingScripts\": " + entries.Count + ",");
+             builder.AppendLine("  \"totalMissingScriptsOnLiveObjects\": " + totalMissing + ",");
++            builder.AppendLine("  \"liveAuditPassed\": " + JsonBool(totalMissing == 0) + ",");
++            builder.AppendLine("  \"historyStatus\": \"" + (missingScriptWarningsObserved == 0
++                ? "clean"
++                : totalMissing == 0 ? "warning_history_only_no_live_missing_scripts" : "active_missing_scripts_detected") + "\",");
++            builder.AppendLine("  \"warningSamples\": [");
++            for (int i = 0; i < MissingScriptWarningSamples.Count; i++)
++            {
++                builder.Append("    \"").Append(EscapeJson(MissingScriptWarningSamples[i])).Append('"');
++                if (i < MissingScriptWarningSamples.Count - 1)
++                {
++                    builder.Append(',');
++                }
++
++                builder.AppendLine();
++            }
++
++            builder.AppendLine("  ],");
+             builder.AppendLine("  \"objects\": [");
+             for (int i = 0; i < entries.Count; i++)
+             {
+diff --git a/Assets/Editor/DefenseGame/DefenseGameBatchTurboOverride.cs b/Assets/Editor/DefenseGame/DefenseGameBatchTurboOverride.cs
+--- a/Assets/Editor/DefenseGame/DefenseGameBatchTurboOverride.cs
++++ b/Assets/Editor/DefenseGame/DefenseGameBatchTurboOverride.cs
+@@ -8,7 +8,7 @@ namespace DefenseGame.Editor
+     [InitializeOnLoad]
+     public static class DefenseGameBatchTurboOverride
+     {
+-        private const string BatchMethodToken = "DefenseGame.Editor.DefenseGameBatchPlaytest.RunHumanStrategies5";
++        private const string BatchMethodToken = "DefenseGame.Editor.DefenseGameBatchPlaytest.RunHumanStrategies20";
+         private const float TurboTimeScale = 40f;
+         private const float TurboFixedDeltaTime = 0.025f;
+         private const float TurboMaximumDeltaTime = 0.33f;
+diff --git a/Assets/Editor/DefenseGame/DefenseGameValidationQueue.cs b/Assets/Editor/DefenseGame/DefenseGameValidationQueue.cs
+--- a/Assets/Editor/DefenseGame/DefenseGameValidationQueue.cs
++++ b/Assets/Editor/DefenseGame/DefenseGameValidationQueue.cs
+@@ -11,7 +11,7 @@ namespace DefenseGame.Editor
+         private const string QueueFileName = "DefenseGameValidationQueue.txt";
+         private const string VerticalSmokeFileName = "DefenseGame_PlayModeSmoke.json";
+         private const string BossSmokeFileName = "DefenseGame_BossAnimationSmoke.json";
+-        private const string PlaytestFileName = "DefenseGame_Playtest5_Human3.json";
++        private const string PlaytestFileName = "DefenseGame_Playtest20_Human3.json";
+         private static double nextCheckTime;
+ 
+         private static string ProjectRoot => Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+@@ -24,7 +24,7 @@ namespace DefenseGame.Editor
+             EditorApplication.update += Tick;
+         }
+ 
+-        [MenuItem("DefenseGame/Validation/Run Vertical + Boss Smoke + Human 3 Strategies x5")]
++        [MenuItem("DefenseGame/Validation/Run Vertical + Boss Smoke + Human 3 Strategies x20")]
+         public static void StartFullValidation()
+         {
+             Directory.CreateDirectory(ResultDirectory);
+@@ -64,7 +64,7 @@ namespace DefenseGame.Editor
+                     ContinueWhenOutputExists(VerticalSmokeFileName, "boss_running", BossSmokeFileName, DefenseGameBossAnimationSmoke.RunBossAnimationSmoke);
+                     break;
+                 case "boss_running":
+-                    ContinueWhenOutputExists(BossSmokeFileName, "playtest_running", PlaytestFileName, DefenseGameBatchPlaytest.RunHumanStrategies5);
++                    ContinueWhenOutputExists(BossSmokeFileName, "playtest_running", PlaytestFileName, DefenseGameBatchPlaytest.RunHumanStrategies20);
+                     break;
+                 case "playtest_running":
+                     if (File.Exists(Path.Combine(ResultDirectory, PlaytestFileName)))
+diff --git a/Assets/Art/FX/Nea/Materials/Star_Add_1.mat b/Assets/Art/FX/Nea/Materials/Star_Add_1.mat
+--- a/Assets/Art/FX/Nea/Materials/Star_Add_1.mat
++++ b/Assets/Art/FX/Nea/Materials/Star_Add_1.mat
+@@ -10,8 +10,8 @@ MonoBehaviour:
+   m_Enabled: 1
+   m_EditorHideFlags: 0
+   m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+-  m_Name: 
+-  m_EditorClassIdentifier: 
++  m_Name:
++  m_EditorClassIdentifier:
+   version: 4
+ --- !u!21 &2100000
+ Material:
+@@ -32,7 +32,7 @@ Material:
+   m_CustomRenderQueue: -1
+   stringTagMap: {}
+   disabledShaderPasses: []
+-  m_LockedProperties: 
++  m_LockedProperties:
+   m_SavedProperties:
+     serializedVersion: 3
+     m_TexEnvs:

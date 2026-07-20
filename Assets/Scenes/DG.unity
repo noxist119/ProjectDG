@@ -482,6 +482,7 @@ MonoBehaviour:
   slotSpacing: 1.2
   presentationConfig: {fileID: 11400000, guid: f205ab75978bf6d43b46c8678edebd25, type: 2}
   characterCombatTuningConfig: {fileID: 11400000, guid: 24fe406c3b813544996b857dbda260a2, type: 2}
+  monsterCombatTuningConfig: {fileID: 11400000, guid: abe4b2ad7280a98428f114e44dff1159, type: 2}
   outgameProgressionConfig: {fileID: 0}
   hideDefaultStageDecorWhenUsingBackground: 1
   playMainBgm: 1

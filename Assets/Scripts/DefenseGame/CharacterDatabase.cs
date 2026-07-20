@@ -14,25 +14,25 @@ namespace DefenseGame
         // Each entry is an inclusive start round and remains fixed until the next entry.
         [SerializeField] private List<SummonGradeRateMilestone> summonGradeRateMilestones = new List<SummonGradeRateMilestone>
         {
-            new SummonGradeRateMilestone(1, 0.890f, 0.100f, 0.010f, 0.000f, 0.000f),
-            new SummonGradeRateMilestone(3, 0.860f, 0.125f, 0.015f, 0.000f, 0.000f),
-            new SummonGradeRateMilestone(5, 0.820f, 0.150f, 0.030f, 0.000f, 0.000f),
-            new SummonGradeRateMilestone(7, 0.780f, 0.170f, 0.045f, 0.005f, 0.000f),
-            new SummonGradeRateMilestone(9, 0.740f, 0.190f, 0.060f, 0.010f, 0.000f),
-            new SummonGradeRateMilestone(11, 0.700f, 0.210f, 0.075f, 0.015f, 0.000f),
-            new SummonGradeRateMilestone(13, 0.660f, 0.230f, 0.085f, 0.025f, 0.000f),
-            new SummonGradeRateMilestone(16, 0.620f, 0.250f, 0.100f, 0.030f, 0.000f),
-            new SummonGradeRateMilestone(19, 0.590f, 0.260f, 0.110f, 0.038f, 0.002f),
-            new SummonGradeRateMilestone(22, 0.560f, 0.270f, 0.120f, 0.045f, 0.005f),
-            new SummonGradeRateMilestone(25, 0.530f, 0.280f, 0.130f, 0.050f, 0.010f),
-            new SummonGradeRateMilestone(28, 0.510f, 0.290f, 0.135f, 0.053f, 0.012f),
-            new SummonGradeRateMilestone(31, 0.490f, 0.300f, 0.140f, 0.055f, 0.015f),
-            new SummonGradeRateMilestone(34, 0.470f, 0.310f, 0.145f, 0.057f, 0.018f),
-            new SummonGradeRateMilestone(37, 0.450f, 0.320f, 0.150f, 0.060f, 0.020f),
-            new SummonGradeRateMilestone(40, 0.430f, 0.330f, 0.155f, 0.062f, 0.023f),
-            new SummonGradeRateMilestone(43, 0.410f, 0.340f, 0.160f, 0.065f, 0.025f),
-            new SummonGradeRateMilestone(46, 0.390f, 0.350f, 0.165f, 0.068f, 0.027f),
-            new SummonGradeRateMilestone(49, 0.370f, 0.360f, 0.170f, 0.070f, 0.030f)
+            new SummonGradeRateMilestone(1, 0.960f, 0.040f, 0.000f, 0.000f, 0.000f),
+            new SummonGradeRateMilestone(3, 0.940f, 0.060f, 0.000f, 0.000f, 0.000f),
+            new SummonGradeRateMilestone(5, 0.910f, 0.085f, 0.005f, 0.000f, 0.000f),
+            new SummonGradeRateMilestone(7, 0.880f, 0.105f, 0.015f, 0.000f, 0.000f),
+            new SummonGradeRateMilestone(9, 0.840f, 0.130f, 0.028f, 0.002f, 0.000f),
+            new SummonGradeRateMilestone(11, 0.800f, 0.155f, 0.040f, 0.005f, 0.000f),
+            new SummonGradeRateMilestone(13, 0.760f, 0.180f, 0.052f, 0.008f, 0.000f),
+            new SummonGradeRateMilestone(16, 0.700f, 0.215f, 0.070f, 0.015f, 0.000f),
+            new SummonGradeRateMilestone(19, 0.650f, 0.240f, 0.087f, 0.022f, 0.001f),
+            new SummonGradeRateMilestone(22, 0.610f, 0.260f, 0.100f, 0.027f, 0.003f),
+            new SummonGradeRateMilestone(25, 0.570f, 0.275f, 0.115f, 0.035f, 0.005f),
+            new SummonGradeRateMilestone(28, 0.540f, 0.290f, 0.125f, 0.038f, 0.007f),
+            new SummonGradeRateMilestone(31, 0.510f, 0.305f, 0.135f, 0.041f, 0.009f),
+            new SummonGradeRateMilestone(34, 0.485f, 0.315f, 0.145f, 0.044f, 0.011f),
+            new SummonGradeRateMilestone(37, 0.460f, 0.325f, 0.150f, 0.052f, 0.013f),
+            new SummonGradeRateMilestone(40, 0.435f, 0.335f, 0.155f, 0.060f, 0.015f),
+            new SummonGradeRateMilestone(43, 0.410f, 0.345f, 0.160f, 0.068f, 0.017f),
+            new SummonGradeRateMilestone(46, 0.390f, 0.350f, 0.165f, 0.075f, 0.020f),
+            new SummonGradeRateMilestone(49, 0.370f, 0.355f, 0.170f, 0.082f, 0.023f)
         };
 
         private const int NormalHeroMax = 5;
@@ -343,12 +343,12 @@ namespace DefenseGame
 
         private SummonGradeRates ResolveSummonGradeRates(int currentRound)
         {
+            int round = Mathf.Max(1, currentRound);
             if (summonGradeRateMilestones == null || summonGradeRateMilestones.Count == 0)
             {
-                return ApplyDailyFortuneSummonRates(new SummonGradeRates(0.89f, 0.10f, 0.01f, 0f, 0f));
+                return ApplyDailyFortuneSummonRates(new SummonGradeRates(0.96f, 0.04f, 0f, 0f, 0f), round);
             }
 
-            int round = Mathf.Max(1, currentRound);
             SummonGradeRateMilestone selected = null;
             SummonGradeRateMilestone earliest = null;
 
@@ -374,16 +374,29 @@ namespace DefenseGame
             SummonGradeRateMilestone resolved = selected ?? earliest;
             if (resolved == null)
             {
-                return ApplyDailyFortuneSummonRates(new SummonGradeRates(0.89f, 0.10f, 0.01f, 0f, 0f));
+                return ApplyDailyFortuneSummonRates(new SummonGradeRates(0.96f, 0.04f, 0f, 0f, 0f), round);
             }
 
-            return ApplyDailyFortuneSummonRates(resolved.ToRates());
+            return ApplyDailyFortuneSummonRates(resolved.ToRates(), round);
         }
 
-        private SummonGradeRates ApplyDailyFortuneSummonRates(SummonGradeRates rates)
+        private SummonGradeRates ApplyDailyFortuneSummonRates(SummonGradeRates rates, int currentRound)
         {
             DailyFortuneRule fortune = DailyFortuneSystem.Today;
             float epicBonus = fortune != null ? Mathf.Max(0f, fortune.epicSummonChanceBonus) : 0f;
+            if (currentRound <= 4)
+            {
+                epicBonus = 0f;
+            }
+            else if (currentRound <= 8)
+            {
+                epicBonus = Mathf.Min(epicBonus, 0.005f);
+            }
+            else if (currentRound <= 12)
+            {
+                epicBonus = Mathf.Min(epicBonus, 0.015f);
+            }
+
             if (epicBonus <= 0f)
             {
                 return rates;
@@ -451,9 +464,21 @@ namespace DefenseGame
 
             switch (definition.id)
             {
+                case "hero_05":
+                    // Dice Shield Rig is a normal frontline unit; keep its body durable
+                    // without letting a single copy out-tank an entire early board.
+                    definition.stats.maxHealth = 108f;
+                    definition.stats.attackPower = 11f;
+                    definition.stats.attackSpeed = 1.0f;
+                    definition.stats.maxMana = 100f;
+                    definition.stats.manaRegenPerSecondRate = 0.05f;
+                    definition.stats.manaGainWhenHitRate = 0.10f;
+                    definition.stats.manaGainPerAttackRate = 0.15f;
+                    definition.stats.attackRange = 2.8f;
+                    break;
                 case "hero_32":
                     definition.displayName = "Dire Wolf";
-                    definition.description = "원거리 야성형 신화. 둔화·중독·공격 가속을 엮어 사냥감을 몰아붙이는 늑대 사수입니다.";
+                    definition.description = "원거리 야성형 신화. 야성의 추적탄으로 공격력 220% 피해, 4초간 35% 둔화·공격력 30%/초 중독을 주고 5초간 공격속도가 25% 증가합니다.";
                     break;
                 case "hero_55":
                     definition.displayName = "Dice Armor";

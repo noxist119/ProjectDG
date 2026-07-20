@@ -325,6 +325,9 @@ namespace DefenseGame
                 case "hero_31":
                     skill = CreatePresetSkill(characterId, "충격 강타", "적에게 공격력 150%의 피해를 주고 3초 동안 스턴시킵니다.", SkillEffectType.DamageStun, 1.5f, 0f, 3f, 2.5f, 1, 100f, 8f, growthTargets: SkillGrowthTarget.Power);
                     return true;
+                case "hero_32":
+                    skill = CreatePresetSkill(characterId, "야성의 추적탄", "공격력 220%의 피해와 4초간 35% 둔화를 주고, 공격력 30%의 중독 피해를 초당 가합니다. 시전 후 5초간 공격속도가 25% 증가합니다.", SkillEffectType.DamageSlow, 2.2f, 0.35f, 4f, 2.5f, 1, 100f, 8f, true, 6f, SkillDeliveryType.Projectile, SkillGrowthTarget.Power);
+                    return true;
                 case "hero_07":
                     skill = CreatePresetSkill(characterId, "생명 파열", "적 현재 체력의 40%만큼 피해를 줍니다.", SkillEffectType.PercentHealthDamage, 0.4f, 0f, 0f, 2.5f, 1, 100f, 8f, growthTargets: SkillGrowthTarget.Power);
                     return true;
@@ -353,7 +356,7 @@ namespace DefenseGame
                     skill = CreatePresetSkill(characterId, "독화살", "독화살을 발사해 7초 동안 적에게 초당 50 피해를 줍니다.", SkillEffectType.FixedPoison, 50f, 1f, 7f, 2.5f, 1, 100f, 9f, true, 6f, SkillDeliveryType.Projectile, SkillGrowthTarget.Power);
                     return true;
                 case "hero_05":
-                    skill = CreatePresetSkill(characterId, "철벽 방어막", "최대 체력의 100%만큼 방어막을 생성합니다.", SkillEffectType.DefenseBuff, 1f, 0f, 0f, 0.1f, 1, 100f, 12f, growthTargets: SkillGrowthTarget.Power);
+                    skill = CreatePresetSkill(characterId, "철벽 방어막", "6초 동안 자신과 근처 아군에게 최대 체력의 45% 방어막을 생성합니다.", SkillEffectType.DefenseBuff, 0.45f, 0f, 6f, 0.1f, 1, 100f, 12f, growthTargets: SkillGrowthTarget.Power);
                     return true;
                 case "hero_09":
                     skill = CreatePresetSkill(characterId, "전방 참격", "5m 전방의 모든 적에게 공격력 200%의 피해를 줍니다.", SkillEffectType.LinePierceDamage, 2f, 0.75f, 0f, 5f, 1, 100f, 9f, true, 5.5f, growthTargets: SkillGrowthTarget.Power);
@@ -464,6 +467,7 @@ namespace DefenseGame
                 deliveryType = source.deliveryType,
                 useCustomCastRange = source.useCustomCastRange,
                 castRange = source.castRange,
+                isGlobalTargeting = source.isGlobalTargeting,
                 power = source.power,
                 secondaryPower = source.secondaryPower,
                 duration = source.duration,

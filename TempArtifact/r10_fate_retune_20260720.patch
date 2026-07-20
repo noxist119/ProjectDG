@@ -1,0 +1,170 @@
+diff --git a/Assets/Scripts/DefenseGame/DefenseGameController.cs b/Assets/Scripts/DefenseGame/DefenseGameController.cs
+--- a/Assets/Scripts/DefenseGame/DefenseGameController.cs
++++ b/Assets/Scripts/DefenseGame/DefenseGameController.cs
+@@ -215,12 +215,12 @@ namespace DefenseGame
+         [SerializeField] private int ultimateRecipeBingoFateGaugeBonus = 0;
+         [SerializeField] [Range(0f, 0.5f)] private float maxFateDebtShopCostPenalty = 0.20f;
+         [SerializeField] [Range(1f, 2f)] private float fateCardBacklashMonsterCountMultiplier = 1.50f;
+-        [SerializeField] [Range(0f, 1.2f)] private float maxFateDebtBossHealthBonus = 1.00f;
++        [SerializeField] [Range(0f, 1.2f)] private float maxFateDebtBossHealthBonus = 1.15f;
+         [SerializeField] [Range(0f, 0.95f)] private float fateCardMonsterStatCrushRatio = 0.90f;
+-        [SerializeField] private int fateCardCombatGold = 75;
+-        [SerializeField] private int fateCardMonsterCrushDebt = 86;
++        [SerializeField] private int fateCardCombatGold = 60;
++        [SerializeField] private int fateCardMonsterCrushDebt = 94;
+         [SerializeField] private int fateCardCombatDraftDebt = 80;
+-        [SerializeField] private int fateCardFullHealDebt = 76;
++        [SerializeField] private int fateCardFullHealDebt = 82;
+         [SerializeField] private int fateCardForbiddenSummonDebt = 82;
+         [SerializeField] private int fateCardGamblerDebt = 58;
+         [SerializeField] private int fateCardLastBarrierDebt = 72;
+@@ -230,8 +230,8 @@ namespace DefenseGame
+         [SerializeField] private int fateCardGamblerGoldFallbackGain = 20;
+         [SerializeField] private int fateCardGamblerFailLifeCost = 2;
+         [SerializeField] private float fateCardGamblerFailStunDuration = 2f;
+-        [SerializeField] private int fateCardGoldLoanDebt = 74;
+-        [SerializeField] private int fateCardGoldLoanGold = 75;
++        [SerializeField] private int fateCardGoldLoanDebt = 82;
++        [SerializeField] private int fateCardGoldLoanGold = 60;
+         [SerializeField] private int fateCardRareMercenaryDebt = 68;
+         [SerializeField] private int fateCardRareMercenaryCount = 2;
+         [SerializeField] private int fateCardEpicAdvanceDebt = 72;
+@@ -247,8 +247,8 @@ namespace DefenseGame
+         [SerializeField] [Range(0f, 1f)] private float fateCardThunderDamageRatio = 0.25f;
+         [SerializeField] private int fateCardManaFloodDebt = 54;
+         [SerializeField] private int fateCardManaFloodLifeCost = 2;
+-        [SerializeField] private int fateCardWallRepairDebt = 62;
+-        [SerializeField] private int fateCardWallRepairLife = 4;
++        [SerializeField] private int fateCardWallRepairDebt = 68;
++        [SerializeField] private int fateCardWallRepairLife = 3;
+         [SerializeField] [Range(0f, 1f)] private float fateCardWallRepairCostPenalty = 0.25f;
+         [SerializeField] private int fateCardSmugglerRouteDebt = 62;
+         [SerializeField] [Range(0f, 1f)] private float fateCardSmugglerRouteDiscount = 0.40f;
+@@ -256,9 +256,9 @@ namespace DefenseGame
+         [SerializeField] private int fateCardSmugglerRouteGold = 45;
+         [SerializeField] private int fateCardLifeForgeDebt = 70;
+         [SerializeField] private int fateCardLifeForgeMaxLife = 3;
+-        [SerializeField] private int fateCardGradeRiggingDebt = 68;
++        [SerializeField] private int fateCardGradeRiggingDebt = 74;
+         [SerializeField] private int fateCardGradeRiggingSummons = 4;
+-        [SerializeField] private int fateCardGradeRiggingGold = 45;
++        [SerializeField] private int fateCardGradeRiggingGold = 35;
+ 
+         private int maxLife;
+         private int currentSummonBaseCost;
+@@ -2218,6 +2218,7 @@ namespace DefenseGame
+             runFateInterventionCount++;
+             runFateContractCount++;
+             AddFateDebt(fateCardLastDebt, title);
++            ApplyFateDebtPressureToActiveBosses();
+             AddRunHighlightCard("마지막 계약", title + " / " + detail + " / 빚 +" + fateCardLastDebt);
+             RuntimeAudioUtility.PlayJackpotMajor();
+             OnBannerRequested?.Invoke("마지막 계약: " + title, color, 2.8f);
+@@ -2225,6 +2226,25 @@ namespace DefenseGame
+             return true;
+         }
+ 
++        private void ApplyFateDebtPressureToActiveBosses()
++        {
++            IReadOnlyList<MonsterUnit> monsters = MonsterUnit.ActiveInstances;
++            int strengthened = 0;
++            for (int i = 0; i < monsters.Count; i++)
++            {
++                MonsterUnit monster = monsters[i];
++                if (monster != null && monster.RefreshFateDebtBossHealthPressure())
++                {
++                    strengthened++;
++                }
++            }
++
++            if (strengthened > 0)
++            {
++                AddRunHighlightCard("운명 대가 즉시 청구", "현재 보스 " + strengthened + "기 HP 강화");
++                OnBannerRequested?.Invoke("운명 대가 청구  현재 보스 HP 강화", new Color(0.92f, 0.24f, 0.34f), 2.2f);
++            }
++        }
++
+         private bool IsFateCardCombatChoiceAvailable()
+         {
+             return enableFateIntervention && useOneShotFateCard && !fateCardUsed && !gameOverRaised && roundManager != null && roundManager.IsRoundRunning && CurrentRound > 0 && MonsterUnit.ActiveCount > 0;
+diff --git a/Assets/Scripts/DefenseGame/MonsterUnit.cs b/Assets/Scripts/DefenseGame/MonsterUnit.cs
+--- a/Assets/Scripts/DefenseGame/MonsterUnit.cs
++++ b/Assets/Scripts/DefenseGame/MonsterUnit.cs
+@@ -38,6 +38,7 @@ namespace DefenseGame
+         private DefenseGameController gameController;
+         private float currentHealth;
+         private float outgameHealthMultiplier = 1f;
++        private float appliedFateBossHealthMultiplier = 1f;
+         private float outgameAttackMultiplier = 1f;
+         private float currentMana;
+         private float attackCooldown;
+@@ -450,6 +451,7 @@ namespace DefenseGame
+         {
+             definition = newDefinition;
+             outgameHealthMultiplier = 1f;
++            appliedFateBossHealthMultiplier = 1f;
+             outgameAttackMultiplier = 1f;
+             if (OutgameProgressionSystem.Active != null)
+             {
+@@ -464,7 +466,8 @@ namespace DefenseGame
+ 
+             if (definition != null && definition.IsBossLike && DefenseGameController.Active != null)
+             {
+-                outgameHealthMultiplier *= DefenseGameController.Active.FateDebtBossHealthMultiplier;
++                appliedFateBossHealthMultiplier = Mathf.Max(1f, DefenseGameController.Active.FateDebtBossHealthMultiplier);
++                outgameHealthMultiplier *= appliedFateBossHealthMultiplier;
+             }
+ 
+             goal = goalPoint;
+@@ -518,6 +521,35 @@ namespace DefenseGame
+             floatingUi.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
+         }
+ 
++        public bool RefreshFateDebtBossHealthPressure()
++        {
++            if (!IsBoss || currentHealth <= 0f || DefenseGameController.Active == null)
++            {
++                return false;
++            }
++
++            float targetMultiplier = Mathf.Max(1f, DefenseGameController.Active.FateDebtBossHealthMultiplier);
++            float previousMultiplier = Mathf.Max(1f, appliedFateBossHealthMultiplier);
++            if (targetMultiplier <= previousMultiplier + 0.001f)
++            {
++                return false;
++            }
++
++            float previousMaxHealth = MaxHealth;
++            outgameHealthMultiplier *= targetMultiplier / previousMultiplier;
++            appliedFateBossHealthMultiplier = targetMultiplier;
++            float addedHealth = Mathf.Max(0f, MaxHealth - previousMaxHealth);
++            currentHealth = Mathf.Min(MaxHealth, currentHealth + addedHealth);
++            floatingUi?.ShowStatus(
++                "운명 대가  HP +" + Mathf.RoundToInt((targetMultiplier - previousMultiplier) * 100f) + "%",
++                new Color(1f, 0.30f, 0.38f),
++                1.8f);
++            floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
++            RuntimeCombatFeedback.ShowGroundPulse(transform.position, new Color(0.95f, 0.20f, 0.32f), 1.25f, 0.70f, 0.12f);
++            return addedHealth > 0f;
++        }
++
+         public void TakeDamage(float amount, bool critical)
+         {
+             TakeDamage(amount, critical, false, null);
+diff --git a/Assets/Scripts/DefenseGame/MonsterDatabase.cs b/Assets/Scripts/DefenseGame/MonsterDatabase.cs
+--- a/Assets/Scripts/DefenseGame/MonsterDatabase.cs
++++ b/Assets/Scripts/DefenseGame/MonsterDatabase.cs
+@@ -67,10 +67,10 @@ namespace DefenseGame
+             new BossEncounterBalance
+             {
+                 encounterIndex = 0,
+-                designerNote = "R10 / human 3-strategy target clear rate 65-75% / 2026-07 tie-win retune +5-8%",
++                designerNote = "R10 / human 3-strategy target clear rate 65-75% / 2026-07 20-run baseline 95% fate-pressure retune",
+                 description = "Boss 1: Rare core + one Epic or clean tile usage.",
+-                healthScale = 2.94f,
+-                attackScale = 1.84f,
++                healthScale = 3.35f,
++                attackScale = 2.00f,
+                 manaScale = 1.05f,
+                 skillPowerScale = 1.45f,
+                 cooldownScale = 1.025f,

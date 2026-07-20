@@ -12,16 +12,16 @@ namespace DefenseGame.Editor
 {
     public static class DefenseGameBatchPlaytest
     {
-        private const int TargetRuns = 10;
+        private const int TargetRuns = 20;
         private const int TargetRound = 10;
-        private const float BatchTimeScale = 54f;
-        private const float BatchFixedDeltaTime = 0.05f;
-        private const float BatchMaximumDeltaTime = 0.75f;
+        private const float BatchTimeScale = 40f;
+        private const float BatchFixedDeltaTime = 0.025f;
+        private const float BatchMaximumDeltaTime = 0.33f;
         private const double RoundTimeoutSeconds = 45d;
         private const double RunTimeoutSeconds = 300d;
         private const string ScenePath = "Assets/Scenes/DG.unity";
         private const string OutputDirectoryName = "BatchPlaytestResults";
-        private const string OutputFileName = "DefenseGame_Playtest10_Human3.json";
+        private const string OutputFileName = "DefenseGame_Playtest20_Human3.json";
         private const string MissingScriptReportFileName = "RuntimeMissingScripts.json";
         private static string OutputDirectory => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName));
         private static string OutputPath => Path.Combine(OutputDirectory, OutputFileName);
@@ -48,8 +48,9 @@ namespace DefenseGame.Editor
         private static int previousVSyncCount;
         private static bool previousRunInBackground;
         private static int missingScriptWarningsObserved;
+        private static readonly List<string> MissingScriptWarningSamples = new List<string>();
 
-        [MenuItem("DefenseGame/Batch Playtest/Run Human Strategies 10 Total")]
+        [MenuItem("DefenseGame/Batch Playtest/Run Human Strategies 20 Total")]
         public static void RunHumanStrategies20()
         {
             Results.Clear();
@@ -63,6 +64,7 @@ namespace DefenseGame.Editor
             waitingRoundEnd = false;
             started = false;
             missingScriptWarningsObserved = 0;
+            MissingScriptWarningSamples.Clear();
 
             Directory.CreateDirectory(OutputDirectory);
             if (File.Exists(OutputPath))
@@ -120,6 +122,28 @@ namespace DefenseGame.Editor
             }
         }
 
+        private static void ApplyBatchSpeedSettings()
+        {
+            if (!Mathf.Approximately(Time.timeScale, BatchTimeScale))
+            {
+                Time.timeScale = BatchTimeScale;
+            }
+
+            if (!Mathf.Approximately(Time.fixedDeltaTime, BatchFixedDeltaTime))
+            {
+                Time.fixedDeltaTime = BatchFixedDeltaTime;
+            }
+
+            if (!Mathf.Approximately(Time.maximumDeltaTime, BatchMaximumDeltaTime))
+            {
+                Time.maximumDeltaTime = BatchMaximumDeltaTime;
+            }
+
+            Application.targetFrameRate = 240;
+            Application.runInBackground = true;
+            QualitySettings.vSyncCount = 0;
+        }
+
         private static void Tick()
         {
             if (!EditorApplication.isPlaying)
@@ -127,6 +151,7 @@ namespace DefenseGame.Editor
                 return;
             }
 
+            ApplyBatchSpeedSettings();
             if (EditorApplication.timeSinceStartup < nextActionTime)
             {
                 return;
@@ -141,7 +166,7 @@ namespace DefenseGame.Editor
                     return;
                 }
 
-                Time.timeScale = BatchTimeScale;
+                ApplyBatchSpeedSettings();
                 started = true;
                 WriteRuntimeMissingScriptReport("batch_start");
                 StartRun();
@@ -176,6 +201,7 @@ namespace DefenseGame.Editor
 
                 if (controller.IsRoundRunning)
                 {
+                    TryUsePreferredFateCardByStrategy();
                     if (EditorApplication.timeSinceStartup - roundStartEditorTime > RoundTimeoutSeconds)
                     {
                         current.timeout = true;
@@ -192,12 +218,18 @@ namespace DefenseGame.Editor
                 current.endGold = controller.Gold;
                 current.endLife = controller.Life;
                 current.r10BossHealthRemaining01 = ResolveRemainingBossHealth01();
+                if (lastObservedRound >= TargetRound)
+                {
+                    CompleteRun();
+                    return;
+                }
+
                 waitingRoundEnd = false;
                 nextActionTime = EditorApplication.timeSinceStartup + 0.35d;
                 return;
             }
 
-            if (controller.Life <= 0 || controller.CurrentRound >= TargetRound)
+            if (controller.Life <= 0 || controller.CurrentRound > TargetRound)
             {
                 CompleteRun();
                 return;
@@ -206,6 +238,7 @@ namespace DefenseGame.Editor
             HandleShopIfOpen();
             CloseResultOverlayIfOpen();
             ChooseAugmentIfOpen();
+            TryUsePreferredFateCardByStrategy();
             TryUseFateSummonQualityBoost();
             TryUseFateSurvivalInCrisis();
             ExecutePrepPolicy();
@@ -214,6 +247,7 @@ namespace DefenseGame.Editor
 
         private static void StartRun()
         {
+            UnityEngine.Random.InitState(90210 + runIndex * 7919);
             current = new RunResult
             {
                 index = runIndex + 1,
@@ -248,7 +282,8 @@ namespace DefenseGame.Editor
             current.endGold = controller.Gold;
             current.endLife = controller.Life;
             current.r10BossHealthRemaining01 = ResolveRemainingBossHealth01();
-            current.clearedR10 = controller.Life > 0 && controller.CurrentRound >= TargetRound && !current.timeout;
+            CaptureFateCardSnapshot("complete");
+            current.clearedR10 = controller.Life > 0 && lastObservedRound >= TargetRound && !current.timeout;
             Results.Add(current);
             File.WriteAllText(OutputPath + ".partial", BuildJson("partial"), Encoding.UTF8);
 
@@ -284,11 +319,16 @@ namespace DefenseGame.Editor
             Application.logMessageReceived -= HandleLogMessage;
             Debug.Log("[DefenseGameBatchPlaytest] wrote " + OutputPath + "\n" + json);
             EditorApplication.isPlaying = false;
-            EditorApplication.Exit(status == "complete" ? 0 : 1);
+            if (Application.isBatchMode)
+            {
+                EditorApplication.Exit(status == "complete" ? 0 : 1);
+            }
         }
 
         private static void ExecutePrepPolicy()
         {
+            TryMaintainHumanMergeTempo();
+
             int reserve = ResolveGoldReserve();
             int safetyLoops = 0;
             while (safetyLoops < 24)
@@ -318,10 +358,42 @@ namespace DefenseGame.Editor
 
                 current.summons++;
                 RefreshFirstRareRound();
+                TryMaintainHumanMergeTempo();
                 safetyLoops++;
             }
 
+            TryMaintainHumanMergeTempo();
             RefreshFirstRareRound();
+        }
+
+        private static void TryMaintainHumanMergeTempo()
+        {
+            if (controller == null || current == null)
+            {
+                return;
+            }
+
+            int safetyLoops = 0;
+            while (safetyLoops < 8 && controller.BoardUnitCount >= MinimumBoardUnits() + 2)
+            {
+                int beforeCount = controller.BoardUnitCount;
+                bool merged = TryMerge(CharacterGrade.Normal) ||
+                              TryMerge(CharacterGrade.Rare) ||
+                              TryMerge(CharacterGrade.Epic);
+
+                int nextRound = controller.CurrentRound + 1;
+                if (!merged && (nextRound >= 8 || controller.BoardUnitCount >= MinimumBoardUnits() + 4))
+                {
+                    merged = TryMerge(CharacterGrade.Legendary);
+                }
+
+                if (!merged || controller.BoardUnitCount >= beforeCount)
+                {
+                    break;
+                }
+
+                safetyLoops++;
+            }
         }
 
         private static bool TryMergeOneAvailable()
@@ -334,7 +406,7 @@ namespace DefenseGame.Editor
 
         private static void TryUseFateSurvivalInCrisis()
         {
-            if (controller == null || current == null)
+            if (controller == null || current == null || current.fateUses > 0)
             {
                 return;
             }
@@ -356,13 +428,194 @@ namespace DefenseGame.Editor
 
             if (controller.TryActivateFateSurvival())
             {
-                current.fateUses++;
+                RecordFateUse("crisis_slot0", 0);
+            }
+        }
+
+        private static void TryUsePreferredFateCardByStrategy()
+        {
+            if (controller == null || current == null || current.fateUses > 0 || !controller.CanOpenFateCard)
+            {
+                return;
+            }
+
+            int nextRound = controller.CurrentRound + 1;
+            if (!ShouldUseFateCardForStrategy(nextRound))
+            {
+                return;
+            }
+
+            int choiceIndex = FindPreferredFateChoiceIndex(ResolveFateCardPreferences());
+            if (!controller.TryOpenFateCardChoicePanel())
+            {
+                return;
+            }
+
+            if (choiceIndex < 0)
+            {
+                return;
+            }
+
+            if (controller.TryActivateFateCardChoice(choiceIndex))
+            {
+                RecordFateUse("strategy_prefer", choiceIndex);
+            }
+        }
+
+        private static bool ShouldUseFateCardForStrategy(int nextRound)
+        {
+            if (controller == null || current == null || !controller.IsRoundRunning || controller.CurrentRound < 5)
+            {
+                return false;
+            }
+
+            float lifeRatio = controller.MaxLife > 0 ? (float)controller.Life / controller.MaxLife : 1f;
+            if (controller.CurrentRound >= TargetRound)
+            {
+                return true;
+            }
+
+            if (current.strategy == "summon-heavy")
+            {
+                return controller.CurrentRound >= 7 && lifeRatio <= 0.75f;
+            }
+
+            if (current.strategy == "balanced")
+            {
+                return controller.CurrentRound >= 6 && lifeRatio <= 0.78f;
+            }
+
+            if (current.strategy == "shop-save")
+            {
+                return controller.CurrentRound >= 6 && (lifeRatio <= 0.82f || controller.BoardUnitCount < MinimumBoardUnits());
+            }
+
+            return false;
+        }
+
+        private static string[] ResolveFateCardPreferences()
+        {
+            if (current == null)
+            {
+                return new string[0];
+            }
+
+            if (current.strategy == "summon-heavy")
+            {
+                return new[] { "등급 조작", "에픽 선불", "용병 호출", "황금 대출", "밀수 루트", "응급 방벽", "왕의 공포", "금단의 소환", "전장 개방" };
+            }
+
+            if (current.strategy == "balanced")
+            {
+                return new[] { "응급 방벽", "황금 대출", "용병 호출", "등급 조작", "에픽 선불", "밀수 루트", "왕의 공포", "최후의 방벽", "피의 계약", "암시장 개장", "생명 주조" };
+            }
+
+            return new[] { "암시장 개장", "황금 대출", "응급 방벽", "용병 호출", "등급 조작", "밀수 루트", "왕의 공포", "최후의 방벽", "피의 계약", "전장 개방", "생명 주조" };
+        }
+
+        private static int FindPreferredFateChoiceIndex(string[] preferences)
+        {
+            if (controller == null || preferences == null || preferences.Length == 0)
+            {
+                return -1;
+            }
+
+            for (int p = 0; p < preferences.Length; p++)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    string label = controller.GetFateCardChoiceHudLabel(i);
+                    if (!string.IsNullOrWhiteSpace(label) && !ShouldSkipRiskyFateChoice(label) && label.IndexOf(preferences[p], StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            for (int i = 0; i < 3; i++)
+            {
+                string label = controller.GetFateCardChoiceHudLabel(i);
+                if (!string.IsNullOrWhiteSpace(label) && !ShouldSkipRiskyFateChoice(label))
+                {
+                    return i;
+                }
+            }
+
+            for (int i = 0; i < 3; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(controller.GetFateCardChoiceHudLabel(i)))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private static bool ShouldSkipRiskyFateChoice(string label)
+        {
+            if (controller == null || string.IsNullOrWhiteSpace(label))
+            {
+                return false;
+            }
+
+            int nextRound = controller.CurrentRound + 1;
+            float lifeRatio = controller.MaxLife > 0 ? (float)controller.Life / controller.MaxLife : 1f;
+            if (ContainsAny(label, "시간 정지", "심판 번개") && !controller.IsRoundRunning)
+            {
+                return false;
+            }
+
+            if (ContainsAny(label, "생명 주조") && nextRound <= 6 && controller.Gold >= controller.SummonCost * 2)
+            {
+                return true;
+            }
+
+            bool riskyLifeCost = ContainsAny(label, "HP-", "HP -", "HP 절반", "HP 1", "라이프 -", "라이프-", "도박");
+            if (!riskyLifeCost)
+            {
+                return false;
+            }
+
+            return nextRound <= 4 || lifeRatio <= 0.85f || ContainsAny(label, "도박사의 판");
+        }
+
+        private static void RecordFateUse(string trigger, int choiceIndex)
+        {
+            if (current == null || controller == null)
+            {
+                return;
+            }
+
+            current.fateUses++;
+            current.fateTrigger = trigger ?? string.Empty;
+            current.fateChoiceIndex = choiceIndex;
+            current.fateActivationRound = Mathf.Max(1, controller.CurrentRound);
+            CaptureFateCardSnapshot(trigger);
+            if (!string.IsNullOrWhiteSpace(current.fateCardTitle))
+            {
+                current.notes.Add("fate_" + current.fateActivationRound + "_" + current.fateCardTitle);
+            }
+        }
+
+        private static void CaptureFateCardSnapshot(string trigger)
+        {
+            if (current == null || controller == null || !controller.FateCardWasUsed)
+            {
+                return;
+            }
+
+            current.fateCardTitle = controller.FateCardLastTitle;
+            current.fateCardDetail = controller.FateCardLastDetail;
+            current.fateCardDebt = controller.FateCardLastDebt;
+            if (string.IsNullOrWhiteSpace(current.fateTrigger))
+            {
+                current.fateTrigger = trigger ?? string.Empty;
             }
         }
 
         private static void TryUseFateSummonQualityBoost()
         {
-            if (controller == null || current == null || current.strategy != "summon-heavy")
+            if (controller == null || current == null || current.strategy != "summon-heavy" || controller.CanUseFateCard)
             {
                 return;
             }
@@ -375,7 +628,7 @@ namespace DefenseGame.Editor
 
             if (controller.TryActivateFateNormalBan(4))
             {
-                current.fateUses++;
+                RecordFateUse("summon_quality_slot2", 2);
             }
         }
 
@@ -400,12 +653,12 @@ namespace DefenseGame.Editor
             int nextRound = controller.CurrentRound + 1;
             if (nextRound <= 3)
             {
-                return 12;
+                return current.strategy == "shop-save" ? 10 : 12;
             }
 
             if (nextRound <= 6)
             {
-                return 32;
+                return current.strategy == "shop-save" ? 22 : 32;
             }
 
             return 20;
@@ -417,6 +670,11 @@ namespace DefenseGame.Editor
             if (nextRound <= 2)
             {
                 return 3;
+            }
+
+            if (current != null && current.strategy == "shop-save" && nextRound <= 5)
+            {
+                return 6;
             }
 
             if (nextRound <= 5)
@@ -525,12 +783,15 @@ namespace DefenseGame.Editor
                 current.r6ShopSeen = true;
             }
 
-            bool balancedPurchaseAvailable = current.strategy == "balanced" && current.shopPurchases < 1;
             bool shopFocused = current.strategy == "shop-save";
+            bool shouldConsiderPurchase = current.shopPurchases < ResolveShopPurchaseLimit();
             bool bought = false;
-            if (balancedPurchaseAvailable || shopFocused)
+            if (shouldConsiderPurchase)
             {
                 Button[] buttons = overlay.GetComponentsInChildren<Button>(true);
+                Button bestButton = null;
+                int bestCost = 0;
+                int bestScore = int.MinValue;
                 for (int i = 0; i < buttons.Length; i++)
                 {
                     Button button = buttons[i];
@@ -540,24 +801,32 @@ namespace DefenseGame.Editor
                     }
 
                     int offerCost = ResolveOfferGoldCost(button);
-                    int reserve = balancedPurchaseAvailable ? Mathf.Max(16, controller.SummonCost * 2) : 0;
+                    int reserve = ResolveShopGoldReserve(shopFocused, round);
                     if (offerCost < 0 || controller.Gold < offerCost + reserve)
                     {
                         continue;
                     }
 
+                    int score = ScoreShopOfferForStrategy(button, offerCost, shopFocused);
+                    int minimumScore = ResolveShopMinimumScore(shopFocused, offerCost);
+                    if (score >= minimumScore && score > bestScore)
+                    {
+                        bestButton = button;
+                        bestCost = offerCost;
+                        bestScore = score;
+                    }
+                }
+
+                if (bestButton != null)
+                {
                     int before = controller.Gold;
-                    button.onClick.Invoke();
-                    if (controller.Gold < before)
+                    bestButton.onClick.Invoke();
+                    if (controller.Gold < before || overlay == null || !overlay.activeInHierarchy || !bestButton.gameObject.activeInHierarchy)
                     {
                         bought = true;
                         current.shopPurchases++;
                         current.shopGoldSpent += before - controller.Gold;
-                    }
-
-                    if (bought)
-                    {
-                        break;
+                        current.notes.Add("shop_" + Mathf.Max(1, controller.CurrentRound) + "_" + CompactNote(BuildButtonSearchText(bestButton), 24) + "_" + bestCost + "G");
                     }
                 }
             }
@@ -570,6 +839,56 @@ namespace DefenseGame.Editor
                     close.onClick.Invoke();
                 }
             }
+        }
+
+        private static int ResolveShopPurchaseLimit()
+        {
+            if (current == null)
+            {
+                return 0;
+            }
+
+            if (current.strategy == "shop-save")
+            {
+                return 2;
+            }
+
+            return 1;
+        }
+
+        private static int ResolveShopGoldReserve(bool shopFocused, int round)
+        {
+            if (controller == null || current == null)
+            {
+                return 0;
+            }
+
+            if (shopFocused)
+            {
+                return round <= 3 ? 0 : Mathf.Max(0, controller.SummonCost / 2);
+            }
+
+            if (current.strategy == "balanced")
+            {
+                return round <= 3 ? Mathf.Max(0, controller.SummonCost / 2) : Mathf.Max(0, controller.SummonCost);
+            }
+
+            return round <= 3 ? 0 : Mathf.Max(0, controller.SummonCost);
+        }
+
+        private static int ResolveShopMinimumScore(bool shopFocused, int offerCost)
+        {
+            if (shopFocused)
+            {
+                return offerCost <= 0 ? 20 : 35;
+            }
+
+            if (current != null && current.strategy == "summon-heavy")
+            {
+                return offerCost <= 0 ? 35 : 65;
+            }
+
+            return offerCost <= 0 ? 30 : 45;
         }
 
         private static int ResolveOfferGoldCost(Button button)
@@ -589,19 +908,113 @@ namespace DefenseGame.Editor
                 }
 
                 int goldMarker = text.text.IndexOf('G');
-                if (goldMarker <= 0)
+                if (goldMarker > 0)
                 {
-                    return -1;
+                    string numeric = text.text.Substring(0, goldMarker).Trim();
+                    if (int.TryParse(numeric, out int cost))
+                    {
+                        return Mathf.Max(0, cost);
+                    }
                 }
 
-                string numeric = text.text.Substring(0, goldMarker).Trim();
-                if (int.TryParse(numeric, out int cost))
+                if (ContainsAny(text.text, "무료", "보험", "운명", "라이프", "HP -"))
                 {
-                    return Mathf.Max(0, cost);
+                    return 0;
+                }
+
+                if (ContainsAny(text.text, "골드+HP"))
+                {
+                    return 999;
                 }
             }
 
             return -1;
+        }
+
+        private static int ScoreShopOfferForStrategy(Button button, int offerCost, bool shopFocused)
+        {
+            string text = BuildButtonSearchText(button);
+            bool risky = ContainsAny(text, "위험", "HP -", "HP-", "라이프 -", "라이프-", "빚", "계약");
+            int score = offerCost <= 0 ? 70 : Mathf.Max(0, 125 - offerCost);
+            score += ContainsAny(text, "보험", "구제", "대응권") ? 92 : 0;
+            score += ContainsAny(text, "긴급 소환", "소환권", "레어 보급", "레어 지원", "용병") ? 70 : 0;
+            score += ContainsAny(text, "보스 대비", "보스 정보", "보스 피해", "화력", "증강체") ? 62 : 0;
+            score += ContainsAny(text, "합성", "재료", "부스터") ? 60 : 0;
+            score += ContainsAny(text, "쿠폰", "할인", "소환비") ? 42 : 0;
+            score += ContainsAny(text, "회복", "의무병", "수호", "방벽", "체력") ? 32 : 0;
+
+            if (shopFocused)
+            {
+                score += ContainsAny(text, "구제", "레어", "용병") ? 90 : 0;
+                score += ContainsAny(text, "회복", "의무병", "수호", "방벽", "체력") ? 72 : 0;
+                score += ContainsAny(text, "합성", "재료", "Merge") ? 58 : 0;
+                score += ContainsAny(text, "할인", "쿠폰", "소환비") ? 42 : 0;
+                score += ContainsAny(text, "화력", "스킬", "공격") ? 32 : 0;
+                score -= risky ? ResolveRiskyShopPenalty() : 0;
+                return score;
+            }
+
+            score += ContainsAny(text, "합성", "재료", "레어", "화력", "스킬") ? 42 : 0;
+            score += ContainsAny(text, "회복", "수호") ? 22 : 0;
+            score -= risky ? ResolveRiskyShopPenalty() : 0;
+            return score;
+        }
+
+        private static int ResolveRiskyShopPenalty()
+        {
+            if (controller == null || controller.MaxLife <= 0)
+            {
+                return 120;
+            }
+
+            float lifeRatio = (float)controller.Life / controller.MaxLife;
+            return lifeRatio <= 0.55f ? 190 : lifeRatio <= 0.75f ? 145 : 105;
+        }
+
+        private static string BuildButtonSearchText(Button button)
+        {
+            if (button == null)
+            {
+                return string.Empty;
+            }
+
+            Text[] texts = button.GetComponentsInChildren<Text>(true);
+            StringBuilder builder = new StringBuilder(128);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                Text text = texts[i];
+                if (text == null || string.IsNullOrWhiteSpace(text.text))
+                {
+                    continue;
+                }
+
+                if (builder.Length > 0)
+                {
+                    builder.Append(' ');
+                }
+
+                builder.Append(text.text);
+            }
+
+            return builder.ToString();
+        }
+
+        private static bool ContainsAny(string text, params string[] tokens)
+        {
+            if (string.IsNullOrWhiteSpace(text) || tokens == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(tokens[i]) && text.IndexOf(tokens[i], StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void ChooseAugmentIfOpen()
@@ -653,6 +1066,10 @@ namespace DefenseGame.Editor
             if (type == LogType.Warning && !string.IsNullOrEmpty(condition) && condition.Contains("referenced script") && condition.Contains("missing"))
             {
                 missingScriptWarningsObserved++;
+                if (MissingScriptWarningSamples.Count < 12 && !MissingScriptWarningSamples.Contains(condition))
+                {
+                    MissingScriptWarningSamples.Add(condition);
+                }
             }
         }
 
@@ -693,6 +1110,23 @@ namespace DefenseGame.Editor
             builder.AppendLine("  \"warningsObserved\": " + missingScriptWarningsObserved + ",");
             builder.AppendLine("  \"liveObjectsWithMissingScripts\": " + entries.Count + ",");
             builder.AppendLine("  \"totalMissingScriptsOnLiveObjects\": " + totalMissing + ",");
+            builder.AppendLine("  \"liveAuditPassed\": " + JsonBool(totalMissing == 0) + ",");
+            builder.AppendLine("  \"historyStatus\": \"" + (missingScriptWarningsObserved == 0
+                ? "clean"
+                : totalMissing == 0 ? "warning_history_only_no_live_missing_scripts" : "active_missing_scripts_detected") + "\",");
+            builder.AppendLine("  \"warningSamples\": [");
+            for (int i = 0; i < MissingScriptWarningSamples.Count; i++)
+            {
+                builder.Append("    \"").Append(EscapeJson(MissingScriptWarningSamples[i])).Append('"');
+                if (i < MissingScriptWarningSamples.Count - 1)
+                {
+                    builder.Append(',');
+                }
+
+                builder.AppendLine();
+            }
+
+            builder.AppendLine("  ],");
             builder.AppendLine("  \"objects\": [");
             for (int i = 0; i < entries.Count; i++)
             {
@@ -736,6 +1170,18 @@ namespace DefenseGame.Editor
                 : value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n");
         }
 
+        private static string CompactNote(string value, int maxChars)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return "none";
+            }
+
+            string compact = value.Replace("\r", " ").Replace("\n", " ").Trim();
+            int safeMax = Mathf.Max(4, maxChars);
+            return compact.Length <= safeMax ? compact : compact.Substring(0, safeMax - 1) + "…";
+        }
+
         private static string JsonBool(bool value)
         {
             return value ? "true" : "false";
@@ -761,6 +1207,8 @@ namespace DefenseGame.Editor
             int rareRoundCount = 0;
             float mergeRoundSum = 0f;
             int mergeRoundCount = 0;
+            Dictionary<string, int> fateCardUsesByTitle = new Dictionary<string, int>();
+            Dictionary<string, int> fateCardClearsByTitle = new Dictionary<string, int>();
 
             for (int i = 0; i < Results.Count; i++)
             {
@@ -794,6 +1242,14 @@ namespace DefenseGame.Editor
                 {
                     shopSaveRuns++;
                     if (result.clearedR10) shopSaveClears++;
+                }
+                if (!string.IsNullOrWhiteSpace(result.fateCardTitle) && result.fateCardTitle != "미사용")
+                {
+                    AddCount(fateCardUsesByTitle, result.fateCardTitle, 1);
+                    if (result.clearedR10)
+                    {
+                        AddCount(fateCardClearsByTitle, result.fateCardTitle, 1);
+                    }
                 }
                 if (result.firstRarePlusRound > 0)
                 {
@@ -833,6 +1289,24 @@ namespace DefenseGame.Editor
             builder.AppendLine("  \"shopSaveR10SuccessRate\": " + FormatRatio(shopSaveClears, shopSaveRuns) + ",");
             builder.AppendLine("  \"avgFirstRarePlusRound\": " + FormatFloat(rareRoundCount > 0 ? rareRoundSum / rareRoundCount : -1f) + ",");
             builder.AppendLine("  \"avgFirstMergeRound\": " + FormatFloat(mergeRoundCount > 0 ? mergeRoundSum / mergeRoundCount : -1f) + ",");
+            builder.AppendLine("  \"fateCardBreakdown\": [");
+            int fateCardIndex = 0;
+            foreach (KeyValuePair<string, int> pair in fateCardUsesByTitle)
+            {
+                int cardClears = fateCardClearsByTitle.TryGetValue(pair.Key, out int clearCount) ? clearCount : 0;
+                builder.Append("    {");
+                builder.Append("\"title\":\"").Append(EscapeJson(pair.Key)).Append("\",");
+                builder.Append("\"uses\":").Append(pair.Value).Append(',');
+                builder.Append("\"r10Clears\":").Append(cardClears).Append(',');
+                builder.Append("\"successRate\":").Append(FormatRatio(cardClears, pair.Value));
+                builder.Append("}");
+                if (++fateCardIndex < fateCardUsesByTitle.Count)
+                {
+                    builder.Append(',');
+                }
+                builder.AppendLine();
+            }
+            builder.AppendLine("  ],");
             builder.AppendLine("  \"results\": [");
             for (int i = 0; i < Results.Count; i++)
             {
@@ -847,6 +1321,12 @@ namespace DefenseGame.Editor
                 builder.Append("\"shopPurchases\":").Append(result.shopPurchases).Append(',');
                 builder.Append("\"shopGoldSpent\":").Append(result.shopGoldSpent).Append(',');
                 builder.Append("\"fateUses\":").Append(result.fateUses).Append(',');
+                builder.Append("\"fateCardTitle\":\"").Append(EscapeJson(result.fateCardTitle)).Append("\",");
+                builder.Append("\"fateCardDebt\":").Append(result.fateCardDebt).Append(',');
+                builder.Append("\"fateChoiceIndex\":").Append(result.fateChoiceIndex).Append(',');
+                builder.Append("\"fateActivationRound\":").Append(result.fateActivationRound).Append(',');
+                builder.Append("\"fateTrigger\":\"").Append(EscapeJson(result.fateTrigger)).Append("\",");
+                builder.Append("\"fateCardDetail\":\"").Append(EscapeJson(result.fateCardDetail)).Append("\",");
                 builder.Append("\"r3ShopSeen\":").Append(result.r3ShopSeen ? "true" : "false").Append(',');
                 builder.Append("\"r6ShopSeen\":").Append(result.r6ShopSeen ? "true" : "false").Append(',');
                 builder.Append("\"firstRarePlusRound\":").Append(result.firstRarePlusRound).Append(',');
@@ -868,6 +1348,16 @@ namespace DefenseGame.Editor
             builder.AppendLine("  ]");
             builder.AppendLine("}");
             return builder.ToString();
+        }
+
+        private static void AddCount(Dictionary<string, int> target, string key, int amount)
+        {
+            if (target == null || string.IsNullOrWhiteSpace(key))
+            {
+                return;
+            }
+
+            target[key] = target.TryGetValue(key, out int currentCount) ? currentCount + amount : amount;
         }
 
         private static string FormatFloat(float value)
@@ -897,6 +1387,12 @@ namespace DefenseGame.Editor
             public bool r6ShopSeen;
             public int firstRarePlusRound;
             public int firstMergeRound;
+            public string fateCardTitle = string.Empty;
+            public string fateCardDetail = string.Empty;
+            public int fateCardDebt;
+            public int fateChoiceIndex = -1;
+            public int fateActivationRound;
+            public string fateTrigger = string.Empty;
             public int endGold;
             public int endLife;
             public float r10BossHealthRemaining01 = -1f;

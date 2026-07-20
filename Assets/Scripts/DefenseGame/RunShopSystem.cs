@@ -47,22 +47,24 @@ namespace DefenseGame
         [SerializeField] private DefenseBoardManager boardManager;
         [SerializeField] private BoardTileModifierSystem tileModifierSystem;
         [SerializeField] private AugmentManager augmentManager;
-        [SerializeField] private int firstShopRound = 6;
-        [SerializeField] private int shopInterval = 3;
+        [SerializeField] private bool enableRegularShop = false;
+        [SerializeField] private int firstShopRound = 11;
+        [SerializeField] private int shopInterval = 8;
         [SerializeField] private bool enableEarlyMiniShop = true;
         [SerializeField] private int earlyMiniShopRound = 3;
         [SerializeField] private int earlyMiniShopOfferCount = 3;
-        [SerializeField] [Range(0.1f, 1f)] private float earlyMiniShopPriceRate = 0.72f;
+        [SerializeField] private int miniShopInterval = 8;
+        [SerializeField] [Range(0.1f, 1f)] private float earlyMiniShopPriceRate = 0.85f;
         [Header("Opportunity Cost Pricing")]
-        [SerializeField] [Range(0.5f, 1.5f)] private float regularShopOpportunityRate = 1.00f;
-        [SerializeField] [Range(0.5f, 1.5f)] private float miniShopOpportunityRate = 0.85f;
-        [SerializeField] [Range(0.5f, 1.5f)] private float recoveryShopOpportunityRate = 0.90f;
+        [SerializeField] [Range(0.5f, 1.5f)] private float regularShopOpportunityRate = 1.35f;
+        [SerializeField] [Range(0.5f, 1.5f)] private float miniShopOpportunityRate = 1.15f;
+        [SerializeField] [Range(0.5f, 1.5f)] private float recoveryShopOpportunityRate = 1.10f;
         [SerializeField] private bool enableEarlyRecoveryShop = true;
         [SerializeField] private int earlyRecoveryShopFirstRound = 4;
         [SerializeField] private int earlyRecoveryShopLastRound = 10;
         [SerializeField] private int earlyRecoveryShopOfferCount = 3;
         [SerializeField] private bool enableLuckyShopAppearances = true;
-        [SerializeField] [Range(0f, 1f)] private float earlyMiniShopAppearanceChance = 1.00f;
+        [SerializeField] [Range(0f, 1f)] private float earlyMiniShopAppearanceChance = 1f;
         [SerializeField] [Range(0f, 1f)] private float earlyRecoveryShopAppearanceChance = 0.85f;
         [SerializeField] [Range(0f, 1f)] private float regularShopAppearanceChance = 0.65f;
         [SerializeField] [Range(0f, 1f)] private float missedShopChanceBonus = 0.18f;
@@ -84,7 +86,7 @@ namespace DefenseGame
         private Button reopenButton;
         private readonly List<ShopOffer> currentOffers = new List<ShopOffer>();
         private bool subscribed;
-        private bool earlyMiniShopShown;
+        private int lastMiniShopRound = -1;
         private bool earlyRecoveryShopShown;
         private bool currentShopIsMini;
         private bool currentShopIsRecovery;
@@ -206,7 +208,7 @@ namespace DefenseGame
         {
             if (round <= 1)
             {
-                earlyMiniShopShown = false;
+                lastMiniShopRound = -1;
                 earlyRecoveryShopShown = false;
                 currentShopIsMini = false;
                 currentShopIsRecovery = false;
@@ -232,6 +234,7 @@ namespace DefenseGame
                 BuildOffers(round, false, false, false);
                 RefreshUi(round);
                 SetOpen(true);
+                gameController.RecordRoundShopOpened(round);
                 gameController.RequestBanner("운명 개입 상점 강제 등장!", new Color(0.72f, 0.88f, 1f), 2.4f);
                 return;
             }
@@ -247,6 +250,7 @@ namespace DefenseGame
                 BuildOffers(round, false, true, false);
                 RefreshUi(round);
                 SetOpen(true);
+                gameController?.RecordRoundShopOpened(round);
                 gameController?.RequestBanner("런 회복 선택지!  막힌 흐름을 다시 열어보세요", new Color(1f, 0.72f, 0.30f), 2.6f);
                 gameController?.MarkEarlyRunRecoveryOffered();
                 return;
@@ -254,7 +258,7 @@ namespace DefenseGame
 
             if (ShouldOpenEarlyMiniShop(round))
             {
-                earlyMiniShopShown = true;
+                lastMiniShopRound = round;
                 currentShopIsMini = true;
                 currentShopIsRecovery = false;
                 currentShopIsInsurance = false;
@@ -263,6 +267,7 @@ namespace DefenseGame
                 BuildOffers(round, true, false, false);
                 RefreshUi(round);
                 SetOpen(true);
+                gameController?.RecordRoundShopOpened(round);
                 int offerCount = Mathf.Clamp(earlyMiniShopOfferCount, 1, 3);
                 gameController?.RequestBanner("초반 선택지 입고!  소형 상점 " + offerCount + "개", new Color(0.48f, 1f, 0.74f), 2.4f);
                 gameController?.RecordR3BoosterOffer();
@@ -270,7 +275,7 @@ namespace DefenseGame
             }
 
             int interval = Mathf.Max(1, shopInterval);
-            if (round < firstShopRound || (round - firstShopRound) % interval != 0)
+            if (!enableRegularShop || round < firstShopRound || (round - firstShopRound) % interval != 0)
             {
                 return;
             }
@@ -289,6 +294,7 @@ namespace DefenseGame
             BuildOffers(round, false, false, false);
             RefreshUi(round);
             SetOpen(true);
+            gameController?.RecordRoundShopOpened(round);
             gameController?.RequestBanner("전투 상점 입고!  이번 판 전용 상품 3개", new Color(0.38f, 0.82f, 1f), 2.4f);
         }
 
@@ -306,6 +312,7 @@ namespace DefenseGame
             BuildOffers(gameController.CurrentRound, false, false, true);
             RefreshUi(gameController.CurrentRound);
             SetOpen(true);
+            gameController.RecordRoundShopOpened(gameController.CurrentRound);
         }
 
         private void HandleRoundStarted(int round)
@@ -320,15 +327,22 @@ namespace DefenseGame
 
         private bool ShouldOpenEarlyMiniShop(int round)
         {
+            int firstRound = Mathf.Max(1, earlyMiniShopRound);
+            int interval = Mathf.Max(1, miniShopInterval);
+            bool scheduledRound = round >= firstRound && (round - firstRound) % interval == 0;
             if (!enableEarlyMiniShop ||
-                earlyMiniShopShown ||
-                round < Mathf.Max(1, earlyMiniShopRound) ||
-                round >= firstShopRound)
+                lastMiniShopRound == round ||
+                round < firstRound ||
+                !scheduledRound)
             {
+                if (scheduledRound)
+                {
+                    earlyMiniShopMisses = 0;
+                }
                 return false;
             }
 
-            if (!RollLuckyShopAppearance(earlyMiniShopAppearanceChance, earlyMiniShopMisses, guaranteedEarlyMiniShopAfterMisses))
+            if (!RollLuckyShopAppearance(earlyMiniShopAppearanceChance, 0, guaranteedEarlyMiniShopAfterMisses))
             {
                 earlyMiniShopMisses++;
                 return false;
@@ -392,7 +406,7 @@ namespace DefenseGame
         {
             currentOffers.Clear();
             SetOpen(false);
-            earlyMiniShopShown = true;
+            lastMiniShopRound = -1;
             earlyRecoveryShopShown = true;
             currentShopIsMini = false;
             currentShopIsRecovery = false;
@@ -431,8 +445,6 @@ namespace DefenseGame
                     OfferType.Coupon,
                     OfferType.FieldMedic,
                     OfferType.FateMergeContract,
-                    OfferType.FateNormalBan,
-                    OfferType.FateForceShop,
                     OfferType.AugmentPower
                 }
                 : new List<OfferType>
@@ -447,10 +459,6 @@ namespace DefenseGame
                     OfferType.FieldMedic,
                     OfferType.FateMergeContract,
                     OfferType.FateBossContract,
-                    OfferType.FateShopReroll,
-                    OfferType.FateGradeLock,
-                    OfferType.FateNormalBan,
-                    OfferType.FateForceShop,
                     OfferType.AugmentPower,
                     OfferType.AugmentGuard,
                     OfferType.AugmentSkill
@@ -468,10 +476,20 @@ namespace DefenseGame
                 AddOffer(OfferType.MergeAssist, round, miniShop, recoveryShop);
                 pool.Remove(OfferType.MergeAssist);
             }
+
             else if (round >= firstShopRound)
             {
                 AddOffer(OfferType.BossIntel, round, miniShop, recoveryShop);
                 pool.Remove(OfferType.BossIntel);
+            }
+
+            OfferType practicalChoice = gameController != null && gameController.Life <= Mathf.CeilToInt(gameController.MaxLife * 0.5f)
+                ? OfferType.FieldMedic
+                : OfferType.Coupon;
+            if (currentOffers.Count < offerCount && pool.Contains(practicalChoice))
+            {
+                AddOffer(practicalChoice, round, miniShop, recoveryShop);
+                pool.Remove(practicalChoice);
             }
 
             for (int i = 0; i < offerCount && pool.Count > 0; i++)
@@ -485,6 +503,50 @@ namespace DefenseGame
                 OfferType type = pool[index];
                 pool.RemoveAt(index);
                 AddOffer(type, round, miniShop, recoveryShop);
+            }
+
+            if (miniShop && !recoveryShop)
+            {
+                EnsureMiniShopAffordableChoices();
+            }
+        }
+
+        private void EnsureMiniShopAffordableChoices()
+        {
+            if (gameController == null || gameController.Gold < 2)
+            {
+                return;
+            }
+
+            List<ShopOffer> paidOffers = new List<ShopOffer>();
+            for (int i = 0; i < currentOffers.Count; i++)
+            {
+                ShopOffer offer = currentOffers[i];
+                if (offer != null && offer.cost > 0)
+                {
+                    paidOffers.Add(offer);
+                }
+            }
+
+            paidOffers.Sort((left, right) => left.cost.CompareTo(right.cost));
+            int summonReference = Mathf.Max(1, gameController.SummonCost);
+            int availableGold = Mathf.Max(2, gameController.Gold);
+            for (int i = 0; i < paidOffers.Count && i < 2; i++)
+            {
+                int round = Mathf.Max(1, gameController.CurrentRound);
+                float earlyRatio = round <= 4 ? (i == 0 ? 1.25f : 1.65f) : round <= 10 ? (i == 0 ? 1.45f : 1.95f) : (i == 0 ? 1.65f : 2.25f);
+                float summonRatio = earlyRatio;
+                int priceCap = Mathf.Min(availableGold, Mathf.CeilToInt(summonReference * summonRatio));
+                priceCap = Mathf.Max(2, priceCap);
+                if (paidOffers[i].cost <= priceCap)
+                {
+                    continue;
+                }
+
+                paidOffers[i].cost = priceCap;
+                paidOffers[i].description += i == 0
+                    ? " 초반 소형상점 접근 가격이 적용됩니다."
+                    : " 현재 골드로 선택 가능한 가격입니다.";
             }
         }
 
@@ -601,29 +663,29 @@ namespace DefenseGame
             switch (type)
             {
                 case OfferType.RandomUnit:
-                    return 2.00f;
+                    return 2.40f;
                 case OfferType.RareUnit:
-                    return 4.50f;
+                    return 5.20f;
                 case OfferType.RiskChest:
-                    return 5.50f;
+                    return 6.30f;
                 case OfferType.MergeAssist:
-                    return 2.75f;
+                    return 3.20f;
                 case OfferType.TileReroll:
-                    return 3.00f;
+                    return 3.40f;
                 case OfferType.BossIntel:
-                    return 6.00f;
+                    return 6.80f;
                 case OfferType.Coupon:
-                    return 5.00f;
+                    return 5.80f;
                 case OfferType.FieldMedic:
-                    return 3.00f;
+                    return 3.60f;
                 case OfferType.RecoveryRareUnit:
-                    return 3.50f;
+                    return 3.80f;
                 case OfferType.RecoveryBossPrep:
-                    return 4.50f;
+                    return 5.00f;
                 case OfferType.AugmentPower:
                 case OfferType.AugmentGuard:
                 case OfferType.AugmentSkill:
-                    return 7.00f;
+                    return 8.00f;
                 default:
                     return 0f;
             }
@@ -680,8 +742,8 @@ namespace DefenseGame
                     break;
                 case OfferType.FateBossContract:
                     offer.title = prefix + "운명 계약: 보스 사냥";
-                    offer.description = "라이프 -1. 보스 피해와 보스 전 골드를 받아 R10을 준비합니다.";
-                    offer.priceLabel = "라이프 -1";
+                    offer.description = "라이프 -2. 보스 피해와 소량의 보스 전 골드를 받지만 빚이 크게 남습니다.";
+                    offer.priceLabel = "라이프 -2";
                     break;
                 case OfferType.FateShopReroll:
                     offer.title = prefix + "운명 개입: 상점 리롤";
@@ -734,8 +796,9 @@ namespace DefenseGame
                     {
                         type = type,
                         title = "위험한 상자",
-                        description = "레어 이상 확정. 낮은 확률로 희귀/전설까지 튈 수 있습니다.",
-                        cost = 34 + scale * 8,
+                        description = "라이프 -1. 레어 이상 확정, 낮은 확률로 에픽/전설까지 튀는 도박 상자입니다.",
+                        cost = 38 + scale * 9,
+                        priceLabel = "골드+HP",
                         color = new Color(1f, 0.42f, 0.82f)
                     };
                 case OfferType.MergeAssist:
@@ -770,8 +833,8 @@ namespace DefenseGame
                     {
                         type = type,
                         title = "소환 쿠폰",
-                        description = "이번 판 동안 소환 비용을 8% 낮춥니다.",
-                        cost = 12 + scale * 3,
+                        description = "이번 판 동안 소환 비용을 8% 낮춥니다. 지금 상점에 쓸지 이후 소환을 아낄지 선택합니다.",
+                        cost = 18 + scale * 4,
                         color = new Color(0.56f, 0.92f, 1f)
                     };
                 case OfferType.FateMergeContract:
@@ -779,7 +842,7 @@ namespace DefenseGame
                     {
                         type = type,
                         title = "운명 계약: 합성 올인",
-                        description = "라이프 -2와 운명 빚을 남깁니다. 합성 재료 보급과 소환비 12% 할인을 받습니다.",
+                        description = "라이프 -2와 운명 빚을 남깁니다. 합성 재료 보급과 소환비 7% 할인을 받습니다.",
                         cost = 0,
                         priceLabel = "라이프 -2",
                         color = new Color(1f, 0.48f, 0.82f)
@@ -789,9 +852,9 @@ namespace DefenseGame
                     {
                         type = type,
                         title = "운명 계약: 보스 사냥",
-                        description = "라이프 -1과 운명 빚을 남깁니다. 보스 피해 +16%, 보스 전 골드 보급을 받습니다.",
+                        description = "라이프 -2와 운명 빚을 남깁니다. 보스 피해 +16%, 보스 전 소량의 골드를 받습니다.",
                         cost = 0,
-                        priceLabel = "라이프 -1",
+                        priceLabel = "라이프 -2",
                         color = new Color(1f, 0.66f, 0.24f)
                     };
                 case OfferType.FateShopReroll:
@@ -867,7 +930,7 @@ namespace DefenseGame
                     {
                         type = type,
                         title = "회복권 보험",
-                        description = "골드 +8과 모든 생존 유닛 체력 20% 회복. 초반 저점을 작게 복구합니다.",
+                        description = "골드 +4와 모든 생존 유닛 체력 20% 회복. 초반 저점을 작게 복구합니다.",
                         cost = 0,
                         priceLabel = "보험 1회",
                         color = new Color(0.40f, 1f, 0.68f)
@@ -887,7 +950,7 @@ namespace DefenseGame
                     {
                         type = type,
                         title = "현장 의무병",
-                        description = "모든 생존 유닛 체력 25% 회복.",
+                        description = "모든 생존 유닛 체력 25% 회복. 방어선 HP가 절반 이하면 HP도 1 회복합니다.",
                         cost = 18 + scale * 4,
                         color = new Color(0.48f, 1f, 0.60f)
                     };
@@ -1003,8 +1066,13 @@ namespace DefenseGame
                 case OfferType.RareUnit:
                     return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare);
                 case OfferType.RiskChest:
+                    if (!gameController.TrySpendLifeForContract(1, "위험한 상자"))
+                    {
+                        return false;
+                    }
+
                     float roll = UnityEngine.Random.value;
-                    CharacterGrade grade = roll < 0.08f ? CharacterGrade.Legendary : roll < 0.32f ? CharacterGrade.Epic : CharacterGrade.Rare;
+                    CharacterGrade grade = roll < 0.10f ? CharacterGrade.Legendary : roll < 0.38f ? CharacterGrade.Epic : CharacterGrade.Rare;
                     return gameController.TryGrantRandomUnitByGrade(grade);
                 case OfferType.MergeAssist:
                     return gameController.TryGrantMergeAssistUnit();
@@ -1053,15 +1121,15 @@ namespace DefenseGame
                     }
 
                     bool mergeGranted = gameController.TryGrantMergeAssistUnit();
-                    gameController.AddSummonCostDiscount(0.12f);
+                    gameController.AddSummonCostDiscount(0.07f);
                     if (!mergeGranted)
                     {
-                        gameController.AddGold(14);
+                        gameController.AddGold(6);
                     }
 
                     return true;
                 case OfferType.FateBossContract:
-                    if (!gameController.TrySpendLifeForContract(1, "보스 사냥"))
+                    if (!gameController.TrySpendLifeForContract(2, "보스 사냥"))
                     {
                         return false;
                     }
@@ -1084,8 +1152,8 @@ namespace DefenseGame
                         gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare);
                     }
 
-                    gameController.AddGold(14);
-                    gameController.AddRoundGoldBonus(2);
+                    gameController.AddGold(6);
+                    gameController.AddRoundGoldBonus(1);
                     return true;
                 case OfferType.RecoveryRareUnit:
                     return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare);
@@ -1112,7 +1180,7 @@ namespace DefenseGame
                 case OfferType.InsuranceMergeMaterial:
                     return gameController.TryGrantMergeAssistUnit() || gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare);
                 case OfferType.InsuranceRecoveryTicket:
-                    gameController.AddGold(8);
+                    gameController.AddGold(4);
                     HealAliveDefenders(0.20f);
                     return true;
                 case OfferType.InsuranceBossCounter:
@@ -1146,6 +1214,11 @@ namespace DefenseGame
                         units[i]?.Heal(units[i].MaxHealth * 0.25f);
                     }
 
+
+                    if (gameController.Life <= Mathf.CeilToInt(gameController.MaxLife * 0.5f))
+                    {
+                        gameController.RecoverLife(1);
+                    }
                     return true;
                 case OfferType.AugmentPower:
                     return augmentManager != null && augmentManager.TryGrantShopAugment("power_core");
@@ -1224,19 +1297,44 @@ namespace DefenseGame
                 return string.Empty;
             }
 
+            int summonEquivalent = ResolveOfferSummonEquivalent(offer);
             if (!string.IsNullOrWhiteSpace(offer.priceLabel))
             {
+                if (offer.priceLabel == "골드+HP")
+                {
+                    return offer.cost + "G + HP -1 / 소환 약 " + summonEquivalent + "회";
+                }
+
+                if (offer.priceLabel == "라이프 -2")
+                {
+                    return "HP -2 / 운명 빚";
+                }
+
+                if (offer.priceLabel == "운명")
+                {
+                    return "운명 1회 / 빚";
+                }
+
+                if (offer.priceLabel == "보험 1회")
+                {
+                    return "무료 보험 1회";
+                }
+
                 return offer.priceLabel;
             }
 
             if (offer.cost <= 0)
             {
-                return "무료";
+                return "무료 / 소환 손실 없음";
             }
 
-            int summonReferenceCost = gameController != null ? Mathf.Max(1, gameController.SummonCost) : 10;
-            int summonEquivalent = Mathf.Max(1, Mathf.CeilToInt((float)offer.cost / summonReferenceCost));
             return offer.cost + "G / 소환 약 " + summonEquivalent + "회";
+        }
+
+        private int ResolveOfferSummonEquivalent(ShopOffer offer)
+        {
+            int summonReferenceCost = gameController != null ? Mathf.Max(1, gameController.SummonCost) : 10;
+            return offer != null && offer.cost > 0 ? Mathf.Max(1, Mathf.CeilToInt((float)offer.cost / summonReferenceCost)) : 0;
         }
 
         private void SetOpen(bool open)
@@ -1251,7 +1349,33 @@ namespace DefenseGame
 
         private void Close()
         {
+            // Insurance is a separate safety choice and may be reopened until it is claimed.
+            // Every paid shop is optional: closing it means passing this appearance entirely.
+            if (currentShopIsInsurance)
+            {
+                SetOpen(false);
+                return;
+            }
+
+            bool passedShop = currentOffers.Count > 0;
+            string passedShopLabel = currentShopIsRecovery
+                ? "회복 상점"
+                : currentShopIsMini ? "소형 전투상점" : "전투상점";
+
+            currentOffers.Clear();
+            currentShopIsMini = false;
+            currentShopIsRecovery = false;
+            currentShopIsInsurance = false;
+            currentRecoveryShopPurchaseRecorded = false;
             SetOpen(false);
+
+            if (passedShop)
+            {
+                gameController?.RequestBanner(
+                    passedShopLabel + " 패스",
+                    new Color(0.66f, 0.72f, 0.84f),
+                    1.6f);
+            }
         }
 
         private void Open()
