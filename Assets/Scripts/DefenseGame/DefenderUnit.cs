@@ -319,17 +319,19 @@ namespace DefenseGame
 
             attackCooldown -= Time.deltaTime;
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
-            animationDriver?.PlayMoving(false);
 
             bool combatActive = IsCombatActive();
-            if (IsAlternatingRoundBurstUnit())
+            bool alternatingRoundBurstUnit = IsAlternatingRoundBurstUnit();
+            if (alternatingRoundBurstUnit && (!combatActive || alternatingDormant || !alternatingBurstPending))
             {
-                if (!combatActive || alternatingDormant || !alternatingBurstPending)
-                {
-                    animationDriver?.PlayDormantLoop();
-                    return;
-                }
+                animationDriver?.PlayDormantLoop();
+                return;
+            }
 
+            animationDriver?.PlayMoving(false);
+
+            if (alternatingRoundBurstUnit)
+            {
                 currentMana = MaxMana;
             }
             else if (combatActive)
