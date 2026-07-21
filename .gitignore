@@ -43,3 +43,7 @@ BatchPlaytestResults/
 *.log
 BatchPlaytestResults/
 *.log
+
+# Local runtime captures and temporary patch artifacts
+/Assets/Screenshots/
+/TempArtifact/*.patch

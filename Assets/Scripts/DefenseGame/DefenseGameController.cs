@@ -266,6 +266,8 @@ namespace DefenseGame
         private int currentRoundLeakDamageTaken;
         private int victoryStreak;
         private float summonCostDiscountRate;
+        private float temporaryShopSummonDiscountRate;
+        private int temporaryShopSummonDiscountUntilRound;
         private int currentRoundResolvedMonsters;
         private int currentRoundKilledMonsters;
         private int lastRoundShopOpenRound = -1;
@@ -886,6 +888,8 @@ namespace DefenseGame
             life = MaxLife;
             currentSummonBaseCost = summonCost;
             summonCostDiscountRate = 0f;
+            temporaryShopSummonDiscountRate = 0f;
+            temporaryShopSummonDiscountUntilRound = 0;
             roundGoldBonus = 0;
             victoryStreak = 0;
             currentRoundResolvedMonsters = 0;
@@ -916,6 +920,8 @@ namespace DefenseGame
             life = MaxLife;
             currentSummonBaseCost = summonCost;
             summonCostDiscountRate = 0f;
+            temporaryShopSummonDiscountRate = 0f;
+            temporaryShopSummonDiscountUntilRound = 0;
             roundGoldBonus = 0;
             victoryStreak = 0;
             currentRoundResolvedMonsters = 0;
@@ -2392,6 +2398,19 @@ namespace DefenseGame
             NotifyStateChanged();
         }
 
+        public void AddTemporaryShopSummonDiscount(float rate, int roundCount)
+        {
+            int safeRoundCount = Mathf.Max(1, roundCount);
+            int firstDiscountRound = IsRoundRunning ? Mathf.Max(1, CurrentRound) : Mathf.Max(1, CurrentRound + 1);
+            temporaryShopSummonDiscountRate = Mathf.Max(
+                temporaryShopSummonDiscountRate,
+                Mathf.Clamp(rate, 0f, 0.45f));
+            temporaryShopSummonDiscountUntilRound = Mathf.Max(
+                temporaryShopSummonDiscountUntilRound,
+                firstDiscountRound + safeRoundCount - 1);
+            NotifyStateChanged();
+        }
+
         private void AddFateGauge(int amount, string reason)
         {
             if (!enableFateIntervention || useOneShotFateCard || amount <= 0)
@@ -3771,6 +3790,12 @@ namespace DefenseGame
             int baseCost = currentSummonBaseCost > 0 ? currentSummonBaseCost : summonCost;
             float discounted = baseCost * (1f - Mathf.Clamp01(summonCostDiscountRate));
             int cost = Mathf.Max(1, Mathf.RoundToInt(discounted));
+            int summonRateRound = GetSummonRateRound();
+            if (temporaryShopSummonDiscountUntilRound >= summonRateRound && temporaryShopSummonDiscountRate > 0f)
+            {
+                cost = Mathf.Max(1, Mathf.RoundToInt(cost * (1f - Mathf.Clamp01(temporaryShopSummonDiscountRate))));
+            }
+
             if (enableFateIntervention && useOneShotFateCard && fateSummonDiscountUntilRound >= GetSummonRateRound() && fateSummonDiscountRate > 0f)
             {
                 cost = Mathf.Max(1, Mathf.RoundToInt(cost * (1f - Mathf.Clamp01(fateSummonDiscountRate))));
@@ -5248,7 +5273,7 @@ namespace DefenseGame
         {
             if (useOneShotFateCard)
             {
-                return CanOpenFateCard;
+                return CanOpenFateCard && Life > 0 && Life <= 3;
             }
 
             if (!enableFateIntervention || !CanUseFateSurvival || MaxLife <= 0)

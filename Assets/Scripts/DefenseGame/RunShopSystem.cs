@@ -54,7 +54,6 @@ namespace DefenseGame
         [SerializeField] private int earlyMiniShopRound = 3;
         [SerializeField] private int earlyMiniShopOfferCount = 3;
         [SerializeField] private int miniShopInterval = 8;
-        [SerializeField] [Range(0.1f, 1f)] private float earlyMiniShopPriceRate = 0.85f;
         [Header("Opportunity Cost Pricing")]
         [SerializeField] [Range(0.5f, 1.5f)] private float regularShopOpportunityRate = 1.35f;
         [SerializeField] [Range(0.5f, 1.5f)] private float miniShopOpportunityRate = 1.15f;
@@ -427,42 +426,8 @@ namespace DefenseGame
             }
 
             List<OfferType> pool = recoveryShop
-                ? new List<OfferType>
-                {
-                    OfferType.RecoveryRareUnit,
-                    OfferType.RecoveryBossPrep,
-                    OfferType.FieldMedic,
-                    OfferType.Coupon,
-                    OfferType.AugmentGuard,
-                    OfferType.AugmentSkill
-                }
-                : miniShop
-                ? new List<OfferType>
-                {
-                    OfferType.RandomUnit,
-                    OfferType.RiskChest,
-                    OfferType.MergeAssist,
-                    OfferType.Coupon,
-                    OfferType.FieldMedic,
-                    OfferType.FateMergeContract,
-                    OfferType.AugmentPower
-                }
-                : new List<OfferType>
-                {
-                    OfferType.RandomUnit,
-                    OfferType.RareUnit,
-                    OfferType.RiskChest,
-                    OfferType.MergeAssist,
-                    OfferType.TileReroll,
-                    OfferType.BossIntel,
-                    OfferType.Coupon,
-                    OfferType.FieldMedic,
-                    OfferType.FateMergeContract,
-                    OfferType.FateBossContract,
-                    OfferType.AugmentPower,
-                    OfferType.AugmentGuard,
-                    OfferType.AugmentSkill
-                };
+                ? BuildRecoveryShopPool()
+                : miniShop ? BuildMiniShopPool(round) : BuildRegularShopPool(round);
 
             RemoveUnavailableAugmentOffers(pool);
             int offerCount = recoveryShop ? Mathf.Clamp(earlyRecoveryShopOfferCount, 1, 3) : miniShop ? Mathf.Clamp(earlyMiniShopOfferCount, 1, 3) : 3;
@@ -473,8 +438,12 @@ namespace DefenseGame
             }
             else if (miniShop)
             {
-                AddOffer(OfferType.MergeAssist, round, miniShop, recoveryShop);
-                pool.Remove(OfferType.MergeAssist);
+                OfferType anchor = ResolveMiniShopAnchor(pool);
+                if (pool.Contains(anchor))
+                {
+                    AddOffer(anchor, round, miniShop, recoveryShop);
+                    pool.Remove(anchor);
+                }
             }
 
             else if (round >= firstShopRound)
@@ -505,48 +474,183 @@ namespace DefenseGame
                 AddOffer(type, round, miniShop, recoveryShop);
             }
 
-            if (miniShop && !recoveryShop)
-            {
-                EnsureMiniShopAffordableChoices();
-            }
         }
 
-        private void EnsureMiniShopAffordableChoices()
+        private static List<OfferType> BuildRecoveryShopPool()
         {
-            if (gameController == null || gameController.Gold < 2)
+            return new List<OfferType>
+            {
+                OfferType.RecoveryRareUnit,
+                OfferType.RecoveryBossPrep,
+                OfferType.MergeAssist,
+                OfferType.FieldMedic,
+                OfferType.Coupon
+            };
+        }
+
+        private List<OfferType> BuildMiniShopPool(int round)
+        {
+            if (round <= 7)
+            {
+                return new List<OfferType>
+                {
+                    OfferType.RandomUnit,
+                    OfferType.MergeAssist,
+                    OfferType.Coupon
+                };
+            }
+
+            List<OfferType> pool = new List<OfferType>
+            {
+                OfferType.RandomUnit,
+                OfferType.RareUnit,
+                OfferType.MergeAssist,
+                OfferType.TileReroll,
+                OfferType.BossIntel,
+                OfferType.Coupon
+            };
+            if (NeedsFieldMedic())
+            {
+                pool.Add(OfferType.FieldMedic);
+            }
+
+            if (round >= 11)
+            {
+                pool.Add(OfferType.RiskChest);
+                pool.Add(OfferType.AugmentPower);
+            }
+
+            if (round >= 18)
+            {
+                pool.Add(OfferType.AugmentGuard);
+                pool.Add(OfferType.AugmentSkill);
+                pool.Add(OfferType.FateMergeContract);
+                pool.Add(OfferType.FateBossContract);
+            }
+
+            return pool;
+        }
+
+        private List<OfferType> BuildRegularShopPool(int round)
+        {
+            List<OfferType> pool = new List<OfferType>
+            {
+                OfferType.RandomUnit,
+                OfferType.RareUnit,
+                OfferType.RiskChest,
+                OfferType.MergeAssist,
+                OfferType.TileReroll,
+                OfferType.BossIntel,
+                OfferType.Coupon,
+                OfferType.AugmentPower
+            };
+            if (NeedsFieldMedic())
+            {
+                pool.Add(OfferType.FieldMedic);
+            }
+
+            if (round >= 18)
+            {
+                pool.Add(OfferType.AugmentGuard);
+                pool.Add(OfferType.AugmentSkill);
+                pool.Add(OfferType.FateMergeContract);
+                pool.Add(OfferType.FateBossContract);
+            }
+
+            return pool;
+        }
+
+        private OfferType ResolveMiniShopAnchor(List<OfferType> pool)
+        {
+            if (pool == null || pool.Count == 0)
+            {
+                return OfferType.RandomUnit;
+            }
+
+            if (gameController != null && gameController.BoardUnitCount >= 2 && pool.Contains(OfferType.MergeAssist))
+            {
+                return OfferType.MergeAssist;
+            }
+
+            return pool.Contains(OfferType.RandomUnit) ? OfferType.RandomUnit : pool[0];
+        }
+
+        private bool NeedsFieldMedic()
+        {
+            if (gameController != null && gameController.Life < gameController.MaxLife)
+            {
+                return true;
+            }
+
+            DefenderUnit[] defenders = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
+            for (int i = 0; i < defenders.Length; i++)
+            {
+                if (defenders[i] != null && defenders[i].HealthRatio < 0.92f)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void ApplyFixedRoundShopPrice(ShopOffer offer, int round, bool recoveryShop)
+        {
+            if (offer == null || offer.cost <= 0)
             {
                 return;
             }
 
-            List<ShopOffer> paidOffers = new List<ShopOffer>();
-            for (int i = 0; i < currentOffers.Count; i++)
+            offer.cost = recoveryShop
+                ? ResolveFixedRecoveryShopPrice(offer.type, round)
+                : ResolveFixedMiniShopPrice(offer.type, round);
+        }
+
+        private static int ResolveFixedMiniShopPrice(OfferType type, int round)
+        {
+            int target = ResolveFixedMiniShopSpendTarget(round);
+            switch (type)
             {
-                ShopOffer offer = currentOffers[i];
-                if (offer != null && offer.cost > 0)
-                {
-                    paidOffers.Add(offer);
-                }
+                case OfferType.RandomUnit:
+                    return Mathf.Max(1, target - 1);
+                case OfferType.Coupon:
+                    return Mathf.Max(1, target - 2);
+                case OfferType.TileReroll:
+                    return Mathf.Max(1, target - 4);
+                case OfferType.FieldMedic:
+                    return Mathf.Max(1, target - 3);
+                case OfferType.RiskChest:
+                    return Mathf.Max(1, target - 4);
+                default:
+                    return target;
             }
+        }
 
-            paidOffers.Sort((left, right) => left.cost.CompareTo(right.cost));
-            int summonReference = Mathf.Max(1, gameController.SummonCost);
-            int availableGold = Mathf.Max(2, gameController.Gold);
-            for (int i = 0; i < paidOffers.Count && i < 2; i++)
+        private static int ResolveFixedMiniShopSpendTarget(int round)
+        {
+            if (round <= 7) return 20;
+            if (round <= 15) return 34;
+            if (round <= 23) return 50;
+            if (round <= 31) return 68;
+            if (round <= 39) return 88;
+            if (round <= 47) return 110;
+
+            int extraTiers = Mathf.Max(0, (round - 48) / 8);
+            return 132 + extraTiers * 22;
+        }
+
+        private static int ResolveFixedRecoveryShopPrice(OfferType type, int round)
+        {
+            int target = round <= 5 ? 8 : round <= 7 ? 10 : 12;
+            switch (type)
             {
-                int round = Mathf.Max(1, gameController.CurrentRound);
-                float earlyRatio = round <= 4 ? (i == 0 ? 1.25f : 1.65f) : round <= 10 ? (i == 0 ? 1.45f : 1.95f) : (i == 0 ? 1.65f : 2.25f);
-                float summonRatio = earlyRatio;
-                int priceCap = Mathf.Min(availableGold, Mathf.CeilToInt(summonReference * summonRatio));
-                priceCap = Mathf.Max(2, priceCap);
-                if (paidOffers[i].cost <= priceCap)
-                {
-                    continue;
-                }
-
-                paidOffers[i].cost = priceCap;
-                paidOffers[i].description += i == 0
-                    ? " 초반 소형상점 접근 가격이 적용됩니다."
-                    : " 현재 골드로 선택 가능한 가격입니다.";
+                case OfferType.RecoveryBossPrep:
+                case OfferType.FieldMedic:
+                    return Mathf.Max(1, target - 2);
+                case OfferType.MergeAssist:
+                    return target + 2;
+                default:
+                    return target;
             }
         }
 
@@ -605,16 +709,21 @@ namespace DefenseGame
             if (miniPrefix)
             {
                 offer.title = "소형 " + offer.title;
-                if (offer.cost > 0)
-                {
-                    offer.cost = Mathf.Max(2, Mathf.RoundToInt(offer.cost * earlyMiniShopPriceRate));
-                }
             }
 
-            ApplyRoundShopInflation(offer, round);
-            ApplySummonOpportunityCostFloor(offer, miniShop, recoveryShop);
-            ApplyDailyFortuneOfferModifier(offer);
-            ApplyFateOfferModifier(offer);
+            if (miniShop || recoveryShop)
+            {
+                // Small shop prices follow a deterministic round economy schedule.
+                // Player gold, summon cost, fortune and debt never silently reprice them.
+                ApplyFixedRoundShopPrice(offer, round, recoveryShop);
+            }
+            else
+            {
+                ApplyRoundShopInflation(offer, round);
+                ApplySummonOpportunityCostFloor(offer, false, false);
+                ApplyDailyFortuneOfferModifier(offer);
+                ApplyFateOfferModifier(offer);
+            }
             ApplyReadableFateOfferText(offer, miniPrefix);
             currentOffers.Add(offer);
         }
@@ -675,7 +784,7 @@ namespace DefenseGame
                 case OfferType.BossIntel:
                     return 6.80f;
                 case OfferType.Coupon:
-                    return 5.80f;
+                    return 1.20f;
                 case OfferType.FieldMedic:
                     return 3.60f;
                 case OfferType.RecoveryRareUnit:
@@ -832,9 +941,9 @@ namespace DefenseGame
                     return new ShopOffer
                     {
                         type = type,
-                        title = "소환 쿠폰",
-                        description = "이번 판 동안 소환 비용을 8% 낮춥니다. 지금 상점에 쓸지 이후 소환을 아낄지 선택합니다.",
-                        cost = 18 + scale * 4,
+                        title = "4라운드 소환 패스",
+                        description = "다음 4라운드 동안 소환 비용을 18% 낮춥니다. 초반에 여러 번 소환할수록 이득이 커집니다.",
+                        cost = 8 + scale * 2,
                         color = new Color(0.56f, 0.92f, 1f)
                     };
                 case OfferType.FateMergeContract:
@@ -1041,6 +1150,14 @@ namespace DefenseGame
                 gameController.RecordEarlyRecoveryShopPurchase();
             }
 
+            if (currentShopIsMini)
+            {
+                currentOffers.Clear();
+                currentShopIsMini = false;
+                SetOpen(false);
+                return;
+            }
+
             if (currentShopIsInsurance)
             {
                 gameController.MarkBadLuckInsuranceClaimed(offer.title);
@@ -1104,7 +1221,7 @@ namespace DefenseGame
 
                     return true;
                 case OfferType.Coupon:
-                    gameController.AddSummonCostDiscount(0.08f);
+                    gameController.AddTemporaryShopSummonDiscount(0.18f, 4);
                     return true;
                 case OfferType.FateShopReroll:
                     return gameController.TrySpendFateForShopReroll();
@@ -1254,13 +1371,18 @@ namespace DefenseGame
 
             if (subtitleText != null)
             {
-                string opportunityLabel = gameController != null ? "현재 소환비 " + gameController.SummonCost + "G 연동" : "현재 소환비 연동";
+                string phaseLabel = round <= 7 ? "초반 성장" : round <= 17 ? "중반 빌드" : "후반 고효율";
+                string opportunityLabel = currentShopIsMini
+                    ? "고정 선택가 " + ResolveFixedMiniShopSpendTarget(round) + "G 안팎"
+                    : currentShopIsRecovery
+                    ? "라운드 고정 회복가"
+                    : gameController != null ? "현재 소환비 " + gameController.SummonCost + "G" : "소환비 확인";
                 subtitleText.text = currentShopIsInsurance
                     ? "보험 추천 1개  |  " + (gameController != null ? gameController.BadLuckInsuranceReason : "초반 저점 복구") + "  |  " + DailyFortuneSystem.TodaySummary
                     : currentShopIsRecovery
                     ? opportunityLabel + "  |  회복 상점  |  " + (gameController != null ? gameController.EarlyRunRecoveryCause : "위기 복구") + "  |  " + DailyFortuneSystem.TodaySummary
                     : currentShopIsMini
-                    ? "ROUND " + round + "  |  " + opportunityLabel + "  |  소환 대신 투자할지 선택"
+                    ? "ROUND " + round + "  |  " + phaseLabel + "  |  " + opportunityLabel + "  |  3개 중 1개"
                     : "ROUND " + round + "  |  " + opportunityLabel + "  |  유닛 소환 vs 상점 투자";
             }
 

@@ -1,7 +1,9 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using DefenseGame;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -133,6 +135,59 @@ namespace DefenseGame.Editor
                 notes.Add("플레이어 HP 10/10 런타임 표시가 일치하지 않습니다.");
             }
 
+            Button fateEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "FatePanelReopenButton");
+            RectTransform fateEntryRect = fateEntryButton != null ? fateEntryButton.GetComponent<RectTransform>() : null;
+            Shadow fateEntryShadow = fateEntryButton != null ? fateEntryButton.GetComponents<Shadow>().FirstOrDefault(effect => !(effect is Outline)) : null;
+            Outline fateEntryOutline = fateEntryButton != null ? fateEntryButton.GetComponent<Outline>() : null;
+            Graphic fateEntryGraphic = fateEntryButton != null && fateEntryButton.targetGraphic != null
+                ? fateEntryButton.targetGraphic
+                : fateEntryButton != null ? fateEntryButton.GetComponent<Graphic>() : null;
+            Text fateEntryText = fateEntryButton != null ? fateEntryButton.GetComponentInChildren<Text>(true) : null;
+            bool fateEntryLayoutValid = fateEntryRect != null &&
+                                        Approximately(fateEntryRect.sizeDelta, new Vector2(250f, 84f)) &&
+                                        Approximately(fateEntryRect.anchoredPosition, new Vector2(-80f, 356f)) &&
+                                        fateEntryShadow != null &&
+                                        Approximately(fateEntryShadow.effectDistance, new Vector2(0f, -4f)) &&
+                                        fateEntryShadow.useGraphicAlpha &&
+                                        fateEntryOutline != null &&
+                                        Approximately(fateEntryOutline.effectDistance, new Vector2(2f, -2f)) &&
+                                        fateEntryOutline.useGraphicAlpha;
+            bool fateEntryPastelColorValid = fateEntryGraphic != null &&
+                                              Approximately(fateEntryGraphic.color, new Color(0.30f, 0.52f, 0.38f, 0.98f)) &&
+                                              fateEntryText != null &&
+                                              Approximately(fateEntryText.color, new Color(0.97f, 1.00f, 0.97f, 1f));
+            bool fateEntryIdleAtFullHealth = controller != null && controller.Life > 3 && !controller.FateSurvivalCrisisActive;
+            if (!fateEntryLayoutValid || !fateEntryPastelColorValid || !fateEntryIdleAtFullHealth)
+            {
+                string actualBackground = fateEntryGraphic != null ? fateEntryGraphic.color.ToString() : "null";
+                string actualText = fateEntryText != null ? fateEntryText.color.ToString() : "null";
+                notes.Add("운명카드 버튼의 하단 HUD 정렬, 녹색 팔레트 또는 HP 3 초과 정지 상태가 유효하지 않습니다. " +
+                          "background=" + actualBackground + ", text=" + actualText);
+            }
+
+            Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
+            bool initialPreparationFlowValid = controller != null &&
+                                               controller.CurrentRound <= 0 &&
+                                               !controller.IsRoundRunning &&
+                                               lobbyEntryButton != null;
+            if (initialPreparationFlowValid)
+            {
+                lobbyEntryButton.onClick.Invoke();
+                initialPreparationFlowValid = controller.CurrentRound <= 0 && !controller.IsRoundRunning;
+            }
+            if (!initialPreparationFlowValid)
+            {
+                notes.Add("전장 입장 후 다음 라운드를 누르기 전까지 R1 카운트다운이 대기하지 않습니다.");
+            }
+
+            bool earlyMiniShopChoicesValid = ValidateRoundTieredMiniShop(out string earlyMiniShopSummary);
+            if (!earlyMiniShopChoicesValid)
+            {
+                notes.Add("R3 소형 전투상점의 3개 선택지 분류/가격 검증에 실패했습니다. " + earlyMiniShopSummary);
+            }
+
             GamePresentationConfig presentation = AssetDatabase.LoadAssetAtPath<GamePresentationConfig>("Assets/Data/DefenseGamePresentationConfig.asset");
             bool defaultVfxConfigured = presentation != null &&
                                         presentation.projectilePrefab != null &&
@@ -167,7 +222,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && simultaneousDeathPolicyValid && hero32SignatureValid && defaultVfxConfigured && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && initialPreparationFlowValid && earlyMiniShopChoicesValid && hero32SignatureValid && defaultVfxConfigured && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -182,6 +237,12 @@ namespace DefenseGame.Editor
                 portraitProfilesValid = portraitProfilesValid,
                 hpTen = hpTen,
                 hpTextTen = hpTextTen,
+                fateEntryLayoutValid = fateEntryLayoutValid,
+                fateEntryPastelColorValid = fateEntryPastelColorValid,
+                fateEntryIdleAtFullHealth = fateEntryIdleAtFullHealth,
+                initialPreparationFlowValid = initialPreparationFlowValid,
+                earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
+                earlyMiniShopSummary = earlyMiniShopSummary,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
                 hero32SignatureValid = hero32SignatureValid,
                 defaultVfxConfigured = defaultVfxConfigured,
@@ -351,9 +412,118 @@ namespace DefenseGame.Editor
                    Approximately(anchorMax, new Vector2(safeArea.xMax / screenSize.x, safeArea.yMax / screenSize.y));
         }
 
+        private static bool ValidateRoundTieredMiniShop(out string summary)
+        {
+            RunShopSystem shop = UnityEngine.Object.FindObjectOfType<RunShopSystem>();
+            DefenseGameController controller = UnityEngine.Object.FindObjectOfType<DefenseGameController>();
+            if (shop == null || controller == null)
+            {
+                summary = "shop_or_controller_missing";
+                return false;
+            }
+
+            BindingFlags instanceFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            MethodInfo buildOffers = typeof(RunShopSystem).GetMethod("BuildOffers", instanceFlags);
+            FieldInfo offersField = typeof(RunShopSystem).GetField("currentOffers", instanceFlags);
+            FieldInfo goldField = typeof(DefenseGameController).GetField("<Gold>k__BackingField", instanceFlags);
+            FieldInfo summonCostField = typeof(DefenseGameController).GetField("currentSummonBaseCost", instanceFlags);
+            if (buildOffers == null || offersField == null || goldField == null || summonCostField == null)
+            {
+                summary = "reflection_target_missing";
+                return false;
+            }
+
+            object originalGold = goldField.GetValue(controller);
+            object originalSummonCost = summonCostField.GetValue(controller);
+            IList offers = null;
+            try
+            {
+                goldField.SetValue(controller, 34);
+                summonCostField.SetValue(controller, 16);
+                buildOffers.Invoke(shop, new object[] { 3, true, false, false });
+                offers = offersField.GetValue(shop) as IList;
+                if (offers == null || offers.Count != 3)
+                {
+                    summary = "offer_count=" + (offers != null ? offers.Count : -1);
+                    return false;
+                }
+
+                HashSet<string> expectedTypes = new HashSet<string>
+                {
+                    "RandomUnit",
+                    "MergeAssist",
+                    "Coupon"
+                };
+                List<string> snapshots = new List<string>();
+                Dictionary<string, int> expectedPrices = new Dictionary<string, int>
+                {
+                    { "RandomUnit", 19 },
+                    { "MergeAssist", 20 },
+                    { "Coupon", 18 }
+                };
+                Dictionary<string, int> firstPrices = new Dictionary<string, int>();
+                bool fixedPricesValid = true;
+                bool couponDurationValid = false;
+                for (int i = 0; i < offers.Count; i++)
+                {
+                    object offer = offers[i];
+                    Type offerType = offer.GetType();
+                    string typeName = offerType.GetField("type", instanceFlags)?.GetValue(offer)?.ToString() ?? string.Empty;
+                    string title = offerType.GetField("title", instanceFlags)?.GetValue(offer) as string ?? string.Empty;
+                    string description = offerType.GetField("description", instanceFlags)?.GetValue(offer) as string ?? string.Empty;
+                    int cost = (int)(offerType.GetField("cost", instanceFlags)?.GetValue(offer) ?? int.MaxValue);
+                    expectedTypes.Remove(typeName);
+                    fixedPricesValid &= expectedPrices.TryGetValue(typeName, out int expectedCost) && cost == expectedCost;
+                    firstPrices[typeName] = cost;
+                    if (typeName == "Coupon")
+                    {
+                        couponDurationValid = title.Contains("4라운드") && description.Contains("18%");
+                    }
+                    snapshots.Add(typeName + "=" + cost + "G");
+                }
+
+                goldField.SetValue(controller, 1);
+                summonCostField.SetValue(controller, 60);
+                buildOffers.Invoke(shop, new object[] { 3, true, false, false });
+                IList repricedOffers = offersField.GetValue(shop) as IList;
+                bool pricesInvariant = repricedOffers != null && repricedOffers.Count == 3;
+                if (repricedOffers != null)
+                {
+                    for (int i = 0; i < repricedOffers.Count; i++)
+                    {
+                        object offer = repricedOffers[i];
+                        Type offerType = offer.GetType();
+                        string typeName = offerType.GetField("type", instanceFlags)?.GetValue(offer)?.ToString() ?? string.Empty;
+                        int cost = (int)(offerType.GetField("cost", instanceFlags)?.GetValue(offer) ?? int.MaxValue);
+                        pricesInvariant &= firstPrices.TryGetValue(typeName, out int firstCost) && cost == firstCost;
+                    }
+                }
+
+                summary = string.Join(", ", snapshots) + " | gold/summon invariant=" + pricesInvariant;
+                return expectedTypes.Count == 0 && fixedPricesValid && pricesInvariant && couponDurationValid;
+            }
+            catch (Exception exception)
+            {
+                summary = exception.GetType().Name + ":" + exception.Message;
+                return false;
+            }
+            finally
+            {
+                offers?.Clear();
+                goldField.SetValue(controller, originalGold);
+                summonCostField.SetValue(controller, originalSummonCost);
+            }
+        }
+
         private static bool Approximately(Vector2 left, Vector2 right)
         {
             return Vector2.SqrMagnitude(left - right) <= 0.0001f;
+        }
+
+        private static bool Approximately(Color left, Color right)
+        {
+            Vector4 delta = (Vector4)left - (Vector4)right;
+            return delta.sqrMagnitude <= 0.0004f;
         }
 
         private static bool ContainsIgnoreCase(string value, string fragment)
@@ -394,6 +564,12 @@ namespace DefenseGame.Editor
             public bool portraitProfilesValid;
             public bool hpTen;
             public bool hpTextTen;
+            public bool fateEntryLayoutValid;
+            public bool fateEntryPastelColorValid;
+            public bool fateEntryIdleAtFullHealth;
+            public bool initialPreparationFlowValid;
+            public bool earlyMiniShopChoicesValid;
+            public string earlyMiniShopSummary;
             public bool simultaneousDeathPolicyValid;
             public bool hero32SignatureValid;
             public bool defaultVfxConfigured;

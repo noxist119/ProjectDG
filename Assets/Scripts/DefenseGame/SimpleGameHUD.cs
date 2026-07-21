@@ -90,6 +90,9 @@ namespace DefenseGame
         private const float FatePanelClosedYOffset = 226f;
         private const float FatePanelSlideSpeed = 13f;
         private const float FatePanelFadeSpeed = 6f;
+        private static readonly Color FateEntryIdleColor = new Color(0.30f, 0.52f, 0.38f, 0.98f);
+        private static readonly Color FateEntryCrisisColor = new Color(0.46f, 0.66f, 0.40f, 0.98f);
+        private static readonly Color FateEntryTextColor = new Color(0.97f, 1.00f, 0.97f, 1f);
 
         [Header("Opening Tutorial")]
         [SerializeField] private bool enableOpeningTutorial = true;
@@ -546,7 +549,7 @@ namespace DefenseGame
             bool fateEditing = gameController.FateCombatEditingActive;
             SetText(stateText, fateEditing ? "계약 편집 중" : combatLocked ? "\uC804\uD22C \uC9C4\uD589 \uC911" : roundRunning ? "\uC804\uD22C \uC900\uBE44" : "\uC900\uBE44 \uB2E8\uACC4");
             SetColor(stateText, fateEditing ? new Color(1f, 0.54f, 1f) : combatLocked ? new Color(1f, 0.82f, 0.36f) : new Color(0.42f, 1f, 0.72f));
-            string battleLabel = roundRunning ? (combatLocked ? "\uC804\uD22C \uC911" : "\uC804\uD22C \uC900\uBE44") : gameController.CurrentRound <= 0 ? "\uC804\uD22C \uC2DC\uC791" : "\uB2E4\uC74C \uB77C\uC6B4\uB4DC";
+            string battleLabel = roundRunning ? (combatLocked ? "\uC804\uD22C \uC911" : "\uC804\uD22C \uC900\uBE44") : "\uB2E4\uC74C \uB77C\uC6B4\uB4DC";
             SetText(battleButtonText, battleLabel);
             SetInteractable(battleButton, !roundRunning);
 
@@ -782,7 +785,10 @@ namespace DefenseGame
                 }
 
                 fatePanelReopenButton.gameObject.SetActive(showReopen);
-                fateEntryButtonEmphasisActive = shouldShowEntryButton && !shouldShow && showReopen;
+                fateEntryButtonEmphasisActive = shouldShowEntryButton &&
+                    !shouldShow &&
+                    showReopen &&
+                    gameController != null && gameController.FateSurvivalCrisisActive;
                 SetText(fatePanelReopenButtonText, shouldShowEntryButton && !shouldShow ? "운명 카드\n꺼내기" : "계약");
             }
         }
@@ -861,11 +867,20 @@ namespace DefenseGame
             {
                 fateEntryButtonVisualInitialized = true;
                 fateEntryButtonBaseScale = fatePanelReopenButton.transform.localScale;
-                Graphic graphic = fatePanelReopenButton.targetGraphic;
-                fateEntryButtonBaseColor = graphic != null ? graphic.color : Color.white;
+                fateEntryButtonBaseColor = FateEntryIdleColor;
+                Graphic graphic = fatePanelReopenButton.targetGraphic != null
+                    ? fatePanelReopenButton.targetGraphic
+                    : fatePanelReopenButton.GetComponent<Graphic>();
+                if (graphic != null)
+                {
+                    fatePanelReopenButton.targetGraphic = graphic;
+                    graphic.color = fateEntryButtonBaseColor;
+                }
             }
 
-            Graphic targetGraphic = fatePanelReopenButton.targetGraphic;
+            Graphic targetGraphic = fatePanelReopenButton.targetGraphic != null
+                ? fatePanelReopenButton.targetGraphic
+                : fatePanelReopenButton.GetComponent<Graphic>();
             if (!fateEntryButtonEmphasisActive || !fatePanelReopenButton.gameObject.activeInHierarchy)
             {
                 fatePanelReopenButton.transform.localScale = fateEntryButtonBaseScale;
@@ -875,21 +890,20 @@ namespace DefenseGame
                 }
                 if (fatePanelReopenButtonText != null)
                 {
-                    SetColor(fatePanelReopenButtonText, Color.white);
+                    SetColor(fatePanelReopenButtonText, FateEntryTextColor);
                 }
                 return;
             }
 
-            float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5.4f);
-            fatePanelReopenButton.transform.localScale = fateEntryButtonBaseScale * Mathf.Lerp(1.04f, 1.12f, pulse);
+            float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4.6f);
+            fatePanelReopenButton.transform.localScale = fateEntryButtonBaseScale * Mathf.Lerp(1.00f, 1.07f, pulse);
             if (targetGraphic != null)
             {
-                Color brightColor = new Color(0.94f, 0.38f, 1f, 1f);
-                targetGraphic.color = Color.Lerp(fateEntryButtonBaseColor, brightColor, 0.36f + pulse * 0.34f);
+                targetGraphic.color = Color.Lerp(fateEntryButtonBaseColor, FateEntryCrisisColor, 0.28f + pulse * 0.42f);
             }
             if (fatePanelReopenButtonText != null)
             {
-                SetColor(fatePanelReopenButtonText, Color.Lerp(Color.white, new Color(1f, 0.90f, 0.30f), pulse));
+                SetColor(fatePanelReopenButtonText, FateEntryTextColor);
             }
         }
         private void UpdateFatePanelMotion()

@@ -296,8 +296,8 @@ namespace DefenseGame
             lobbyCollectionButton = CreateButton(modal.transform, "LobbyCollectionButton", "도감", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(1f, 0f), new Vector2(-260f, 120f), new Vector2(200f, 78f), new Color(0.26f, 0.56f, 1f, 0.98f), ToggleCollection, 27);
             lobbyShopButton = CreateButton(modal.transform, "LobbyShopButton", "상점", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 0f), new Vector2(260f, 120f), new Vector2(200f, 78f), new Color(0.02f, 0.72f, 0.88f, 0.98f), ToggleShop, 27);
 
-            lobbyBattleButton = CreateButton(modal.transform, "LobbyBattleButton", "전투 시작", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 118f), new Vector2(340f, 88f), new Color(0.98f, 0.20f, 0.13f, 1f), HandleBattlePressed, 33);
-            CreateText(modal.transform, "LobbyBottomHint", "준비가 끝났다면 전투 시작을 눌러 라운드를 시작하세요.", new Color(0.88f, 0.92f, 1f, 0.88f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 62f), new Vector2(760f, 38f), 19, TextAnchor.MiddleCenter, false);
+            lobbyBattleButton = CreateButton(modal.transform, "LobbyBattleButton", "전장 입장", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 118f), new Vector2(340f, 88f), new Color(0.98f, 0.20f, 0.13f, 1f), HandleEnterPreparationPressed, 33);
+            CreateText(modal.transform, "LobbyBottomHint", "전장에 입장해 유닛을 소환한 뒤 다음 라운드를 누르세요.", new Color(0.88f, 0.92f, 1f, 0.88f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 62f), new Vector2(760f, 38f), 19, TextAnchor.MiddleCenter, false);
             BuildOutgameBottomNav(lobbyOverlay.transform);
         }
 
@@ -816,6 +816,35 @@ namespace DefenseGame
             return characterDatabase != null ? characterDatabase.GetDeployableCharacters().Count : 0;
         }
 
+        private void HandleEnterPreparationPressed()
+        {
+            if (gameController == null || gameController.IsRoundRunning)
+            {
+                return;
+            }
+
+            if (matchmakingRoutine != null)
+            {
+                StopCoroutine(matchmakingRoutine);
+                matchmakingRoutine = null;
+            }
+
+            HideResult();
+            HideLoadout();
+            HideShop();
+            HideLobby();
+            HideMatchmaking();
+            HideOutgamePlaceholder();
+            HideExitConfirm();
+            if (characterCollectionUI != null)
+            {
+                characterCollectionUI.Close();
+            }
+
+            SetGameplayHudVisible(true);
+            gameController.RequestBanner("준비 단계  유닛을 소환한 뒤 다음 라운드를 누르세요", new Color(0.72f, 0.86f, 0.58f), 3.0f);
+        }
+
         private void HandleBattlePressed()
         {
             if (gameController == null || buttonBinder == null || gameController.IsRoundRunning)
@@ -877,9 +906,8 @@ namespace DefenseGame
                 yield return null;
             }
 
-            HideMatchmaking();
-            buttonBinder.OnClickStartRound();
             matchmakingRoutine = null;
+            HandleEnterPreparationPressed();
         }
 
         private void CancelMatchmaking()
@@ -1747,7 +1775,7 @@ namespace DefenseGame
                 gameController.ResetRunForRetry();
             }
 
-            HandleBattlePressed();
+            HandleEnterPreparationPressed();
         }
 
         private GameObject CreateOverlayRoot(Transform parent, string name, Color blockerColor)

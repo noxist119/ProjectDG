@@ -899,21 +899,28 @@ namespace DefenseGame
             fateGradeLockLabel.resizeTextMaxSize = 22;
             fateNormalBanLabel.resizeTextMaxSize = 22;
             fateForceShopLabel.resizeTextMaxSize = 1;
-            Button fatePanelReopenButton = CreateButton(hudRoot, font, "FatePanelReopenButton", "계약", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-42f, 356f), new Vector2(154f, 48f), new Color(0.45f, 0.14f, 0.62f, 0.94f), Color.white, null, out Text fatePanelReopenLabel);
+            Button fatePanelReopenButton = CreateButton(hudRoot, font, "FatePanelReopenButton", "계약", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-42f, 356f), new Vector2(154f, 48f), new Color(0.30f, 0.52f, 0.38f, 0.98f), new Color(0.97f, 1.00f, 0.97f, 1f), null, out Text fatePanelReopenLabel);
             fatePanelReopenLabel.fontSize = 18;
             fatePanelReopenLabel.resizeTextForBestFit = true;
             fatePanelReopenLabel.resizeTextMinSize = 13;
             fatePanelReopenLabel.resizeTextMaxSize = 18;
             RectTransform fateEntryRect = fatePanelReopenButton.GetComponent<RectTransform>();
             fateEntryRect.sizeDelta = new Vector2(250f, 84f);
-            fateEntryRect.anchoredPosition = new Vector2(-54f, 356f);
+            // Align the right edge with the 920px lower HUD panels (x = +460 at 1080 reference width).
+            fateEntryRect.anchoredPosition = new Vector2(-80f, 356f);
             fatePanelReopenLabel.fontSize = 28;
             fatePanelReopenLabel.resizeTextMinSize = 22;
             fatePanelReopenLabel.resizeTextMaxSize = 28;
+            Shadow fateEntryShadow = fatePanelReopenButton.GetComponent<Shadow>();
+            if (fateEntryShadow != null)
+            {
+                fateEntryShadow.effectDistance = new Vector2(0f, -4f);
+                fateEntryShadow.useGraphicAlpha = true;
+            }
             Outline fateEntryOutline = fatePanelReopenButton.gameObject.AddComponent<Outline>();
-            fateEntryOutline.effectColor = new Color(1f, 0.72f, 0.20f, 0.94f);
-            fateEntryOutline.effectDistance = new Vector2(3f, -3f);
-            fateEntryOutline.useGraphicAlpha = false;
+            fateEntryOutline.effectColor = new Color(0.58f, 0.74f, 0.48f, 0.86f);
+            fateEntryOutline.effectDistance = new Vector2(2f, -2f);
+            fateEntryOutline.useGraphicAlpha = true;
             fatePanelReopenButton.gameObject.SetActive(false);
 
             Text summonCost = CreateText(summonButton.transform, font, new Color(0.13f, 0.28f, 0.12f), "SummonCostText", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 7f), new Vector2(0f, 24f), "10", 18, TextAnchor.MiddleCenter, true);
@@ -1609,6 +1616,7 @@ namespace DefenseGame
             shadow.effectDistance = new Vector2(0f, -7f);
 
             Button button = buttonObject.AddComponent<Button>();
+            button.targetGraphic = image;
             button.onClick.AddListener(RuntimeAudioUtility.PlayButton);
             if (onClick != null)
             {
