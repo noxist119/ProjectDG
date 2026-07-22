@@ -14,6 +14,7 @@ namespace DefenseGame
         public GameObject summonedDefenderPrefab;
         public GameObject defaultMonsterPrefab;
         public GameObject monsterDeathEffectPrefab;
+        public GameObject defenderDeathEffectPrefab;
         public GameObject projectilePrefab;
         public GameObject defaultMuzzleEffectPrefab;
         public GameObject defaultHitEffectPrefab;

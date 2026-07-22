@@ -17,6 +17,7 @@ MonoBehaviour:
   summonedDefenderPrefab: {fileID: 8114239208549360040, guid: 0d90107ee5159544d8268fa02db774c1, type: 3}
   defaultMonsterPrefab: {fileID: 8114239208549360040, guid: 0d90107ee5159544d8268fa02db774c1, type: 3}
   monsterDeathEffectPrefab: {fileID: 6591950069710809529, guid: ad49f21b37f647446937626ac199eed6, type: 3}
+  defenderDeathEffectPrefab: {fileID: 6591950069710809529, guid: ad49f21b37f647446937626ac199eed6, type: 3}
   projectilePrefab: {fileID: 2560690855817200390, guid: 405247fb50345b74cb6de7fa56815ea7, type: 3}
   defaultMuzzleEffectPrefab: {fileID: 7045889733438899885, guid: 14078f8f7064d894fad9a68275c46f31, type: 3}
   defaultHitEffectPrefab: {fileID: 2944396702758532163, guid: e190bf97c041e58448af6b043116cba0, type: 3}

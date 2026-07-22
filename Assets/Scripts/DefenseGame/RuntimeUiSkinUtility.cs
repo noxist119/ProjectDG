@@ -9,6 +9,14 @@ namespace DefenseGame
         private static Sprite circleSprite;
         private static readonly System.Collections.Generic.Dictionary<Sprite, Sprite> slicedSpriteCache = new System.Collections.Generic.Dictionary<Sprite, Sprite>();
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticSpriteCache()
+        {
+            roundedPanelSprite = null;
+            circleSprite = null;
+            slicedSpriteCache.Clear();
+        }
+
         public static Font ResolveFont(GamePresentationConfig presentationConfig)
         {
             if (presentationConfig != null)
@@ -349,7 +357,12 @@ namespace DefenseGame
 
             if (slicedSpriteCache.TryGetValue(source, out Sprite cached))
             {
-                return cached;
+                if (IsSpriteUsable(cached))
+                {
+                    return cached;
+                }
+
+                slicedSpriteCache.Remove(source);
             }
 
             Rect rect = source.rect;
@@ -367,6 +380,11 @@ namespace DefenseGame
             sliced.name = source.name + "_RuntimeSliced";
             slicedSpriteCache[source] = sliced;
             return sliced;
+        }
+
+        private static bool IsSpriteUsable(Sprite sprite)
+        {
+            return sprite != null && sprite.texture != null;
         }
 
         private static Sprite CreateRuntimeSprite(string name, int width, int height, float radius)

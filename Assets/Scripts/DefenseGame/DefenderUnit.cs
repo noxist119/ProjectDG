@@ -22,6 +22,8 @@ namespace DefenseGame
         [SerializeField] private GameObject defaultMuzzleEffectPrefab;
         [SerializeField] private GameObject defaultHitEffectPrefab;
         [SerializeField] private GameObject defaultAreaEffectPrefab;
+        [SerializeField] private GameObject deathEffectPrefab;
+        [SerializeField] private Vector3 deathEffectOffset = new Vector3(0f, 0.6f, 0f);
         [SerializeField] private Renderer[] tintRenderers;
 
         private CharacterDefinition definition;
@@ -258,7 +260,7 @@ namespace DefenseGame
             }
         }
 
-        public void ConfigureRuntimePieces(Projectile projectileTemplate, Transform launchPoint, Renderer[] renderers, GameObject summonedUnitTemplate = null, GameObject muzzleEffectTemplate = null, GameObject hitEffectTemplate = null, GameObject areaEffectTemplate = null)
+        public void ConfigureRuntimePieces(Projectile projectileTemplate, Transform launchPoint, Renderer[] renderers, GameObject summonedUnitTemplate = null, GameObject muzzleEffectTemplate = null, GameObject hitEffectTemplate = null, GameObject areaEffectTemplate = null, GameObject deathEffectTemplate = null)
         {
             projectilePrefab = projectileTemplate;
             firePoint = launchPoint;
@@ -267,6 +269,7 @@ namespace DefenseGame
             defaultMuzzleEffectPrefab = muzzleEffectTemplate;
             defaultHitEffectPrefab = hitEffectTemplate;
             defaultAreaEffectPrefab = areaEffectTemplate;
+            deathEffectPrefab = deathEffectTemplate;
         }
 
         public void AdoptRuntimeTemplate(DefenderUnit template)
@@ -281,6 +284,8 @@ namespace DefenseGame
             defaultMuzzleEffectPrefab = template.defaultMuzzleEffectPrefab;
             defaultHitEffectPrefab = template.defaultHitEffectPrefab;
             defaultAreaEffectPrefab = template.defaultAreaEffectPrefab;
+            deathEffectPrefab = template.deathEffectPrefab;
+            deathEffectOffset = template.deathEffectOffset;
             if (firePoint == null)
             {
                 Transform existingPoint = transform.Find("FirePoint");
@@ -2984,9 +2989,15 @@ namespace DefenseGame
 
             isDying = true;
             TriggerDeathPoisonField();
+            PlayDeathEffect();
             RemoveFromBoard();
             OnDefenderRemoved?.Invoke(this);
             Destroy(gameObject);
+        }
+
+        private void PlayDeathEffect()
+        {
+            RuntimeEffectUtility.PlayOneShot(deathEffectPrefab, transform.position + deathEffectOffset, Quaternion.identity, 3f);
         }
 
         private void TriggerDeathPoisonField()

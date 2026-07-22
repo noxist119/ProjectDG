@@ -699,7 +699,8 @@ namespace DefenseGame
                 presentationConfig != null ? presentationConfig.summonedDefenderPrefab : null,
                 presentationConfig != null ? presentationConfig.defaultMuzzleEffectPrefab : null,
                 presentationConfig != null ? presentationConfig.defaultHitEffectPrefab : null,
-                presentationConfig != null ? presentationConfig.defaultAreaEffectPrefab : null);
+                presentationConfig != null ? presentationConfig.defaultAreaEffectPrefab : null,
+                presentationConfig != null ? presentationConfig.defenderDeathEffectPrefab : null);
             unitObject.SetActive(false);
             return unit;
         }

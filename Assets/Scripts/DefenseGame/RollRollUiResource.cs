@@ -9,6 +9,12 @@ namespace DefenseGame
         private const string ResourceRoot = "UI/RollRoll/";
         private static readonly Dictionary<string, Sprite> SpriteCache = new Dictionary<string, Sprite>();
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticSpriteCache()
+        {
+            SpriteCache.Clear();
+        }
+
         private static readonly Dictionary<string, string> CharacterSpriteById = new Dictionary<string, string>
         {
             { "hero_01", "Minimi/minimi_fire" },
@@ -48,7 +54,12 @@ namespace DefenseGame
             string cacheKey = normalizedPath + (sliced ? "#sliced" : "#simple");
             if (SpriteCache.TryGetValue(cacheKey, out Sprite cachedSprite))
             {
-                return cachedSprite;
+                if (cachedSprite != null && cachedSprite.texture != null)
+                {
+                    return cachedSprite;
+                }
+
+                SpriteCache.Remove(cacheKey);
             }
 
             Texture2D texture = Resources.Load<Texture2D>(normalizedPath);
