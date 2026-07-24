@@ -45,7 +45,9 @@ namespace DefenseGame
         DeathPoisonField = 37,
         AllyAttackSpeedBoost = 38,
         FrontKnockbackGuard = 39,
-        RandomMultiShot = 40
+        RandomMultiShot = 40,
+        AttackPowerReduction = 41,
+        DamageReflect = 42
     }
 
     public enum SkillCategory
@@ -178,6 +180,8 @@ namespace DefenseGame
                 case SkillEffectType.GoldDrain:
                 case SkillEffectType.ManaBurn:
                 case SkillEffectType.MonsterRally:
+                case SkillEffectType.AttackPowerReduction:
+                case SkillEffectType.DamageReflect:
                     return SkillDeliveryType.Instant;
                 default:
                     return SkillDeliveryType.Melee;
@@ -224,6 +228,7 @@ namespace DefenseGame
                 case SkillEffectType.Taunt:
                 case SkillEffectType.ThornsAura:
                 case SkillEffectType.BossFortify:
+                case SkillEffectType.DamageReflect:
                     return SkillCategory.Defense;
                 case SkillEffectType.Stun:
                 case SkillEffectType.MassStun:
@@ -242,6 +247,7 @@ namespace DefenseGame
                     return SkillCategory.Summon;
                 case SkillEffectType.DeathPact:
                 case SkillEffectType.GoldDrain:
+                case SkillEffectType.AttackPowerReduction:
                     return SkillCategory.BossSpecial;
                 default:
                     return SkillCategory.Auto;
@@ -325,6 +331,10 @@ namespace DefenseGame
                     return "전방의 적에게 공격력 " + FormatPercent(skill.power) + "의 피해를 주고 " + FormatMeters(skill.radius) + " 밀쳐냅니다. 사용할 때마다 받는 피해가 " + FormatPercent(skill.secondaryPower) + " 감소합니다.";
                 case SkillEffectType.RandomMultiShot:
                     return "무작위 적에게 공격력 " + FormatPercent(skill.power) + "의 탄환을 " + Mathf.Max(1, skill.hitCount) + "발 발사합니다. 같은 적을 다시 노릴 수 있습니다.";
+                case SkillEffectType.AttackPowerReduction:
+                    return "가장 가까운 유닛의 공격력을 " + FormatPercent(skill.power) + "만큼 " + FormatSeconds(skill.duration) + " 동안 감소시킵니다.";
+                case SkillEffectType.DamageReflect:
+                    return FormatSeconds(skill.duration) + " 동안 받은 피해의 " + FormatPercent(skill.power) + "를 공격자에게 돌려줍니다.";
                 case SkillEffectType.Execute:
                     return "적에게 공격력 " + FormatPercent(skill.power) + "의 피해를 주며, 체력이 낮은 적에게 더 강합니다.";
                 case SkillEffectType.Slow:

@@ -94,6 +94,16 @@ namespace DefenseGame
                 return skin.missionIconSprite != null ? skin.missionIconSprite : skin.checkIconSprite;
             }
 
+            if (key.Contains("shop") || key.Contains("store") || key.Contains("offer"))
+            {
+                return skin.shopIconSprite != null ? skin.shopIconSprite : skin.coinIconSprite;
+            }
+
+            if (key.Contains("augment") || key.Contains("perk") || key.Contains("buff"))
+            {
+                return skin.augmentIconSprite != null ? skin.augmentIconSprite : skin.missionIconSprite;
+            }
+
             if (key.Contains("check") || key.Contains("confirm") || key.Contains("ok") || key.Contains("complete"))
             {
                 return skin.checkIconSprite;

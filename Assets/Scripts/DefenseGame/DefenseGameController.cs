@@ -99,6 +99,13 @@ namespace DefenseGame
         }
     }
 
+    public enum LuckySummonChoice
+    {
+        MergeLink = 0,
+        SafeRare = 1,
+        Jackpot = 2
+    }
+
     public class DefenseGameController : MonoBehaviour
     {
         private const string EarlyRunTuningLogPrefsKey = "DefenseGame.EarlyRunTuningLog.v1";
@@ -143,20 +150,20 @@ namespace DefenseGame
         [Header("Early Run Fun Pacing")]
         [SerializeField] private bool enableEarlyRunFunPacing = true;
         [SerializeField] private int earlyFunRoundLimit = 5;
-        [SerializeField] private int earlyPitySummonCount = 7;
-        [SerializeField] private CharacterGrade earlyPityMinimumGrade = CharacterGrade.Rare;
-        [SerializeField] [Range(0f, 1f)] private float earlyPityEpicChance = 0.02f;
         [SerializeField] private int earlyFallbackRewardRound = 3;
         [SerializeField] private CharacterGrade earlyFallbackRewardGrade = CharacterGrade.Normal;
         [SerializeField] private int earlyFallbackGoldReward = 4;
         [SerializeField] private int earlyCrisisRound = 5;
         [SerializeField] private int earlyBossPrepRewardRound = 4;
         [SerializeField] private int earlyBossPrepGoldReward = 0;
-        [SerializeField] private bool enableBadLuckInsurance = true;
-        [SerializeField] private int badLuckInsuranceSummonThreshold = 5;
-        [SerializeField] private int badLuckInsuranceLastSummon = 7;
-        [SerializeField] private int badLuckInsuranceEarliestRound = 3;
-        [SerializeField] private CharacterGrade badLuckInsuranceMinimumGoodGrade = CharacterGrade.Rare;
+        [Header("Lucky Summon Comeback")]
+        [SerializeField] private bool enableLuckySummonComeback = true;
+        [SerializeField] private int luckySummonVisibleStreak = 3;
+        [SerializeField] private int luckySummonNormalStreakThreshold = 7;
+        [SerializeField] private int luckySummonEarliestRound = 4;
+        [SerializeField] [Range(1f, 3f)] private float luckySummonSafeCostMultiplier = 1.5f;
+        [SerializeField] [Range(0f, 1f)] private float luckySummonJackpotEpicChance = 0.25f;
+        [SerializeField] [Range(0f, 1f)] private float luckySummonJackpotRefundRate = 0.50f;
         [SerializeField] private int earlyLeakGraceRoundLimit = 4;
         [SerializeField] private int earlyRoundLeakDamageCap = 3;
         [SerializeField] private bool enableFirstBossSummonRushBonus = true;
@@ -332,11 +339,12 @@ namespace DefenseGame
         private bool earlyRunMomentTriggered;
         private bool earlyFallbackRewardGranted;
         private bool earlyBossPrepRewardGranted;
-        private int earlyBadLuckSummons;
-        private CharacterGrade earlyBadLuckBestGrade = CharacterGrade.Normal;
         private bool badLuckInsuranceOfferPending;
         private bool badLuckInsuranceOffered;
-        private bool badLuckInsuranceResolved;
+        private int luckySummonNormalStreak;
+        private bool luckySummonReady;
+        private bool luckySummonConsumed;
+        private bool luckySummonChoiceOpen;
         private string badLuckInsuranceReason = "초반 소환 보험 대기";
         private float currentRoundTileDamage;
         private float currentRoundBossTileDamage;
@@ -519,7 +527,7 @@ namespace DefenseGame
         public event System.Action<int> OnRoundAugmentChoicePhase;
         public event System.Action<int> OnRoundCompleted;
         public event System.Action OnGameOver;
-        public event System.Action OnBadLuckInsuranceOffered;
+        public event System.Action OnLuckySummonChoiceRequested;
         public event System.Action<string, Color, float> OnBannerRequested;
 
         public int Gold { get; private set; }
@@ -559,7 +567,7 @@ namespace DefenseGame
         public string CurrentBuildGoalSummary => ComposeBuildGoalGuideSummary();
         public string CurrentDangerSummary => BuildCurrentDangerSummary();
         public string EarlyRunTelemetrySummary => earlyRunTelemetrySummary;
-        public string EarlyRunTuningLoopSummary => earlyRunTelemetrySummary + " / " + earlyRunLogCoverageSummary + " / 회복상점 " + earlyRunRecoveryOfferCount + "회";
+        public string EarlyRunTuningLoopSummary => earlyRunTelemetrySummary + " / " + earlyRunLogCoverageSummary + " / 긴급지원 " + earlyRunRecoveryOfferCount + "회";
         public string EarlyRunTuningHint => earlyRunTuningHint;
         public bool EarlyRunRecoveryRecommended => earlyRunRecoveryRecommended;
         public string EarlyRunRecoveryReason => earlyRunRecoveryReason;
@@ -568,6 +576,13 @@ namespace DefenseGame
         public string EarlyRunActionSummary => BuildEarlyRunActionSummary();
         public bool BadLuckInsuranceAvailable => badLuckInsuranceOfferPending;
         public string BadLuckInsuranceReason => badLuckInsuranceReason;
+        public int LuckySummonNormalStreak => Mathf.Max(0, luckySummonNormalStreak);
+        public int LuckySummonThreshold => Mathf.Max(1, luckySummonNormalStreakThreshold);
+        public bool LuckySummonProgressVisible => enableLuckySummonComeback && !luckySummonConsumed &&
+            (LuckySummonNormalStreak >= Mathf.Max(1, luckySummonVisibleStreak) || LuckySummonReady);
+        public bool LuckySummonReady => enableLuckySummonComeback && !luckySummonConsumed &&
+            (luckySummonReady || LuckySummonNormalStreak >= LuckySummonThreshold && GetSummonRateRound() >= Mathf.Max(4, luckySummonEarliestRound));
+        public bool LuckySummonChoiceOpen => luckySummonChoiceOpen;
         public string RecommendedDeckSummary => BuildRecommendedDeckSummary();
         public string RecommendedBuildName => BuildRecommendedBuildName();
         public string RunNextGoalHeadline => BuildRunNextGoalHeadline();
@@ -826,6 +841,15 @@ namespace DefenseGame
             {
                 return false;
             }
+            RefreshLuckySummonReadiness();
+            if (LuckySummonReady)
+            {
+                luckySummonChoiceOpen = true;
+                OnLuckySummonChoiceRequested?.Invoke();
+                NotifyStateChanged();
+                return false;
+            }
+
 
             CharacterDefinition summon = SelectSummonDefinition(out bool earlyPitySummon);
             if (summon == null)
@@ -856,6 +880,151 @@ namespace DefenseGame
             OnUnitSummoned?.Invoke(summon);
             NotifyStateChanged();
             return true;
+        }
+        public int GetLuckySummonChoiceCost(LuckySummonChoice choice)
+        {
+            int baseCost = SummonCost;
+            return choice == LuckySummonChoice.SafeRare
+                ? Mathf.Max(baseCost, Mathf.CeilToInt(baseCost * Mathf.Max(1f, luckySummonSafeCostMultiplier)))
+                : baseCost;
+        }
+
+        public bool CanChooseLuckySummon(LuckySummonChoice choice)
+        {
+            return LuckySummonReady && luckySummonChoiceOpen && !IsCombatInteractionLocked &&
+                boardManager != null && characterDatabase != null && EmptySlotCount > 0 &&
+                Gold >= GetLuckySummonChoiceCost(choice);
+        }
+
+        public void CancelLuckySummonChoice()
+        {
+            if (!luckySummonChoiceOpen)
+            {
+                return;
+            }
+
+            luckySummonChoiceOpen = false;
+            NotifyStateChanged();
+        }
+
+        public bool TryResolveLuckySummonChoice(LuckySummonChoice choice)
+        {
+            RefreshLuckySummonReadiness();
+            if (!CanChooseLuckySummon(choice))
+            {
+                OnBannerRequested?.Invoke("\uD589\uC6B4 \uC18C\uD658 \uBD88\uAC00: \uACE8\uB4DC\uC640 \uBE48 \uC2AC\uB86F\uC744 \uD655\uC778\uD558\uC138\uC694.", new Color(1f, 0.54f, 0.28f), 1.8f);
+                return false;
+            }
+
+            int cost = GetLuckySummonChoiceCost(choice);
+            bool jackpotSuccess = false;
+            bool jackpotFailed = false;
+            CharacterDefinition summon = SelectLuckySummonDefinition(choice, out jackpotSuccess, out jackpotFailed);
+            if (summon == null || !boardManager.TrySpawnUnit(summon, defaultUnitPrefab, out DefenderUnit spawnedUnit))
+            {
+                return false;
+            }
+
+            Gold -= cost;
+            int refund = jackpotFailed
+                ? Mathf.Clamp(Mathf.RoundToInt(cost * Mathf.Clamp01(luckySummonJackpotRefundRate)), 0, cost)
+                : 0;
+            Gold += refund;
+            currentSummonBaseCost = Mathf.Min(maxSummonCost, currentSummonBaseCost + ResolveSummonCostIncrease());
+
+            luckySummonNormalStreak = 0;
+            luckySummonReady = false;
+            luckySummonConsumed = true;
+            luckySummonChoiceOpen = false;
+            badLuckInsuranceOfferPending = false;
+
+            if (summon.grade != CharacterGrade.Transcendent)
+            {
+                RuntimeAudioUtility.PlayDiceAppear();
+            }
+
+            RegisterSummonExcitement(summon, false, spawnedUnit, false);
+            RecordEarlyRoundSummon(summon);
+            ResolveUltimateRecipeBingoReward();
+            OnUnitSummoned?.Invoke(summon);
+
+            string resultMessage;
+            Color resultColor;
+            if (choice == LuckySummonChoice.MergeLink)
+            {
+                resultMessage = "\uC5F0\uACB0\uC758 \uC8FC\uC0AC\uC704: \uAC00\uC7A5 \uAC00\uAE4C\uC6B4 \uD569\uC131 \uC7AC\uB8CC \uD68D\uB4DD";
+                resultColor = new Color(0.42f, 0.92f, 0.68f);
+            }
+            else if (choice == LuckySummonChoice.SafeRare)
+            {
+                resultMessage = "\uC548\uC804\uC758 \uC8FC\uC0AC\uC704: \uB808\uC5B4 \uC774\uC0C1 \uD655\uC815 \uD68D\uB4DD";
+                resultColor = new Color(0.36f, 0.78f, 1f);
+            }
+            else if (jackpotSuccess)
+            {
+                resultMessage = "\uC2B9\uBD80 \uC131\uACF5! \uC5D0\uD53D \uC720\uB2DB \uD68D\uB4DD";
+                resultColor = new Color(1f, 0.54f, 0.92f);
+            }
+            else
+            {
+                resultMessage = "\uC2B9\uBD80 \uC2E4\uD328: \uC77C\uBC18 \uC720\uB2DB + " + refund + "G \uD658\uAE09";
+                resultColor = new Color(1f, 0.76f, 0.30f);
+            }
+
+            AddRunHighlightCard("\uD589\uC6B4 \uC18C\uD658", resultMessage);
+            OnBannerRequested?.Invoke(resultMessage, resultColor, 2.4f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        private CharacterDefinition SelectLuckySummonDefinition(LuckySummonChoice choice, out bool jackpotSuccess, out bool jackpotFailed)
+        {
+            jackpotSuccess = false;
+            jackpotFailed = false;
+            if (characterDatabase == null)
+            {
+                return null;
+            }
+
+            CharacterDefinition selected;
+            switch (choice)
+            {
+                case LuckySummonChoice.MergeLink:
+                    selected = characterDatabase.GetRandomCharacterByGrade(SelectMergeAssistGrade(), true);
+                    break;
+
+                case LuckySummonChoice.SafeRare:
+                    selected = characterDatabase.GetRandomSummonableCharacter(GetSummonRateRound(), true);
+                    if (selected == null || (int)selected.grade < (int)CharacterGrade.Rare)
+                    {
+                        selected = characterDatabase.GetRandomCharacterByGrade(CharacterGrade.Rare, true);
+                    }
+                    break;
+
+                default:
+                    jackpotSuccess = UnityEngine.Random.value < Mathf.Clamp01(luckySummonJackpotEpicChance);
+                    jackpotFailed = !jackpotSuccess;
+                    selected = characterDatabase.GetRandomCharacterByGrade(jackpotSuccess ? CharacterGrade.Epic : CharacterGrade.Normal, true);
+                    break;
+            }
+
+            selected ??= characterDatabase.GetRandomSummonableCharacter(GetSummonRateRound(), true);
+            return selected != null ? ApplyFateSummonIntervention(selected) : null;
+        }
+
+        private void RefreshLuckySummonReadiness()
+        {
+            if (!enableLuckySummonComeback || luckySummonConsumed || luckySummonReady ||
+                luckySummonNormalStreak < LuckySummonThreshold ||
+                GetSummonRateRound() < Mathf.Max(4, luckySummonEarliestRound))
+            {
+                return;
+            }
+
+            luckySummonReady = true;
+            badLuckInsuranceOfferPending = false;
+            AddRunHighlightCard("\uD589\uC6B4 \uB204\uC801", "\uC77C\uBC18 " + luckySummonNormalStreak + "\uD68C \uC5F0\uC18D / \uD589\uC6B4 \uC18C\uD658 \uC900\uBE44");
+            OnBannerRequested?.Invoke("\uD589\uC6B4 \uC18C\uD658 \uC900\uBE44! \uB2E4\uC74C \uC18C\uD658\uC5D0\uC11C \uC138 \uAC00\uC9C0 \uC8FC\uC0AC\uC704 \uC911 \uD558\uB098\uB97C \uC120\uD0DD\uD558\uC138\uC694.", new Color(0.72f, 0.90f, 0.38f), 2.6f);
         }
 
         public void ClearBoardForProfileChange()
@@ -2674,11 +2843,11 @@ namespace DefenseGame
             earlyRunRecoveryRecommended = false;
             if (string.IsNullOrWhiteSpace(earlyRunRecoveryReason) || earlyRunRecoveryReason == "초반 런 안정")
             {
-                earlyRunRecoveryReason = earlyRunRecoveryCause + " 회복 선택지 제공 완료";
+                earlyRunRecoveryReason = earlyRunRecoveryCause + " 긴급 지원 제공 완료";
             }
 
             UpdateEarlyRunLogCoverageSummary();
-            Debug.Log("[EarlyRunTelemetry] 회복상점 제공 " + earlyRunRecoveryOfferCount + "회 / " + earlyRunLogCoverageSummary);
+            Debug.Log("[EarlyRunTelemetry] 긴급지원 제공 " + earlyRunRecoveryOfferCount + "회 / " + earlyRunLogCoverageSummary);
             NotifyStateChanged();
         }
 
@@ -2720,14 +2889,13 @@ namespace DefenseGame
             earlyRunRecoveryShopPurchaseCount++;
             runRecoveryShopPurchased = true;
             UpdateEarlyRunLogCoverageSummary();
-            Debug.Log("[EarlyRunTelemetry] 회복상점 구매 " + earlyRunRecoveryShopPurchaseCount + "/" + earlyRunRecoveryShopOfferCount + " / " + earlyRunLogCoverageSummary);
+            Debug.Log("[EarlyRunTelemetry] 긴급지원 선택 " + earlyRunRecoveryShopPurchaseCount + "/" + earlyRunRecoveryShopOfferCount + " / " + earlyRunLogCoverageSummary);
             NotifyStateChanged();
         }
 
         public void MarkBadLuckInsuranceClaimed(string choiceName)
         {
             badLuckInsuranceOfferPending = false;
-            badLuckInsuranceResolved = true;
             runInsuranceClaimed = true;
             earlyRunRecoveryRecommended = false;
             badLuckInsuranceReason = string.IsNullOrWhiteSpace(choiceName)
@@ -3642,12 +3810,13 @@ namespace DefenseGame
             earlyRunRecoveryReason = "초반 런 안정";
             earlyRunRecoveryCause = "흐름 안정";
             earlyRunRecoveryOfferCount = 0;
-            earlyBadLuckSummons = 0;
-            earlyBadLuckBestGrade = CharacterGrade.Normal;
             badLuckInsuranceOfferPending = false;
             badLuckInsuranceOffered = false;
-            badLuckInsuranceResolved = false;
             badLuckInsuranceReason = "초반 소환 보험 대기";
+            luckySummonNormalStreak = 0;
+            luckySummonReady = false;
+            luckySummonConsumed = false;
+            luckySummonChoiceOpen = false;
             earlyRunTuningLogRecorded = false;
             runR3BoosterOffered = false;
             runR3BoosterPurchased = false;
@@ -3869,17 +4038,6 @@ namespace DefenseGame
             earlyPitySummon = false;
             int summonRateRound = GetSummonRateRound();
             CharacterDefinition selected;
-            if (ShouldForceEarlyPitySummon(summonRateRound))
-            {
-                CharacterDefinition guaranteed = GetEarlyPityCharacter();
-                if (guaranteed != null)
-                {
-                    earlyPitySummon = true;
-                    selected = guaranteed;
-                    return ApplyFateSummonIntervention(selected);
-                }
-            }
-
             selected = characterDatabase.GetRandomSummonableCharacter(summonRateRound, true);
             return ApplyFateSummonIntervention(selected);
         }
@@ -3938,35 +4096,7 @@ namespace DefenseGame
             return result;
         }
 
-        private bool ShouldForceEarlyPitySummon(int summonRateRound)
-        {
-            int pityCount = Mathf.Max(1, earlyPitySummonCount);
-            if (enableBadLuckInsurance)
-            {
-                pityCount = Mathf.Max(pityCount, Mathf.Max(1, badLuckInsuranceSummonThreshold) + 2);
-            }
-
-            return enableEarlyRunFunPacing &&
-                !earlyRunMomentTriggered &&
-                summonRateRound <= Mathf.Max(1, earlyFunRoundLimit) &&
-                earlySummonAttempts + 1 >= pityCount;
-        }
-
-        private CharacterDefinition GetEarlyPityCharacter()
-        {
-            CharacterGrade preferredGrade = UnityEngine.Random.value <= earlyPityEpicChance
-                ? CharacterGrade.Epic
-                : earlyPityMinimumGrade;
-            CharacterDefinition definition = characterDatabase.GetRandomCharacterByGrade(preferredGrade, true);
-            if (definition != null)
-            {
-                return definition;
-            }
-
-            return characterDatabase.GetRandomCharacterByGrade(earlyPityMinimumGrade, true);
-        }
-
-        private void RegisterSummonExcitement(CharacterDefinition summon, bool earlyPitySummon, DefenderUnit spawnedUnit)
+        private void RegisterSummonExcitement(CharacterDefinition summon, bool earlyPitySummon, DefenderUnit spawnedUnit, bool trackLuckyStreak = true)
         {
             earlySummonAttempts++;
             if (summon == null)
@@ -3981,7 +4111,10 @@ namespace DefenseGame
                 AddFateGauge(fateGaugeOnLowSummon, "저점 소환");
             }
 
-            TrackBadLuckInsurance(summon, summonRateRound);
+            if (trackLuckyStreak)
+            {
+                TrackLuckySummonStreak(summon, summonRateRound);
+            }
             if (highGrade)
             {
                 earlyRunMomentTriggered = true;
@@ -4000,58 +4133,24 @@ namespace DefenseGame
             }
         }
 
-        private void TrackBadLuckInsurance(CharacterDefinition summon, int summonRateRound)
+        private void TrackLuckySummonStreak(CharacterDefinition summon, int summonRateRound)
         {
-            int requiredLowRolls = Mathf.Max(4, badLuckInsuranceSummonThreshold);
-            int maxTrackedSummons = Mathf.Max(requiredLowRolls, Mathf.Max(6, badLuckInsuranceLastSummon));
-            if (!enableBadLuckInsurance ||
-                badLuckInsuranceOffered ||
-                badLuckInsuranceResolved ||
-                summon == null ||
-                summonRateRound > Mathf.Max(1, earlyFunRoundLimit) ||
-                earlySummonAttempts > maxTrackedSummons && earlyBadLuckSummons < requiredLowRolls)
+            if (!enableLuckySummonComeback || luckySummonConsumed || summon == null)
             {
                 return;
             }
 
-            if ((int)summon.grade > (int)earlyBadLuckBestGrade)
+            if ((int)summon.grade >= (int)CharacterGrade.Rare)
             {
-                earlyBadLuckBestGrade = summon.grade;
-            }
-
-            if ((int)earlyBadLuckBestGrade >= (int)badLuckInsuranceMinimumGoodGrade)
-            {
-                badLuckInsuranceResolved = true;
-                badLuckInsuranceReason = "초반 고점 확보";
+                luckySummonNormalStreak = 0;
+                luckySummonReady = false;
+                luckySummonChoiceOpen = false;
                 return;
             }
 
-            earlyBadLuckSummons++;
-            if (earlyBadLuckSummons < requiredLowRolls)
-            {
-                return;
-            }
-
-            int earliestRound = Mathf.Max(3, badLuckInsuranceEarliestRound);
-            if (summonRateRound < earliestRound)
-            {
-                badLuckInsuranceReason = "R" + earliestRound + " 이후 초반 저점 복구 대기";
-                return;
-            }
-
-            badLuckInsuranceOffered = true;
-            runInsuranceOffered = true;
-            badLuckInsuranceOfferPending = true;
-            earlyFallbackRewardGranted = true;
-            badLuckInsuranceReason = "R" + summonRateRound + " 초반 " + earlyBadLuckSummons + "회 소환 저점: 추천 보험 1개 지급";
-            earlyRunRecoveryRecommended = true;
-            earlyRunRecoveryReason = badLuckInsuranceReason;
-            earlyRunRecoveryCause = "소환 부족";
-            AddRunHighlightCard("보험 발동", "R" + summonRateRound + " 저점 복구 1회");
-            OnBannerRequested?.Invoke("운 나쁨 보험 발동!  추천 보험 1개", new Color(1f, 0.76f, 0.24f), 2.8f);
-            OnBadLuckInsuranceOffered?.Invoke();
+            luckySummonNormalStreak++;
+            RefreshLuckySummonReadiness();
         }
-
         private void RegisterMergeExcitement(MergeResultInfo mergeResult)
         {
             if ((int)mergeResult.resultGrade >= (int)CharacterGrade.Rare)
@@ -4388,7 +4487,7 @@ namespace DefenseGame
             UpdateEarlyRunRecoveryRecommendation(snapshot);
             RequestEarlyRoundTuningBanner(snapshot);
             TryRecordEarlyRunTuningLog(snapshot, snapshot.round >= EarlyRunRequiredRoundCount);
-            Debug.Log("[EarlyRunTelemetry] " + earlyRunTelemetrySummary + " / " + earlyRunLogCoverageSummary + " / 회복상점 " + earlyRunRecoveryOfferCount + "회 / " + earlyRunTuningHint);
+            Debug.Log("[EarlyRunTelemetry] " + earlyRunTelemetrySummary + " / " + earlyRunLogCoverageSummary + " / 긴급지원 " + earlyRunRecoveryOfferCount + "회 / " + earlyRunTuningHint);
         }
 
         private void RecordAutomaticRunRecapMoments(EarlyRoundTelemetrySnapshot snapshot)
@@ -4662,7 +4761,7 @@ namespace DefenseGame
                     + " / 첫합 " + FormatEarlyMomentRound(firstMergeRound)
                     + " / 보험 0%"
                     + " / R3부스터 " + earlyRunR3BoosterPurchaseCount + "/" + earlyRunR3BoosterOfferCount + " " + FormatRate(earlyRunR3BoosterPurchaseCount, earlyRunR3BoosterOfferCount)
-                    + " / 회복상점 " + earlyRunRecoveryShopPurchaseCount + "/" + earlyRunRecoveryShopOfferCount + " " + FormatRate(earlyRunRecoveryShopPurchaseCount, earlyRunRecoveryShopOfferCount)
+                    + " / 긴급지원 " + earlyRunRecoveryShopPurchaseCount + "/" + earlyRunRecoveryShopOfferCount + " " + FormatRate(earlyRunRecoveryShopPurchaseCount, earlyRunRecoveryShopOfferCount)
                     + " / 운명개입 " + runFateInterventionCount + "회"
                     + " / R10보스HP " + r10BossHp;
                 return;
@@ -4752,7 +4851,7 @@ namespace DefenseGame
                 + " / 첫합 " + FormatAverageRound(firstMergeSum, firstMergeCount)
                 + " / 보험 " + insuranceOfferedCount + "/" + entryCount + " " + FormatRate(insuranceOfferedCount, entryCount)
                 + " / R3부스터 " + r3PurchaseCount + "/" + r3OfferCount + " " + FormatRate(r3PurchaseCount, r3OfferCount)
-                + " / 회복상점 " + recoveryPurchaseCount + "/" + recoveryOfferCount + " " + FormatRate(recoveryPurchaseCount, recoveryOfferCount)
+                + " / 긴급지원 " + recoveryPurchaseCount + "/" + recoveryOfferCount + " " + FormatRate(recoveryPurchaseCount, recoveryOfferCount)
                 + " / 운명계약 " + fateContractUseCount + "/" + entryCount + " " + FormatRate(fateContractUseCount, entryCount)
                 + " / 운명개입 " + fateInterventionUseCount + "/" + entryCount + " " + FormatRate(fateInterventionUseCount, entryCount)
                 + " / 빚 " + FormatAverageInt(fateDebtSum, entryCount)
@@ -4828,7 +4927,7 @@ namespace DefenseGame
 
             if (earlyRunRecoveryShopOfferCount > 0 && earlyRunRecoveryShopPurchaseCount <= 0)
             {
-                return "초반 검증: 회복상점 선택률 확인";
+                return "초반 검증: 긴급지원 선택률 확인";
             }
 
             if (earlyRunR10BossHealthRemaining01 >= highBossHealthWarningRatio)
@@ -4976,7 +5075,7 @@ namespace DefenseGame
 
             if (recoveryOfferCount > 0 && recoveryPurchaseRate < 0.25f)
             {
-                actions.Add("회복 상점 선택률 낮음");
+                actions.Add("긴급 지원 선택률 낮음");
             }
 
             if (fateUseRate < 0.30f)
@@ -5935,7 +6034,7 @@ namespace DefenseGame
 
             if (snapshot.round <= Mathf.Max(1, earlyTelemetryRoundLimit) && snapshot.endLife01 <= earlyLowLifeRecoveryRatio)
             {
-                return "생명력 압박: 회복 상점/보급 선택지가 필요";
+                return "생명력 압박: 긴급 지원/보급 선택지가 필요";
             }
 
             if (snapshot.clearTimeSeconds >= slowEarlyClearSeconds)

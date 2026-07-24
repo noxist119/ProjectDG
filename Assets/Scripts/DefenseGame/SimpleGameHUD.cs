@@ -29,7 +29,9 @@ namespace DefenseGame
         [SerializeField] private Text stateText;
         [SerializeField] private Text battleButtonText;
         [SerializeField] private Text summonButtonText;
+        [SerializeField] private Image luckySummonProgressBadge;
         [SerializeField] private Text summonCostText;
+        [SerializeField] private Text luckySummonProgressText;
         [SerializeField] private Text deckSummaryText;
         [SerializeField] private Text capacityText;
         [SerializeField] private Text normalMergeText;
@@ -65,6 +67,7 @@ namespace DefenseGame
         [SerializeField] private Image lifeProgressFill;
         [SerializeField] private Button battleButton;
         [SerializeField] private Button summonButton;
+        private Image summonButtonImage;
 
         [Header("Unit Sell UI")]
         [SerializeField] private GameObject unitSellPanel;
@@ -90,9 +93,11 @@ namespace DefenseGame
         private const float FatePanelClosedYOffset = 226f;
         private const float FatePanelSlideSpeed = 13f;
         private const float FatePanelFadeSpeed = 6f;
-        private static readonly Color FateEntryIdleColor = new Color(0.30f, 0.52f, 0.38f, 0.98f);
-        private static readonly Color FateEntryCrisisColor = new Color(0.46f, 0.66f, 0.40f, 0.98f);
-        private static readonly Color FateEntryTextColor = new Color(0.97f, 1.00f, 0.97f, 1f);
+        private static readonly Color FateEntryIdleColor = new Color(0.40f, 0.21f, 0.85f, 0.98f);
+        private static readonly Color FateEntryCrisisColor = new Color(0.91f, 0.30f, 0.36f, 0.98f);
+        private static readonly Color FateEntryTextColor = new Color(1.00f, 0.98f, 0.94f, 1f);
+        private static readonly Color FateEntryOutlineColor = new Color(1.00f, 0.78f, 0.34f, 0.94f);
+        private static readonly Color FateEntryCrisisOutlineColor = new Color(1.00f, 0.88f, 0.54f, 1f);
 
         [Header("Opening Tutorial")]
         [SerializeField] private bool enableOpeningTutorial = true;
@@ -118,6 +123,7 @@ namespace DefenseGame
         private bool fateEntryButtonVisualInitialized;
         private Vector3 fateEntryButtonBaseScale = Vector3.one;
         private Color fateEntryButtonBaseColor = Color.white;
+        private Outline fateEntryButtonOutline;
         private bool fatePanelTargetOpen = true;
         private bool fatePanelVisible = true;
         private GameObject fateChoiceBackdrop;
@@ -202,7 +208,8 @@ namespace DefenseGame
             Text sellDetail = null,
             Button sellButton = null,
             Text sellButtonLabel = null,
-            Image lifeProgress = null)
+            Image lifeProgress = null,
+            Text luckySummonProgress = null)
         {
             Unsubscribe();
 
@@ -225,6 +232,10 @@ namespace DefenseGame
             battleButtonText = battleLabel;
             summonButtonText = summonLabel;
             summonCostText = summonCostLabel;
+            luckySummonProgressText = luckySummonProgress;
+            luckySummonProgressBadge = luckySummonProgressText != null && luckySummonProgressText.transform.parent != null
+                ? luckySummonProgressText.transform.parent.GetComponent<Image>()
+                : null;
             deckSummaryText = deckSummary;
             capacityText = capacity;
             normalMergeText = normalMerge;
@@ -257,8 +268,10 @@ namespace DefenseGame
             fatePanelReopenButton = fatePanelReopen;
             fatePanelReopenButtonText = fatePanelReopenLabel;
             roundProgressFill = progressFill;
+            fateEntryButtonOutline = fatePanelReopenButton != null ? fatePanelReopenButton.GetComponent<Outline>() : null;
             battleButton = battle;
             summonButton = summon;
+            summonButtonImage = summonButton != null ? summonButton.GetComponent<Image>() : null;
             bossWarningPanel = bossWarning;
             bossWarningCanvasGroup = bossWarningGroup;
             bossWarningTitleText = bossWarningTitle;
@@ -553,11 +566,38 @@ namespace DefenseGame
             SetText(battleButtonText, battleLabel);
             SetInteractable(battleButton, !roundRunning);
 
+            bool luckySummonReady = gameController.LuckySummonReady;
+            bool luckyChoiceOpen = gameController.LuckySummonChoiceOpen;
             bool canSummon = !combatLocked && gameController.Gold >= gameController.SummonCost && gameController.EmptySlotCount > 0;
-            string summonLabel = combatLocked ? "\uC804\uD22C \uC911" : canSummon ? "\uC18C\uD658" : gameController.EmptySlotCount <= 0 ? "\uC790\uB9AC \uC5C6\uC74C" : "\uACE8\uB4DC \uBD80\uC871";
+            string summonLabel = combatLocked
+                ? "\uC804\uD22C \uC911"
+                : luckyChoiceOpen ? "\uC120\uD0DD \uC911"
+                : luckySummonReady ? "\uD589\uC6B4 \uC18C\uD658"
+                : canSummon ? "\uC18C\uD658"
+                : gameController.EmptySlotCount <= 0 ? "\uC790\uB9AC \uC5C6\uC74C" : "\uACE8\uB4DC \uBD80\uC871";
             SetText(summonButtonText, summonLabel);
-            SetText(summonCostText, gameController.SummonCost.ToString());
-            SetInteractable(summonButton, canSummon);
+            SetText(summonCostText, gameController.SummonCost + " GOLD");
+            SetText(
+                luckySummonProgressText,
+                luckySummonReady ? "\uD589\uC6B4 \uC18C\uD658  READY"
+                    : gameController.LuckySummonProgressVisible
+                        ? "\uD589\uC6B4 \uC18C\uD658  " + gameController.LuckySummonNormalStreak + " / " + gameController.LuckySummonThreshold
+                        : string.Empty);
+            SetColor(luckySummonProgressText, luckySummonReady ? new Color(0.20f, 0.13f, 0.05f) : new Color(0.94f, 1f, 0.78f));
+            if (luckySummonProgressBadge != null)
+            {
+                luckySummonProgressBadge.gameObject.SetActive(luckySummonReady || gameController.LuckySummonProgressVisible);
+                luckySummonProgressBadge.color = luckySummonReady
+                    ? new Color(0.96f, 0.72f, 0.22f, 0.98f)
+                    : new Color(0.07f, 0.20f, 0.17f, 0.96f);
+            }
+            if (summonButtonImage != null)
+            {
+                summonButtonImage.color = luckySummonReady
+                    ? new Color(0.56f, 0.76f, 0.20f, 1f)
+                    : new Color(0.19f, 0.78f, 0.42f, 1f);
+            }
+            SetInteractable(summonButton, canSummon && !luckyChoiceOpen);
 
             SetText(deckSummaryText, "보유 유닛 " + gameController.BoardUnitCount + " / " + gameController.BoardCapacity);
             SetText(capacityText, gameController.EmptySlotCount + "칸 남음");
@@ -877,6 +917,10 @@ namespace DefenseGame
                     graphic.color = fateEntryButtonBaseColor;
                 }
             }
+            if (fateEntryButtonOutline != null)
+            {
+                fateEntryButtonOutline.effectColor = FateEntryOutlineColor;
+            }
 
             Graphic targetGraphic = fatePanelReopenButton.targetGraphic != null
                 ? fatePanelReopenButton.targetGraphic
@@ -904,6 +948,10 @@ namespace DefenseGame
             if (fatePanelReopenButtonText != null)
             {
                 SetColor(fatePanelReopenButtonText, FateEntryTextColor);
+            }
+            if (fateEntryButtonOutline != null)
+            {
+                fateEntryButtonOutline.effectColor = Color.Lerp(FateEntryOutlineColor, FateEntryCrisisOutlineColor, 0.30f + pulse * 0.70f);
             }
         }
         private void UpdateFatePanelMotion()

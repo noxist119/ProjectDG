@@ -61,6 +61,8 @@ namespace DefenseGame
         private float tileLifeStealRatio;
         private float temporaryAttackPowerBonus;
         private float temporaryAttackSpeedBonus;
+        private float temporaryAttackPowerReduction;
+        private float temporaryAttackPowerReductionTimer;
         private float temporaryCombatBoostTimer;
         private UnitSynergyBonus synergyBonus;
         private float attackSpeedBuffTimer;
@@ -102,6 +104,7 @@ namespace DefenseGame
 
         public CharacterDefinition Definition => definition;
         public float EffectiveAttackPower => definition != null ? GetEffectiveAttackPower() : 0f;
+        public float ActiveAttackPowerReductionRatio => temporaryAttackPowerReductionTimer > 0f ? temporaryAttackPowerReduction : 0f;
         public CharacterGrade Grade => definition != null ? definition.grade : CharacterGrade.Normal;
         public CharacterRole Role => definition != null ? definition.role : CharacterRole.Vanguard;
         public BoardSlot CurrentSlot => currentSlot;
@@ -456,6 +459,8 @@ namespace DefenseGame
             tileLifeStealRatio = 0f;
             temporaryAttackPowerBonus = 0f;
             temporaryAttackSpeedBonus = 0f;
+            temporaryAttackPowerReduction = 0f;
+            temporaryAttackPowerReductionTimer = 0f;
             temporaryCombatBoostTimer = 0f;
             temporaryDamageReductionBonus = 0f;
             temporaryDamageReductionTimer = 0f;
@@ -905,6 +910,21 @@ namespace DefenseGame
                 Color resolvedColor = statusColor ?? BuffFeedbackColor;
                 ShowTimedSupportFeedback(resolvedLabel, resolvedColor, duration, effectPrefab);
             }
+        }
+
+        public void ApplyAttackPowerReduction(float reductionRatio, float duration, GameObject effectPrefab = null)
+        {
+            float safeRatio = Mathf.Clamp01(reductionRatio);
+            float safeDuration = Mathf.Max(0f, duration);
+            if (safeRatio <= 0f || safeDuration <= 0f)
+            {
+                return;
+            }
+
+            temporaryAttackPowerReduction = Mathf.Max(temporaryAttackPowerReduction, safeRatio);
+            temporaryAttackPowerReductionTimer = Mathf.Max(temporaryAttackPowerReductionTimer, safeDuration);
+            hitFlashFeedback?.PlayHit(false);
+            ShowTimedSupportFeedback("공격력 -" + Mathf.RoundToInt(safeRatio * 100f) + "%", DebuffFeedbackColor, safeDuration, effectPrefab);
         }
 
         public void ActivateTimedDamageReduction(float reductionRatio, float duration, GameObject effectPrefab = null, string statusLabel = null, Color? statusColor = null)
@@ -2658,6 +2678,8 @@ namespace DefenseGame
             critChanceBonus = 0f;
             temporaryAttackPowerBonus = 0f;
             temporaryAttackSpeedBonus = 0f;
+            temporaryAttackPowerReduction = 0f;
+            temporaryAttackPowerReductionTimer = 0f;
             temporaryDamageReductionBonus = 0f;
             thornsReturnRatio = 0f;
             currentShield = 0f;
@@ -2791,6 +2813,16 @@ namespace DefenseGame
                 {
                     temporaryAttackPowerBonus = 0f;
                     temporaryAttackSpeedBonus = 0f;
+                }
+            }
+
+            if (temporaryAttackPowerReductionTimer > 0f)
+            {
+                temporaryAttackPowerReductionTimer -= Time.deltaTime;
+                if (temporaryAttackPowerReductionTimer <= 0f)
+                {
+                    temporaryAttackPowerReductionTimer = 0f;
+                    temporaryAttackPowerReduction = 0f;
                 }
             }
 
@@ -3177,7 +3209,8 @@ namespace DefenseGame
 
         private float GetEffectiveAttackPower()
         {
-            return definition.stats.attackPower * Mathf.Max(0.1f, 1f + permanentAttackPowerBonus + synergyBonus.attackPowerBonus + temporaryAttackPowerBonus + tileAttackPowerBonus);
+            float multiplier = 1f + permanentAttackPowerBonus + synergyBonus.attackPowerBonus + temporaryAttackPowerBonus + tileAttackPowerBonus - temporaryAttackPowerReduction;
+            return definition.stats.attackPower * Mathf.Max(0.1f, multiplier);
         }
 
         private float CalculateDamageAgainst(MonsterUnit target, float multiplier, bool critical)

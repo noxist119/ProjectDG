@@ -1319,7 +1319,8 @@ namespace DefenseGame
             }
 
             if (skill.effectType == SkillEffectType.DirectDamage ||
-                skill.effectType == SkillEffectType.Stun)
+                skill.effectType == SkillEffectType.Stun ||
+                skill.effectType == SkillEffectType.AttackPowerReduction)
             {
                 skill.useCustomCastRange = true;
                 skill.castRange = 3f;
@@ -1668,6 +1669,7 @@ namespace DefenseGame
                 definition.skills = BuildSkills(definition.displayName, grade, role, threatLevel, index + variantIndex);
             }
 
+            ApplyRosterSkillProfile(definition);
             ApplyVariantStatBonus(definition.stats, entry.variantStatBonusPerTier, variantIndex, threatLevel);
             if (threatLevel == MonsterThreatLevel.Regular)
             {
@@ -1675,6 +1677,51 @@ namespace DefenseGame
             }
 
             return definition;
+        }
+
+        private void ApplyRosterSkillProfile(MonsterDefinition definition)
+        {
+            if (definition == null)
+            {
+                return;
+            }
+
+            if (string.Equals(definition.rosterSourceId, "mob_10", System.StringComparison.OrdinalIgnoreCase))
+            {
+                definition.skills = new List<SkillDefinition>
+                {
+                    CreateBossSkill(
+                        definition.displayName,
+                        SkillEffectType.AttackPowerReduction,
+                        "놀리기",
+                        "가장 가까운 유닛의 공격력을 10% 감소시킵니다. 5초간 지속됩니다.",
+                        0.10f,
+                        5f,
+                        0f,
+                        1,
+                        78f,
+                        9f,
+                        0)
+                };
+            }
+            else if (string.Equals(definition.rosterSourceId, "mob_11", System.StringComparison.OrdinalIgnoreCase))
+            {
+                definition.skills = new List<SkillDefinition>
+                {
+                    CreateBossSkill(
+                        definition.displayName,
+                        SkillEffectType.DamageReflect,
+                        "타운트",
+                        "5초간 받은 피해의 10%를 공격자에게 돌려줍니다.",
+                        0.10f,
+                        5f,
+                        0f,
+                        1,
+                        78f,
+                        9f,
+                        0)
+                };
+            }
         }
 
         private MonsterRole ResolveRosterRole(MonsterPresentationOverride entry, MonsterThreatLevel threatLevel, int index)

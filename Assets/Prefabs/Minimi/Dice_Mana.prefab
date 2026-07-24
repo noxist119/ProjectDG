@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 933944733537352536}
   - component: {fileID: 6491416723532210466}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: NormalDice_rig
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -64,7 +64,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3619429868287439649}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Dice_Mana
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -127,7 +127,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7640157548073699938}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Root
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -161,7 +161,7 @@ GameObject:
   m_Component:
   - component: {fileID: 715053588563480182}
   - component: {fileID: 7071467813683526994}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Normal Dice
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -246,7 +246,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4268211820457870931}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Dice
   m_TagString: Untagged
   m_Icon: {fileID: 0}

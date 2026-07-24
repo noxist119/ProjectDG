@@ -296,3 +296,65 @@ MonoBehaviour:
     skill03MuzzleEffectPrefab: {fileID: 0}
     skill03HitEffectPrefab: {fileID: 0}
     skill03AreaEffectPrefab: {fileID: 0}
+  - monsterId: mob_10
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideAttackRange: 1
+    attackRange: 2.2
+    overrideProjectileSpeed: 0
+    projectileSpeed: 8
+    overrideMoveSpeed: 1
+    moveSpeed: 1.1
+    overrideVisualScale: 0
+    visualScale: 1
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 7397703463968734916, guid: 253c76503385c2a4c9fb05a51c8125cc, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 7397703463968734916, guid: 253c76503385c2a4c9fb05a51c8125cc, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 216071063587088953, guid: 2eee76fa5fd86b2469a0aaa997759bf4, type: 3}
+    skill01HitEffectPrefab: {fileID: 9022636855794146652, guid: 6a6746af6956701489148222ca915885, type: 3}
+    skill01AreaEffectPrefab: {fileID: 0}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 0}
+    skill02HitEffectPrefab: {fileID: 0}
+    skill02AreaEffectPrefab: {fileID: 0}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}
+  - monsterId: mob_11
+    overrideBasicAttackType: 1
+    basicAttackType: 0
+    overrideAttackRange: 1
+    attackRange: 2
+    overrideProjectileSpeed: 0
+    projectileSpeed: 8
+    overrideMoveSpeed: 1
+    moveSpeed: 0.92
+    overrideVisualScale: 0
+    visualScale: 1
+    overrideSplash: 0
+    splashRadius: 0
+    splashDamageRatio: 0
+    overridePierce: 0
+    additionalPierceCount: 0
+    basicAttackProjectilePrefab: {fileID: 0}
+    basicAttackMuzzleEffectPrefab: {fileID: 2367681456742369808, guid: 4b994750aa5e1c448831938fb78b36dc, type: 3}
+    basicAttackHitEffectPrefab: {fileID: 2367681456742369808, guid: 4b994750aa5e1c448831938fb78b36dc, type: 3}
+    skill01ProjectilePrefab: {fileID: 0}
+    skill01MuzzleEffectPrefab: {fileID: 216071063587088953, guid: 2eee76fa5fd86b2469a0aaa997759bf4, type: 3}
+    skill01HitEffectPrefab: {fileID: 3310089931149669754, guid: 233d986b0e8051044bc406f4028fc028, type: 3}
+    skill01AreaEffectPrefab: {fileID: 3310089931149669754, guid: 233d986b0e8051044bc406f4028fc028, type: 3}
+    skill02ProjectilePrefab: {fileID: 0}
+    skill02MuzzleEffectPrefab: {fileID: 0}
+    skill02HitEffectPrefab: {fileID: 0}
+    skill02AreaEffectPrefab: {fileID: 0}
+    skill03ProjectilePrefab: {fileID: 0}
+    skill03MuzzleEffectPrefab: {fileID: 0}
+    skill03HitEffectPrefab: {fileID: 0}
+    skill03AreaEffectPrefab: {fileID: 0}

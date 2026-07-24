@@ -33,6 +33,67 @@ namespace DefenseGame.Editor
             Debug.Log("[DefenseGameValidationQueue] validation queued");
         }
 
+        [MenuItem("DefenseGame/Validation/Run Vertical Smoke Only")]
+        public static void StartVerticalSmokeOnly()
+        {
+            Directory.CreateDirectory(ResultDirectory);
+            File.WriteAllText(QueuePath, "vertical_only_start");
+            nextCheckTime = 0d;
+            Debug.Log("[DefenseGameValidationQueue] vertical smoke queued");
+        }
+
+        [MenuItem("DefenseGame/Validation/Validate Commercial Hurdle Policy")]
+        public static void ValidateCommercialHurdlePolicy()
+        {
+            CommercialRoundTuning buildUp = CommercialRoundPacing.Resolve(19, false);
+            CommercialRoundTuning hurdle20 = CommercialRoundPacing.Resolve(20, true);
+            CommercialRoundTuning relief21 = CommercialRoundPacing.Resolve(21, false);
+            CommercialRoundTuning hurdle30 = CommercialRoundPacing.Resolve(30, true);
+
+            if (buildUp.phase != CommercialRoundPhase.BuildUp ||
+                hurdle20.phase != CommercialRoundPhase.Hurdle ||
+                relief21.phase != CommercialRoundPhase.Relief ||
+                hurdle30.phase != CommercialRoundPhase.Hurdle)
+            {
+                throw new InvalidOperationException("Commercial hurdle phase schedule is invalid.");
+            }
+
+            if (hurdle20.healthMultiplier <= buildUp.healthMultiplier ||
+                relief21.healthMultiplier >= 1f ||
+                relief21.spawnCountMultiplier >= 1f ||
+                hurdle30.healthMultiplier <= hurdle20.healthMultiplier)
+            {
+                throw new InvalidOperationException("Commercial hurdle multipliers are not ordered correctly.");
+            }
+
+            if (CommercialRoundPacing.GetNextHurdleRound(19) != 20 ||
+                CommercialRoundPacing.GetNextHurdleRound(20) != 30 ||
+                CommercialRoundPacing.GetNextHurdleRound(49) != 50)
+            {
+                throw new InvalidOperationException("Commercial next-hurdle schedule is invalid.");
+            }
+
+            OutgameProgressionConfig config = ScriptableObject.CreateInstance<OutgameProgressionConfig>();
+            try
+            {
+                if (config.scaleMonstersWithCollectionGrowth ||
+                    config.startingEarnedChestKeys < 1 ||
+                    config.earnedChestProgressTarget <= 0 ||
+                    config.premiumChestEpicPityDraws > 10 ||
+                    config.premiumChestLegendaryPityDraws > 40)
+                {
+                    throw new InvalidOperationException("Commercial chest defaults are invalid.");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(config);
+            }
+
+            Debug.Log("[DefenseGameValidationQueue] commercial hurdle + chest policy valid.");
+        }
+
+
         private static void Tick()
         {
             if (EditorApplication.timeSinceStartup < nextCheckTime ||
@@ -57,6 +118,16 @@ namespace DefenseGame.Editor
 
             switch (state)
             {
+                case "vertical_only_start":
+                    BeginStage("vertical_only_running", VerticalSmokeFileName, DefenseGamePlayModeSmoke.RunPlayModeSmoke);
+                    break;
+                case "vertical_only_running":
+                    if (File.Exists(Path.Combine(ResultDirectory, VerticalSmokeFileName)))
+                    {
+                        File.WriteAllText(QueuePath, "complete");
+                        Debug.Log("[DefenseGameValidationQueue] vertical smoke complete: " + ResultDirectory);
+                    }
+                    break;
                 case "start":
                     BeginStage("vertical_running", VerticalSmokeFileName, DefenseGamePlayModeSmoke.RunPlayModeSmoke);
                     break;

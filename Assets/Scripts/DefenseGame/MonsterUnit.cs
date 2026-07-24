@@ -57,6 +57,9 @@ namespace DefenseGame
         private float petrifyTimer;
         private DefenderUnit tauntTarget;
         private float tauntTimer;
+        private float damageReflectRatio;
+        private float damageReflectTimer;
+        private bool resolvingDamageReflect;
         private bool enraged;
         private bool roleTraitTriggered;
         private bool skillCastLocked;
@@ -194,6 +197,7 @@ namespace DefenseGame
         public float CurrentMana => currentMana;
         public bool IsBoss => definition != null && definition.IsBossLike;
         public bool IsStatusEffectImmune => IsBoss;
+        public float ActiveDamageReflectRatio => damageReflectTimer > 0f ? damageReflectRatio : 0f;
         private bool IsMajorBoss => definition != null && definition.IsMajorBoss;
         public bool IsStunned => IsControlLocked;
         public bool IsPetrified => petrifyTimer > 0f;
@@ -447,7 +451,7 @@ namespace DefenseGame
             MoveTowardsGoal();
         }
 
-        public void Initialize(MonsterDefinition newDefinition, Transform goalPoint)
+        public void Initialize(MonsterDefinition newDefinition, Transform goalPoint, int spawnRound = 0)
         {
             definition = newDefinition;
             outgameHealthMultiplier = 1f;
@@ -457,6 +461,14 @@ namespace DefenseGame
             {
                 OutgameProgressionSystem.Active.ResolveMonsterBalanceMultipliers(definition, out outgameHealthMultiplier, out outgameAttackMultiplier);
             }
+
+            CommercialRoundPacing.ResolveCombatMultipliers(
+                spawnRound,
+                definition != null && definition.IsBossLike,
+                out float hurdleHealthMultiplier,
+                out float hurdleAttackMultiplier);
+            outgameHealthMultiplier *= hurdleHealthMultiplier;
+            outgameAttackMultiplier *= hurdleAttackMultiplier;
 
             DailyFortuneRule fortune = DailyFortuneSystem.Today;
             if (fortune != null && definition != null && definition.IsBossLike)
@@ -493,6 +505,9 @@ namespace DefenseGame
             petrifyTimer = 0f;
             tauntTarget = null;
             tauntTimer = 0f;
+            damageReflectRatio = 0f;
+            damageReflectTimer = 0f;
+            resolvingDamageReflect = false;
             enraged = false;
             roleTraitTriggered = false;
             skillCastLocked = false;
@@ -603,6 +618,22 @@ namespace DefenseGame
             floatingUi?.ShowDamage(finalDamage, critical, false);
             floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
             DefenderUnit.ReportDamageDealt(source, this, finalDamage, critical);
+
+            if (source != null && !resolvingDamageReflect && damageReflectTimer > 0f && damageReflectRatio > 0f && finalDamage > 0f)
+            {
+                float reflectedDamage = finalDamage * Mathf.Clamp01(damageReflectRatio);
+                resolvingDamageReflect = true;
+                try
+                {
+                    source.TakeDamage(reflectedDamage, false, this);
+                    floatingUi?.ShowStatus("반사 " + Mathf.RoundToInt(reflectedDamage), new Color(0.58f, 1f, 0.48f), 0.65f);
+                    RuntimeCombatFeedback.ShowGroundPulse(source.transform.position, new Color(0.58f, 1f, 0.48f), 0.42f, 0.38f, 0.06f);
+                }
+                finally
+                {
+                    resolvingDamageReflect = false;
+                }
+            }
 
             if (currentHealth <= 0f)
             {
@@ -1196,6 +1227,13 @@ namespace DefenseGame
                 return false;
             }
 
+            if (skill.effectType == SkillEffectType.DamageReflect)
+            {
+                return damageReflectTimer <= 0.05f &&
+                    CountLivingDefenders() > 0 &&
+                    HasDefenderWithinSkillRange(skill);
+            }
+
             if (skill.effectType == SkillEffectType.GoldDrain)
             {
                 return skill.isGlobalTargeting && CountLivingDefenders() > 0;
@@ -1450,6 +1488,25 @@ namespace DefenseGame
                         bossAffectedTargets++;
                     }
                 }
+            }
+            else if (skill.effectType == SkillEffectType.AttackPowerReduction)
+            {
+                DefenderUnit target = FindNearestDefenderForSkill(skill);
+                if (target != null)
+                {
+                    FaceTarget(target.transform.position);
+                    ShowSkillImpactFeedback(target.transform.position, skill, 0.72f, IsBoss);
+                    target.ApplyAttackPowerReduction(skill.power, skill.duration, skill.hitEffectPrefab);
+                    bossAffectedTargets = 1;
+                }
+            }
+            else if (skill.effectType == SkillEffectType.DamageReflect)
+            {
+                damageReflectRatio = Mathf.Max(damageReflectRatio, Mathf.Clamp01(skill.power));
+                damageReflectTimer = Mathf.Max(damageReflectTimer, skill.duration);
+                ShowSkillImpactFeedback(transform.position, skill, 1.05f, false);
+                floatingUi?.ShowTimedStatus("피해 반사 " + Mathf.RoundToInt(damageReflectRatio * 100f) + "%", new Color(0.58f, 1f, 0.48f), damageReflectTimer);
+                bossAffectedTargets = 1;
             }
 
             if (IsBoss && gameController != null)
@@ -1808,7 +1865,8 @@ namespace DefenseGame
                 skill.effectType == SkillEffectType.SummonRush ||
                 skill.effectType == SkillEffectType.DirectDamage ||
                 skill.effectType == SkillEffectType.AreaDamage ||
-                skill.effectType == SkillEffectType.ManaBurn;
+                skill.effectType == SkillEffectType.ManaBurn ||
+                skill.effectType == SkillEffectType.AttackPowerReduction;
         }
 
         private bool HasDefenderWithinSkillRange(SkillDefinition skill)
@@ -1971,6 +2029,7 @@ namespace DefenseGame
                 skill.effectType == SkillEffectType.SummonRush ||
                 skill.effectType == SkillEffectType.MonsterRally ||
                 skill.effectType == SkillEffectType.BossFortify ||
+                skill.effectType == SkillEffectType.DamageReflect ||
                 skill.effectType == SkillEffectType.HealSelf)
             {
                 return skill.areaEffectPrefab != null ? skill.areaEffectPrefab : skill.hitEffectPrefab;
@@ -1998,6 +2057,10 @@ namespace DefenseGame
                 case SkillEffectType.HealSelf:
                 case SkillEffectType.MonsterRally:
                     return new Color(0.40f, 1f, 0.62f, 0.95f);
+                case SkillEffectType.AttackPowerReduction:
+                    return new Color(0.86f, 0.46f, 1f, 0.96f);
+                case SkillEffectType.DamageReflect:
+                    return new Color(0.58f, 1f, 0.48f, 0.96f);
                 case SkillEffectType.DeathPact:
                 case SkillEffectType.GoldDrain:
                     return new Color(1f, 0.24f, 0.22f, 0.98f);
@@ -2027,6 +2090,11 @@ namespace DefenseGame
                 return baseRadius * 1.2f;
             }
 
+            if (skill.effectType == SkillEffectType.DamageReflect)
+            {
+                return baseRadius * 1.25f;
+            }
+
             return baseRadius;
         }
 
@@ -2051,7 +2119,9 @@ namespace DefenseGame
                 skill.effectType == SkillEffectType.SummonRush ||
                 skill.effectType == SkillEffectType.GoldDrain ||
                 skill.effectType == SkillEffectType.ManaBurn ||
-                skill.effectType == SkillEffectType.MonsterRally;
+                skill.effectType == SkillEffectType.MonsterRally ||
+                skill.effectType == SkillEffectType.AttackPowerReduction ||
+                skill.effectType == SkillEffectType.DamageReflect;
             string prefix = IsMajorBoss ? "보스 스킬: " : "중간보스 스킬: ";
             gameController.RequestBanner(prefix + skill.displayName + " 발동!", definition.accentColor, majorBossSkill ? 2.6f : 2.0f);
         }
@@ -2124,6 +2194,16 @@ namespace DefenseGame
                 {
                     tauntTarget = null;
                     tauntTimer = 0f;
+                }
+            }
+
+            if (damageReflectTimer > 0f)
+            {
+                damageReflectTimer -= Time.deltaTime;
+                if (damageReflectTimer <= 0f)
+                {
+                    damageReflectTimer = 0f;
+                    damageReflectRatio = 0f;
                 }
             }
         }

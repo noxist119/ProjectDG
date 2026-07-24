@@ -38,4 +38,6 @@ MonoBehaviour:
   heartIconSprite: {fileID: 21300000, guid: 7b12bed3bbed18e45b508fbc0aef477a, type: 3}
   missionIconSprite: {fileID: 21300000, guid: 7031ed218ca48704eb55ae87b4c5ac52, type: 3}
   heroIconSprite: {fileID: 21300000, guid: b46eb3276b3ab634881d938b1f4f0de7, type: 3}
+  shopIconSprite: {fileID: 21300000, guid: 8656f00de9a2ad74fb94ea0bbde9f14a, type: 3}
+  augmentIconSprite: {fileID: 21300000, guid: 5e4e0a3ac6b2353458269ab120a5a330, type: 3}
   preserveAspect: 0

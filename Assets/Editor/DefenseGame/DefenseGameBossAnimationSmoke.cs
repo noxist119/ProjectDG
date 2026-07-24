@@ -18,7 +18,7 @@ namespace DefenseGame.Editor
 
         private static readonly string[] MonsterIds =
         {
-            "mob_01", "mob_02", "mob_03", "mob_04", "mob_05", "mob_06", "mob_07", "mob_08", "mob_09"
+            "mob_01", "mob_02", "mob_03", "mob_04", "mob_05", "mob_06", "mob_07", "mob_08", "mob_09", "mob_10", "mob_11"
         };
 
         private static readonly string[] PrefabPaths =
@@ -31,12 +31,14 @@ namespace DefenseGame.Editor
             "Assets/Prefabs/Minimi/Boss_Leon_Minion_Type2.prefab",
             "Assets/Prefabs/Minimi/Boss_Magician.prefab",
             "Assets/Prefabs/Minimi/Boss_Magician_Minion_Type1.prefab",
-            "Assets/Prefabs/Minimi/Boss_Magician_Minion_Type2.prefab"
+            "Assets/Prefabs/Minimi/Boss_Magician_Minion_Type2.prefab",
+            "Assets/Prefabs/Minimi/Boss_Slime.prefab",
+            "Assets/Prefabs/Minimi/Boss_TurtleShell.prefab"
         };
 
-        private static readonly bool[] ExpectedMelee = { true, true, true, true, false, true, false, true, true };
-        private static readonly float[] ExpectedRange = { 2.6f, 1.8f, 1.9f, 2.4f, 3f, 1.8f, 3f, 1.5f, 1.8f };
-        private static readonly bool[] ExpectedSkillAnimation = { true, false, false, true, true, true, true, true, false };
+        private static readonly bool[] ExpectedMelee = { true, true, true, true, false, true, false, true, true, true, true };
+        private static readonly float[] ExpectedRange = { 2.6f, 1.8f, 1.9f, 2.4f, 3f, 1.8f, 3f, 1.5f, 1.8f, 2.2f, 2f };
+        private static readonly bool[] ExpectedSkillAnimation = { true, false, false, true, true, true, true, true, false, true, true };
 
         private static double evaluateAt;
         private static bool running;
@@ -176,7 +178,7 @@ namespace DefenseGame.Editor
             string expectedAttackEvent = ExpectedMelee[index] ? "AttackHit" : "FireProjectile";
             bool hasAttackClip = clipNames.Any(name => ContainsIgnoreCase(name, "attack"));
             bool attackEventBound = eventKeys.Contains(expectedAttackEvent);
-            bool hasSkillClip = clipNames.Any(name => ContainsIgnoreCase(name, "skill"));
+            bool hasSkillClip = clipNames.Any(name => ContainsIgnoreCase(name, "skill") || ContainsIgnoreCase(name, "taunt"));
             bool skillEventBound = !ExpectedSkillAnimation[index] || hasSkillClip && eventKeys.Contains("SkillHit");
 
             MonsterDefinition definition = FindDefinition(database, monsterId);
@@ -189,9 +191,10 @@ namespace DefenseGame.Editor
                                      (attack.hitEffectPrefab != null || attack.muzzleEffectPrefab != null || !attack.IsMelee && attack.projectilePrefabOverride != null);
             bool skillVisualBound = !ExpectedSkillAnimation[index] || definition != null && definition.skills != null && definition.skills.Any(skill =>
                 skill != null && (skill.projectilePrefab != null || skill.muzzleEffectPrefab != null || skill.hitEffectPrefab != null || skill.areaEffectPrefab != null));
+            bool skillDefinitionBound = HasExpectedSkillDefinition(monsterId, definition);
 
             bool passed = missingScripts == 0 && renderers.Length > 0 && animatorController != null && hasAttackClip &&
-                          attackEventBound && skillEventBound && definition != null && typeAndRangeBound && attackVisualBound && skillVisualBound;
+                          attackEventBound && skillEventBound && definition != null && typeAndRangeBound && attackVisualBound && skillVisualBound && skillDefinitionBound;
             string reason = passed
                 ? string.Empty
                 : string.Join(",", new[]
@@ -205,7 +208,8 @@ namespace DefenseGame.Editor
                     definition != null ? null : "monster_definition_unbound",
                     typeAndRangeBound ? null : "attack_type_or_range_mismatch=" + actualRange.ToString("0.00"),
                     attackVisualBound ? null : "attack_vfx_unbound",
-                    skillVisualBound ? null : "skill_vfx_unbound"
+                    skillVisualBound ? null : "skill_vfx_unbound",
+                    skillDefinitionBound ? null : "skill_definition_mismatch"
                 }.Where(value => !string.IsNullOrEmpty(value)));
 
             UnityEngine.Object.Destroy(instance);
@@ -238,6 +242,29 @@ namespace DefenseGame.Editor
 
             return database.Monsters.Concat(database.MidBosses).Concat(database.Bosses)
                 .FirstOrDefault(definition => definition != null && string.Equals(definition.id, monsterId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool HasExpectedSkillDefinition(string monsterId, MonsterDefinition definition)
+        {
+            if (monsterId != "mob_10" && monsterId != "mob_11")
+            {
+                return true;
+            }
+
+            if (definition == null || definition.skills == null || definition.skills.Count != 1 || definition.skills[0] == null)
+            {
+                return false;
+            }
+
+            SkillDefinition skill = definition.skills[0];
+            if (Mathf.Abs(skill.power - 0.10f) > 0.001f || Mathf.Abs(skill.duration - 5f) > 0.01f)
+            {
+                return false;
+            }
+
+            return monsterId == "mob_10"
+                ? skill.effectType == SkillEffectType.AttackPowerReduction
+                : skill.effectType == SkillEffectType.DamageReflect;
         }
 
         private static string[] ResolveAnimationEventKeys(AnimationClip[] clips)

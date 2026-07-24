@@ -48,6 +48,8 @@ MonoBehaviour:
   usePerInstanceUnitTint: 0
   enableRuntimeGpuInstancing: 0
   forceRuntimeUnitCastShadowsOff: 1
+  animationEventMaterials:
+  - {fileID: 2100000, guid: c7bee73fe120be842a0a777294ebfaf2, type: 2}
   characterOverrides:
   - characterId: hero_01
     prefab: {fileID: 7813995091687352930, guid: cf0be9405e0dcaa4da73dbe5583efb1f, type: 3}
@@ -293,4 +295,34 @@ MonoBehaviour:
     variantStatBonusPerTier: 0.08
     prefab: {fileID: 2642286521261682323, guid: ca7ab50e96d4771489b7b5a2411bae5e, type: 3}
     overrideColor: 1
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_10
+    threatLevel: 0
+    useAsRosterEntry: 1
+    displayName: Boss Slime
+    grade: 0
+    role: 0
+    minRound: 30
+    rewardGoldOverride: 0
+    createGradeVariants: 1
+    maxVariantGrade: 4
+    variantRoundStep: 0
+    variantStatBonusPerTier: 0.08
+    prefab: {fileID: 7156389137237959502, guid: 4f31538d573c20745990f4bf0f301356, type: 3}
+    overrideColor: 0
+    accentColor: {r: 0, g: 0, b: 0, a: 0}
+  - monsterId: mob_11
+    threatLevel: 0
+    useAsRosterEntry: 1
+    displayName: Boss TurtleShell
+    grade: 0
+    role: 2
+    minRound: 40
+    rewardGoldOverride: 0
+    createGradeVariants: 1
+    maxVariantGrade: 4
+    variantRoundStep: 0
+    variantStatBonusPerTier: 0.08
+    prefab: {fileID: 3310815302059876112, guid: 03ee970bef6b6d348a79f28980a83372, type: 3}
+    overrideColor: 0
     accentColor: {r: 0, g: 0, b: 0, a: 0}

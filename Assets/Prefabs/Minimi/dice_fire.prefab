@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2354924693897760452}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 R Foot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -40,7 +40,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1584642391860588019}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 L Forearm
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -72,7 +72,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3114404216488308892}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 Pelvis
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -106,7 +106,7 @@ GameObject:
   - component: {fileID: 8481704159649855831}
   - component: {fileID: 3115859938806306256}
   - component: {fileID: 5441550128981030501}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Fire_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4937,7 +4937,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6154191989979083167}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 L UpperArm
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4970,7 +4970,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3467031658450443851}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Root
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5002,7 +5002,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5410802126157628164}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 R UpperArm
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5035,7 +5035,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2859542037670234674}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip01 R UpperArm_T01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5066,7 +5066,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 819500164180966141}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 Spine
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5101,7 +5101,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3148116988610987297}
   - component: {fileID: 5818508919823932018}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Dice_Fire
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5206,7 +5206,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6008221271001695033}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 Neck
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5271,7 +5271,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3082082170665471530}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 R Hand
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5302,7 +5302,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6198179384020679116}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 R Forearm
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5334,7 +5334,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5529805961507897380}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 R Calf
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5368,7 +5368,7 @@ GameObject:
   - component: {fileID: 7441962548913106193}
   - component: {fileID: 7174835568314965416}
   - component: {fileID: 2672148038084251821}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Fire_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10196,7 +10196,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8737611048037781008}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 L Clavicle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10228,7 +10228,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6923326962557297171}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 L Foot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10259,7 +10259,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8317781595554016878}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 L Hand
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10290,7 +10290,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1129216174639964277}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 L Calf
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10322,7 +10322,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2556814832080107793}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10355,7 +10355,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2596780361245134896}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 Head
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -10389,7 +10389,7 @@ GameObject:
   - component: {fileID: 2377631208470050806}
   - component: {fileID: 7826295911497550563}
   - component: {fileID: 2852756628222891722}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Fire_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -15217,7 +15217,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7172185085386464017}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 R Clavicle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -15250,7 +15250,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6263414074241724273}
   - component: {fileID: 3431845922469131}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: dice_fire_rig
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -15305,7 +15305,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7471218942705685559}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 Weapon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -15370,7 +15370,7 @@ GameObject:
   - component: {fileID: 4447636773607298287}
   - component: {fileID: 4182667457573314036}
   - component: {fileID: 2486849737288174778}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Fire_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -20198,7 +20198,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9031404754789211613}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 Prop1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -20230,7 +20230,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7813995091687352929}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: dice_fire
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -20262,7 +20262,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3461055300831013685}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 R Thigh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -20294,7 +20294,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7489208426458755784}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 Spine1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -20326,7 +20326,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6669839404644611585}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip001 L Thigh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -20358,7 +20358,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2878612570171202884}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Bip01 L UpperArm_T01
   m_TagString: Untagged
   m_Icon: {fileID: 0}

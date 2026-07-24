@@ -39,6 +39,8 @@ namespace DefenseGame
         public Sprite heartIconSprite;
         public Sprite missionIconSprite;
         public Sprite heroIconSprite;
+        public Sprite shopIconSprite;
+        public Sprite augmentIconSprite;
 
         [Header("Import Hints")]
         public bool preserveAspect;

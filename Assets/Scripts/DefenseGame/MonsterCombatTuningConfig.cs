@@ -111,7 +111,8 @@ namespace DefenseGame
                     skill.effectType == SkillEffectType.MoveSpeedBoost ||
                     skill.effectType == SkillEffectType.AttackSpeedBoost ||
                     skill.effectType == SkillEffectType.CriticalBoost ||
-                    skill.effectType == SkillEffectType.ManaSurge;
+                    skill.effectType == SkillEffectType.ManaSurge ||
+                    skill.effectType == SkillEffectType.DamageReflect;
 
                 bool areaSkill =
                     skill.effectType == SkillEffectType.AreaDamage ||

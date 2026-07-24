@@ -333,13 +333,15 @@ namespace DefenseGame
             }
 
             regularCount = ApplyPreBossLeakEaseToRegularCount(round, bossRound, regularCount);
+            regularCount = CommercialRoundPacing.ApplySpawnCount(round, bossRound, regularCount);
+            float spawnInterval = CommercialRoundPacing.ApplySpawnInterval(round, bossRound, CalculateSpawnInterval(round, bossRound));
 
             return new RoundSpawnPlan
             {
                 regularMonsterCount = Mathf.Max(0, regularCount),
                 midBossMonsterCount = Mathf.Max(0, midBossCount),
                 bossMonsterCount = bossRound ? 1 : 0,
-                interval = CalculateSpawnInterval(round, bossRound),
+                interval = spawnInterval,
                 intervalVariance = Mathf.Max(0f, spawnIntervalVariance)
             };
         }
@@ -750,7 +752,7 @@ namespace DefenseGame
             }
 
             monster.gameObject.SetActive(true);
-            monster.Initialize(definition, goalPoint);
+            monster.Initialize(definition, goalPoint, CurrentRound);
             return true;
         }
 
@@ -783,6 +785,176 @@ namespace DefenseGame
             Transform spawnPoint = spawnPoints[nextSpawnPointIndex % spawnPoints.Length];
             nextSpawnPointIndex++;
             return spawnPoint;
+        }
+    }
+    public enum CommercialRoundPhase
+    {
+        Stable = 0,
+        BuildUp = 1,
+        Hurdle = 2,
+        Relief = 3
+    }
+
+    public struct CommercialRoundTuning
+    {
+        public CommercialRoundPhase phase;
+        public int hurdleRound;
+        public int hurdleTier;
+        public float healthMultiplier;
+        public float attackMultiplier;
+        public float spawnCountMultiplier;
+        public float spawnIntervalMultiplier;
+    }
+
+    public static class CommercialRoundPacing
+    {
+        public const int FirstHurdleRound = 20;
+        public const int HurdleInterval = 10;
+
+        public static CommercialRoundTuning Resolve(int round, bool bossLike)
+        {
+            int safeRound = Mathf.Max(1, round);
+            int hurdleRound = ResolveRelevantHurdleRound(safeRound);
+            int hurdleTier = Mathf.Max(0, (hurdleRound - FirstHurdleRound) / HurdleInterval);
+            CommercialRoundPhase phase = ResolvePhase(safeRound, hurdleRound);
+
+            CommercialRoundTuning tuning = new CommercialRoundTuning
+            {
+                phase = phase,
+                hurdleRound = hurdleRound,
+                hurdleTier = hurdleTier,
+                healthMultiplier = 1f,
+                attackMultiplier = 1f,
+                spawnCountMultiplier = 1f,
+                spawnIntervalMultiplier = 1f
+            };
+
+            switch (phase)
+            {
+                case CommercialRoundPhase.BuildUp:
+                    tuning.healthMultiplier = 1.05f + Mathf.Min(0.05f, hurdleTier * 0.01f);
+                    tuning.attackMultiplier = 1.03f + Mathf.Min(0.04f, hurdleTier * 0.01f);
+                    tuning.spawnCountMultiplier = 1.06f;
+                    tuning.spawnIntervalMultiplier = 0.96f;
+                    break;
+
+                case CommercialRoundPhase.Hurdle:
+                    tuning.healthMultiplier = (bossLike ? 1.20f : 1.10f) + Mathf.Min(0.16f, hurdleTier * 0.04f);
+                    tuning.attackMultiplier = (bossLike ? 1.10f : 1.06f) + Mathf.Min(0.10f, hurdleTier * 0.025f);
+                    tuning.spawnCountMultiplier = 1.08f;
+                    tuning.spawnIntervalMultiplier = 0.94f;
+                    break;
+
+                case CommercialRoundPhase.Relief:
+                    tuning.healthMultiplier = 0.82f + Mathf.Min(0.05f, hurdleTier * 0.01f);
+                    tuning.attackMultiplier = 0.90f + Mathf.Min(0.04f, hurdleTier * 0.01f);
+                    tuning.spawnCountMultiplier = 0.86f;
+                    tuning.spawnIntervalMultiplier = 1.12f;
+                    break;
+            }
+
+            return tuning;
+        }
+
+        public static bool IsMajorHurdleRound(int round)
+        {
+            return round >= FirstHurdleRound && round % HurdleInterval == 0;
+        }
+
+        public static bool TryGetApproachingHurdleIndex(int round, out int hurdleIndex)
+        {
+            int hurdleRound = GetNextOrCurrentHurdleRound(round);
+            bool applies = round >= hurdleRound - 2 && round <= hurdleRound;
+            hurdleIndex = applies ? Mathf.Max(0, (hurdleRound - FirstHurdleRound) / HurdleInterval) : -1;
+            return applies;
+        }
+
+        public static int GetNextHurdleRound(int completedRound)
+        {
+            if (completedRound < FirstHurdleRound)
+            {
+                return FirstHurdleRound;
+            }
+
+            return ((completedRound / HurdleInterval) + 1) * HurdleInterval;
+        }
+
+        public static void ResolveCombatMultipliers(int round, bool bossLike, out float healthMultiplier, out float attackMultiplier)
+        {
+            CommercialRoundTuning tuning = Resolve(round, bossLike);
+            healthMultiplier = tuning.healthMultiplier;
+            attackMultiplier = tuning.attackMultiplier;
+        }
+
+        public static int ApplySpawnCount(int round, bool bossRound, int count)
+        {
+            CommercialRoundTuning tuning = Resolve(round, bossRound);
+            return Mathf.Max(0, Mathf.RoundToInt(Mathf.Max(0, count) * tuning.spawnCountMultiplier));
+        }
+
+        public static float ApplySpawnInterval(int round, bool bossRound, float interval)
+        {
+            CommercialRoundTuning tuning = Resolve(round, bossRound);
+            return Mathf.Max(0.05f, interval * tuning.spawnIntervalMultiplier);
+        }
+
+        public static string BuildPhaseLabel(int round)
+        {
+            CommercialRoundTuning tuning = Resolve(round, round > 0 && round % 10 == 0);
+            switch (tuning.phase)
+            {
+                case CommercialRoundPhase.BuildUp: return "\ud5c8\ub4e4 \uc804 \uc555\ubc15";
+                case CommercialRoundPhase.Hurdle: return "\uc131\uc7a5 \ud5c8\ub4e4";
+                case CommercialRoundPhase.Relief: return "\ub3cc\ud30c \ubcf4\ub108\uc2a4 \uad6c\uac04";
+                default: return "\uc131\uc7a5 \uad6c\uac04";
+            }
+        }
+
+        private static int ResolveRelevantHurdleRound(int round)
+        {
+            if (round < FirstHurdleRound)
+            {
+                return FirstHurdleRound;
+            }
+
+            int previous = (round / HurdleInterval) * HurdleInterval;
+            if (round - previous <= 3)
+            {
+                return Mathf.Max(FirstHurdleRound, previous);
+            }
+
+            return Mathf.Max(FirstHurdleRound, previous + HurdleInterval);
+        }
+
+        private static int GetNextOrCurrentHurdleRound(int round)
+        {
+            if (round <= FirstHurdleRound)
+            {
+                return FirstHurdleRound;
+            }
+
+            int remainder = round % HurdleInterval;
+            return remainder == 0 ? round : round + (HurdleInterval - remainder);
+        }
+
+        private static CommercialRoundPhase ResolvePhase(int round, int hurdleRound)
+        {
+            if (round == hurdleRound && IsMajorHurdleRound(round))
+            {
+                return CommercialRoundPhase.Hurdle;
+            }
+
+            if (round >= hurdleRound - 2 && round < hurdleRound)
+            {
+                return CommercialRoundPhase.BuildUp;
+            }
+
+            if (round > hurdleRound && round <= hurdleRound + 3)
+            {
+                return CommercialRoundPhase.Relief;
+            }
+
+            return CommercialRoundPhase.Stable;
         }
     }
 }

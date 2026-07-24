@@ -5,6 +5,7 @@ namespace DefenseGame
     public class AnimationEventProxy : MonoBehaviour
     {
         private UnitAnimationDriver cachedDriver;
+        private AnimationMaterialOverrideController cachedMaterialController;
 
         public void Hit() => NotifyImpact(AnimationImpactType.Auto);
         public void Hit(string eventKey) => NotifyImpact(AnimationImpactType.Auto);
@@ -64,6 +65,24 @@ namespace DefenseGame
         public void PlaySound() => RuntimeAudioUtility.PlayAttack();
         public void PlaySound(string soundName) => RuntimeAudioUtility.PlayNamed(soundName);
         public void PlaySound(int soundIndex) => RuntimeAudioUtility.PlayIndexed(soundIndex);
+
+        public void OverrideMaterial(string materialName)
+        {
+            ResolveMaterialController()?.OverrideMaterial(materialName);
+        }
+
+        public void ResetMaterial(string materialName)
+        {
+            ResolveMaterialController()?.ResetMaterial(materialName);
+        }
+
+        private AnimationMaterialOverrideController ResolveMaterialController()
+        {
+            UnitAnimationDriver driver = ResolveDriver();
+            return driver == null
+                ? null
+                : cachedMaterialController != null ? cachedMaterialController : cachedMaterialController = driver.GetComponent<AnimationMaterialOverrideController>() ?? driver.gameObject.AddComponent<AnimationMaterialOverrideController>();
+        }
 
         private void NotifyImpact(AnimationImpactType impactType)
         {

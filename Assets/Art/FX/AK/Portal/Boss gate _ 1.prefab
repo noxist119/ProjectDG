@@ -89008,7 +89008,7 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: 492f5bb14cce7504ea973cff7aa359f5, type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: f17e74394f4e04c408386fbe480b2073, type: 2}
+      objectReference: {fileID: 2100000, guid: f41846f6cbdd8b54eac7e83c19bb9582, type: 2}
     - target: {fileID: 919132149155446097, guid: 492f5bb14cce7504ea973cff7aa359f5, type: 3}
       propertyPath: m_Name
       value: bossgate 1

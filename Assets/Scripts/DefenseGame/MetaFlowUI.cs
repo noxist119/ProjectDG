@@ -32,6 +32,13 @@ namespace DefenseGame
         private readonly List<Image> loadoutRosterPortraitImages = new List<Image>();
         private readonly List<Text> loadoutRosterNameTexts = new List<Text>();
         private readonly List<Text> loadoutRosterDetailTexts = new List<Text>();
+        private readonly Image[] rankingTopCardPanels = new Image[3];
+        private readonly Text[] rankingTopNameTexts = new Text[3];
+        private readonly Text[] rankingTopScoreTexts = new Text[3];
+        private readonly Image[] rankingRowPanels = new Image[9];
+        private readonly Text[] rankingRowRankTexts = new Text[9];
+        private readonly Text[] rankingRowNameTexts = new Text[9];
+        private readonly Text[] rankingRowScoreTexts = new Text[9];
 
         private Font font;
         private UiSkinResources uiSkin;
@@ -42,8 +49,10 @@ namespace DefenseGame
         private GameObject resultOverlay;
         private GameObject loadoutOverlay;
         private GameObject outgamePlaceholderOverlay;
+        private GameObject seasonRankingOverlay;
         private GameObject exitConfirmOverlay;
         private GameObject shopOverlay;
+        private GameObject shopPurchaseConfirmOverlay;
         private GameObject shopSceneCanvasRoot;
         private Text lobbyPresetNameText;
         private Text lobbyPresetDescriptionText;
@@ -59,12 +68,21 @@ namespace DefenseGame
         private Text resultScoreText;
         private Text resultRecapText;
         private Text resultNextText;
+        private Text shopGoldText;
         private Text shopDiamondText;
+        private Text shopDailyResetText;
         private Text shopRatesText;
         private Text shopCollectionText;
         private Text shopResultText;
+        private Text shopPurchaseConfirmTitleText;
+        private Text shopPurchaseConfirmBodyText;
+        private readonly Button[] shopDailyOfferButtons = new Button[3];
+        private readonly Button[] shopCashBundleButtons = new Button[3];
         private Text shopModeText;
         private Text loadoutHeaderText;
+        private Text rankingSeasonText;
+        private Text rankingPlayerSummaryText;
+        private Text rankingPlayerProgressText;
         private Text loadoutSummaryText;
         private Button battleButton;
         private Button lobbyButton;
@@ -84,14 +102,21 @@ namespace DefenseGame
         private Button hubYahtzeeButton;
         private Button hubRankingButton;
         private Button placeholderCloseButton;
+        private Button rankingCloseButton;
         private Button exitConfirmLeaveButton;
         private Button exitConfirmContinueButton;
+        private Button shopEarnedDrawButton;
         private Button shopSingleDrawButton;
+        private Button shopWishlistButton;
         private Button shopTenDrawButton;
+        private Button shopFiftyDrawButton;
+        private Button shopHundredDrawButton;
         private Button shopTestDiamondButton;
+        private Button shopPurchaseConfirmButton;
         private Coroutine matchmakingRoutine;
         private Coroutine resultRoutine;
         private Coroutine drawRevealRoutine;
+        private UnityEngine.Events.UnityAction pendingShopPurchaseAction;
         private Sprite roundedSprite;
         private CharacterCollectionUI subscribedCollectionUI;
         private int selectedPresetIndex;
@@ -100,6 +125,20 @@ namespace DefenseGame
         private bool resultRewardGranted;
         private Scene gameplayScene;
         private Scene shopScene;
+
+        private sealed class RankingEntry
+        {
+            public RankingEntry(string name, int score, bool isPlayer = false)
+            {
+                Name = name;
+                Score = Mathf.Max(0, score);
+                IsPlayer = isPlayer;
+            }
+
+            public string Name { get; }
+            public int Score { get; }
+            public bool IsPlayer { get; }
+        }
 
         private sealed class PresetDefinition
         {
@@ -260,6 +299,7 @@ namespace DefenseGame
             BuildResultOverlay(root.transform);
             BuildLoadoutOverlay(root.transform);
             BuildOutgamePlaceholderOverlay(root.transform);
+            BuildSeasonRankingOverlay(root.transform);
             BuildExitConfirmOverlay(root.transform);
         }
 
@@ -310,6 +350,8 @@ namespace DefenseGame
             hubInventoryButton = CreateOutgameNavButton(dock.transform, "OutgameNavInventory", "인벤", "CARD", new Vector2(-216f, 76f), new Color(0.98f, 0.36f, 0.36f), ToggleCollection);
             hubLobbyButton = CreateOutgameNavButton(dock.transform, "OutgameNavLobby", "로비", "HOME", new Vector2(0f, 76f), new Color(0.30f, 0.62f, 1f), ShowLobbyTab);
             hubYahtzeeButton = CreateOutgameNavButton(dock.transform, "OutgameNavYahtzee", "얏찌", "DICE", new Vector2(216f, 76f), new Color(1f, 0.62f, 0.22f), () => ShowOutgamePlaceholder("얏찌", "주사위 기반 보너스 컨텐츠 자리입니다.\n운빨존많겜식 일일/주간 변동 컨텐츠 후보로 남겨둡니다."));
+            hubYahtzeeButton.onClick.RemoveAllListeners();
+            hubYahtzeeButton.onClick.AddListener(() => ShowOutgamePlaceholder("\uc58f\ucc0c", "\uc58f\ucc0c\uc5d0\uc11c \ubb34\ub8cc \uc0c1\uc790 \uac8c\uc774\uc9c0\uc640 \uc0c1\uc790 \ud0a4\ub97c \ud68d\ub4dd\ud558\ub294 \uad6c\uc870\uc785\ub2c8\ub2e4.\n\uac8c\uc784\ub9cc \ud574\ub3c4 \uac19\uc740 \uc720\ub2db \ud480\uc744 \uc5bb\uc73c\uba70, \uc2e4\uc81c \uc58f\ucc0c \ub8f0 \ud655\uc815 \ud6c4 \uc810\uc218\u00b7\uc871\ubcf4 \ubcf4\uc0c1\uc774 \uc774 \uac8c\uc774\uc9c0\uc5d0 \uc5f0\uacb0\ub429\ub2c8\ub2e4."));
             hubRankingButton = CreateOutgameNavButton(dock.transform, "OutgameNavRanking", "랭킹", "CUP", new Vector2(432f, 76f), new Color(0.74f, 0.52f, 1f), ShowSeasonRanking);
             HighlightOutgameNav(hubLobbyButton);
         }
@@ -334,6 +376,82 @@ namespace DefenseGame
             placeholderCloseButton = CreateButton(modal.transform, "PlaceholderCloseButton", "닫기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 70f), new Vector2(220f, 72f), new Color(0.30f, 0.62f, 1f, 1f), HideOutgamePlaceholder, 26);
         }
 
+        private void BuildSeasonRankingOverlay(Transform parent)
+        {
+            seasonRankingOverlay = CreateOverlayRoot(parent, "SeasonRankingOverlay", new Color(0.025f, 0.018f, 0.12f, 0.94f));
+            Image modal = CreatePanel(seasonRankingOverlay.transform, "SeasonRankingModal", new Vector2(0f, 18f), new Vector2(920f, 1660f), new Color(0.16f, 0.10f, 0.42f, 0.995f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+
+            CreateShopArtwork(modal.transform, "RankingAmbientBackdrop", "DiceTower/seaseon-rank-buff-background", new Vector2(0f, -122f), new Vector2(860f, 570f), new Color(0.82f, 0.72f, 1f, 0.28f), new Vector2(0.5f, 1f));
+            CreateShopArtwork(modal.transform, "RankingTopVisual", "DiceTower/top-rank-visual-img", new Vector2(0f, -150f), new Vector2(820f, 430f), new Color(1f, 1f, 1f, 0.30f), new Vector2(0.5f, 1f));
+
+            Image header = CreatePanel(modal.transform, "RankingHeader", new Vector2(0f, -20f), new Vector2(858f, 108f), new Color(0.37f, 0.20f, 0.76f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(header.transform, "RankingHeaderTrophy", "Icons/icon-main-menu-trophy-activated", new Vector2(34f, -22f), new Vector2(66f, 66f), Color.white, new Vector2(0f, 1f));
+            CreateText(header.transform, "RankingTitle", "시즌 랭킹", new Color(1f, 0.94f, 0.72f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(112f, -18f), new Vector2(300f, 48f), 37, TextAnchor.MiddleLeft, true);
+            rankingSeasonText = CreateText(header.transform, "RankingSeasonText", "SEASON 1 · 주간 보스 리그", new Color(0.86f, 0.82f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(114f, -65f), new Vector2(420f, 28f), 18, TextAnchor.MiddleLeft, true);
+            rankingCloseButton = CreateButton(header.transform, "RankingCloseButton", "닫기", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-22f, -22f), new Vector2(102f, 64f), new Color(0.92f, 0.27f, 0.30f, 1f), CloseSeasonRanking, 23);
+
+            Image podium = CreatePanel(modal.transform, "RankingPodium", new Vector2(0f, -146f), new Vector2(850f, 414f), new Color(0.11f, 0.07f, 0.33f, 0.72f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreateText(podium.transform, "PodiumHint", "이번 주 최고의 수호자", new Color(0.94f, 0.86f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(420f, 30f), 21, TextAnchor.MiddleCenter, true);
+            BuildRankingTopCard(podium.transform, 1, 0f, -58f, new Vector2(250f, 326f), "DiceTower/rank-gold-bg", "RankedGrade/ranked-gold", new Color(1f, 0.80f, 0.22f));
+            BuildRankingTopCard(podium.transform, 2, -274f, -94f, new Vector2(222f, 286f), "DiceTower/rank-silver-bg", "RankedGrade/ranked-silver", new Color(0.78f, 0.88f, 1f));
+            BuildRankingTopCard(podium.transform, 3, 274f, -94f, new Vector2(222f, 286f), "DiceTower/rank-bronze-bg", "RankedGrade/ranked-bronze", new Color(1f, 0.63f, 0.36f));
+
+            Image list = CreatePanel(modal.transform, "RankingList", new Vector2(0f, -580f), new Vector2(850f, 894f), new Color(0.09f, 0.07f, 0.30f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateText(list.transform, "RankingListTitle", "전체 랭킹", new Color(0.98f, 0.90f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -20f), new Vector2(240f, 34f), 25, TextAnchor.MiddleLeft, true);
+            CreateText(list.transform, "RankingListGuide", "순위     플레이어                                  점수", new Color(0.66f, 0.72f, 0.94f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(-66f, 28f), 16, TextAnchor.MiddleCenter, true);
+            for (int index = 0; index < rankingRowPanels.Length; index++)
+            {
+                BuildRankingRow(list.transform, index, -92f - index * 86f);
+            }
+
+            Image playerFooter = CreatePanel(modal.transform, "RankingPlayerFooter", new Vector2(0f, -1492f), new Vector2(850f, 126f), new Color(0.17f, 0.42f, 0.66f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(playerFooter.transform, "RankingPlayerTrophy", "Icons/icon-trophy", new Vector2(28f, -24f), new Vector2(72f, 72f), Color.white, new Vector2(0f, 1f));
+            rankingPlayerSummaryText = CreateText(playerFooter.transform, "RankingPlayerSummary", "내 순위 -위  |  레드X  0점", Color.white, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(112f, -20f), new Vector2(-140f, 42f), 26, TextAnchor.MiddleLeft, true);
+            rankingPlayerProgressText = CreateText(playerFooter.transform, "RankingPlayerProgress", "최고 런 0점 · 보스 처치 0회", new Color(0.72f, 0.94f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(112f, -68f), new Vector2(-140f, 32f), 18, TextAnchor.MiddleLeft, true);
+            seasonRankingOverlay.SetActive(false);
+        }
+
+        private void BuildRankingTopCard(Transform parent, int rank, float x, float y, Vector2 size, string backgroundPath, string badgePath, Color accent)
+        {
+            int index = rank - 1;
+            Image card = CreatePanel(parent, "RankingTopCard_" + index, new Vector2(x, y), size, new Color(0.18f, 0.14f, 0.48f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            ApplyRankingPanelSprite(card, backgroundPath);
+            rankingTopCardPanels[index] = card;
+            float badgeSize = rank == 1 ? 116f : 96f;
+            CreateShopArtwork(card.transform, "TopBadge", badgePath, new Vector2(0f, -20f), new Vector2(badgeSize, badgeSize), Color.white, new Vector2(0.5f, 1f));
+            CreateText(card.transform, "TopRank", rank.ToString(), Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(72f, 46f), rank == 1 ? 35 : 29, TextAnchor.MiddleCenter, true);
+            rankingTopNameTexts[index] = CreateText(card.transform, "TopName", "플레이어", Color.white, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, rank == 1 ? -150f : -126f), new Vector2(-24f, 42f), rank == 1 ? 25 : 22, TextAnchor.MiddleCenter, true);
+            Image scorePlate = CreatePanel(card.transform, "TopScorePlate", new Vector2(0f, rank == 1 ? -208f : -178f), new Vector2(size.x - 34f, 58f), new Color(0.08f, 0.06f, 0.25f, 0.88f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreateShopArtwork(scorePlate.transform, "TopTrophy", "Icons/icon-trophy", new Vector2(18f, -10f), new Vector2(40f, 40f), Color.white, new Vector2(0f, 1f));
+            rankingTopScoreTexts[index] = CreateText(scorePlate.transform, "TopScore", "0", accent, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(66f, -8f), new Vector2(-78f, 40f), rank == 1 ? 25 : 22, TextAnchor.MiddleRight, true);
+        }
+
+        private void BuildRankingRow(Transform parent, int index, float y)
+        {
+            Image row = CreatePanel(parent, "RankingRow_" + index, new Vector2(0f, y), new Vector2(790f, 76f), new Color(0.30f, 0.36f, 0.66f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            ApplyRankingPanelSprite(row, "DiceTower/rank-common-bg");
+            rankingRowPanels[index] = row;
+            CreateShopArtwork(row.transform, "RankBadge", "RankedGrade/ranked-bronze-small", new Vector2(18f, -10f), new Vector2(56f, 56f), Color.white, new Vector2(0f, 1f));
+            rankingRowRankTexts[index] = CreateText(row.transform, "Rank", (index + 4).ToString(), Color.white, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(25f, -17f), new Vector2(42f, 40f), 19, TextAnchor.MiddleCenter, true);
+            rankingRowNameTexts[index] = CreateText(row.transform, "PlayerName", "플레이어", Color.white, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(106f, -17f), new Vector2(350f, 40f), 22, TextAnchor.MiddleLeft, true);
+            Image scorePlate = CreatePanel(row.transform, "ScorePlate", new Vector2(-18f, -10f), new Vector2(242f, 56f), new Color(0.08f, 0.07f, 0.25f, 0.78f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), true, false);
+            CreateShopArtwork(scorePlate.transform, "Trophy", "Icons/icon-trophy", new Vector2(12f, -9f), new Vector2(38f, 38f), Color.white, new Vector2(0f, 1f));
+            rankingRowScoreTexts[index] = CreateText(scorePlate.transform, "Score", "0", new Color(1f, 0.86f, 0.36f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(58f, -7f), new Vector2(-70f, 40f), 22, TextAnchor.MiddleRight, true);
+        }
+
+        private void ApplyRankingPanelSprite(Image image, string resourcePath)
+        {
+            Sprite sprite = RollRollUiResource.LoadSprite(resourcePath);
+            if (image == null || sprite == null)
+            {
+                return;
+            }
+
+            image.sprite = sprite;
+            image.type = Image.Type.Simple;
+            image.color = Color.white;
+        }
+
         private void BuildExitConfirmOverlay(Transform parent)
         {
             exitConfirmOverlay = CreateOverlayRoot(parent, "ExitConfirmOverlay", new Color(0.02f, 0.03f, 0.09f, 0.76f));
@@ -348,29 +466,81 @@ namespace DefenseGame
         private void BuildShopOverlay(Transform parent)
         {
             shopOverlay = CreateOverlayRoot(parent, "OutgameShopOverlay", new Color(0.02f, 0.04f, 0.13f, 0.86f));
-            Image modal = CreatePanel(shopOverlay.transform, "ShopModal", new Vector2(0f, 18f), new Vector2(900f, 1250f), new Color(0.13f, 0.18f, 0.40f, 0.99f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            Image modal = CreatePanel(shopOverlay.transform, "ShopModal", new Vector2(0f, 0f), new Vector2(920f, 1640f), new Color(0.10f, 0.27f, 0.62f, 0.995f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
 
-            CreatePanel(modal.transform, "ShopHeader", new Vector2(0f, -18f), new Vector2(830f, 112f), new Color(0.12f, 0.68f, 0.80f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreateText(modal.transform, "ShopTitle", "상점", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-300f, -45f), new Vector2(180f, 48f), 38, TextAnchor.MiddleCenter, true);
-            shopDiamondText = CreateText(modal.transform, "DiamondText", "DIA 0", new Color(1f, 0.96f, 0.62f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(138f, -46f), new Vector2(250f, 42f), 30, TextAnchor.MiddleRight, true);
+            CreatePanel(modal.transform, "ShopHeader", new Vector2(0f, -18f), new Vector2(850f, 104f), new Color(0.98f, 0.78f, 0.18f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreateShopArtwork(modal.transform, "HeaderGoldIcon", "Icons/goods_icon_gold", new Vector2(-94f, -43f), new Vector2(42f, 42f), new Color(1f, 1f, 1f, 0.98f), new Vector2(0.5f, 1f));
+            CreateShopArtwork(modal.transform, "HeaderDiamondIcon", "Icons/goods_icon_ruby", new Vector2(190f, -43f), new Vector2(42f, 42f), new Color(1f, 1f, 1f, 0.98f), new Vector2(0.5f, 1f));
+            CreateText(modal.transform, "ShopTitle", "상점", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-338f, -43f), new Vector2(140f, 48f), 38, TextAnchor.MiddleCenter, true);
+            shopGoldText = CreateText(modal.transform, "ShopGoldText", "GOLD 0", new Color(1f, 0.84f, 0.28f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(48f, -43f), new Vector2(220f, 42f), 24, TextAnchor.MiddleRight, true);
+            shopDiamondText = CreateText(modal.transform, "DiamondText", "DIA 0", new Color(0.46f, 0.94f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(286f, -43f), new Vector2(160f, 42f), 24, TextAnchor.MiddleRight, true);
             CreateButton(modal.transform, "ShopCloseButton", "닫기", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -38f), new Vector2(94f, 62f), new Color(0.92f, 0.36f, 0.29f, 1f), HideShop, 22);
-            shopModeText = CreateText(modal.transform, "ShopModeText", "SERVICE", new Color(0.48f, 1f, 0.83f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(48f, -124f), new Vector2(250f, 34f), 19, TextAnchor.MiddleLeft, true);
-            shopTestDiamondButton = CreateButton(modal.transform, "TestDiamondButton", "다이아 +10,000", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-48f, -116f), new Vector2(216f, 54f), new Color(0.19f, 0.80f, 0.72f, 1f), RechargeTestDiamonds, 19);
+            shopModeText = CreateText(modal.transform, "ShopModeText", "SERVICE", new Color(0.70f, 0.84f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(48f, -126f), new Vector2(340f, 32f), 17, TextAnchor.MiddleLeft, true);
+            shopTestDiamondButton = CreateButton(modal.transform, "TestCurrencyButton", "테스트 재화 충전", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-48f, -116f), new Vector2(224f, 52f), new Color(0.19f, 0.80f, 0.72f, 1f), RechargeTestDiamonds, 18);
 
-            Image product = CreatePanel(modal.transform, "HeroChestProduct", new Vector2(0f, -188f), new Vector2(780f, 362f), new Color(0.18f, 0.24f, 0.53f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            CreatePanel(product.transform, "ChestIcon", new Vector2(-260f, -70f), new Vector2(152f, 152f), new Color(0.97f, 0.74f, 0.22f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreateText(product.transform, "ChestIconLabel", "CARD", new Color(0.20f, 0.20f, 0.30f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-260f, -119f), new Vector2(146f, 44f), 23, TextAnchor.MiddleCenter, true);
-            CreateText(product.transform, "ProductTitle", "영웅 카드 상자", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(88f, -40f), new Vector2(410f, 42f), 32, TextAnchor.MiddleLeft, true);
-            CreateText(product.transform, "ProductInfo", "카드를 모아 명함을 해금하고\n중복 카드로 영웅을 성장시킵니다.", new Color(0.86f, 0.92f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(88f, -92f), new Vector2(410f, 66f), 20, TextAnchor.UpperLeft, false);
-            shopSingleDrawButton = CreateButton(product.transform, "SingleDrawButton", "1회 뽑기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(1f, 0f), new Vector2(-16f, 38f), new Vector2(292f, 72f), new Color(0.23f, 0.80f, 0.73f, 1f), () => TryOpenChest(1), 23);
-            shopTenDrawButton = CreateButton(product.transform, "TenDrawButton", "10회 뽑기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 0f), new Vector2(16f, 38f), new Vector2(340f, 72f), new Color(0.98f, 0.58f, 0.23f, 1f), () => TryOpenChest(10), 23);
+            Image cashSection = CreatePanel(modal.transform, "CashBundleSection", new Vector2(0f, -166f), new Vector2(820f, 250f), new Color(0.11f, 0.17f, 0.39f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(cashSection.transform, "CashSectionIcon", "GradeAndGoodsIcons/goods_icon_reward_box", new Vector2(26f, -18f), new Vector2(48f, 48f), Color.white, new Vector2(0f, 1f));
+            CreateText(cashSection.transform, "CashBundleTitle", "오늘의 꾸러미 · 현금 상품", new Color(1f, 0.88f, 0.42f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(84f, -16f), new Vector2(500f, 36f), 25, TextAnchor.MiddleLeft, true);
+            CreatePanel(cashSection.transform, "CashSectionDivider", new Vector2(0f, -54f), new Vector2(760f, 3f), new Color(1f, 0.78f, 0.28f, 0.48f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            string[] cashLabels = { "골드 주머니\n10,000 GOLD\n₩3,300", "다이아 주머니\n1,200 DIA\n₩6,600", "성장 꾸러미\n20,000G + 2,000 DIA\n₩9,900" };
+            string[] cashIcons = { "GradeAndGoodsIcons/goods_icon_gold_group", "GradeAndGoodsIcons/goods_icon_ruby_group", "GradeAndGoodsIcons/goods_icon_reward_box" };
+            for (int i = 0; i < shopCashBundleButtons.Length; i++)
+            {
+                int index = i;
+                shopCashBundleButtons[i] = CreateButton(cashSection.transform, "CashBundleCard_" + i, cashLabels[i], new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-260f + i * 260f, -66f), new Vector2(238f, 158f), new Color(0.66f, 0.24f + i * 0.08f, 0.76f, 0.98f), () => ShowCashBundlePurchaseConfirm(index), 20);
+                DecorateShopProductCard(shopCashBundleButtons[i], cashIcons[i], i == 0 ? new Color(1f, 0.72f, 0.18f, 1f) : i == 1 ? new Color(0.54f, 0.90f, 1f, 1f) : new Color(0.94f, 0.55f, 1f, 1f), false);
+            }
 
-            shopRatesText = CreateText(modal.transform, "RatesText", string.Empty, new Color(0.83f, 0.91f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -586f), new Vector2(780f, 42f), 19, TextAnchor.MiddleCenter, false);
-            shopCollectionText = CreateText(modal.transform, "CollectionText", string.Empty, new Color(1f, 0.92f, 0.50f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -644f), new Vector2(760f, 38f), 23, TextAnchor.MiddleCenter, true);
-            Image resultPanel = CreatePanel(modal.transform, "DrawResults", new Vector2(0f, -716f), new Vector2(780f, 430f), new Color(0.08f, 0.12f, 0.29f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            CreateText(resultPanel.transform, "ResultTitle", "획득 결과", new Color(0.45f, 0.96f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(320f, 34f), 25, TextAnchor.MiddleCenter, true);
-            shopResultText = CreateText(resultPanel.transform, "ResultBody", "상자를 열면 획득 카드가 여기에 표시됩니다.", new Color(0.91f, 0.94f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -74f), new Vector2(700f, 320f), 20, TextAnchor.UpperLeft, false);
+            Image dailySection = CreatePanel(modal.transform, "DailyShopSection", new Vector2(0f, -438f), new Vector2(820f, 286f), new Color(0.11f, 0.17f, 0.39f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(dailySection.transform, "DailySectionIcon", "GradeAndGoodsIcons/goods_icon_gold", new Vector2(26f, -18f), new Vector2(48f, 48f), Color.white, new Vector2(0f, 1f));
+            CreateText(dailySection.transform, "DailyShopTitle", "일일 상점", new Color(0.56f, 0.94f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(84f, -18f), new Vector2(240f, 36f), 27, TextAnchor.MiddleLeft, true);
+            shopDailyResetText = CreateText(dailySection.transform, "DailyResetText", "갱신까지 00:00", new Color(0.78f, 0.84f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-26f, -20f), new Vector2(300f, 32f), 17, TextAnchor.MiddleRight, false);
+            CreatePanel(dailySection.transform, "DailySectionDivider", new Vector2(0f, -58f), new Vector2(760f, 3f), new Color(0.34f, 0.88f, 1f, 0.46f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            string[] dailyLabels = { "일일 무료 선물\n+500 GOLD\n무료", "영웅 카드 x5\n1,200 GOLD\n일일 1회", "프리미엄 카드 x3\n250 DIA\n일일 1회" };
+            string[] dailyIcons = { "GradeAndGoodsIcons/goods_icon_gold_group", "GradeAndGoodsIcons/goods_icon_reward_box", "GradeAndGoodsIcons/goods_icon_ruby_group" };
+            for (int i = 0; i < shopDailyOfferButtons.Length; i++)
+            {
+                int index = i;
+                shopDailyOfferButtons[i] = CreateButton(dailySection.transform, "DailyOfferCard_" + i, dailyLabels[i], new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-260f + i * 260f, -74f), new Vector2(238f, 176f), i == 0 ? new Color(0.30f, 0.70f, 0.32f, 1f) : new Color(0.25f, 0.38f + i * 0.08f, 0.78f, 1f), () => ShowDailyOfferPurchaseConfirm(index), 20);
+                DecorateShopProductCard(shopDailyOfferButtons[i], dailyIcons[i], i == 0 ? new Color(0.54f, 1f, 0.52f, 1f) : i == 1 ? new Color(0.42f, 0.82f, 1f, 1f) : new Color(0.78f, 0.55f, 1f, 1f), false);
+            }
+
+            Image chestSection = CreatePanel(modal.transform, "ChestShopSection", new Vector2(0f, -746f), new Vector2(820f, 438f), new Color(0.11f, 0.17f, 0.39f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(chestSection.transform, "ChestSectionIcon", "Lobby/top-panel-icon-chest-empty", new Vector2(26f, -18f), new Vector2(52f, 46f), Color.white, new Vector2(0f, 1f));
+            CreateText(chestSection.transform, "ChestShopTitle", "영웅 카드 상자 · 다이아 상품", new Color(1f, 0.82f, 0.30f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(84f, -16f), new Vector2(520f, 38f), 27, TextAnchor.MiddleLeft, true);
+            CreatePanel(chestSection.transform, "ChestSectionDivider", new Vector2(0f, -54f), new Vector2(760f, 3f), new Color(1f, 0.76f, 0.24f, 0.46f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            shopEarnedDrawButton = CreateButton(chestSection.transform, "EarnedDrawButton", "무료 상자 열기", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(1f, 1f), new Vector2(-12f, -62f), new Vector2(360f, 58f), new Color(0.24f, 0.72f, 0.40f, 1f), ShowEarnedChestConfirm, 20);
+            shopWishlistButton = CreateButton(chestSection.transform, "WishlistButton", "위시 영웅 설정", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, 1f), new Vector2(12f, -62f), new Vector2(360f, 58f), new Color(0.50f, 0.34f, 0.78f, 1f), CycleWishlist, 19);
+            shopSingleDrawButton = CreateButton(chestSection.transform, "FiveDrawCard", "5개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-288f, -146f), new Vector2(176f, 112f), new Color(0.20f, 0.66f, 0.78f, 1f), () => ShowPremiumChestPurchaseConfirm(5), 20);
+            shopTenDrawButton = CreateButton(chestSection.transform, "TwentyDrawCard", "20개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-96f, -146f), new Vector2(176f, 112f), new Color(0.34f, 0.54f, 0.88f, 1f), () => ShowPremiumChestPurchaseConfirm(20), 20);
+            shopFiftyDrawButton = CreateButton(chestSection.transform, "FiftyDrawCard", "50개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(96f, -146f), new Vector2(176f, 112f), new Color(0.58f, 0.38f, 0.90f, 1f), () => ShowPremiumChestPurchaseConfirm(50), 20);
+            shopHundredDrawButton = CreateButton(chestSection.transform, "HundredDrawCard", "100개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(288f, -146f), new Vector2(176f, 112f), new Color(0.92f, 0.48f, 0.24f, 1f), () => ShowPremiumChestPurchaseConfirm(100), 20);
+            DecorateShopProductCard(shopSingleDrawButton, "GradeAndGoodsIcons/goods_icon_reward_box", new Color(0.38f, 0.90f, 1f, 1f), true);
+            DecorateShopProductCard(shopTenDrawButton, "GradeAndGoodsIcons/goods_icon_reward_box", new Color(0.45f, 0.68f, 1f, 1f), true);
+            DecorateShopProductCard(shopFiftyDrawButton, "GradeAndGoodsIcons/goods_icon_reward_box", new Color(0.75f, 0.50f, 1f, 1f), true);
+            DecorateShopProductCard(shopHundredDrawButton, "GradeAndGoodsIcons/goods_icon_reward_box", new Color(1f, 0.58f, 0.28f, 1f), true);
+            shopRatesText = CreateText(chestSection.transform, "RatesText", string.Empty, new Color(0.83f, 0.91f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -280f), new Vector2(-44f, 74f), 16, TextAnchor.MiddleCenter, false);
+            shopCollectionText = CreateText(chestSection.transform, "CollectionText", string.Empty, new Color(1f, 0.92f, 0.50f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 34f), new Vector2(-44f, 38f), 20, TextAnchor.MiddleCenter, true);
+
+            Image resultPanel = CreatePanel(modal.transform, "DrawResults", new Vector2(0f, -1208f), new Vector2(820f, 330f), new Color(0.07f, 0.10f, 0.26f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateText(resultPanel.transform, "ResultTitle", "구매·획득 결과", new Color(0.45f, 0.96f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(360f, 34f), 24, TextAnchor.MiddleCenter, true);
+            shopResultText = CreateText(resultPanel.transform, "ResultBody", "상품을 선택하면 결과가 여기에 표시됩니다.", new Color(0.91f, 0.94f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -64f), new Vector2(-52f, 238f), 18, TextAnchor.UpperLeft, false);
+
+            BuildShopPurchaseConfirm(shopOverlay.transform);
             RefreshShop();
+        }
+
+        private void BuildShopPurchaseConfirm(Transform parent)
+        {
+            shopPurchaseConfirmOverlay = CreateOverlayRoot(parent, "ShopPurchaseConfirmOverlay", new Color(0.01f, 0.02f, 0.08f, 0.82f));
+            Image confirmModal = CreatePanel(shopPurchaseConfirmOverlay.transform, "ShopPurchaseConfirmModal", new Vector2(0f, 36f), new Vector2(680f, 500f), new Color(0.10f, 0.27f, 0.62f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            CreatePanel(confirmModal.transform, "ShopPurchaseConfirmHeader", new Vector2(0f, -18f), new Vector2(620f, 86f), new Color(0.98f, 0.78f, 0.18f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            shopPurchaseConfirmTitleText = CreateText(confirmModal.transform, "ShopPurchaseConfirmTitle", "구매 확인", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(500f, 44f), 31, TextAnchor.MiddleCenter, true);
+            CreateShopArtwork(confirmModal.transform, "ShopPurchaseConfirmIcon", "GradeAndGoodsIcons/goods_icon_reward_box", new Vector2(0f, -126f), new Vector2(108f, 108f), Color.white, new Vector2(0.5f, 1f));
+            shopPurchaseConfirmBodyText = CreateText(confirmModal.transform, "ShopPurchaseConfirmBody", string.Empty, new Color(0.94f, 0.96f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -244f), new Vector2(570f, 116f), 23, TextAnchor.MiddleCenter, true);
+            CreateButton(confirmModal.transform, "ShopPurchaseConfirmCancelButton", "취소", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(1f, 0f), new Vector2(-14f, 40f), new Vector2(250f, 74f), new Color(0.28f, 0.42f, 0.72f, 1f), HideShopPurchaseConfirm, 25);
+            shopPurchaseConfirmButton = CreateButton(confirmModal.transform, "ShopPurchaseConfirmButton", "구매", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 0f), new Vector2(14f, 40f), new Vector2(250f, 74f), new Color(0.95f, 0.52f, 0.16f, 1f), ConfirmPendingShopPurchase, 25);
+            shopPurchaseConfirmOverlay.SetActive(false);
         }
 
         private void BuildMatchmakingOverlay(Transform parent)
@@ -412,8 +582,8 @@ namespace DefenseGame
 
             Image rewardPanel = CreatePanel(modal.transform, "RewardPanel", new Vector2(0f, -774f), new Vector2(610f, 178f), new Color(0.23f, 0.18f, 0.60f, 0.88f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             CreateText(rewardPanel.transform, "RewardHeader", "보상", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -28f), new Vector2(200f, 30f), 23, TextAnchor.MiddleCenter, true);
-            resultRewardGoldText = CreateRewardChip(rewardPanel.transform, "RewardGold", "골드", new Vector2(-130f, -58f), new Color(1f, 0.78f, 0.24f), "+000");
-            resultRewardCoreText = CreateRewardChip(rewardPanel.transform, "RewardCore", "다이아", new Vector2(130f, -58f), new Color(0.28f, 0.88f, 1f), "+000");
+            resultRewardGoldText = CreateRewardChip(rewardPanel.transform, "RewardGold", "ResultRewardGoldIcon", "골드", "Icons/goods_icon_gold", new Vector2(-130f, -58f), new Color(1f, 0.78f, 0.24f), "+000");
+            resultRewardCoreText = CreateRewardChip(rewardPanel.transform, "RewardDiamond", "ResultRewardDiamondIcon", "다이아", "Icons/goods_icon_ruby", new Vector2(130f, -58f), new Color(0.28f, 0.88f, 1f), "+000");
 
             resultRetryButton = CreateButton(modal.transform, "ResultRetryButton", "새 판 다시하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-120f, 58f), new Vector2(306f, 78f), new Color(0.30f, 0.86f, 0.36f, 1f), RetryFromResult, 27);
             resultContinueButton = CreateButton(modal.transform, "ResultContinueButton", "계속하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(190f, 58f), new Vector2(240f, 78f), new Color(0.30f, 0.62f, 1f, 1f), ContinueFromResult, 28);
@@ -545,12 +715,13 @@ namespace DefenseGame
             }
         }
 
-        private Text CreateRewardChip(Transform parent, string name, string title, Vector2 anchoredPosition, Color accentColor, string value)
+        private Text CreateRewardChip(Transform parent, string name, string iconName, string title, string iconResourcePath, Vector2 anchoredPosition, Color accentColor, string value)
         {
             Image chip = CreatePanel(parent, name, anchoredPosition, new Vector2(200f, 132f), new Color(0.96f, 0.97f, 0.99f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             CreatePanel(chip.transform, "Accent", new Vector2(0f, -10f), new Vector2(124f, 42f), accentColor, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             CreateText(chip.transform, "Title", title, new Color(0.22f, 0.26f, 0.38f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(124f, 22f), 16, TextAnchor.MiddleCenter, true);
-            return CreateText(chip.transform, "Value", value, accentColor, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 28f), new Vector2(150f, 40f), 30, TextAnchor.MiddleCenter, true);
+            CreateShopArtwork(chip.transform, iconName, iconResourcePath, new Vector2(-50f, 25f), new Vector2(58f, 58f), Color.white, new Vector2(0.5f, 0f));
+            return CreateText(chip.transform, "Value", value, accentColor, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(32f, 28f), new Vector2(100f, 42f), 31, TextAnchor.MiddleCenter, true);
         }
 
         private void WireButtons()
@@ -1034,6 +1205,7 @@ namespace DefenseGame
                 return;
             }
 
+            HideSeasonRanking();
             BuildPresets();
             ApplyRecommendedPreset();
             SetGameplayHudVisible(false);
@@ -1139,6 +1311,7 @@ namespace DefenseGame
                 resultOverlay != null && resultOverlay.activeSelf ||
                 shopOverlay != null && shopOverlay.activeSelf ||
                 loadoutOverlay != null && loadoutOverlay.activeSelf ||
+                seasonRankingOverlay != null && seasonRankingOverlay.activeSelf ||
                 outgamePlaceholderOverlay != null && outgamePlaceholderOverlay.activeSelf)
             {
                 return;
@@ -1177,6 +1350,7 @@ namespace DefenseGame
                 SetGameplayHudVisible(false);
                 HideLoadout();
                 HideResult();
+                HideSeasonRanking();
                 HideOutgamePlaceholder();
                 HideExitConfirm();
                 ShowShop();
@@ -1224,14 +1398,33 @@ namespace DefenseGame
             shopScene = default(Scene);
             shopSceneCanvasRoot = null;
             shopOverlay = null;
+            shopGoldText = null;
             shopDiamondText = null;
+            shopDailyResetText = null;
             shopRatesText = null;
             shopCollectionText = null;
             shopResultText = null;
             shopModeText = null;
+            shopPurchaseConfirmOverlay = null;
+            shopPurchaseConfirmTitleText = null;
+            shopPurchaseConfirmBodyText = null;
+            shopPurchaseConfirmButton = null;
+            pendingShopPurchaseAction = null;
             shopSingleDrawButton = null;
             shopTenDrawButton = null;
+            shopFiftyDrawButton = null;
+            shopHundredDrawButton = null;
             shopTestDiamondButton = null;
+            shopEarnedDrawButton = null;
+            shopWishlistButton = null;
+            for (int i = 0; i < shopDailyOfferButtons.Length; i++)
+            {
+                shopDailyOfferButtons[i] = null;
+            }
+            for (int i = 0; i < shopCashBundleButtons.Length; i++)
+            {
+                shopCashBundleButtons[i] = null;
+            }
 
             if (lobbyOverlay != null && lobbyOverlay.activeSelf)
             {
@@ -1273,8 +1466,211 @@ namespace DefenseGame
 
         private void RechargeTestDiamonds()
         {
-            outgameProgression?.RechargeTestDiamonds();
+            outgameProgression?.RechargeTestCurrency();
         }
+
+        private void ShowCashBundlePurchaseConfirm(int index)
+        {
+            string[] productNames = { "골드 주머니", "다이아 주머니", "성장 꾸러미" };
+            string[] rewards = { "10,000 GOLD", "1,200 DIA", "20,000 GOLD + 2,000 DIA" };
+            string[] prices = { "₩3,300", "₩6,600", "₩9,900" };
+            int safeIndex = Mathf.Clamp(index, 0, productNames.Length - 1);
+            ShowShopPurchaseConfirm(
+                productNames[safeIndex],
+                rewards[safeIndex] + "\n가격 " + prices[safeIndex] + "\n구매하시겠습니까?",
+                "구매",
+                () => HandleCashBundlePurchase(safeIndex));
+        }
+
+        private void ShowDailyOfferPurchaseConfirm(int index)
+        {
+            if (outgameProgression == null)
+            {
+                return;
+            }
+
+            string title;
+            string body;
+            string confirmLabel;
+            switch (index)
+            {
+                case 0:
+                    title = "일일 무료 선물";
+                    body = "+" + outgameProgression.Settings.dailyFreeGold.ToString("N0") + " GOLD\n무료로 받으시겠습니까?";
+                    confirmLabel = "받기";
+                    break;
+                case 1:
+                    title = "영웅 카드 x" + outgameProgression.Settings.dailyCardPackDrawCount;
+                    body = outgameProgression.Settings.dailyCardPackGoldCost.ToString("N0") + " GOLD가 차감됩니다.\n구매하시겠습니까?";
+                    confirmLabel = "구매";
+                    break;
+                default:
+                    title = "프리미엄 카드 x" + outgameProgression.Settings.dailyPremiumPackDrawCount;
+                    body = outgameProgression.Settings.dailyPremiumPackDiamondCost.ToString("N0") + " DIA가 차감됩니다.\n구매하시겠습니까?";
+                    confirmLabel = "구매";
+                    break;
+            }
+
+            int safeIndex = Mathf.Clamp(index, 0, shopDailyOfferButtons.Length - 1);
+            ShowShopPurchaseConfirm(title, body, confirmLabel, () => TryPurchaseDailyOffer(safeIndex));
+        }
+
+        private void ShowPremiumChestPurchaseConfirm(int drawCount)
+        {
+            if (outgameProgression == null)
+            {
+                return;
+            }
+
+            int cost = outgameProgression.ResolvePremiumChestCost(drawCount);
+            ShowShopPurchaseConfirm(
+                "영웅 카드 상자 " + drawCount + "개",
+                cost.ToString("N0") + " DIA가 차감됩니다.\n상자를 여시겠습니까?",
+                "구매",
+                () => TryOpenChest(drawCount));
+        }
+
+        private void ShowEarnedChestConfirm()
+        {
+            if (outgameProgression == null)
+            {
+                return;
+            }
+
+            ShowShopPurchaseConfirm(
+                "무료 영웅 상자",
+                "보유 상자 1개를 사용합니다.\n상자를 여시겠습니까?",
+                "열기",
+                TryOpenEarnedChest);
+        }
+
+        private void ShowShopPurchaseConfirm(string title, string body, string confirmLabel, UnityEngine.Events.UnityAction action)
+        {
+            if (shopPurchaseConfirmOverlay == null || action == null)
+            {
+                return;
+            }
+
+            pendingShopPurchaseAction = action;
+            if (shopPurchaseConfirmTitleText != null) shopPurchaseConfirmTitleText.text = title;
+            if (shopPurchaseConfirmBodyText != null) shopPurchaseConfirmBodyText.text = body;
+            SetButtonLabel(shopPurchaseConfirmButton, confirmLabel);
+            shopPurchaseConfirmOverlay.transform.SetAsLastSibling();
+            shopPurchaseConfirmOverlay.SetActive(true);
+        }
+
+        private void HideShopPurchaseConfirm()
+        {
+            pendingShopPurchaseAction = null;
+            shopPurchaseConfirmOverlay?.SetActive(false);
+        }
+
+        private void ConfirmPendingShopPurchase()
+        {
+            UnityEngine.Events.UnityAction action = pendingShopPurchaseAction;
+            pendingShopPurchaseAction = null;
+            shopPurchaseConfirmOverlay?.SetActive(false);
+            action?.Invoke();
+        }
+
+        private void HandleCashBundlePurchase(int index)
+        {
+            if (outgameProgression == null)
+            {
+                return;
+            }
+
+            int[] goldAmounts = { 10000, 0, 20000 };
+            int[] diamondAmounts = { 0, 1200, 2000 };
+            string[] productNames = { "골드 주머니", "다이아 주머니", "성장 꾸러미" };
+            int safeIndex = Mathf.Clamp(index, 0, productNames.Length - 1);
+            if (!outgameProgression.IsTestMode)
+            {
+                if (shopResultText != null)
+                {
+                    shopResultText.text = productNames[safeIndex] + "\n상용 결제 SDK 연결 후 실제 구매가 진행됩니다. 현재 서비스 빌드에서는 재화를 지급하지 않습니다.";
+                }
+                return;
+            }
+
+            outgameProgression.GrantTestShopCurrency(goldAmounts[safeIndex], diamondAmounts[safeIndex]);
+            if (shopResultText != null)
+            {
+                shopResultText.text = "[TEST] " + productNames[safeIndex] + " 지급 완료"
+                    + "\n+" + goldAmounts[safeIndex].ToString("N0") + " GOLD / +" + diamondAmounts[safeIndex].ToString("N0") + " DIA";
+            }
+            RefreshShop();
+        }
+
+        private void TryPurchaseDailyOffer(int index)
+        {
+            if (outgameProgression == null || drawRevealRoutine != null)
+            {
+                return;
+            }
+
+            if (!outgameProgression.TryPurchaseDailyShopOffer(index, out List<OutgameDrawResult> results, out string message))
+            {
+                if (shopResultText != null)
+                {
+                    shopResultText.text = message;
+                }
+                RefreshShop();
+                return;
+            }
+
+            if (shopResultText != null)
+            {
+                shopResultText.text = message;
+            }
+            RefreshShop();
+            if (results.Count > 0)
+            {
+                RuntimeAudioUtility.PlayReroll();
+                drawRevealRoutine = StartCoroutine(RevealDrawResults(results));
+            }
+        }
+
+        private void TryOpenEarnedChest()
+        {
+            if (outgameProgression == null || drawRevealRoutine != null)
+            {
+                return;
+            }
+
+            if (!outgameProgression.TryOpenEarnedChest(out List<OutgameDrawResult> results))
+            {
+                if (shopResultText != null)
+                {
+                    shopResultText.text = "\ubb34\ub8cc \uc0c1\uc790\uac00 \uc5c6\uc2b5\ub2c8\ub2e4. \uc804\ud22c\ub97c \uc9c4\ud589\ud558\uac70\ub098 \uc774\ud6c4 \uc58f\ucc0c \ubcf4\uc0c1\uc73c\ub85c \uac8c\uc774\uc9c0\ub97c \ucc44\uc6b0\uc138\uc694.";
+                }
+
+                RefreshShop();
+                return;
+            }
+
+            RuntimeAudioUtility.PlayReroll();
+            RefreshShop();
+            drawRevealRoutine = StartCoroutine(RevealDrawResults(results));
+        }
+
+        private void CycleWishlist()
+        {
+            if (outgameProgression == null || drawRevealRoutine != null)
+            {
+                return;
+            }
+
+            outgameProgression.CycleWishlist();
+            if (shopResultText != null)
+            {
+                shopResultText.text = "\uc704\uc2dc \uc601\uc6c5 \ubcc0\uacbd: " + outgameProgression.GetWishlistDisplayName()
+                    + "\n\ud504\ub9ac\ubbf8\uc5c4 \uc0c1\uc790\uc5d0\uc11c \ud655\ub960 \ubcf4\uc815\ub418\uba70 20\ud68c \uc548\uc5d0 \uc704\uc2dc\uac00 \ud655\uc815\ub429\ub2c8\ub2e4.";
+            }
+
+            RefreshShop();
+        }
+
 
         private void TryOpenChest(int drawCount)
         {
@@ -1308,6 +1704,15 @@ namespace DefenseGame
             }
 
             yield return new WaitForSeconds(0.45f);
+            if (results != null && results.Count > 20)
+            {
+                shopResultText.text = BuildBulkDrawSummary(results);
+                yield return new WaitForSeconds(0.35f);
+                SetShopDrawButtonsInteractable(true);
+                drawRevealRoutine = null;
+                yield break;
+            }
+
             string output = string.Empty;
             for (int i = 0; i < results.Count; i++)
             {
@@ -1318,6 +1723,10 @@ namespace DefenseGame
                 }
 
                 string status = result.firstAcquisition ? "NEW" : result.leveledUp ? "LEVEL UP" : "카드 획득";
+                string chestSource = result.chestType == OutgameChestType.Earned ? "\ubb34\ub8cc" : "\ud504\ub9ac\ubbf8\uc5c4";
+                string drawBonus = result.wishlistHit ? " / \uc704\uc2dc \uc801\uc911" : result.pityTriggered ? " / \ucc9c\uc7a5 \ubcf4\uc7a5" : string.Empty;
+                status = chestSource + " | " + status + drawBonus;
+
                 output += "[" + status + "] " + result.character.displayName + "  Lv." + result.level;
                 output += result.requiredCopies > 0 ? "  (" + result.remainingCopies + "/" + result.requiredCopies + ")\n" : "  (MAX)\n";
                 if (shopResultText != null)
@@ -1337,11 +1746,42 @@ namespace DefenseGame
             drawRevealRoutine = null;
         }
 
+        private static string BuildBulkDrawSummary(List<OutgameDrawResult> results)
+        {
+            int[] gradeCounts = new int[6];
+            int newCount = 0;
+            int levelUpCount = 0;
+            for (int i = 0; i < results.Count; i++)
+            {
+                OutgameDrawResult result = results[i];
+                if (result == null || result.character == null)
+                {
+                    continue;
+                }
+
+                int gradeIndex = Mathf.Clamp((int)result.character.grade, 0, gradeCounts.Length - 1);
+                gradeCounts[gradeIndex]++;
+                if (result.firstAcquisition) newCount++;
+                if (result.leveledUp) levelUpCount++;
+            }
+
+            return "프리미엄 상자 " + results.Count + "개 개봉 완료"
+                + "\n일반 " + gradeCounts[0] + " / 레어 " + gradeCounts[1] + " / 희귀 " + gradeCounts[2]
+                + "\n전설 " + gradeCounts[3] + " / 신화 " + gradeCounts[4] + " / 초월 " + gradeCounts[5]
+                + "\nNEW " + newCount + " / LEVEL UP " + levelUpCount
+                + "\n세부 보유량은 도감에서 확인할 수 있습니다.";
+        }
+
         private void RefreshShop()
         {
             if (outgameProgression == null)
             {
                 return;
+            }
+
+            if (shopGoldText != null)
+            {
+                shopGoldText.text = "GOLD " + outgameProgression.Gold.ToString("N0");
             }
 
             if (shopDiamondText != null)
@@ -1391,6 +1831,107 @@ namespace DefenseGame
                     label.text = "10회 뽑기  " + outgameProgression.Settings.tenChestCost + " DIA";
                 }
             }
+            if (shopDiamondText != null)
+            {
+                shopDiamondText.text = "DIA " + outgameProgression.Diamonds.ToString("N0");
+            }
+
+            if (shopEarnedDrawButton != null)
+            {
+                Text label = shopEarnedDrawButton.GetComponentInChildren<Text>();
+                if (label != null)
+                {
+                    label.text = "\ubb34\ub8cc \uc0c1\uc790 \uc5f4\uae30  |  \ubcf4\uc720 " + outgameProgression.EarnedChestKeys
+                        + "\uac1c  (\uac8c\uc774\uc9c0 " + outgameProgression.EarnedChestProgress + "/" + outgameProgression.EarnedChestProgressTarget + ")";
+                }
+
+                shopEarnedDrawButton.interactable = outgameProgression.EarnedChestKeys > 0 && drawRevealRoutine == null;
+            }
+
+            if (shopWishlistButton != null)
+            {
+                Text label = shopWishlistButton.GetComponentInChildren<Text>();
+                if (label != null)
+                {
+                    label.text = "\uc704\uc2dc \uc601\uc6c5  |  " + outgameProgression.GetWishlistDisplayName() + "  >";
+                }
+            }
+
+            if (shopSingleDrawButton != null)
+            {
+                Text label = shopSingleDrawButton.GetComponentInChildren<Text>();
+                if (label != null)
+                {
+                    label.text = "\ud504\ub9ac\ubbf8\uc5c4 1\ud68c  " + outgameProgression.Settings.singleChestCost + " DIA";
+                }
+
+                shopSingleDrawButton.interactable = outgameProgression.Diamonds >= outgameProgression.Settings.singleChestCost && drawRevealRoutine == null;
+            }
+
+            if (shopTenDrawButton != null)
+            {
+                Text label = shopTenDrawButton.GetComponentInChildren<Text>();
+                if (label != null)
+                {
+                    label.text = "\ud504\ub9ac\ubbf8\uc5c4 10\ud68c  " + outgameProgression.Settings.tenChestCost + " DIA";
+                }
+
+                shopTenDrawButton.interactable = outgameProgression.Diamonds >= outgameProgression.Settings.tenChestCost && drawRevealRoutine == null;
+            }
+
+            if (shopDailyResetText != null)
+            {
+                shopDailyResetText.text = outgameProgression.BuildDailyShopResetLabel();
+            }
+
+            RefreshDailyOfferButton(0, "일일 무료 선물", "+" + outgameProgression.Settings.dailyFreeGold.ToString("N0") + " GOLD", "무료", true);
+            RefreshDailyOfferButton(1, "영웅 카드 x" + outgameProgression.Settings.dailyCardPackDrawCount, outgameProgression.Settings.dailyCardPackGoldCost.ToString("N0") + " GOLD", "일일 1회", outgameProgression.Gold >= outgameProgression.Settings.dailyCardPackGoldCost);
+            RefreshDailyOfferButton(2, "프리미엄 카드 x" + outgameProgression.Settings.dailyPremiumPackDrawCount, outgameProgression.Settings.dailyPremiumPackDiamondCost.ToString("N0") + " DIA", "일일 1회", outgameProgression.Diamonds >= outgameProgression.Settings.dailyPremiumPackDiamondCost);
+
+            RefreshChestPackButton(shopSingleDrawButton, 5);
+            RefreshChestPackButton(shopTenDrawButton, 20);
+            RefreshChestPackButton(shopFiftyDrawButton, 50);
+            RefreshChestPackButton(shopHundredDrawButton, 100);
+
+            if (shopDiamondText != null)
+            {
+                shopDiamondText.text = "DIA " + outgameProgression.Diamonds.ToString("N0");
+            }
+
+            if (shopTestDiamondButton != null)
+            {
+                Text label = shopTestDiamondButton.GetComponentInChildren<Text>();
+                if (label != null)
+                {
+                    label.text = "GOLD/DIA 테스트 충전";
+                }
+            }
+        }
+
+        private void RefreshDailyOfferButton(int index, string title, string reward, string footer, bool affordable)
+        {
+            if (index < 0 || index >= shopDailyOfferButtons.Length || shopDailyOfferButtons[index] == null)
+            {
+                return;
+            }
+
+            bool purchased = outgameProgression != null && outgameProgression.IsDailyShopOfferPurchased(index);
+            SetButtonLabel(shopDailyOfferButtons[index], purchased
+                ? title + "\n구매 완료\n내일 갱신"
+                : title + "\n" + reward + "\n" + footer);
+            shopDailyOfferButtons[index].interactable = !purchased && affordable && drawRevealRoutine == null;
+        }
+
+        private void RefreshChestPackButton(Button button, int drawCount)
+        {
+            if (button == null || outgameProgression == null)
+            {
+                return;
+            }
+
+            int cost = outgameProgression.ResolvePremiumChestCost(drawCount);
+            SetButtonLabel(button, drawCount + "개\n" + cost.ToString("N0") + " DIA");
+            button.interactable = outgameProgression.Diamonds >= cost && drawRevealRoutine == null;
         }
 
         private void RefreshModeUi()
@@ -1464,10 +2005,28 @@ namespace DefenseGame
             {
                 shopSingleDrawButton.interactable = interactable;
             }
+            if (shopEarnedDrawButton != null)
+            {
+                shopEarnedDrawButton.interactable = interactable && outgameProgression != null && outgameProgression.EarnedChestKeys > 0;
+            }
+
+            if (shopWishlistButton != null)
+            {
+                shopWishlistButton.interactable = interactable;
+            }
+
 
             if (shopTenDrawButton != null)
             {
                 shopTenDrawButton.interactable = interactable;
+            }
+            if (shopFiftyDrawButton != null)
+            {
+                shopFiftyDrawButton.interactable = interactable;
+            }
+            if (shopHundredDrawButton != null)
+            {
+                shopHundredDrawButton.interactable = interactable;
             }
         }
 
@@ -1481,6 +2040,7 @@ namespace DefenseGame
 
         private void ShowLoadout()
         {
+            HideSeasonRanking();
             ApplyRecommendedPreset();
             if (loadoutOverlay != null)
             {
@@ -1503,6 +2063,7 @@ namespace DefenseGame
 
         private void ShowOutgamePlaceholder(string title, string body)
         {
+            HideSeasonRanking();
             SetGameplayHudVisible(false);
             HideLoadout();
             HideShop();
@@ -1532,10 +2093,99 @@ namespace DefenseGame
 
         private void ShowSeasonRanking()
         {
-            string body = outgameProgression != null
-                ? outgameProgression.BuildSeasonRankingSummary()
-                : "주간 보스 점수, 협동 MVP, 시즌 미션 보상을 불러올 수 없습니다.";
-            ShowOutgamePlaceholder("시즌 랭킹", body);
+            SetGameplayHudVisible(false);
+            HideLoadout();
+            HideShop();
+            HideResult();
+            HideOutgamePlaceholder();
+            HideExitConfirm();
+            ShowLobby();
+            RefreshSeasonRanking();
+            if (seasonRankingOverlay != null)
+            {
+                seasonRankingOverlay.SetActive(true);
+            }
+
+            HighlightOutgameNav(hubRankingButton);
+        }
+
+        private void RefreshSeasonRanking()
+        {
+            int playerScore = outgameProgression != null ? outgameProgression.WeeklyBossScore : 0;
+            int seasonId = outgameProgression != null ? Mathf.Max(1, outgameProgression.CurrentSeasonId) : 1;
+            List<RankingEntry> entries = new List<RankingEntry>
+            {
+                new RankingEntry("KR주사위", 3180),
+                new RankingEntry("별빛기사", 2870),
+                new RankingEntry("행운의눈", 2640),
+                new RankingEntry("DiceMaster", 2410),
+                new RankingEntry("보라별", 2180),
+                new RankingEntry("바람주사위", 1960),
+                new RankingEntry("황금망치", 1740),
+                new RankingEntry("용감한큐브", 1510),
+                new RankingEntry("밤의왕관", 1290),
+                new RankingEntry("빛의수호자", 1070),
+                new RankingEntry("신비한탑", 840),
+                new RankingEntry("레드X", playerScore, true)
+            };
+            entries.Sort((left, right) =>
+            {
+                int scoreCompare = right.Score.CompareTo(left.Score);
+                return scoreCompare != 0 ? scoreCompare : string.CompareOrdinal(left.Name, right.Name);
+            });
+
+            if (rankingSeasonText != null)
+            {
+                rankingSeasonText.text = "SEASON " + seasonId + " · 주간 보스 리그";
+            }
+
+            for (int index = 0; index < rankingTopNameTexts.Length; index++)
+            {
+                RankingEntry entry = entries[index];
+                rankingTopNameTexts[index].text = entry.IsPlayer ? entry.Name + " (나)" : entry.Name;
+                rankingTopScoreTexts[index].text = entry.Score.ToString("N0");
+                if (rankingTopCardPanels[index] != null)
+                {
+                    rankingTopCardPanels[index].color = entry.IsPlayer ? new Color(0.72f, 1f, 1f, 1f) : Color.white;
+                }
+            }
+
+            for (int index = 0; index < rankingRowPanels.Length; index++)
+            {
+                int entryIndex = index + 3;
+                RankingEntry entry = entries[entryIndex];
+                rankingRowRankTexts[index].text = (entryIndex + 1).ToString();
+                rankingRowNameTexts[index].text = entry.IsPlayer ? entry.Name + "  ·  나" : entry.Name;
+                rankingRowScoreTexts[index].text = entry.Score.ToString("N0");
+                rankingRowPanels[index].color = entry.IsPlayer ? new Color(0.64f, 0.96f, 1f, 1f) : Color.white;
+            }
+
+            int playerRank = entries.FindIndex(entry => entry.IsPlayer) + 1;
+            if (rankingPlayerSummaryText != null)
+            {
+                rankingPlayerSummaryText.text = "내 순위 " + playerRank + "위  |  레드X  " + playerScore.ToString("N0") + "점";
+            }
+
+            if (rankingPlayerProgressText != null)
+            {
+                int bestRun = outgameProgression != null ? outgameProgression.WeeklyBestRunScore : 0;
+                int bossKills = outgameProgression != null ? outgameProgression.WeeklyBossKills : 0;
+                rankingPlayerProgressText.text = "최고 런 " + bestRun.ToString("N0") + "점 · 보스 처치 " + bossKills + "회";
+            }
+        }
+
+        private void CloseSeasonRanking()
+        {
+            HideSeasonRanking();
+            ShowLobby();
+        }
+
+        private void HideSeasonRanking()
+        {
+            if (seasonRankingOverlay != null)
+            {
+                seasonRankingOverlay.SetActive(false);
+            }
         }
 
         private void HideOutgamePlaceholder()
@@ -1847,6 +2497,70 @@ namespace DefenseGame
 
             CreateText(buttonObject.transform, "Label", label, Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, fontSize, TextAnchor.MiddleCenter, true);
             return button;
+        }
+
+        private Image CreateShopArtwork(Transform parent, string name, string resourcePath, Vector2 anchoredPosition, Vector2 size, Color color, Vector2 anchor)
+        {
+            GameObject artworkObject = new GameObject(name, typeof(RectTransform));
+            artworkObject.transform.SetParent(parent, false);
+            Image artwork = artworkObject.AddComponent<Image>();
+            artwork.color = color;
+            artwork.raycastTarget = false;
+            artwork.preserveAspect = true;
+            artwork.sprite = RollRollUiResource.LoadSprite(resourcePath);
+
+            RectTransform rect = artwork.rectTransform;
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = anchor;
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = size;
+            return artwork;
+        }
+
+        private void DecorateShopProductCard(Button button, string iconResourcePath, Color accent, bool compact)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            Image cardImage = button.GetComponent<Image>();
+            if (cardImage != null)
+            {
+                Sprite cardSprite = RollRollUiResource.LoadSprite("Common/reward-item-tilelist-background-dark", true);
+                if (cardSprite != null)
+                {
+                    cardImage.sprite = cardSprite;
+                    cardImage.type = Image.Type.Sliced;
+                    cardImage.color = Color.white;
+                }
+            }
+
+            float iconSize = compact ? 54f : 82f;
+            float iconY = compact ? 24f : 38f;
+            CreateShopArtwork(button.transform, "ShopCardAura", "Common/loot-box-background", new Vector2(0f, iconY), new Vector2(iconSize + 34f, iconSize + 34f), new Color(accent.r, accent.g, accent.b, 0.26f), new Vector2(0.5f, 0.5f));
+            CreateShopArtwork(button.transform, "ShopProductIcon", iconResourcePath, new Vector2(0f, iconY), new Vector2(iconSize, iconSize), Color.white, new Vector2(0.5f, 0.5f));
+
+            Text label = GetChildText(button.transform, "Label");
+            if (label != null)
+            {
+                RectTransform labelRect = label.rectTransform;
+                labelRect.anchorMin = new Vector2(0f, 0f);
+                labelRect.anchorMax = new Vector2(1f, 0f);
+                labelRect.pivot = new Vector2(0.5f, 0f);
+                labelRect.anchoredPosition = new Vector2(0f, compact ? 7f : 10f);
+                labelRect.sizeDelta = new Vector2(-18f, compact ? 52f : 74f);
+                label.fontSize = compact ? 17 : 18;
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = compact ? 13 : 14;
+                label.resizeTextMaxSize = compact ? 17 : 18;
+                label.transform.SetAsLastSibling();
+            }
+
+            Outline outline = button.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(accent.r, accent.g, accent.b, 0.72f);
+            outline.effectDistance = new Vector2(2f, -2f);
         }
 
         private static void AddButtonListener(Button button, UnityEngine.Events.UnityAction onClick)

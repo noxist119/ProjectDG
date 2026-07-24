@@ -56,6 +56,8 @@ namespace DefenseGame
         public bool enableRuntimeGpuInstancing;
         [Tooltip("Keeps runtime defender and monster renderers from casting real-time shadows. Prefabs should also keep Cast Shadows off.")]
         public bool forceRuntimeUnitCastShadowsOff = true;
+        [Tooltip("AnimationEvent OverrideMaterial(string)에서 이름으로 찾을 머테리얼입니다. 에디터 동기화와 빌드 전처리가 이벤트 문자열을 기준으로 자동 갱신합니다.")]
+        public Material[] animationEventMaterials = Array.Empty<Material>();
 
         [Header("Character Overrides")]
         public List<CharacterPresentationOverride> characterOverrides = new List<CharacterPresentationOverride>();

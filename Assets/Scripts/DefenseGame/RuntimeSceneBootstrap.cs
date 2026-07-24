@@ -91,6 +91,7 @@ namespace DefenseGame
             RunShopSystem runShopSystem = GetOrAdd<RunShopSystem>(gameObject);
 
             RuntimeRenderBatchingUtility.Configure(presentationConfig);
+            AnimationEventMaterialRegistry.Configure(presentationConfig != null ? presentationConfig.animationEventMaterials : null);
             MonsterUnit.ConfigurePetrifyMaterial(characterCombatTuningConfig != null ? characterCombatTuningConfig.defaultPetrifyMaterial : null);
             characterDatabase.ApplyPresentationConfig(presentationConfig);
             characterDatabase.ApplyCombatTuningConfig(characterCombatTuningConfig);
@@ -848,7 +849,14 @@ namespace DefenseGame
                 () => { if (ultimateRecipeSelection != null) ultimateRecipeSelection.Open(); },
                 "레시피 선택");
 
-            Button summonButton = CreateButton(hudRoot, font, "SummonButton", "소환", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(54f, 29f), new Vector2(226f, 76f), new Color(0.19f, 0.78f, 0.42f, 1f), Color.white, binder.OnClickSummon, out Text summonLabel);
+            Button summonButton = CreateButton(hudRoot, font, "SummonButton", "소환", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(54f, 26f), new Vector2(226f, 88f), new Color(0.19f, 0.78f, 0.42f, 1f), Color.white, binder.OnClickSummon, out Text summonLabel);
+            Image luckySummonBadge = CreatePanel(summonButton.transform, "LuckySummonProgressBadge", new Vector2(0f, -3f), new Vector2(194f, 26f), new Color(0.07f, 0.20f, 0.17f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            Text luckySummonProgress = CreateText(luckySummonBadge.transform, font, new Color(0.94f, 1f, 0.78f), "LuckySummonProgressText", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-12f, -4f), string.Empty, 17, TextAnchor.MiddleCenter, true);
+            luckySummonProgress.resizeTextForBestFit = true;
+            luckySummonProgress.resizeTextMinSize = 14;
+            luckySummonProgress.resizeTextMaxSize = 17;
+            luckySummonBadge.gameObject.SetActive(false);
+
             Image ultimateRecipePanel = CreatePanel(hudRoot, "UltimateRecipeHudPanel", new Vector2(0f, 700f), new Vector2(920f, 76f), new Color(0.05f, 0.10f, 0.28f, 0.78f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), true, true);
             Text ultimateRecipeHud = CreateText(ultimateRecipePanel.transform, font, new Color(0.76f, 0.94f, 1f), "UltimateRecipeHudText", new Vector2(0f, 0f), Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(18f, 0f), new Vector2(-36f, -18f), "레시피 빙고\nTOP 0/3", 20, TextAnchor.MiddleLeft, true);
             ultimateRecipeHud.resizeTextForBestFit = true;
@@ -900,7 +908,7 @@ namespace DefenseGame
             fateGradeLockLabel.resizeTextMaxSize = 22;
             fateNormalBanLabel.resizeTextMaxSize = 22;
             fateForceShopLabel.resizeTextMaxSize = 1;
-            Button fatePanelReopenButton = CreateButton(hudRoot, font, "FatePanelReopenButton", "계약", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-42f, 356f), new Vector2(154f, 48f), new Color(0.30f, 0.52f, 0.38f, 0.98f), new Color(0.97f, 1.00f, 0.97f, 1f), null, out Text fatePanelReopenLabel);
+            Button fatePanelReopenButton = CreateButton(hudRoot, font, "FatePanelReopenButton", "계약", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-42f, 356f), new Vector2(154f, 48f), new Color(0.40f, 0.21f, 0.85f, 0.98f), new Color(1.00f, 0.98f, 0.94f, 1f), null, out Text fatePanelReopenLabel);
             fatePanelReopenLabel.fontSize = 18;
             fatePanelReopenLabel.resizeTextForBestFit = true;
             fatePanelReopenLabel.resizeTextMinSize = 13;
@@ -919,18 +927,19 @@ namespace DefenseGame
                 fateEntryShadow.useGraphicAlpha = true;
             }
             Outline fateEntryOutline = fatePanelReopenButton.gameObject.AddComponent<Outline>();
-            fateEntryOutline.effectColor = new Color(0.58f, 0.74f, 0.48f, 0.86f);
+            fateEntryOutline.effectColor = new Color(1.00f, 0.78f, 0.34f, 0.94f);
             fateEntryOutline.effectDistance = new Vector2(2f, -2f);
             fateEntryOutline.useGraphicAlpha = true;
             fatePanelReopenButton.gameObject.SetActive(false);
 
-            Text summonCost = CreateText(summonButton.transform, font, new Color(0.13f, 0.28f, 0.12f), "SummonCostText", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 7f), new Vector2(0f, 24f), "10", 18, TextAnchor.MiddleCenter, true);
-            summonLabel.fontSize = 36;
+            Text summonCost = CreateText(summonButton.transform, font, new Color(1f, 0.90f, 0.42f), "SummonCostText", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 7f), new Vector2(0f, 22f), "10 GOLD", 18, TextAnchor.MiddleCenter, true);
+            AddStrongTextOutline(summonCost);
+            summonLabel.fontSize = 31;
             summonLabel.alignment = TextAnchor.MiddleCenter;
             summonLabel.rectTransform.anchorMin = new Vector2(0f, 0.28f);
-            summonLabel.rectTransform.anchorMax = Vector2.one;
+            summonLabel.rectTransform.anchorMax = new Vector2(1f, 0.68f);
             summonLabel.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            summonLabel.rectTransform.anchoredPosition = Vector2.zero;
+            summonLabel.rectTransform.anchoredPosition = new Vector2(0f, 4f);
             summonLabel.rectTransform.sizeDelta = Vector2.zero;
             Button battleButton = CreateButton(hudRoot, font, "BattleButton", "전투 시작", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-4f, 26f), new Vector2(340f, 88f), new Color(0.94f, 0.32f, 0.24f, 1f), Color.white, null, out Text battleLabel);
             battleLabel.fontSize = 36;
@@ -1010,6 +1019,7 @@ namespace DefenseGame
 
             GameObject bossWarningPanel = BuildBossWarningPanel(hudRoot, font, out CanvasGroup bossWarningGroup, out Text bossWarningTitle, out Text bossWarningSub);
             ultimateRecipeSelection = BuildUltimateRecipeSelectionPanel(hudRoot, font, gameController);
+            BuildLuckySummonChoicePanel(hudRoot, font, gameController);
 
             hud.Configure(
                 gameController,
@@ -1075,8 +1085,63 @@ namespace DefenseGame
                 unitSellDetail,
                 unitSellButton,
                 unitSellButtonLabel,
-                lifeProgressFill);
+                lifeProgressFill,
+                luckySummonProgress);
             canvasObject.SetActive(true);
+        }
+
+        private LuckySummonChoiceUI BuildLuckySummonChoicePanel(Transform parent, Font font, DefenseGameController gameController)
+        {
+            GameObject root = new GameObject("LuckySummonChoiceOverlay", typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+            RectTransform rootRect = root.GetComponent<RectTransform>();
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+
+            Image backdrop = root.AddComponent<Image>();
+            backdrop.color = new Color(0.01f, 0.03f, 0.08f, 0.82f);
+            backdrop.raycastTarget = true;
+            CanvasGroup group = root.AddComponent<CanvasGroup>();
+
+            Image panel = CreatePanel(root.transform, "LuckySummonChoicePanel", new Vector2(0f, 72f), new Vector2(980f, 650f), new Color(0.05f, 0.10f, 0.20f, 0.99f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            CreatePanel(panel.transform, "LuckyTopGlow", new Vector2(0f, -18f), new Vector2(900f, 100f), new Color(0.46f, 0.78f, 0.26f, 0.25f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreatePanel(panel.transform, "LuckyTopLine", new Vector2(0f, -6f), new Vector2(870f, 8f), new Color(0.72f, 0.90f, 0.38f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            Text title = CreateText(panel.transform, font, new Color(0.92f, 1f, 0.78f), "LuckySummonTitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(760f, 48f), "\uBD88\uC6B4\uC744 \uB4A4\uC9D1\uB294 \uD589\uC6B4 \uC18C\uD658", 34, TextAnchor.MiddleCenter, true);
+            Text instruction = CreateText(panel.transform, font, new Color(0.80f, 0.90f, 1f), "LuckySummonInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(800f, 42f), "\uC77C\uBC18 7\uD68C \uC5F0\uC18D\uC758 \uBD88\uC6B4\uC744 \uD55C \uBC88\uC758 \uC120\uD0DD\uC73C\uB85C \uBC14\uAFC9\uB2C8\uB2E4.", 21, TextAnchor.MiddleCenter, false);
+
+            Button[] buttons = new Button[3];
+            Text[] labels = new Text[3];
+            Color[] colors =
+            {
+                new Color(0.24f, 0.72f, 0.46f, 0.98f),
+                new Color(0.22f, 0.58f, 0.90f, 0.98f),
+                new Color(0.82f, 0.34f, 0.68f, 0.98f)
+            };
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                float x = (i - 1) * 310f;
+                buttons[i] = CreateButton(panel.transform, font, "LuckySummonChoice" + i, string.Empty, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, -34f), new Vector2(286f, 330f), colors[i], Color.white, null, out Text label);
+                label.fontSize = 23;
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = 16;
+                label.resizeTextMaxSize = 23;
+                label.rectTransform.offsetMin = new Vector2(16f, 18f);
+                label.rectTransform.offsetMax = new Vector2(-16f, -18f);
+                Outline outline = buttons[i].gameObject.AddComponent<Outline>();
+                outline.effectColor = new Color(0.90f, 1f, 0.64f, 0.78f);
+                outline.effectDistance = new Vector2(2f, -2f);
+                labels[i] = label;
+            }
+
+            Button closeButton = CreateButton(panel.transform, font, "LuckySummonLaterButton", "\uB098\uC911\uC5D0", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-66f, -48f), new Vector2(112f, 50f), new Color(0.24f, 0.32f, 0.46f, 0.98f), Color.white, null, out Text closeLabel);
+            closeLabel.fontSize = 19;
+
+            LuckySummonChoiceUI choiceUi = root.AddComponent<LuckySummonChoiceUI>();
+            choiceUi.Configure(gameController, group, title, instruction, buttons, labels, closeButton);
+            root.SetActive(false);
+            return choiceUi;
         }
 
         private UltimateRecipeSelectionUI BuildUltimateRecipeSelectionPanel(Transform parent, Font font, DefenseGameController gameController)
@@ -1175,14 +1240,17 @@ namespace DefenseGame
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
-            Image modal = CreatePanel(root.transform, "AugmentModal", new Vector2(0f, 80f), new Vector2(940f, 900f), new Color(0.10f, 0.11f, 0.30f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
-            CreatePanel(modal.transform, "HeaderGlow", new Vector2(0f, -16f), new Vector2(830f, 104f), new Color(0.45f, 0.26f, 0.84f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            Text header = CreateText(modal.transform, font, Color.white, "AugmentHeader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(720f, 48f), "증강체 선택", 34, TextAnchor.MiddleCenter, true);
-            header.fontSize = 44;
-            CreateText(modal.transform, font, new Color(0.83f, 0.88f, 1f), "AugmentSubtitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -92f), new Vector2(740f, 32f), "전투 흐름을 바꿀 보너스 하나를 고르세요.", 20, TextAnchor.MiddleCenter, false);
+            Image modal = CreatePanel(root.transform, "AugmentModal", new Vector2(0f, 62f), new Vector2(900f, 850f), new Color(0.075f, 0.075f, 0.22f, 0.99f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            CreatePanel(modal.transform, "AugmentHeaderPill", new Vector2(0f, -18f), new Vector2(420f, 66f), new Color(0.48f, 0.27f, 0.88f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            Text header = CreateText(modal.transform, font, Color.white, "AugmentHeader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -27f), new Vector2(380f, 46f), "증강체 선택", 34, TextAnchor.MiddleCenter, true);
+            header.fontSize = 36;
+            CreateText(modal.transform, font, new Color(0.86f, 0.89f, 1f), "AugmentSubtitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -94f), new Vector2(740f, 36f), "무료 보너스 1개를 반드시 선택하세요.", 22, TextAnchor.MiddleCenter, false);
+            CreatePanel(modal.transform, "AugmentTopLine", new Vector2(0f, -122f), new Vector2(720f, 5f), new Color(0.72f, 0.42f, 1f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreatePanel(modal.transform, "AugmentLeftRail", new Vector2(18f, -18f), new Vector2(7f, 650f), new Color(1f, 0.72f, 0.20f, 0.92f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), true, false);
+            CreatePanel(modal.transform, "AugmentRightRail", new Vector2(-18f, -18f), new Vector2(7f, 650f), new Color(0.67f, 0.36f, 1f, 0.92f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), true, false);
             Button closeButton = CreateButton(modal.transform, font, "AugmentCloseButton", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -40f), new Vector2(66f, 66f), new Color(0.94f, 0.36f, 0.30f, 0.98f), Color.white, null, out _);
             Text augmentSubtitle = modal.transform.Find("AugmentSubtitle").GetComponent<Text>();
-            augmentSubtitle.fontSize = 26;
+            augmentSubtitle.fontSize = 24;
             augmentSubtitle.rectTransform.sizeDelta = new Vector2(780f, 42f);
             Button reopenButton = CreateButton(parent, font, "AugmentReopenButton", "증강체", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-136f, -206f), new Vector2(180f, 62f), new Color(0.50f, 0.28f, 0.96f, 0.96f), Color.white, null, out Text reopenLabel);
             reopenLabel.fontSize = 28;
@@ -1196,20 +1264,22 @@ namespace DefenseGame
             Text[] descriptions = new Text[3];
             for (int i = 0; i < 3; i++)
             {
-                float y = -154f - i * 212f;
-                Button choiceButton = CreateButton(modal.transform, font, "AugmentChoice_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(840f, 188f), new Color(0.16f, 0.18f, 0.43f, 0.96f), Color.white, null, out _);
-                accents[i] = CreatePanel(choiceButton.transform, "IconPlate", new Vector2(26f, -38f), new Vector2(96f, 96f), new Color(0.82f, 0.48f, 1f, 0.92f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
-                styles[i] = CreateText(choiceButton.transform, font, Color.white, "Style", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(26f, -44f), new Vector2(74f, 30f), "확정", 21, TextAnchor.MiddleCenter, true);
-                titles[i] = CreateText(choiceButton.transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(140f, -18f), new Vector2(-220f, 46f), "Augment", 35, TextAnchor.MiddleLeft, true);
-                descriptions[i] = CreateText(choiceButton.transform, font, new Color(0.91f, 0.93f, 1f), "Description", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(140f, -70f), new Vector2(-214f, 98f), "Description", 28, TextAnchor.UpperLeft, false);
-                styles[i].fontSize = 24;
-                styles[i].rectTransform.sizeDelta = new Vector2(84f, 36f);
-                styles[i].rectTransform.anchoredPosition = new Vector2(26f, -50f);
-                CreateText(choiceButton.transform, font, new Color(0.66f, 1f, 0.78f), "PickLabel", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-28f, 0f), new Vector2(90f, 34f), "선택", 20, TextAnchor.MiddleRight, true);
+                float y = -142f - i * 202f;
+                Button choiceButton = CreateButton(modal.transform, font, "AugmentChoice_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(820f, 178f), new Color(0.13f, 0.15f, 0.36f, 0.99f), Color.white, null, out _);
+                AddCardOutline(choiceButton, new Color(0.67f, 0.38f, 1f, 0.98f), 3f);
+                CreatePanel(choiceButton.transform, "IconBadgeBack", new Vector2(24f, -33f), new Vector2(112f, 112f), new Color(1f, 0.70f, 0.18f, 0.98f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                accents[i] = CreatePanel(choiceButton.transform, "IconPlate", new Vector2(36f, -45f), new Vector2(88f, 88f), new Color(0.82f, 0.48f, 1f, 0.98f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                CreateSkinIcon(accents[i].transform, "AugmentIcon", "augment", Vector2.zero, new Vector2(62f, 62f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Color.white);
+                styles[i] = CreateText(choiceButton.transform, font, new Color(0.18f, 0.10f, 0.30f), "Style", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(25f, 14f), new Vector2(110f, 28f), "확정", 18, TextAnchor.MiddleCenter, true);
+                titles[i] = CreateText(choiceButton.transform, font, new Color(1f, 0.86f, 0.28f), "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(160f, -20f), new Vector2(-270f, 42f), "Augment", 31, TextAnchor.MiddleLeft, true);
+                descriptions[i] = CreateText(choiceButton.transform, font, new Color(0.94f, 0.95f, 1f), "Description", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(160f, -66f), new Vector2(-250f, 94f), "Description", 24, TextAnchor.UpperLeft, false);
+                CreatePanel(choiceButton.transform, "PickPill", new Vector2(-20f, 16f), new Vector2(92f, 34f), new Color(0.26f, 0.76f, 0.58f, 0.92f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), true, false);
+                CreateText(choiceButton.transform, font, Color.white, "PickLabel", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-28f, 18f), new Vector2(76f, 30f), "선택", 18, TextAnchor.MiddleCenter, true);
                 Text pickLabel = choiceButton.transform.Find("PickLabel").GetComponent<Text>();
-                pickLabel.fontSize = 24;
+                pickLabel.fontSize = 18;
                 buttons[i] = choiceButton;
             }
+            CreateText(modal.transform, font, new Color(0.72f, 0.78f, 0.96f), "AugmentFooterHint", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 30f), new Vector2(720f, 34f), "카드 전체를 눌러 선택합니다.", 19, TextAnchor.MiddleCenter, false);
 
             augmentManager.Configure(gameController, root, header, titles, descriptions, buttons, styles, accents, closeButton, reopenButton);
         }
@@ -1231,13 +1301,17 @@ namespace DefenseGame
             Image dim = root.AddComponent<Image>();
             dim.color = new Color(0.02f, 0.04f, 0.16f, 0.76f);
 
-            Image modal = CreatePanel(root.transform, "RunShopModal", new Vector2(0f, 70f), new Vector2(940f, 900f), new Color(0.08f, 0.14f, 0.36f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
-            CreatePanel(modal.transform, "RunShopTopGlow", new Vector2(0f, -38f), new Vector2(780f, 82f), new Color(0.32f, 0.86f, 1f, 0.20f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            Image modal = CreatePanel(root.transform, "RunShopModal", new Vector2(0f, 62f), new Vector2(900f, 850f), new Color(0.065f, 0.11f, 0.30f, 0.99f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            CreatePanel(modal.transform, "RunShopHeaderPill", new Vector2(0f, -18f), new Vector2(360f, 66f), new Color(0.10f, 0.62f, 0.84f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             Text header = CreateText(modal.transform, font, Color.white, "RunShopHeader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -42f), new Vector2(460f, 46f), "전투 상점", 36, TextAnchor.MiddleCenter, true);
-            header.fontSize = 44;
+            header.fontSize = 36;
             Text subtitle = CreateText(modal.transform, font, new Color(0.84f, 0.92f, 1f), "RunShopSubtitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -94f), new Vector2(720f, 32f), "이번 판 전용 상품입니다.", 21, TextAnchor.MiddleCenter, false);
             subtitle.fontSize = 28;
             subtitle.rectTransform.sizeDelta = new Vector2(780f, 42f);
+            CreatePanel(modal.transform, "RunShopTopLine", new Vector2(0f, -122f), new Vector2(720f, 5f), new Color(0.28f, 0.78f, 1f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreatePanel(modal.transform, "RunShopBottomLine", new Vector2(0f, 78f), new Vector2(720f, 5f), new Color(0.28f, 0.78f, 1f, 0.78f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), true, false);
+            CreatePanel(modal.transform, "RunShopLeftRail", new Vector2(18f, -18f), new Vector2(7f, 620f), new Color(1f, 0.62f, 0.18f, 0.92f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), true, false);
+            CreatePanel(modal.transform, "RunShopRightRail", new Vector2(-18f, -18f), new Vector2(7f, 620f), new Color(0.38f, 0.86f, 1f, 0.92f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), true, false);
             Button closeButton = CreateButton(modal.transform, font, "RunShopCloseButton", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -40f), new Vector2(66f, 66f), new Color(0.94f, 0.36f, 0.30f, 0.98f), Color.white, null, out _);
             Button reopenButton = CreateButton(parent, font, "RunShopReopenButton", "상점", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-136f, -278f), new Vector2(180f, 62f), new Color(0.14f, 0.66f, 0.92f, 0.96f), Color.white, null, out Text reopenLabel);
             reopenLabel.fontSize = 28;
@@ -1252,28 +1326,22 @@ namespace DefenseGame
 
             for (int i = 0; i < buttons.Length; i++)
             {
-                float y = -154f - i * 212f;
-                buttons[i] = CreateButton(modal.transform, font, "RunShopOffer_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(840f, 188f), new Color(0.10f, 0.18f, 0.42f, 0.96f), Color.white, null, out _);
-                accents[i] = CreatePanel(buttons[i].transform, "RunShopOfferAccent", new Vector2(28f, -38f), new Vector2(96f, 96f), new Color(0.38f, 0.82f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
-                CreateText(accents[i].transform, font, Color.white, "RunShopOfferIcon", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, "SHOP", 20, TextAnchor.MiddleCenter, true);
-                titles[i] = CreateText(buttons[i].transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(120f, -18f), new Vector2(-238f, 34f), "상품", 27, TextAnchor.MiddleLeft, true);
-                descriptions[i] = CreateText(buttons[i].transform, font, new Color(0.84f, 0.91f, 1f), "Description", new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(0f, 0.5f), new Vector2(120f, -12f), new Vector2(-250f, 54f), "설명", 20, TextAnchor.MiddleLeft, false);
-                prices[i] = CreateText(buttons[i].transform, font, new Color(1f, 0.91f, 0.38f), "Price", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-30f, 0f), new Vector2(126f, 48f), "0G", 30, TextAnchor.MiddleCenter, true);
-                titles[i].fontSize = 35;
-                titles[i].rectTransform.anchoredPosition = new Vector2(140f, -18f);
-                titles[i].rectTransform.sizeDelta = new Vector2(-284f, 46f);
-
-                descriptions[i].fontSize = 28;
-                descriptions[i].alignment = TextAnchor.UpperLeft;
-                descriptions[i].rectTransform.anchorMin = new Vector2(0f, 1f);
-                descriptions[i].rectTransform.pivot = new Vector2(0f, 1f);
-                descriptions[i].rectTransform.anchoredPosition = new Vector2(140f, -70f);
-                descriptions[i].rectTransform.sizeDelta = new Vector2(-286f, 98f);
-
-                prices[i].fontSize = 38;
-                prices[i].rectTransform.anchoredPosition = new Vector2(-32f, 0f);
-                prices[i].rectTransform.sizeDelta = new Vector2(142f, 54f);
+                float y = -142f - i * 202f;
+                buttons[i] = CreateButton(modal.transform, font, "RunShopOffer_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(820f, 178f), new Color(0.09f, 0.16f, 0.36f, 0.99f), Color.white, null, out _);
+                AddCardOutline(buttons[i], new Color(0.28f, 0.78f, 1f, 0.96f), 3f);
+                CreatePanel(buttons[i].transform, "RunShopIconBadgeBack", new Vector2(24f, -33f), new Vector2(112f, 112f), new Color(0.18f, 0.46f, 0.72f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                accents[i] = CreatePanel(buttons[i].transform, "RunShopOfferAccent", new Vector2(36f, -45f), new Vector2(88f, 88f), new Color(0.38f, 0.82f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                CreateSkinIcon(accents[i].transform, "RunShopOfferIcon", "shop offer", Vector2.zero, new Vector2(64f, 56f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Color.white);
+                titles[i] = CreateText(buttons[i].transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(160f, -20f), new Vector2(-370f, 42f), "상품", 31, TextAnchor.MiddleLeft, true);
+                descriptions[i] = CreateText(buttons[i].transform, font, new Color(0.88f, 0.92f, 1f), "Description", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(160f, -66f), new Vector2(-368f, 94f), "설명", 24, TextAnchor.UpperLeft, false);
+                Image priceDock = CreatePanel(buttons[i].transform, "PriceDock", new Vector2(-18f, 0f), new Vector2(178f, 118f), new Color(0.055f, 0.09f, 0.23f, 0.98f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), true, false);
+                CreateText(priceDock.transform, font, new Color(0.62f, 0.82f, 1f), "PriceCaption", new Vector2(0f, 1f), Vector2.one, new Vector2(0.5f, 1f), new Vector2(0f, -10f), new Vector2(-18f, 28f), "가격", 17, TextAnchor.MiddleCenter, true);
+                prices[i] = CreateText(priceDock.transform, font, new Color(1f, 0.91f, 0.38f), "Price", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(0f, -13f), new Vector2(-14f, -38f), "0G", 30, TextAnchor.MiddleCenter, true);
+                prices[i].resizeTextForBestFit = true;
+                prices[i].resizeTextMinSize = 18;
+                prices[i].resizeTextMaxSize = 30;
             }
+            CreateText(modal.transform, font, new Color(0.72f, 0.84f, 1f), "RunShopFooterHint", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 30f), new Vector2(720f, 34f), "구매하지 않고 닫으면 이번 상점은 지나갑니다.", 19, TextAnchor.MiddleCenter, false);
 
             root.SetActive(false);
             runShopSystem.Configure(gameController, boardManager, tileModifierSystem, augmentManager, root, header, subtitle, buttons, titles, descriptions, prices, accents, closeButton, reopenButton);
@@ -1643,7 +1711,12 @@ namespace DefenseGame
                 return;
             }
 
-            image.sprite = GetRoundedPanelSprite();
+            // Assets/Art/Ui skin sprites are authoritative. Only synthesize a shape
+            // when the configured art library has no matching sprite.
+            if (image.sprite == null)
+            {
+                image.sprite = GetRoundedPanelSprite();
+            }
             image.type = Image.Type.Sliced;
             image.preserveAspect = false;
         }
@@ -1730,6 +1803,25 @@ namespace DefenseGame
             Shadow shadow = text.gameObject.AddComponent<Shadow>();
             shadow.effectColor = new Color(0f, 0f, 0f, 0.42f);
             shadow.effectDistance = new Vector2(2f, -2f);
+        }
+
+        private void AddCardOutline(Button button, Color color, float distance)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            Outline outline = button.GetComponent<Outline>();
+            if (outline == null)
+            {
+                outline = button.gameObject.AddComponent<Outline>();
+            }
+
+            float safeDistance = Mathf.Max(1f, distance);
+            outline.effectColor = color;
+            outline.effectDistance = new Vector2(safeDistance, -safeDistance);
+            outline.useGraphicAlpha = true;
         }
 
         private void AddStrongTextOutline(Text text)
@@ -1868,6 +1960,197 @@ namespace DefenseGame
             if (field != null)
             {
                 field.SetValue(target, value);
+            }
+        }
+    }
+
+    public sealed class LuckySummonChoiceUI : MonoBehaviour
+    {
+        private DefenseGameController gameController;
+        private CanvasGroup canvasGroup;
+        private Text titleText;
+        private Text instructionText;
+        private Button[] choiceButtons = new Button[0];
+        private Text[] choiceLabels = new Text[0];
+        private Button closeButton;
+
+        public void Configure(
+            DefenseGameController controller,
+            CanvasGroup group,
+            Text title,
+            Text instruction,
+            Button[] buttons,
+            Text[] labels,
+            Button close)
+        {
+            Unsubscribe();
+            gameController = controller;
+            canvasGroup = group;
+            titleText = title;
+            instructionText = instruction;
+            choiceButtons = buttons ?? new Button[0];
+            choiceLabels = labels ?? new Text[0];
+            closeButton = close;
+
+            for (int i = 0; i < choiceButtons.Length; i++)
+            {
+                int choiceIndex = i;
+                if (choiceButtons[i] == null)
+                {
+                    continue;
+                }
+
+                choiceButtons[i].onClick.RemoveAllListeners();
+                choiceButtons[i].onClick.AddListener(() => Choose((LuckySummonChoice)choiceIndex));
+            }
+
+            if (closeButton != null)
+            {
+                closeButton.onClick.RemoveAllListeners();
+                closeButton.onClick.AddListener(Defer);
+            }
+
+            if (gameController != null)
+            {
+                gameController.OnLuckySummonChoiceRequested += Open;
+                gameController.OnStateChanged += HandleStateChanged;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            Unsubscribe();
+        }
+
+        private void Unsubscribe()
+        {
+            if (gameController == null)
+            {
+                return;
+            }
+
+            gameController.OnLuckySummonChoiceRequested -= Open;
+            gameController.OnStateChanged -= HandleStateChanged;
+        }
+
+        private void Open()
+        {
+            if (gameController == null || !gameController.LuckySummonReady)
+            {
+                return;
+            }
+
+            gameObject.SetActive(true);
+            transform.SetAsLastSibling();
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 1f;
+                canvasGroup.interactable = true;
+                canvasGroup.blocksRaycasts = true;
+            }
+
+            Refresh();
+        }
+
+        private void Defer()
+        {
+            gameController?.CancelLuckySummonChoice();
+            gameObject.SetActive(false);
+        }
+
+        private void Choose(LuckySummonChoice choice)
+        {
+            if (gameController != null && gameController.TryResolveLuckySummonChoice(choice))
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+
+            Refresh();
+        }
+
+        private void HandleStateChanged()
+        {
+            if (!gameObject.activeSelf)
+            {
+                return;
+            }
+
+            if (gameController == null || !gameController.LuckySummonChoiceOpen)
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+
+            Refresh();
+        }
+
+        private void Refresh()
+        {
+            if (gameController == null)
+            {
+                return;
+            }
+
+            if (titleText != null)
+            {
+                titleText.text = "\uBD88\uC6B4\uC744 \uB4A4\uC9D1\uB294 \uD589\uC6B4 \uC18C\uD658";
+            }
+
+            if (instructionText != null)
+            {
+                instructionText.text = "\uC77C\uBC18 " + gameController.LuckySummonNormalStreak + "\uD68C \uC5F0\uC18D \uB204\uC801  |  \uBCF4\uC720 " + gameController.Gold + "G  |  \uD55C \uD310 1\uD68C";
+            }
+
+            SetChoice(0, LuckySummonChoice.MergeLink,
+                "\uC5F0\uACB0\uC758 \uC8FC\uC0AC\uC704\n\n\uAC00\uC7A5 \uAC00\uAE4C\uC6B4\n\uD569\uC131 \uC7AC\uB8CC 1\uAE30\n\n");
+            SetChoice(1, LuckySummonChoice.SafeRare,
+                "\uC548\uC804\uC758 \uC8FC\uC0AC\uC704\n\n\uB808\uC5B4 \uC774\uC0C1 \uD655\uC815\n\uC18C\uD658\uBE44 150%\n\n");
+            SetChoice(2, LuckySummonChoice.Jackpot,
+                "\uC2B9\uBD80\uC758 \uC8FC\uC0AC\uC704\n\n25% \uC5D0\uD53D\n\uC2E4\uD328 \uC2DC \uC77C\uBC18 + 50% \uD658\uAE09\n\n");
+        }
+
+        private void SetChoice(int index, LuckySummonChoice choice, string description)
+        {
+            if (index < 0 || index >= choiceButtons.Length)
+            {
+                return;
+            }
+
+            int cost = gameController.GetLuckySummonChoiceCost(choice);
+            bool canChoose = gameController.CanChooseLuckySummon(choice);
+            if (choiceButtons[index] != null)
+            {
+                choiceButtons[index].interactable = canChoose;
+            }
+
+            if (index < choiceLabels.Length && choiceLabels[index] != null)
+            {
+                choiceLabels[index].text = description + cost + "G" + (canChoose ? string.Empty : "\n\uACE8\uB4DC \uBD80\uC871");
+                choiceLabels[index].color = canChoose ? Color.white : new Color(0.68f, 0.72f, 0.78f);
+            }
+        }
+
+        private void Update()
+        {
+            if (!gameObject.activeSelf || choiceButtons == null)
+            {
+                return;
+            }
+
+            float pulse = (Mathf.Sin(Time.unscaledTime * 4.5f) + 1f) * 0.5f;
+            for (int i = 0; i < choiceButtons.Length; i++)
+            {
+                Button button = choiceButtons[i];
+                Outline outline = button != null ? button.GetComponent<Outline>() : null;
+                if (outline == null)
+                {
+                    continue;
+                }
+
+                outline.effectColor = button.interactable
+                    ? Color.Lerp(new Color(0.56f, 0.76f, 0.34f, 0.62f), new Color(0.94f, 1f, 0.62f, 0.94f), pulse)
+                    : Color.clear;
             }
         }
     }

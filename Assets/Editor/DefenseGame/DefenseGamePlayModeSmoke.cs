@@ -154,16 +154,45 @@ namespace DefenseGame.Editor
                                         Approximately(fateEntryOutline.effectDistance, new Vector2(2f, -2f)) &&
                                         fateEntryOutline.useGraphicAlpha;
             bool fateEntryPastelColorValid = fateEntryGraphic != null &&
-                                              Approximately(fateEntryGraphic.color, new Color(0.30f, 0.52f, 0.38f, 0.98f)) &&
+                                              Approximately(fateEntryGraphic.color, new Color(0.40f, 0.21f, 0.85f, 0.98f)) &&
                                               fateEntryText != null &&
-                                              Approximately(fateEntryText.color, new Color(0.97f, 1.00f, 0.97f, 1f));
+                                              fateEntryOutline != null &&
+                                              Approximately(fateEntryText.color, new Color(1.00f, 0.98f, 0.94f, 1f)) &&
+                                              Approximately(fateEntryOutline.effectColor, new Color(1.00f, 0.78f, 0.34f, 0.94f));
             bool fateEntryIdleAtFullHealth = controller != null && controller.Life > 3 && !controller.FateSurvivalCrisisActive;
             if (!fateEntryLayoutValid || !fateEntryPastelColorValid || !fateEntryIdleAtFullHealth)
             {
                 string actualBackground = fateEntryGraphic != null ? fateEntryGraphic.color.ToString() : "null";
                 string actualText = fateEntryText != null ? fateEntryText.color.ToString() : "null";
-                notes.Add("운명카드 버튼의 하단 HUD 정렬, 녹색 팔레트 또는 HP 3 초과 정지 상태가 유효하지 않습니다. " +
+                notes.Add("운명카드 버튼의 하단 HUD 정렬, 와인/골드 팔레트 또는 HP 3 초과 정지 상태가 유효하지 않습니다. " +
                           "background=" + actualBackground + ", text=" + actualText);
+            }
+
+            Button summonHudButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "SummonButton");
+            Text summonCostHudText = UnityEngine.Object.FindObjectsOfType<Text>(true)
+                .FirstOrDefault(text => text != null && text.name == "SummonCostText");
+            Text luckySummonHudText = UnityEngine.Object.FindObjectsOfType<Text>(true)
+                .FirstOrDefault(text => text != null && text.name == "LuckySummonProgressText");
+            Image luckySummonBadge = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                .FirstOrDefault(image => image != null && image.name == "LuckySummonProgressBadge");
+            RectTransform summonHudRect = summonHudButton != null ? summonHudButton.GetComponent<RectTransform>() : null;
+            Image summonHudImage = summonHudButton != null ? summonHudButton.targetGraphic as Image : null;
+            bool summonHudReadable = summonHudRect != null &&
+                                     Approximately(summonHudRect.sizeDelta, new Vector2(226f, 88f)) &&
+                                     summonCostHudText != null &&
+                                     summonCostHudText.text.EndsWith(" GOLD", StringComparison.Ordinal) &&
+                                     summonCostHudText.fontSize >= 18 &&
+                                     luckySummonHudText != null &&
+                                     luckySummonHudText.fontSize >= 17 &&
+                                     luckySummonBadge != null &&
+                                     luckySummonHudText.transform.parent == luckySummonBadge.transform &&
+                                     summonHudImage != null &&
+                                     summonHudImage.sprite != null &&
+                                     !summonHudImage.sprite.name.StartsWith("RuntimeRoundedPanel", StringComparison.Ordinal);
+            if (!summonHudReadable)
+            {
+                notes.Add("소환 버튼의 행운 진행도 배지, GOLD 비용 표기 또는 Assets/Art/Ui 버튼 스프라이트 우선 적용이 유효하지 않습니다.");
             }
 
             Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
@@ -182,6 +211,115 @@ namespace DefenseGame.Editor
                 notes.Add("전장 입장 후 다음 라운드를 누르기 전까지 R1 카운트다운이 대기하지 않습니다.");
             }
 
+            Button lobbyShopButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "LobbyShopButton");
+            bool outgameShopValid = lobbyShopButton != null;
+            if (outgameShopValid)
+            {
+                lobbyShopButton.onClick.Invoke();
+                RectTransform shopModal = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                    .FirstOrDefault(rect => rect != null && rect.name == "ShopModal");
+                int dailyCards = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .Count(button => button != null && button.name.StartsWith("DailyOfferCard_", StringComparison.Ordinal));
+                int cashCards = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .Count(button => button != null && button.name.StartsWith("CashBundleCard_", StringComparison.Ordinal));
+                string[] chestButtonNames = { "FiveDrawCard", "TwentyDrawCard", "FiftyDrawCard", "HundredDrawCard" };
+                int chestCards = chestButtonNames.Count(name => UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .Any(button => button != null && button.name == name));
+                Text shopGold = UnityEngine.Object.FindObjectsOfType<Text>(true)
+                    .FirstOrDefault(text => text != null && text.name == "ShopGoldText");
+                int productIcons = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                    .Count(image => image != null && image.name == "ShopProductIcon" && image.sprite != null);
+                string[] sectionIconNames = { "CashSectionIcon", "DailySectionIcon", "ChestSectionIcon", "HeaderGoldIcon", "HeaderDiamondIcon" };
+                int sectionIcons = sectionIconNames.Count(name => UnityEngine.Object.FindObjectsOfType<Image>(true)
+                    .Any(image => image != null && image.name == name && image.sprite != null));
+                bool decorativeShopArtValid = productIcons == 10 && sectionIcons == sectionIconNames.Length;
+                Button firstCashProduct = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .FirstOrDefault(button => button != null && button.name == "CashBundleCard_0");
+                GameObject purchaseConfirmOverlay = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                    .Where(rect => rect != null && rect.name == "ShopPurchaseConfirmOverlay")
+                    .Select(rect => rect.gameObject)
+                    .FirstOrDefault();
+                Button purchaseCancelButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .FirstOrDefault(button => button != null && button.name == "ShopPurchaseConfirmCancelButton");
+                bool purchaseConfirmationValid = firstCashProduct != null &&
+                                                 purchaseConfirmOverlay != null &&
+                                                 !purchaseConfirmOverlay.activeSelf;
+                if (purchaseConfirmationValid)
+                {
+                    firstCashProduct.onClick.Invoke();
+                    purchaseConfirmationValid = purchaseConfirmOverlay.activeSelf && purchaseCancelButton != null;
+                    purchaseCancelButton?.onClick.Invoke();
+                    purchaseConfirmationValid &= !purchaseConfirmOverlay.activeSelf;
+                }
+                outgameShopValid = shopModal != null &&
+                                   Approximately(shopModal.sizeDelta, new Vector2(920f, 1640f)) &&
+                                   dailyCards == 3 &&
+                                   cashCards == 3 &&
+                                   chestCards == 4 &&
+                                   shopGold != null &&
+                                   shopGold.text.Contains("GOLD") &&
+                                   decorativeShopArtValid &&
+                                   purchaseConfirmationValid;
+                Button shopClose = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .FirstOrDefault(button => button != null && button.name == "ShopCloseButton");
+                shopClose?.onClick.Invoke();
+            }
+            if (!outgameShopValid)
+            {
+                notes.Add("로비 상점의 현금 꾸러미 3개, 일일 상품 3개, 상자 5/20/50/100개 또는 GOLD/DIA 표시가 유효하지 않습니다.");
+            }
+
+            Image resultGoldIcon = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                .FirstOrDefault(image => image != null && image.name == "ResultRewardGoldIcon");
+            Image resultDiamondIcon = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                .FirstOrDefault(image => image != null && image.name == "ResultRewardDiamondIcon");
+            bool resultRewardIconsValid = resultGoldIcon != null &&
+                                          resultGoldIcon.sprite != null &&
+                                          resultDiamondIcon != null &&
+                                          resultDiamondIcon.sprite != null;
+            if (!resultRewardIconsValid)
+            {
+                notes.Add("승리 결과 보상 칩에 골드 또는 다이아 아이콘이 연결되지 않았습니다.");
+            }
+
+            Button rankingButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "OutgameNavRanking");
+            bool rankingPageValid = rankingButton != null;
+            if (rankingPageValid)
+            {
+                rankingButton.onClick.Invoke();
+                RectTransform rankingOverlay = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                    .FirstOrDefault(rect => rect != null && rect.name == "SeasonRankingOverlay");
+                RectTransform rankingModal = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                    .FirstOrDefault(rect => rect != null && rect.name == "SeasonRankingModal");
+                int topCards = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                    .Count(image => image != null && image.name.StartsWith("RankingTopCard_", StringComparison.Ordinal));
+                int rankingRows = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                    .Count(image => image != null && image.name.StartsWith("RankingRow_", StringComparison.Ordinal));
+                Image rankingBackdrop = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                    .FirstOrDefault(image => image != null && image.name == "RankingAmbientBackdrop");
+                Text rankingPlayerSummary = UnityEngine.Object.FindObjectsOfType<Text>(true)
+                    .FirstOrDefault(textComponent => textComponent != null && textComponent.name == "RankingPlayerSummary");
+                rankingPageValid = rankingOverlay != null &&
+                                   rankingOverlay.gameObject.activeSelf &&
+                                   rankingModal != null &&
+                                   Approximately(rankingModal.sizeDelta, new Vector2(920f, 1660f)) &&
+                                   topCards == 3 &&
+                                   rankingRows == 9 &&
+                                   rankingBackdrop != null &&
+                                   rankingBackdrop.sprite != null &&
+                                   rankingPlayerSummary != null &&
+                                   rankingPlayerSummary.text.Contains("내 순위");
+                Button rankingClose = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .FirstOrDefault(button => button != null && button.name == "RankingCloseButton");
+                rankingClose?.onClick.Invoke();
+            }
+            if (!rankingPageValid)
+            {
+                notes.Add("시즌 랭킹의 상위 3명 포디움, 4~12위 리스트, 내 순위 강조 또는 전용 아트가 유효하지 않습니다.");
+            }
+
             bool earlyMiniShopChoicesValid = ValidateRoundTieredMiniShop(out string earlyMiniShopSummary);
             if (!earlyMiniShopChoicesValid)
             {
@@ -197,6 +335,11 @@ namespace DefenseGame.Editor
             if (!defaultVfxConfigured)
             {
                 notes.Add("DefenseGamePresentationConfig 기본 투사체/머즐/히트/범위 VFX 중 빈 참조가 있습니다.");
+            }
+            bool animationMaterialEventsValid = ValidateAnimationMaterialEvents(out string animationMaterialEventsSummary);
+            if (!animationMaterialEventsValid)
+            {
+                notes.Add("OverrideMaterial/ResetMaterial 애니메이션 이벤트의 적용·원본 복구 검증에 실패했습니다. " + animationMaterialEventsSummary);
             }
 
             CharacterDatabase database = UnityEngine.Object.FindObjectOfType<CharacterDatabase>();
@@ -222,7 +365,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && initialPreparationFlowValid && earlyMiniShopChoicesValid && hero32SignatureValid && defaultVfxConfigured && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && earlyMiniShopChoicesValid && hero32SignatureValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -240,12 +383,17 @@ namespace DefenseGame.Editor
                 fateEntryLayoutValid = fateEntryLayoutValid,
                 fateEntryPastelColorValid = fateEntryPastelColorValid,
                 fateEntryIdleAtFullHealth = fateEntryIdleAtFullHealth,
+                summonHudReadable = summonHudReadable,
                 initialPreparationFlowValid = initialPreparationFlowValid,
+                resultRewardIconsValid = resultRewardIconsValid,
+                rankingPageValid = rankingPageValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
                 earlyMiniShopSummary = earlyMiniShopSummary,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
                 hero32SignatureValid = hero32SignatureValid,
                 defaultVfxConfigured = defaultVfxConfigured,
+                animationMaterialEventsValid = animationMaterialEventsValid,
+                animationMaterialEventsSummary = animationMaterialEventsSummary,
                 runtimeErrors = runtimeErrors,
                 prefabs = prefabResults,
                 notes = notes.ToArray()
@@ -342,6 +490,63 @@ namespace DefenseGame.Editor
             bool skillVisual = definition.skills.Any(skill => skill != null &&
                 (skill.projectilePrefab != null || skill.muzzleEffectPrefab != null || skill.hitEffectPrefab != null || skill.areaEffectPrefab != null));
             return attackVisual && (skillVisual || defaultCombatVfx);
+        }
+
+        private static bool ValidateAnimationMaterialEvents(out string summary)
+        {
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? Shader.Find("Sprites/Default");
+            if (shader == null)
+            {
+                summary = "shader_missing";
+                return false;
+            }
+
+            Material[] previousCatalog = AnimationEventMaterialRegistry.GetConfiguredMaterials();
+            GameObject root = null;
+            Material original = null;
+            Material replacement = null;
+            try
+            {
+                root = new GameObject("AnimationMaterialEventSmoke");
+                GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                visual.transform.SetParent(root.transform, false);
+                Renderer renderer = visual.GetComponent<Renderer>();
+                original = new Material(shader) { name = "SmokeOriginalMaterial", color = Color.white };
+                replacement = new Material(shader) { name = "SmokeOverrideMaterial", color = Color.magenta };
+                renderer.sharedMaterial = original;
+                AnimationEventMaterialRegistry.Configure(new[] { replacement });
+                AnimationMaterialOverrideController controller = root.AddComponent<AnimationMaterialOverrideController>();
+
+                bool overrideCall = controller.OverrideMaterial("SmokeOverrideMaterial");
+                Material afterOverride = renderer.sharedMaterial;
+                bool applied = overrideCall && afterOverride == replacement;
+                bool resetCall = controller.ResetMaterial("SmokeOverrideMaterial");
+                Material afterReset = renderer.sharedMaterial;
+                bool reset = resetCall && afterReset == original;
+                summary = "overrideCall=" + overrideCall +
+                          ", afterOverride=" + (afterOverride != null ? afterOverride.name : "null") +
+                          ", expectedOverride=" + replacement.name +
+                          ", resetCall=" + resetCall +
+                          ", afterReset=" + (afterReset != null ? afterReset.name : "null") +
+                          ", expectedReset=" + original.name;
+                return applied && reset;
+            }
+            finally
+            {
+                AnimationEventMaterialRegistry.Configure(previousCatalog);
+                if (root != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(root);
+                }
+                if (original != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(original);
+                }
+                if (replacement != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(replacement);
+                }
+            }
         }
 
         private static string[] ResolveAnimationEventKeys(AnimationClip[] clips)
@@ -567,12 +772,17 @@ namespace DefenseGame.Editor
             public bool fateEntryLayoutValid;
             public bool fateEntryPastelColorValid;
             public bool fateEntryIdleAtFullHealth;
+            public bool summonHudReadable;
             public bool initialPreparationFlowValid;
+            public bool resultRewardIconsValid;
+            public bool rankingPageValid;
             public bool earlyMiniShopChoicesValid;
             public string earlyMiniShopSummary;
             public bool simultaneousDeathPolicyValid;
             public bool hero32SignatureValid;
             public bool defaultVfxConfigured;
+            public bool animationMaterialEventsValid;
+            public string animationMaterialEventsSummary;
             public int runtimeErrors;
             public PrefabSmokeResult[] prefabs = Array.Empty<PrefabSmokeResult>();
             public string[] notes = Array.Empty<string>();

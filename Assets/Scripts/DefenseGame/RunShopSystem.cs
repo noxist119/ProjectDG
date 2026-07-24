@@ -83,6 +83,13 @@ namespace DefenseGame
         private Image[] offerAccentImages;
         private Button closeButton;
         private Button reopenButton;
+        private Image modalImage;
+        private Image headerPillImage;
+        private Image topLineImage;
+        private Image bottomLineImage;
+        private Image leftRailImage;
+        private Image rightRailImage;
+        private Text footerHintText;
         private readonly List<ShopOffer> currentOffers = new List<ShopOffer>();
         private bool subscribed;
         private int lastMiniShopRound = -1;
@@ -126,6 +133,7 @@ namespace DefenseGame
             offerAccentImages = accents;
             closeButton = close;
             reopenButton = reopen;
+            CacheVisualIdentityTargets();
 
             WireUi();
             Subscribe();
@@ -153,7 +161,6 @@ namespace DefenseGame
             gameController.OnRoundShopPhase += HandleRoundShopPhase;
             gameController.OnRoundStarted += HandleRoundStarted;
             gameController.OnGameOver += HandleGameOver;
-            gameController.OnBadLuckInsuranceOffered += HandleBadLuckInsuranceOffered;
             subscribed = true;
         }
 
@@ -167,7 +174,6 @@ namespace DefenseGame
             gameController.OnRoundShopPhase -= HandleRoundShopPhase;
             gameController.OnRoundStarted -= HandleRoundStarted;
             gameController.OnGameOver -= HandleGameOver;
-            gameController.OnBadLuckInsuranceOffered -= HandleBadLuckInsuranceOffered;
             subscribed = false;
         }
 
@@ -250,7 +256,7 @@ namespace DefenseGame
                 RefreshUi(round);
                 SetOpen(true);
                 gameController?.RecordRoundShopOpened(round);
-                gameController?.RequestBanner("런 회복 선택지!  막힌 흐름을 다시 열어보세요", new Color(1f, 0.72f, 0.30f), 2.6f);
+                gameController?.RequestBanner("긴급 지원 도착!  3개 중 1개를 선택하세요", new Color(1f, 0.67f, 0.24f), 2.6f);
                 gameController?.MarkEarlyRunRecoveryOffered();
                 return;
             }
@@ -297,22 +303,6 @@ namespace DefenseGame
             gameController?.RequestBanner("전투 상점 입고!  이번 판 전용 상품 3개", new Color(0.38f, 0.82f, 1f), 2.4f);
         }
 
-        private void HandleBadLuckInsuranceOffered()
-        {
-            if (gameController == null || currentShopIsInsurance && currentOffers.Count > 0)
-            {
-                return;
-            }
-
-            currentShopIsMini = false;
-            currentShopIsRecovery = false;
-            currentShopIsInsurance = true;
-            currentRecoveryShopPurchaseRecorded = false;
-            BuildOffers(gameController.CurrentRound, false, false, true);
-            RefreshUi(gameController.CurrentRound);
-            SetOpen(true);
-            gameController.RecordRoundShopOpened(gameController.CurrentRound);
-        }
 
         private void HandleRoundStarted(int round)
         {
@@ -1150,6 +1140,14 @@ namespace DefenseGame
                 gameController.RecordEarlyRecoveryShopPurchase();
             }
 
+            if (currentShopIsRecovery)
+            {
+                currentOffers.Clear();
+                currentShopIsRecovery = false;
+                SetOpen(false);
+                return;
+            }
+
             if (currentShopIsMini)
             {
                 currentOffers.Clear();
@@ -1360,13 +1358,190 @@ namespace DefenseGame
             }
         }
 
+        private void CacheVisualIdentityTargets()
+        {
+            Transform modal = panelRoot != null ? panelRoot.transform.Find("RunShopModal") : null;
+            if (modal == null)
+            {
+                return;
+            }
+
+            modalImage = modal.GetComponent<Image>();
+            headerPillImage = GetChildImage(modal, "RunShopHeaderPill");
+            topLineImage = GetChildImage(modal, "RunShopTopLine");
+            bottomLineImage = GetChildImage(modal, "RunShopBottomLine");
+            leftRailImage = GetChildImage(modal, "RunShopLeftRail");
+            rightRailImage = GetChildImage(modal, "RunShopRightRail");
+            Transform footer = modal.Find("RunShopFooterHint");
+            footerHintText = footer != null ? footer.GetComponent<Text>() : null;
+        }
+
+        private void ApplyShopVisualIdentity()
+        {
+            Color accent;
+            Color modalColor;
+            Color cardColor;
+            Color dockColor;
+            Vector2 headerSize;
+            bool showTop;
+            bool showBottom;
+            bool showLeft;
+            bool showRight;
+            Vector2 topSize;
+            Vector2 bottomSize;
+
+            if (currentShopIsInsurance)
+            {
+                accent = new Color(0.68f, 0.96f, 0.30f, 1f);
+                modalColor = new Color(0.06f, 0.20f, 0.16f, 0.99f);
+                cardColor = new Color(0.08f, 0.26f, 0.18f, 0.99f);
+                dockColor = new Color(0.04f, 0.14f, 0.11f, 0.99f);
+                headerSize = new Vector2(430f, 74f);
+                showTop = true;
+                showBottom = true;
+                showLeft = true;
+                showRight = false;
+                topSize = new Vector2(720f, 6f);
+                bottomSize = new Vector2(310f, 6f);
+            }
+            else if (currentShopIsRecovery)
+            {
+                accent = new Color(1f, 0.62f, 0.18f, 1f);
+                modalColor = new Color(0.22f, 0.12f, 0.08f, 0.99f);
+                cardColor = new Color(0.27f, 0.16f, 0.10f, 0.99f);
+                dockColor = new Color(0.16f, 0.08f, 0.05f, 0.99f);
+                headerSize = new Vector2(500f, 76f);
+                showTop = true;
+                showBottom = false;
+                showLeft = true;
+                showRight = true;
+                topSize = new Vector2(300f, 7f);
+                bottomSize = new Vector2(300f, 5f);
+            }
+            else if (currentShopIsMini)
+            {
+                accent = new Color(0.22f, 0.92f, 0.78f, 1f);
+                modalColor = new Color(0.04f, 0.20f, 0.25f, 0.99f);
+                cardColor = new Color(0.05f, 0.26f, 0.29f, 0.99f);
+                dockColor = new Color(0.03f, 0.14f, 0.18f, 0.99f);
+                headerSize = new Vector2(440f, 68f);
+                showTop = true;
+                showBottom = true;
+                showLeft = false;
+                showRight = false;
+                topSize = new Vector2(630f, 5f);
+                bottomSize = new Vector2(280f, 5f);
+            }
+            else
+            {
+                accent = new Color(0.28f, 0.78f, 1f, 1f);
+                modalColor = new Color(0.065f, 0.11f, 0.30f, 0.99f);
+                cardColor = new Color(0.09f, 0.16f, 0.36f, 0.99f);
+                dockColor = new Color(0.055f, 0.09f, 0.23f, 0.99f);
+                headerSize = new Vector2(360f, 66f);
+                showTop = true;
+                showBottom = true;
+                showLeft = false;
+                showRight = false;
+                topSize = new Vector2(720f, 5f);
+                bottomSize = new Vector2(720f, 5f);
+            }
+
+            if (modalImage != null) modalImage.color = modalColor;
+            if (headerPillImage != null)
+            {
+                headerPillImage.color = accent;
+                headerPillImage.rectTransform.sizeDelta = headerSize;
+            }
+
+            SetIdentityLine(topLineImage, showTop, accent, topSize);
+            SetIdentityLine(bottomLineImage, showBottom, new Color(accent.r, accent.g, accent.b, 0.78f), bottomSize);
+            SetIdentityLine(leftRailImage, showLeft, accent, new Vector2(currentShopIsRecovery ? 9f : 7f, 620f));
+            SetIdentityLine(rightRailImage, showRight, new Color(accent.r, accent.g, accent.b, 0.82f), new Vector2(currentShopIsRecovery ? 9f : 7f, 620f));
+
+            if (headerText != null) headerText.color = Color.white;
+            if (subtitleText != null) subtitleText.color = Color.Lerp(Color.white, accent, 0.34f);
+            if (reopenButton != null && reopenButton.targetGraphic is Image reopenImage) reopenImage.color = accent;
+
+            if (footerHintText != null)
+            {
+                footerHintText.color = Color.Lerp(Color.white, accent, 0.30f);
+                footerHintText.text = currentShopIsInsurance
+                    ? "추천된 보험 1개를 확인하세요."
+                    : currentShopIsRecovery
+                    ? "3개 중 1개만 선택할 수 있습니다. 선택 즉시 긴급 지원이 종료됩니다."
+                    : currentShopIsMini
+                    ? "3개 중 1개를 구매하면 소형 전투 상점이 종료됩니다."
+                    : "구매하지 않고 닫으면 이번 상점은 지나갑니다.";
+            }
+
+            int count = offerButtons != null ? offerButtons.Length : 0;
+            for (int i = 0; i < count; i++)
+            {
+                Button button = offerButtons[i];
+                if (button == null)
+                {
+                    continue;
+                }
+
+                RectTransform rect = button.GetComponent<RectTransform>();
+                float y = -142f - i * 202f;
+                float x = 0f;
+                Vector2 size = new Vector2(820f, 178f);
+                if (currentShopIsRecovery)
+                {
+                    x = i % 2 == 0 ? -22f : 22f;
+                    size = new Vector2(770f, 178f);
+                }
+                else if (currentShopIsMini)
+                {
+                    x = (i - 1) * 16f;
+                    size = new Vector2(790f, 178f);
+                }
+                else if (currentShopIsInsurance)
+                {
+                    y = -230f;
+                    size = new Vector2(780f, 220f);
+                }
+
+                rect.anchoredPosition = new Vector2(x, y);
+                rect.sizeDelta = size;
+                if (button.targetGraphic is Image cardImage) cardImage.color = cardColor;
+                Outline outline = button.GetComponent<Outline>();
+                if (outline != null) outline.effectColor = new Color(accent.r, accent.g, accent.b, 0.96f);
+                Image dock = GetChildImage(button.transform, "PriceDock");
+                if (dock != null) dock.color = dockColor;
+                Image badgeBack = GetChildImage(button.transform, "RunShopIconBadgeBack");
+                if (badgeBack != null) badgeBack.color = Color.Lerp(modalColor, accent, 0.46f);
+            }
+        }
+
+        private static void SetIdentityLine(Image image, bool visible, Color color, Vector2 size)
+        {
+            if (image == null)
+            {
+                return;
+            }
+
+            image.gameObject.SetActive(visible);
+            image.color = color;
+            image.rectTransform.sizeDelta = size;
+        }
+
+        private static Image GetChildImage(Transform parent, string childName)
+        {
+            Transform child = parent != null ? parent.Find(childName) : null;
+            return child != null ? child.GetComponent<Image>() : null;
+        }
+
         private void RefreshUi(int round)
         {
+            ApplyShopVisualIdentity();
             if (headerText != null)
             {
                 headerText.text = currentShopIsInsurance
                     ? "운 나쁨 보험"
-                    : currentShopIsRecovery ? "런 회복 상점" : currentShopIsMini ? "소형 전투 상점" : "전투 상점";
+                    : currentShopIsRecovery ? "긴급 지원" : currentShopIsMini ? "소형 전투 상점" : "전투 상점";
             }
 
             if (subtitleText != null)
@@ -1375,12 +1550,12 @@ namespace DefenseGame
                 string opportunityLabel = currentShopIsMini
                     ? "고정 선택가 " + ResolveFixedMiniShopSpendTarget(round) + "G 안팎"
                     : currentShopIsRecovery
-                    ? "라운드 고정 회복가"
+                    ? "위기 지원 고정가"
                     : gameController != null ? "현재 소환비 " + gameController.SummonCost + "G" : "소환비 확인";
                 subtitleText.text = currentShopIsInsurance
                     ? "보험 추천 1개  |  " + (gameController != null ? gameController.BadLuckInsuranceReason : "초반 저점 복구") + "  |  " + DailyFortuneSystem.TodaySummary
                     : currentShopIsRecovery
-                    ? opportunityLabel + "  |  회복 상점  |  " + (gameController != null ? gameController.EarlyRunRecoveryCause : "위기 복구") + "  |  " + DailyFortuneSystem.TodaySummary
+                    ? "3개 중 1개  |  " + opportunityLabel + "  |  " + (gameController != null ? gameController.EarlyRunRecoveryCause : "위기 복구")
                     : currentShopIsMini
                     ? "ROUND " + round + "  |  " + phaseLabel + "  |  " + opportunityLabel + "  |  3개 중 1개"
                     : "ROUND " + round + "  |  " + opportunityLabel + "  |  유닛 소환 vs 상점 투자";
@@ -1481,7 +1656,7 @@ namespace DefenseGame
 
             bool passedShop = currentOffers.Count > 0;
             string passedShopLabel = currentShopIsRecovery
-                ? "회복 상점"
+                ? "긴급 지원"
                 : currentShopIsMini ? "소형 전투상점" : "전투상점";
 
             currentOffers.Clear();
@@ -1520,7 +1695,7 @@ namespace DefenseGame
                 Text label = reopenButton.GetComponentInChildren<Text>();
                 if (label != null)
                 {
-                    label.text = currentShopIsInsurance ? "보험" : currentShopIsRecovery ? "회복" : "상점";
+                    label.text = currentShopIsInsurance ? "보험" : currentShopIsRecovery ? "지원" : "상점";
                 }
             }
         }

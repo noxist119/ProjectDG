@@ -1009,6 +1009,8 @@ namespace DefenseGame
         public OutgamePlayMode defaultPlayMode = OutgamePlayMode.Service;
         public int testStartingDiamonds = 999999;
         public int testDiamondRechargeAmount = 10000;
+        public int testStartingGold = 999999;
+        public int testGoldRechargeAmount = 10000;
         public int serviceStarterCharacterCount = 5;
         public List<string> serviceStarterCharacterIds = new List<string>
         {
@@ -1020,10 +1022,33 @@ namespace DefenseGame
         };
 
         [Header("Shop Economy")]
-        public int startingDiamonds = 1000;
+        public int startingGold = 3000;
+        public int startingDiamonds = 500;
         public int singleChestCost = 100;
         public int tenChestCost = 900;
-        public int diamondsPerBattleRewardPoint = 10;
+        public int fiveChestCost = 480;
+        public int twentyChestCost = 1800;
+        public int fiftyChestCost = 4250;
+        public int hundredChestCost = 8000;
+        public int dailyFreeGold = 500;
+        public int dailyCardPackGoldCost = 1200;
+        public int dailyCardPackDrawCount = 5;
+        public int dailyPremiumPackDiamondCost = 250;
+        public int dailyPremiumPackDrawCount = 3;
+        public int diamondsPerBattleRewardPoint = 1;
+
+        [Header("Earned Chest Loop")]
+        public int progressionVersion = 3;
+        public int startingEarnedChestKeys = 1;
+        public int migrationEarnedChestKeys = 1;
+        public int earnedChestProgressTarget = 100;
+        public int earnedChestRarePityDraws = 8;
+        public int earnedChestEpicPityDraws = 30;
+        public int premiumChestEpicPityDraws = 10;
+        public int premiumChestLegendaryPityDraws = 40;
+        public int premiumWishlistPityDraws = 20;
+        [Range(0f, 1f)] public float premiumWishlistChance = 0.12f;
+        public int hurdleFailureSupportChestKeys = 1;
 
         [Header("Card Growth")]
         public int initialUnlockCopies = 1;
@@ -1038,13 +1063,20 @@ namespace DefenseGame
         [Range(0f, 1f)] public float legendaryRate = 0.028f;
         [Range(0f, 1f)] public float mythicRate = 0.006f;
         [Range(0f, 1f)] public float transcendentRate = 0.001f;
+        [Header("Premium Chest Grade Rates")]
+        [Range(0f, 1f)] public float premiumNormalRate = 0.45f;
+        [Range(0f, 1f)] public float premiumRareRate = 0.32f;
+        [Range(0f, 1f)] public float premiumEpicRate = 0.16f;
+        [Range(0f, 1f)] public float premiumLegendaryRate = 0.055f;
+        [Range(0f, 1f)] public float premiumMythicRate = 0.013f;
+        [Range(0f, 1f)] public float premiumTranscendentRate = 0.002f;
 
         [Header("Unit Growth Per Card Level")]
         [Range(0f, 0.2f)] public float attackPowerPerGrowthLevel = 0.03f;
         [Range(0f, 0.2f)] public float maxHealthPerGrowthLevel = 0.03f;
 
         [Header("Monster Balance From Collection Growth")]
-        public bool scaleMonstersWithCollectionGrowth = true;
+        public bool scaleMonstersWithCollectionGrowth = false;
         [Range(0f, 0.2f)] public float regularHealthPerAverageGrowthLevel = 0.018f;
         [Range(0f, 0.2f)] public float regularAttackPerAverageGrowthLevel = 0.012f;
         [Range(0f, 0.2f)] public float bossHealthPerAverageGrowthLevel = 0.025f;
@@ -1068,10 +1100,32 @@ namespace DefenseGame
         public int level;
     }
 
+    public enum OutgameChestType
+    {
+        Earned = 0,
+        Premium = 1
+    }
+
+
     [System.Serializable]
     public class OutgameSaveData
     {
+        public int gold;
         public int diamonds;
+        public int dailyShopDate;
+        public int dailyShopPurchaseFlags;
+        public int metaProgressionVersion;
+        public int earnedChestKeys;
+        public int earnedChestProgress;
+        public int earnedRarePity;
+        public int earnedEpicPity;
+        public int premiumEpicPity;
+        public int premiumLegendaryPity;
+        public int premiumWishlistPity;
+        public string wishlistCharacterId;
+        public int highestRoundReached;
+        public int hurdleFailureSupportFlags;
+        public int hurdleClearRewardFlags;
         public bool initialRosterGranted;
         public List<OutgameCardRecord> cards = new List<OutgameCardRecord>();
         public int seasonId;
@@ -1094,6 +1148,9 @@ namespace DefenseGame
         public int level;
         public int remainingCopies;
         public int requiredCopies;
+        public OutgameChestType chestType;
+        public bool wishlistHit;
+        public bool pityTriggered;
     }
 
     public class OutgameProgressionSystem : MonoBehaviour
@@ -1137,7 +1194,17 @@ namespace DefenseGame
             }
         }
 
+        public int Gold => EnsureSaveData().gold;
         public int Diamonds => EnsureSaveData().diamonds;
+        public int CurrentSeasonId => EnsureSaveData().seasonId;
+        public int WeeklyBossScore => EnsureSaveData().weeklyBossScore;
+        public int WeeklyBestRunScore => EnsureSaveData().weeklyBestRunScore;
+        public int WeeklyBossKills => EnsureSaveData().weeklyBossKills;
+        public int EarnedChestKeys => EnsureSaveData().earnedChestKeys;
+        public int EarnedChestProgress => EnsureSaveData().earnedChestProgress;
+        public int EarnedChestProgressTarget => Mathf.Max(1, Settings.earnedChestProgressTarget);
+        public int HighestRoundReached => EnsureSaveData().highestRoundReached;
+        public string WishlistCharacterId => EnsureSaveData().wishlistCharacterId;
         public OutgamePlayMode CurrentPlayMode => currentPlayMode;
         public bool IsTestMode => currentPlayMode == OutgamePlayMode.Test;
         public string LastSeasonRewardSummary => lastSeasonRewardSummary;
@@ -1189,6 +1256,32 @@ namespace DefenseGame
             }
         }
 
+        public void AddGold(int amount)
+        {
+            if (amount <= 0)
+            {
+                return;
+            }
+
+            EnsureSaveData().gold += amount;
+            Save();
+            OnProgressChanged?.Invoke();
+        }
+
+        public void RechargeTestCurrency()
+        {
+            if (!IsTestMode)
+            {
+                return;
+            }
+
+            OutgameSaveData data = EnsureSaveData();
+            data.gold += Mathf.Max(1, Settings.testGoldRechargeAmount);
+            data.diamonds += Mathf.Max(1, Settings.testDiamondRechargeAmount);
+            Save();
+            OnProgressChanged?.Invoke();
+        }
+
         public void AddDiamonds(int amount)
         {
             if (amount <= 0)
@@ -1199,6 +1292,21 @@ namespace DefenseGame
             EnsureSaveData().diamonds += amount;
             Save();
             OnProgressChanged?.Invoke();
+        }
+
+        public bool GrantTestShopCurrency(int gold, int diamonds)
+        {
+            if (!IsTestMode)
+            {
+                return false;
+            }
+
+            OutgameSaveData data = EnsureSaveData();
+            data.gold += Mathf.Max(0, gold);
+            data.diamonds += Mathf.Max(0, diamonds);
+            Save();
+            OnProgressChanged?.Invoke();
+            return true;
         }
 
         public int ResolveBattleDiamondReward(int rewardPoints)
@@ -1232,6 +1340,11 @@ namespace DefenseGame
 
             int reward = GrantSeasonMissionRewards(data);
             lastSeasonRewardSummary = reward > 0 ? "시즌 미션 보상 +" + reward + " DIA" : string.Empty;
+            string chestRewardSummary = GrantCommercialBattleRewards(data, round, victory);
+            if (!string.IsNullOrWhiteSpace(chestRewardSummary))
+            {
+                lastSeasonRewardSummary = string.IsNullOrWhiteSpace(lastSeasonRewardSummary) ? chestRewardSummary : lastSeasonRewardSummary + " | " + chestRewardSummary;
+            }
             Save();
             OnProgressChanged?.Invoke();
         }
@@ -1263,6 +1376,11 @@ namespace DefenseGame
         }
 
         public string BuildSeasonResultLoopSummary()
+        {
+            return BuildChestEconomySummary() + "\n" + BuildSeasonLegacyResultLoopSummary();
+        }
+
+        private string BuildSeasonLegacyResultLoopSummary()
         {
             OutgameSaveData data = EnsureSaveData();
             if (EnsureCurrentSeason(data))
@@ -1348,6 +1466,7 @@ namespace DefenseGame
 
         private static int TryGrantSeasonMissionReward(OutgameSaveData data, int flag, bool achieved, int reward)
         {
+            reward = ResolveCommercialSeasonReward(flag);
             if (data == null || !achieved || (data.seasonMissionClaimFlags & flag) != 0)
             {
                 return 0;
@@ -1359,10 +1478,20 @@ namespace DefenseGame
 
         private static string BuildSeasonMissionLine(OutgameSaveData data, int flag, string title, int value, int target, int reward)
         {
+            reward = ResolveCommercialSeasonReward(flag);
             bool claimed = data != null && (data.seasonMissionClaimFlags & flag) != 0;
             string state = claimed ? "수령 완료" : value >= target ? "보상 대기" : "진행 중";
             return title + "  " + Mathf.Min(value, target).ToString("N0") + "/" + target.ToString("N0") + "  |  " + state + " +" + reward + " DIA";
         }
+
+        private static int ResolveCommercialSeasonReward(int flag)
+        {
+            if (flag == BossScoreMissionFlag) return 60;
+            if (flag == BossKillMissionFlag) return 80;
+            if (flag == RunScoreMissionFlag) return 120;
+            return 0;
+        }
+
 
         private static bool EnsureCurrentSeason(OutgameSaveData data)
         {
@@ -1397,13 +1526,98 @@ namespace DefenseGame
 
         public bool TryOpenChest(int drawCount, out List<OutgameDrawResult> results)
         {
+            return TryOpenPremiumChest(drawCount, out results);
+        }
+
+        public int ResolvePremiumChestCost(int drawCount)
+        {
+            switch (drawCount)
+            {
+                case 5:
+                    return Mathf.Max(1, Settings.fiveChestCost);
+                case 10:
+                    return Mathf.Max(1, Settings.tenChestCost);
+                case 20:
+                    return Mathf.Max(1, Settings.twentyChestCost);
+                case 50:
+                    return Mathf.Max(1, Settings.fiftyChestCost);
+                case 100:
+                    return Mathf.Max(1, Settings.hundredChestCost);
+                default:
+                    return Mathf.Max(1, Settings.singleChestCost) * Mathf.Max(1, drawCount);
+            }
+        }
+
+        public bool IsDailyShopOfferPurchased(int offerIndex)
+        {
+            OutgameSaveData data = EnsureSaveData();
+            EnsureDailyShopState(data);
+            int flag = 1 << Mathf.Clamp(offerIndex, 0, 30);
+            return (data.dailyShopPurchaseFlags & flag) != 0;
+        }
+
+        public bool TryPurchaseDailyShopOffer(int offerIndex, out List<OutgameDrawResult> results, out string message)
+        {
+            results = new List<OutgameDrawResult>();
+            message = string.Empty;
+            OutgameSaveData data = EnsureSaveData();
+            EnsureDailyShopState(data);
+            int safeIndex = Mathf.Clamp(offerIndex, 0, 2);
+            int flag = 1 << safeIndex;
+            if ((data.dailyShopPurchaseFlags & flag) != 0)
+            {
+                message = "오늘 이미 구매한 상품입니다.";
+                return false;
+            }
+
+            if (safeIndex == 0)
+            {
+                int reward = Mathf.Max(1, Settings.dailyFreeGold);
+                data.gold += reward;
+                message = "일일 무료 선물 +" + reward.ToString("N0") + " GOLD";
+            }
+            else if (safeIndex == 1)
+            {
+                int cost = Mathf.Max(1, Settings.dailyCardPackGoldCost);
+                if (data.gold < cost)
+                {
+                    message = "골드가 부족합니다.";
+                    return false;
+                }
+
+                data.gold -= cost;
+                DrawCardsInto(results, OutgameChestType.Earned, Mathf.Max(1, Settings.dailyCardPackDrawCount));
+                message = "일일 영웅 카드 묶음을 구매했습니다.";
+            }
+            else
+            {
+                int cost = Mathf.Max(1, Settings.dailyPremiumPackDiamondCost);
+                if (data.diamonds < cost)
+                {
+                    message = "다이아가 부족합니다.";
+                    return false;
+                }
+
+                data.diamonds -= cost;
+                DrawCardsInto(results, OutgameChestType.Premium, Mathf.Max(1, Settings.dailyPremiumPackDrawCount));
+                message = "일일 프리미엄 묶음을 구매했습니다.";
+            }
+
+            data.dailyShopPurchaseFlags |= flag;
+            Save();
+            OnProgressChanged?.Invoke();
+            return true;
+        }
+
+        public bool TryOpenPremiumChest(int drawCount, out List<OutgameDrawResult> results)
+        {
             results = new List<OutgameDrawResult>();
             if (characterDatabase == null || drawCount <= 0)
             {
                 return false;
             }
 
-            int cost = drawCount >= 10 ? Settings.tenChestCost : Settings.singleChestCost * drawCount;
+            int cost = ResolvePremiumChestCost(drawCount);
             OutgameSaveData data = EnsureSaveData();
             if (data.diamonds < cost)
             {
@@ -1411,18 +1625,104 @@ namespace DefenseGame
             }
 
             data.diamonds -= cost;
-            for (int i = 0; i < drawCount; i++)
+            DrawCardsInto(results, OutgameChestType.Premium, drawCount);
+
+            Save();
+            OnProgressChanged?.Invoke();
+            return results.Count > 0;
+        }
+
+        public bool TryOpenEarnedChest(out List<OutgameDrawResult> results)
+        {
+            results = new List<OutgameDrawResult>();
+            OutgameSaveData data = EnsureSaveData();
+            if (characterDatabase == null || data.earnedChestKeys <= 0)
             {
-                OutgameDrawResult result = DrawCard();
-                if (result != null)
-                {
-                    results.Add(result);
-                }
+                return false;
+            }
+
+            data.earnedChestKeys--;
+            OutgameDrawResult result = DrawCard(OutgameChestType.Earned);
+            if (result != null)
+            {
+                results.Add(result);
             }
 
             Save();
             OnProgressChanged?.Invoke();
             return results.Count > 0;
+        }
+
+        public bool CycleWishlist()
+        {
+            if (characterDatabase == null)
+            {
+                return false;
+            }
+
+            List<CharacterDefinition> candidates = characterDatabase.Characters
+                .Where(character => character != null)
+                .OrderBy(character => character.grade)
+                .ThenBy(character => character.id)
+                .ToList();
+            if (candidates.Count == 0)
+            {
+                return false;
+            }
+
+            OutgameSaveData data = EnsureSaveData();
+            int currentIndex = candidates.FindIndex(character => character.id == data.wishlistCharacterId);
+            int nextIndex = (currentIndex + 1) % candidates.Count;
+            data.wishlistCharacterId = candidates[nextIndex].id;
+            data.premiumWishlistPity = 0;
+            Save();
+            OnProgressChanged?.Invoke();
+            return true;
+        }
+
+        public bool SetWishlistCharacter(string characterId)
+        {
+            CharacterDefinition target = characterDatabase != null
+                ? characterDatabase.Characters.FirstOrDefault(character => character != null && character.id == characterId)
+                : null;
+            if (target == null)
+            {
+                return false;
+            }
+
+            OutgameSaveData data = EnsureSaveData();
+            data.wishlistCharacterId = target.id;
+            data.premiumWishlistPity = 0;
+            Save();
+            OnProgressChanged?.Invoke();
+            return true;
+        }
+
+        public void GrantYahtzeeChestProgress(int progress)
+        {
+            if (progress <= 0)
+            {
+                return;
+            }
+
+            AddEarnedChestProgress(EnsureSaveData(), progress);
+            Save();
+            OnProgressChanged?.Invoke();
+        }
+
+        public string BuildChestEconomySummary()
+        {
+            OutgameSaveData data = EnsureSaveData();
+            int nextHurdle = CommercialRoundPacing.GetNextHurdleRound(data.highestRoundReached);
+            return "\ubb34\ub8cc \uc0c1\uc790 " + data.earnedChestKeys
+                + "\uac1c  |  \uac8c\uc774\uc9c0 " + data.earnedChestProgress + "/" + Mathf.Max(1, Settings.earnedChestProgressTarget)
+                + "  |  \ub2e4\uc74c \uc131\uc7a5 \ud5c8\ub4e4 R" + nextHurdle;
+        }
+
+        public string GetWishlistDisplayName()
+        {
+            CharacterDefinition wishlist = ResolveWishlistCharacter();
+            return wishlist != null ? wishlist.displayName : "\ubbf8\uc124\uc815";
         }
 
         public bool IsOwned(string characterId)
@@ -1516,6 +1816,17 @@ namespace DefenseGame
 
         public string BuildRateText()
         {
+            return "\ubb34\ub8cc: " + BuildLegacyRateText()
+                + "  |  " + Mathf.Max(1, Settings.earnedChestRarePityDraws) + "\ud68c \ub0b4 \ub808\uc5b4+ / "
+                + Mathf.Max(1, Settings.earnedChestEpicPityDraws) + "\ud68c \ub0b4 \ud76c\uadc0+"
+                + "\n\ud504\ub9ac\ubbf8\uc5c4: \uc77c\ubc18 " + FormatPercent(Settings.premiumNormalRate)
+                + "  \ub808\uc5b4 " + FormatPercent(Settings.premiumRareRate)
+                + "  \ud76c\uadc0 " + FormatPercent(Settings.premiumEpicRate)
+                + "  |  10\ud68c \ub0b4 \ud76c\uadc0+ / 40\ud68c \ub0b4 \uc804\uc124+ / \uc704\uc2dc \ubcf4\uc815";
+        }
+
+        private string BuildLegacyRateText()
+        {
             return "일반 " + FormatPercent(Settings.normalRate) +
                    "  레어 " + FormatPercent(Settings.rareRate) +
                    "  희귀 " + FormatPercent(Settings.epicRate) +
@@ -1548,13 +1859,145 @@ namespace DefenseGame
             bool isBoss = monster.IsBossLike;
             float healthBonus = averageGrowthLevel * (isBoss ? Settings.bossHealthPerAverageGrowthLevel : Settings.regularHealthPerAverageGrowthLevel);
             float attackBonus = averageGrowthLevel * (isBoss ? Settings.bossAttackPerAverageGrowthLevel : Settings.regularAttackPerAverageGrowthLevel);
-            healthMultiplier += Mathf.Min(healthBonus, Settings.maxMonsterHealthBonus);
-            attackMultiplier += Mathf.Min(attackBonus, Settings.maxMonsterAttackBonus);
+            healthMultiplier += Mathf.Min(healthBonus, Mathf.Min(Settings.maxMonsterHealthBonus, 0.15f));
+            attackMultiplier += Mathf.Min(attackBonus, Mathf.Min(Settings.maxMonsterAttackBonus, 0.10f));
         }
 
-        private OutgameDrawResult DrawCard()
+        private string GrantCommercialBattleRewards(OutgameSaveData data, int round, bool victory)
         {
-            CharacterDefinition character = characterDatabase.GetRandomCharacterByGradeOrLower(RollGrade());
+            int safeRound = Mathf.Max(0, round);
+            bool newHighestRound = victory && safeRound > data.highestRoundReached;
+            if (newHighestRound)
+            {
+                data.highestRoundReached = safeRound;
+            }
+
+            int progress = victory
+                ? 8 + Mathf.Min(50, safeRound) / 4
+                : 6 + Mathf.Min(50, safeRound) / 5;
+            if (newHighestRound)
+            {
+                progress += 3;
+            }
+
+            if (victory && safeRound > 0 && safeRound % 10 == 0)
+            {
+                progress += 25;
+            }
+
+            if (victory && CommercialRoundPacing.IsMajorHurdleRound(safeRound))
+            {
+                int hurdleIndex = Mathf.Clamp((safeRound - CommercialRoundPacing.FirstHurdleRound) / CommercialRoundPacing.HurdleInterval, 0, 30);
+                int flag = 1 << hurdleIndex;
+                if ((data.hurdleClearRewardFlags & flag) == 0)
+                {
+                    data.hurdleClearRewardFlags |= flag;
+                    progress += 50;
+                }
+            }
+
+            int supportKeys = 0;
+            if (!victory && CommercialRoundPacing.TryGetApproachingHurdleIndex(safeRound, out int supportIndex))
+            {
+                supportIndex = Mathf.Clamp(supportIndex, 0, 30);
+                int supportFlag = 1 << supportIndex;
+                if ((data.hurdleFailureSupportFlags & supportFlag) == 0)
+                {
+                    data.hurdleFailureSupportFlags |= supportFlag;
+                    supportKeys = Mathf.Max(0, Settings.hurdleFailureSupportChestKeys);
+                    data.earnedChestKeys += supportKeys;
+                }
+            }
+
+            int progressKeys = AddEarnedChestProgress(data, progress);
+            int totalKeys = progressKeys + supportKeys;
+            int goldReward = victory ? 60 + safeRound * 12 : 35 + safeRound * 8;
+            data.gold += Mathf.Max(0, goldReward);
+            string summary = "상점 골드 +" + goldReward.ToString("N0")
+                + " / \ubb34\ub8cc \uc0c1\uc790 \uac8c\uc774\uc9c0 +" + progress + " (" + data.earnedChestProgress + "/" + Mathf.Max(1, Settings.earnedChestProgressTarget) + ")";
+            if (totalKeys > 0)
+            {
+                summary += " / \uc0c1\uc790 +" + totalKeys;
+            }
+
+            if (supportKeys > 0)
+            {
+                summary += " / \uccab \ud5c8\ub4e4 \uc2e4\ud328 \uc9c0\uc6d0";
+            }
+
+            return summary;
+        }
+
+        private int AddEarnedChestProgress(OutgameSaveData data, int progress)
+        {
+            if (data == null || progress <= 0)
+            {
+                return 0;
+            }
+
+            int target = Mathf.Max(1, Settings.earnedChestProgressTarget);
+            data.earnedChestProgress = Mathf.Max(0, data.earnedChestProgress) + progress;
+            int gainedKeys = data.earnedChestProgress / target;
+            if (gainedKeys > 0)
+            {
+                data.earnedChestKeys += gainedKeys;
+                data.earnedChestProgress %= target;
+            }
+
+            return gainedKeys;
+        }
+
+        private void DrawCardsInto(List<OutgameDrawResult> results, OutgameChestType chestType, int drawCount)
+        {
+            if (results == null)
+            {
+                return;
+            }
+
+            int safeCount = Mathf.Clamp(drawCount, 0, 100);
+            for (int i = 0; i < safeCount; i++)
+            {
+                OutgameDrawResult result = DrawCard(chestType);
+                if (result != null)
+                {
+                    results.Add(result);
+                }
+            }
+        }
+
+        private void EnsureDailyShopState(OutgameSaveData data)
+        {
+            if (data == null)
+            {
+                return;
+            }
+
+            System.DateTime now = System.DateTime.Now;
+            int dateKey = now.Year * 10000 + now.Month * 100 + now.Day;
+            if (data.dailyShopDate == dateKey)
+            {
+                return;
+            }
+
+            data.dailyShopDate = dateKey;
+            data.dailyShopPurchaseFlags = 0;
+            Save();
+        }
+
+        public string BuildDailyShopResetLabel()
+        {
+            System.DateTime now = System.DateTime.Now;
+            System.TimeSpan remaining = now.Date.AddDays(1) - now;
+            return "일일 상품 갱신까지 " + Mathf.Max(0, remaining.Hours).ToString("00") + ":" + Mathf.Max(0, remaining.Minutes).ToString("00");
+        }
+
+
+        private OutgameDrawResult DrawCard(OutgameChestType chestType)
+        {
+            OutgameSaveData data = EnsureSaveData();
+            CharacterGrade minimumGrade = ResolvePityMinimumGrade(data, chestType);
+            bool pityTriggered = (int)minimumGrade > (int)CharacterGrade.Normal;
+            CharacterDefinition character = ResolveDrawCharacter(data, chestType, minimumGrade, out bool wishlistHit);
             if (character == null)
             {
                 character = characterDatabase.GetRandomSummonableCharacter();
@@ -1565,6 +2008,7 @@ namespace DefenseGame
                 return null;
             }
 
+            UpdateChestPity(data, chestType, character.grade, wishlistHit);
             OutgameCardRecord record = GetOrCreateRecord(character.id);
             bool wasOwned = record.level > 0;
             int previousLevel = record.level;
@@ -1579,8 +2023,97 @@ namespace DefenseGame
                 leveledUp = record.level > previousLevel && wasOwned,
                 level = record.level,
                 remainingCopies = record.upgradeCopies,
-                requiredCopies = record.level < Settings.maxCardLevel ? RequiredCopiesForNextLevel(record.level) : 0
+                requiredCopies = record.level < Settings.maxCardLevel ? RequiredCopiesForNextLevel(record.level) : 0,
+                chestType = chestType,
+                wishlistHit = wishlistHit,
+                pityTriggered = pityTriggered
             };
+        }
+
+        private CharacterDefinition ResolveDrawCharacter(
+            OutgameSaveData data,
+            OutgameChestType chestType,
+            CharacterGrade minimumGrade,
+            out bool wishlistHit)
+        {
+            wishlistHit = false;
+            CharacterDefinition wishlist = chestType == OutgameChestType.Premium ? ResolveWishlistCharacter() : null;
+            if (wishlist != null && (int)wishlist.grade >= (int)minimumGrade)
+            {
+                int wishlistPityTarget = Mathf.Max(1, Settings.premiumWishlistPityDraws);
+                bool guaranteedWishlist = data.premiumWishlistPity >= wishlistPityTarget - 1;
+                bool randomWishlist = Random.value < Mathf.Clamp01(Settings.premiumWishlistChance);
+                if (guaranteedWishlist || randomWishlist)
+                {
+                    wishlistHit = true;
+                    return wishlist;
+                }
+            }
+
+            CharacterGrade rolledGrade = chestType == OutgameChestType.Premium ? RollPremiumGrade() : RollGrade();
+            if ((int)rolledGrade < (int)minimumGrade)
+            {
+                rolledGrade = minimumGrade;
+            }
+
+            return characterDatabase.GetRandomCharacterByGradeOrLower(rolledGrade);
+        }
+
+        private CharacterGrade ResolvePityMinimumGrade(OutgameSaveData data, OutgameChestType chestType)
+        {
+            if (chestType == OutgameChestType.Earned)
+            {
+                if (data.earnedEpicPity >= Mathf.Max(1, Settings.earnedChestEpicPityDraws) - 1)
+                {
+                    return CharacterGrade.Epic;
+                }
+
+                if (data.earnedRarePity >= Mathf.Max(1, Settings.earnedChestRarePityDraws) - 1)
+                {
+                    return CharacterGrade.Rare;
+                }
+
+                return CharacterGrade.Normal;
+            }
+
+            if (data.premiumLegendaryPity >= Mathf.Max(1, Settings.premiumChestLegendaryPityDraws) - 1)
+            {
+                return CharacterGrade.Legendary;
+            }
+
+            if (data.premiumEpicPity >= Mathf.Max(1, Settings.premiumChestEpicPityDraws) - 1)
+            {
+                return CharacterGrade.Epic;
+            }
+
+            return CharacterGrade.Normal;
+        }
+
+        private void UpdateChestPity(OutgameSaveData data, OutgameChestType chestType, CharacterGrade grade, bool wishlistHit)
+        {
+            if (chestType == OutgameChestType.Earned)
+            {
+                data.earnedRarePity = (int)grade >= (int)CharacterGrade.Rare ? 0 : IncrementPity(data.earnedRarePity);
+                data.earnedEpicPity = (int)grade >= (int)CharacterGrade.Epic ? 0 : IncrementPity(data.earnedEpicPity);
+                return;
+            }
+
+            data.premiumEpicPity = (int)grade >= (int)CharacterGrade.Epic ? 0 : IncrementPity(data.premiumEpicPity);
+            data.premiumLegendaryPity = (int)grade >= (int)CharacterGrade.Legendary ? 0 : IncrementPity(data.premiumLegendaryPity);
+            data.premiumWishlistPity = wishlistHit ? 0 : IncrementPity(data.premiumWishlistPity);
+        }
+
+        private CharacterDefinition ResolveWishlistCharacter()
+        {
+            string wishlistId = EnsureSaveData().wishlistCharacterId;
+            return characterDatabase != null && !string.IsNullOrWhiteSpace(wishlistId)
+                ? characterDatabase.Characters.FirstOrDefault(character => character != null && character.id == wishlistId)
+                : null;
+        }
+
+        private static int IncrementPity(int value)
+        {
+            return value >= 1000000 ? 1000000 : Mathf.Max(0, value) + 1;
         }
 
         private void EnsureInitialRoster()
@@ -1649,6 +2182,20 @@ namespace DefenseGame
             if ((roll -= Settings.mythicRate) < 0f) return CharacterGrade.Mythic;
             return CharacterGrade.Transcendent;
         }
+
+        private CharacterGrade RollPremiumGrade()
+        {
+            float total = Settings.premiumNormalRate + Settings.premiumRareRate + Settings.premiumEpicRate +
+                          Settings.premiumLegendaryRate + Settings.premiumMythicRate + Settings.premiumTranscendentRate;
+            float roll = Random.value * Mathf.Max(0.001f, total);
+            if ((roll -= Settings.premiumNormalRate) < 0f) return CharacterGrade.Normal;
+            if ((roll -= Settings.premiumRareRate) < 0f) return CharacterGrade.Rare;
+            if ((roll -= Settings.premiumEpicRate) < 0f) return CharacterGrade.Epic;
+            if ((roll -= Settings.premiumLegendaryRate) < 0f) return CharacterGrade.Legendary;
+            if ((roll -= Settings.premiumMythicRate) < 0f) return CharacterGrade.Mythic;
+            return CharacterGrade.Transcendent;
+        }
+
 
         private void ApplyAvailableLevelUps(OutgameCardRecord record)
         {
@@ -1730,20 +2277,57 @@ namespace DefenseGame
         private void Load()
         {
             string json = PlayerPrefs.GetString(ResolveSaveKey(), string.Empty);
+            int initialGold = IsTestMode ? Settings.testStartingGold : Settings.startingGold;
             int initialDiamonds = IsTestMode ? Settings.testStartingDiamonds : Settings.startingDiamonds;
-            saveData = string.IsNullOrEmpty(json) ? new OutgameSaveData { diamonds = initialDiamonds } : JsonUtility.FromJson<OutgameSaveData>(json);
+            saveData = string.IsNullOrEmpty(json) ? new OutgameSaveData { gold = initialGold, diamonds = initialDiamonds } : JsonUtility.FromJson<OutgameSaveData>(json);
             if (saveData == null)
             {
-                saveData = new OutgameSaveData { diamonds = initialDiamonds };
+                saveData = new OutgameSaveData { gold = initialGold, diamonds = initialDiamonds };
             }
 
             if (saveData.cards == null)
             {
                 saveData.cards = new List<OutgameCardRecord>();
             }
+            int previousVersion = saveData.metaProgressionVersion;
+            int targetVersion = Mathf.Max(3, Settings.progressionVersion);
+            bool migrated = previousVersion < targetVersion;
+            if (previousVersion < 2)
+            {
+                int migrationKeys = string.IsNullOrEmpty(json)
+                    ? Mathf.Max(0, Settings.startingEarnedChestKeys)
+                    : Mathf.Max(0, Settings.migrationEarnedChestKeys);
+                saveData.earnedChestKeys = Mathf.Max(0, saveData.earnedChestKeys) + migrationKeys;
+            }
+
+            if (previousVersion < 3)
+            {
+                saveData.gold = Mathf.Max(0, saveData.gold) + initialGold;
+            }
+
+            saveData.metaProgressionVersion = targetVersion;
+            saveData.gold = Mathf.Max(0, saveData.gold);
+
+            saveData.earnedChestKeys = Mathf.Max(0, saveData.earnedChestKeys);
+            saveData.earnedChestProgress = Mathf.Max(0, saveData.earnedChestProgress);
+            int progressTarget = Mathf.Max(1, Settings.earnedChestProgressTarget);
+            if (saveData.earnedChestProgress >= progressTarget)
+            {
+                saveData.earnedChestKeys += saveData.earnedChestProgress / progressTarget;
+                saveData.earnedChestProgress %= progressTarget;
+                migrated = true;
+            }
+
+            EnsureDailyShopState(saveData);
 
             EnsureCurrentSeason(saveData);
             lastSeasonRewardSummary = string.Empty;
+            if (migrated)
+            {
+                PlayerPrefs.SetString(ResolveSaveKey(), JsonUtility.ToJson(saveData));
+                PlayerPrefs.Save();
+            }
+
         }
 
         private void Save()
