@@ -355,6 +355,30 @@ namespace DefenseGame.Editor
                 notes.Add("hero_32 야성의 추적탄 프리셋이 확정 수치와 일치하지 않습니다.");
             }
 
+            CharacterDefinition hero54 = database != null ? database.GetCharacterById("hero_54") : null;
+            SkillDefinition hero54Skill = hero54 != null && hero54.skills != null && hero54.skills.Count > 0 ? hero54.skills[0] : null;
+            bool gargoyleLoopDurationValid = hero54Skill != null &&
+                                             hero54Skill.effectType == SkillEffectType.Taunt &&
+                                             Mathf.Approximately(hero54Skill.duration, 5f) &&
+                                             (hero54Skill.growthTargets & SkillGrowthTarget.Duration) != 0 &&
+                                             Mathf.Approximately(UnitAnimationDriver.ResolveSkill03LoopHoldDuration(hero54Skill.duration, 0.35f), 5f) &&
+                                             Mathf.Approximately(UnitAnimationDriver.ResolveSkill03LoopHoldDuration(6.5f, 0.35f), 6.5f);
+            if (!gargoyleLoopDurationValid)
+            {
+                notes.Add("Dice Gargoyle의 5초 Skill03_Loop 또는 아웃게임 지속시간 성장 연결이 유효하지 않습니다.");
+            }
+
+            bool longCombatAccelerationValid =
+                RoundManager.ResolveCombatTimeScaleMultiplier(29.99f) == 1 &&
+                RoundManager.ResolveCombatTimeScaleMultiplier(30f) == 2 &&
+                RoundManager.ResolveCombatTimeScaleMultiplier(35f) == 3 &&
+                RoundManager.ResolveCombatTimeScaleMultiplier(45f) == 5 &&
+                RoundManager.ResolveCombatTimeScaleMultiplier(90f) == 10;
+            if (!longCombatAccelerationValid)
+            {
+                notes.Add("장기전 가속 단계가 30초 2배, 이후 5초마다 1배 증가 규칙과 일치하지 않습니다.");
+            }
+
             PrefabSmokeResult[] prefabResults = new PrefabSmokeResult[PrefabPaths.Length];
             for (int i = 0; i < PrefabPaths.Length; i++)
             {
@@ -365,7 +389,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && earlyMiniShopChoicesValid && hero32SignatureValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -391,6 +415,8 @@ namespace DefenseGame.Editor
                 earlyMiniShopSummary = earlyMiniShopSummary,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
                 hero32SignatureValid = hero32SignatureValid,
+                gargoyleLoopDurationValid = gargoyleLoopDurationValid,
+                longCombatAccelerationValid = longCombatAccelerationValid,
                 defaultVfxConfigured = defaultVfxConfigured,
                 animationMaterialEventsValid = animationMaterialEventsValid,
                 animationMaterialEventsSummary = animationMaterialEventsSummary,
@@ -780,6 +806,8 @@ namespace DefenseGame.Editor
             public string earlyMiniShopSummary;
             public bool simultaneousDeathPolicyValid;
             public bool hero32SignatureValid;
+            public bool gargoyleLoopDurationValid;
+            public bool longCombatAccelerationValid;
             public bool defaultVfxConfigured;
             public bool animationMaterialEventsValid;
             public string animationMaterialEventsSummary;

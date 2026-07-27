@@ -77,9 +77,14 @@ namespace DefenseGame
         [SerializeField] private int maxMidBossesPerRound = 2;
         [SerializeField] [Range(0.15f, 0.85f)] private float midBossEntryRatio = 0.55f;
         [SerializeField] private float midBossEntryDelay = 0.65f;
+        [Header("Long Combat Acceleration")]
+        [SerializeField] private float longCombatAccelerationStartSeconds = 30f;
+        [SerializeField] private float longCombatAccelerationStepSeconds = 5f;
+        [SerializeField] [Range(2, 10)] private int longCombatAccelerationMaxMultiplier = 10;
 
         public event System.Action<int, bool, bool> OnRoundStateChanged;
         public event System.Action<int> OnCountdownChanged;
+        public event System.Action<int> OnCombatTimeScaleChanged;
 
         public int CurrentRound { get; private set; }
         public bool IsRoundRunning { get; private set; }
@@ -89,8 +94,18 @@ namespace DefenseGame
         public int CurrentRoundTargetCount { get; private set; }
         public int CurrentRoundSpawnedCount { get; private set; }
 
+        /// <summary>카운트다운과 선택 슬로모션을 제외한 실제 전투 대기 시간입니다.</summary>
+        public float CombatElapsedRealtime { get; private set; }
+        public int CombatTimeScaleMultiplier { get; private set; } = 1;
+
         private int nextSpawnPointIndex;
         private Coroutine roundRoutine;
+        private bool combatTimeAccelerationActive;
+        private bool combatSpeedBaselineCaptured;
+        private float combatSpeedBaselineTimeScale = 1f;
+        private float combatSpeedBaselineFixedDeltaTime = 0.02f;
+        private float combatSpeedAppliedTimeScale = 1f;
+        private float combatTimeLastRealtime;
 
         private struct RoundSpawnPlan
         {
@@ -113,6 +128,109 @@ namespace DefenseGame
                     spawnPoints[i] = transform.GetChild(i);
                 }
             }
+        }
+
+        private void OnDisable()
+        {
+            EndCombatTimeAcceleration(true);
+        }
+
+        private void Update()
+        {
+            UpdateCombatTimeAcceleration();
+        }
+
+        public static int ResolveCombatTimeScaleMultiplier(float elapsedRealtime, float accelerationStartSeconds = 30f, float accelerationStepSeconds = 5f, int maxMultiplier = 10)
+        {
+            float start = Mathf.Max(0f, accelerationStartSeconds);
+            float step = Mathf.Max(0.1f, accelerationStepSeconds);
+            if (elapsedRealtime < start)
+            {
+                return 1;
+            }
+
+            int multiplier = 2 + Mathf.FloorToInt((elapsedRealtime - start) / step);
+            return Mathf.Clamp(multiplier, 2, Mathf.Max(2, maxMultiplier));
+        }
+
+        private void BeginCombatTimeAcceleration()
+        {
+            CombatElapsedRealtime = 0f;
+            CombatTimeScaleMultiplier = 1;
+            combatTimeLastRealtime = Time.unscaledTime;
+            combatSpeedBaselineTimeScale = Mathf.Max(0.01f, Time.timeScale);
+            combatSpeedBaselineFixedDeltaTime = Mathf.Max(0.001f, Time.fixedDeltaTime);
+            combatSpeedAppliedTimeScale = combatSpeedBaselineTimeScale;
+            combatSpeedBaselineCaptured = true;
+            combatTimeAccelerationActive = true;
+        }
+
+        private void UpdateCombatTimeAcceleration()
+        {
+            if (!combatTimeAccelerationActive || !IsRoundRunning || !combatSpeedBaselineCaptured)
+            {
+                return;
+            }
+
+            float now = Time.unscaledTime;
+            if (IsCombatTimeAccelerationPaused())
+            {
+                combatTimeLastRealtime = now;
+                return;
+            }
+
+            CombatElapsedRealtime += Mathf.Max(0f, now - combatTimeLastRealtime);
+            combatTimeLastRealtime = now;
+            int targetMultiplier = ResolveCombatTimeScaleMultiplier(CombatElapsedRealtime, longCombatAccelerationStartSeconds, longCombatAccelerationStepSeconds, longCombatAccelerationMaxMultiplier);
+            if (targetMultiplier == CombatTimeScaleMultiplier || !Mathf.Approximately(Time.timeScale, combatSpeedAppliedTimeScale))
+            {
+                return;
+            }
+
+            CombatTimeScaleMultiplier = targetMultiplier;
+            combatSpeedAppliedTimeScale = combatSpeedBaselineTimeScale * CombatTimeScaleMultiplier;
+            Time.timeScale = combatSpeedAppliedTimeScale;
+            Time.fixedDeltaTime = Mathf.Max(0.001f, combatSpeedBaselineFixedDeltaTime * CombatTimeScaleMultiplier);
+            OnCombatTimeScaleChanged?.Invoke(CombatTimeScaleMultiplier);
+        }
+
+        private static bool IsCombatTimeAccelerationPaused()
+        {
+            if (DefenseGameController.IsDefeatSlowMotionActive)
+            {
+                return true;
+            }
+
+            DefenseGameController controller = DefenseGameController.Active;
+            return (controller != null && controller.FateChoiceSlowMotionActive) || Time.timeScale < 0.5f;
+        }
+
+        private void SuspendCombatTimeAcceleration()
+        {
+            combatTimeAccelerationActive = false;
+        }
+
+        private void EndCombatTimeAcceleration(bool restoreBaseline)
+        {
+            combatTimeAccelerationActive = false;
+            if (!combatSpeedBaselineCaptured)
+            {
+                CombatElapsedRealtime = 0f;
+                CombatTimeScaleMultiplier = 1;
+                return;
+            }
+
+            if (!restoreBaseline || DefenseGameController.IsDefeatSlowMotionActive || !Mathf.Approximately(Time.timeScale, combatSpeedAppliedTimeScale))
+            {
+                return;
+            }
+
+            Time.timeScale = combatSpeedBaselineTimeScale;
+            Time.fixedDeltaTime = combatSpeedBaselineFixedDeltaTime;
+            combatSpeedBaselineCaptured = false;
+            CombatElapsedRealtime = 0f;
+            CombatTimeScaleMultiplier = 1;
+            combatSpeedAppliedTimeScale = combatSpeedBaselineTimeScale;
         }
 
         public void Configure(MonsterDatabase database, MonsterUnit fallbackPrefab, Transform[] newSpawnPoints, Transform newGoalPoint, GameObject newSpawnEffectPrefab = null)
@@ -152,6 +270,7 @@ namespace DefenseGame
                 roundRoutine = null;
             }
 
+            SuspendCombatTimeAcceleration();
             LastRoundEndedByDefeat = true;
         }
 
@@ -171,6 +290,7 @@ namespace DefenseGame
             ClearActiveMonsters();
             LastRoundEndedByDefeat = true;
             IsRoundRunning = false;
+            EndCombatTimeAcceleration(true);
             OnCountdownChanged?.Invoke(0);
             OnRoundStateChanged?.Invoke(CurrentRound, IsBossRound, false);
         }
@@ -193,6 +313,7 @@ namespace DefenseGame
             CurrentRoundSpawnedCount = CurrentRoundTargetCount;
             LastRoundEndedByDefeat = false;
             IsRoundRunning = false;
+            EndCombatTimeAcceleration(true);
             OnCountdownChanged?.Invoke(0);
             OnRoundStateChanged?.Invoke(CurrentRound, IsBossRound, false);
         }
@@ -213,6 +334,7 @@ namespace DefenseGame
             nextSpawnPointIndex = 0;
             LastRoundEndedByDefeat = false;
             IsRoundRunning = false;
+            EndCombatTimeAcceleration(true);
             OnCountdownChanged?.Invoke(0);
         }
 
@@ -234,6 +356,7 @@ namespace DefenseGame
             }
 
             OnCountdownChanged?.Invoke(0);
+            BeginCombatTimeAcceleration();
 
             int midBossesSpawned = 0;
             int[] midBossSpawnIndices = BuildMidBossSpawnIndices(spawnPlan.regularMonsterCount, spawnPlan.midBossMonsterCount);
@@ -279,6 +402,7 @@ namespace DefenseGame
             IsRoundRunning = false;
             LastRoundEndedByDefeat = false;
             roundRoutine = null;
+            EndCombatTimeAcceleration(true);
             OnRoundStateChanged?.Invoke(CurrentRound, IsBossRound, false);
         }
 

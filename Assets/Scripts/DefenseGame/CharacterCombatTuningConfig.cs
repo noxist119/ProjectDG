@@ -374,7 +374,7 @@ namespace DefenseGame
                     skill = CreatePresetSkill(characterId, "파워 스트라이크", "스킬 사용 시 공격력 300%로 적을 공격합니다.", SkillEffectType.DirectDamage, 3f, 0f, 0f, 2.5f, 1, 100f, 7f, growthTargets: SkillGrowthTarget.Power);
                     return true;
                 case "hero_54":
-                    skill = CreatePresetSkill(characterId, "수호 도발", "3m 반경의 적을 5초 동안 도발하고 받는 피해를 50% 감소시킵니다.", SkillEffectType.Taunt, 0f, 0.5f, 5f, 3f, 1, 100f, 11f, growthTargets: SkillGrowthTarget.SecondaryPower);
+                    skill = CreatePresetSkill(characterId, "수호 도발", "3m 반경의 적을 5초 동안 도발하고 받는 피해를 50% 감소시킵니다. 아웃게임 성장 시 지속시간이 증가합니다.", SkillEffectType.Taunt, 0f, 0.5f, 5f, 3f, 1, 100f, 11f, growthTargets: SkillGrowthTarget.Duration);
                     return true;
                 case "hero_33":
                     skill = CreatePresetSkill(characterId, "최후의 맹독", "죽을 때 전방에 10초 동안 독극물 지대를 만들어 초당 80 피해를 줍니다.", SkillEffectType.DeathPoisonField, 80f, 1f, 10f, 3f, 1, 100f, 0f, growthTargets: SkillGrowthTarget.Power);

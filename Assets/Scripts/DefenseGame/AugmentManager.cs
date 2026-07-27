@@ -95,6 +95,7 @@ namespace DefenseGame
         [SerializeField] private float mythicHeroAugmentOfferChance = 0.10f;
         [SerializeField] private float extraHeroCopyOfferBonus = 0.08f;
         [SerializeField] private List<AugmentDefinition> augmentPool = new List<AugmentDefinition>();
+        [SerializeField, Range(3, 18)] private int recentAugmentHistorySize = 9;
 
         private GameObject panelRoot;
         private Text headerText;
@@ -107,6 +108,7 @@ namespace DefenseGame
         private Button reopenButton;
         private readonly List<AugmentDefinition> currentChoices = new List<AugmentDefinition>();
         private readonly List<AugmentDefinition> chosenAugments = new List<AugmentDefinition>();
+        private readonly List<string> recentAugmentOfferIds = new List<string>();
         private readonly Dictionary<string, int> buildupStacks = new Dictionary<string, int>();
         private readonly Dictionary<string, bool> heroAugmentOfferRolls = new Dictionary<string, bool>();
         private readonly Dictionary<DefenderUnit, float> hero54StoredDamage = new Dictionary<DefenderUnit, float>();
@@ -210,6 +212,7 @@ namespace DefenseGame
 
             currentChoices.Clear();
             chosenAugments.Clear();
+            recentAugmentOfferIds.Clear();
             buildupStacks.Clear();
             hero54StoredDamage.Clear();
             hero07KillCounts.Clear();
@@ -875,6 +878,7 @@ namespace DefenseGame
             }
 
             FillMissingChoices();
+            RememberCurrentChoices();
 
             if (headerText != null)
             {
@@ -1000,6 +1004,7 @@ namespace DefenseGame
                     augment.style == style &&
                     !currentChoices.Contains(augment) &&
                     !HasChosen(augment.id) &&
+                    !WasRecentlyOffered(augment) &&
                     CanOfferAugment(augment))
                 {
                     candidates.Add(augment);
@@ -1034,6 +1039,7 @@ namespace DefenseGame
                 if (augment != null &&
                     !currentChoices.Contains(augment) &&
                     !HasChosen(augment.id) &&
+                    !WasRecentlyOffered(augment) &&
                     CanOfferAugment(augment))
                 {
                     candidates.Add(augment);
@@ -1062,6 +1068,31 @@ namespace DefenseGame
             }
         }
 
+        private bool WasRecentlyOffered(AugmentDefinition augment)
+        {
+            return augment != null && !string.IsNullOrWhiteSpace(augment.id) && recentAugmentOfferIds.Contains(augment.id);
+        }
+
+        private void RememberCurrentChoices()
+        {
+            for (int i = 0; i < currentChoices.Count; i++)
+            {
+                AugmentDefinition choice = currentChoices[i];
+                if (choice == null || string.IsNullOrWhiteSpace(choice.id))
+                {
+                    continue;
+                }
+
+                recentAugmentOfferIds.Remove(choice.id);
+                recentAugmentOfferIds.Add(choice.id);
+            }
+
+            int historyLimit = Mathf.Max(3, recentAugmentHistorySize);
+            while (recentAugmentOfferIds.Count > historyLimit)
+            {
+                recentAugmentOfferIds.RemoveAt(0);
+            }
+        }
         private void ChooseAugment(int index)
         {
             if (index < 0 || index >= currentChoices.Count)

@@ -1307,7 +1307,9 @@ namespace DefenseGame
             float skillMultiplier = Mathf.Max(0.1f, 1f + permanentSkillPowerBonus + synergyBonus.skillPowerBonus + tileSkillPowerBonus);
             QueueSkillImpact(skill, currentTarget, skillMultiplier);
 
-            bool animationStarted = animationDriver != null && animationDriver.PlaySkill();
+            int skillSlot = definition != null && definition.skills != null ? Mathf.Max(1, definition.skills.IndexOf(skill) + 1) : 1;
+            float animationHoldDuration = Mathf.Max(0f, GetSkillDuration(skill));
+            bool animationStarted = animationDriver != null && animationDriver.PlaySkill(skillSlot, animationHoldDuration);
             if (animationStarted)
             {
                 SchedulePendingSkillFallback(pendingSkillCast.sequence);

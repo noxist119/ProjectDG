@@ -43,6 +43,7 @@ namespace DefenseGame
         private Sprite roundedSprite;
 
         public event System.Action OnClosed;
+        public event System.Action OnOpened;
         public bool IsOpen => root != null && root.activeSelf;
 
         public void Configure(CharacterDatabase database, OutgameProgressionSystem progression, Font uiFont, Transform canvasRoot, UiSkinResources skin = null)
@@ -95,6 +96,7 @@ namespace DefenseGame
 
             root.SetActive(true);
             root.transform.SetAsLastSibling();
+            OnOpened?.Invoke();
             ShowPage(currentPage);
         }
 
@@ -129,8 +131,8 @@ namespace DefenseGame
             root = new GameObject("CharacterCollectionOverlay", typeof(RectTransform));
             root.transform.SetParent(parent, false);
             Image blocker = root.AddComponent<Image>();
-            blocker.color = new Color(0.03f, 0.05f, 0.18f, 0.86f);
-            blocker.raycastTarget = true;
+            blocker.color = Color.clear;
+            blocker.raycastTarget = false;
 
             RectTransform rootRect = root.GetComponent<RectTransform>();
             rootRect.anchorMin = Vector2.zero;
@@ -138,24 +140,27 @@ namespace DefenseGame
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
-            Image modal = CreatePanel(root.transform, "CollectionModal", new Vector2(0f, 0f), new Vector2(980f, 1480f), new Color(0.25f, 0.34f, 0.70f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
-            CreatePanel(modal.transform, "Header", new Vector2(0f, -18f), new Vector2(912f, 116f), new Color(0.96f, 0.80f, 0.18f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreateText(modal.transform, "Title", "캐릭터 도감", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -42f), new Vector2(420f, 52f), 38, TextAnchor.MiddleCenter, true);
-            collectionCountText = CreateText(modal.transform, "CollectionCount", "등록 캐릭터 0명", new Color(0.18f, 0.22f, 0.34f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -84f), new Vector2(420f, 28f), 18, TextAnchor.MiddleCenter, true);
-            CreateButton(modal.transform, "CloseButton", "닫기", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-34f, -30f), new Vector2(102f, 64f), new Color(0.93f, 0.32f, 0.24f, 1f), Close, 22);
+            Image modal = CreatePanel(root.transform, "CollectionModal", new Vector2(0f, 76f), new Vector2(0f, -152f), new Color(0.25f, 0.34f, 0.70f, 1f), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), false, false);
+            modal.sprite = null;
+            modal.type = Image.Type.Simple;
+            modal.preserveAspect = false;
+            CreatePanel(modal.transform, "Header", new Vector2(0f, -160f), new Vector2(912f, 116f), new Color(0.96f, 0.80f, 0.18f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreateText(modal.transform, "Title", "캐릭터 도감", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -184f), new Vector2(420f, 52f), 38, TextAnchor.MiddleCenter, true);
+            collectionCountText = CreateText(modal.transform, "CollectionCount", "등록 캐릭터 0명", new Color(0.18f, 0.22f, 0.34f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -226f), new Vector2(420f, 28f), 18, TextAnchor.MiddleCenter, true);
 
-            Image gridPanel = CreatePanel(modal.transform, "CardGridPanel", new Vector2(-194f, -160f), new Vector2(556f, 1130f), new Color(0.19f, 0.24f, 0.54f, 0.95f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            Image gridPanel = CreatePanel(modal.transform, "CardGridPanel", new Vector2(-194f, -430f), new Vector2(556f, 1130f), new Color(0.19f, 0.24f, 0.54f, 0.95f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             CreateText(gridPanel.transform, "GridHeader", "등록된 영웅", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(220f, 28f), 22, TextAnchor.MiddleCenter, true);
             BuildCardGrid(gridPanel.transform);
 
-            Button prevButton = CreateButton(modal.transform, "PrevPageButton", "<", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-388f, -1320f), new Vector2(90f, 58f), new Color(0.15f, 0.20f, 0.43f, 1f), PreviousPage, 28);
-            Button nextButton = CreateButton(modal.transform, "NextPageButton", ">", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-14f, -1320f), new Vector2(90f, 58f), new Color(0.15f, 0.20f, 0.43f, 1f), NextPage, 28);
-            pageText = CreateText(modal.transform, "PageText", "1 / 1", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-200f, -1320f), new Vector2(220f, 46f), 23, TextAnchor.MiddleCenter, true);
+            Button prevButton = CreateButton(modal.transform, "PrevPageButton", "<", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-190f, -1732f), new Vector2(90f, 58f), new Color(0.15f, 0.20f, 0.43f, 1f), PreviousPage, 28);
+            Button nextButton = CreateButton(modal.transform, "NextPageButton", ">", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(190f, -1732f), new Vector2(90f, 58f), new Color(0.15f, 0.20f, 0.43f, 1f), NextPage, 28);
+            pageText = CreateText(modal.transform, "PageText", "1 / 1", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -1732f), new Vector2(220f, 46f), 23, TextAnchor.MiddleCenter, true);
             prevButton.gameObject.name = "PrevPageButton";
             nextButton.gameObject.name = "NextPageButton";
 
             BuildDetailPanel(modal.transform);
         }
+
 
         private void BuildCardGrid(Transform parent)
         {
@@ -199,7 +204,7 @@ namespace DefenseGame
 
         private void BuildDetailPanel(Transform parent)
         {
-            Image detail = CreatePanel(parent, "DetailPanel", new Vector2(274f, -160f), new Vector2(360f, 1130f), new Color(0.13f, 0.18f, 0.46f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            Image detail = CreatePanel(parent, "DetailPanel", new Vector2(274f, -430f), new Vector2(360f, 1130f), new Color(0.13f, 0.18f, 0.46f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             selectedPortrait = CreatePanel(detail.transform, "SelectedPortrait", new Vector2(0f, -38f), new Vector2(288f, 218f), new Color(0.90f, 0.93f, 1f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             selectedPortraitLabelText = CreateText(selectedPortrait.transform, "PortraitText", "HG", new Color(0.18f, 0.24f, 0.36f), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, 48, TextAnchor.MiddleCenter, true);
             selectedNameText = CreateText(detail.transform, "SelectedName", "Hero", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -292f), new Vector2(300f, 42f), 30, TextAnchor.MiddleCenter, true);

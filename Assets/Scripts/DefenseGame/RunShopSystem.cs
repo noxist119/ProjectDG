@@ -101,6 +101,8 @@ namespace DefenseGame
         private int earlyMiniShopMisses;
         private int earlyRecoveryShopMisses;
         private int regularShopMisses;
+        [SerializeField, Range(3, 12)] private int recentOfferHistorySize = 6;
+        private readonly List<OfferType> recentOfferHistory = new List<OfferType>();
 
         public void Configure(
             DefenseGameController controller,
@@ -222,6 +224,7 @@ namespace DefenseGame
                 earlyMiniShopMisses = 0;
                 earlyRecoveryShopMisses = 0;
                 regularShopMisses = 0;
+                recentOfferHistory.Clear();
             }
 
             if (currentShopIsInsurance && currentOffers.Count > 0)
@@ -404,6 +407,7 @@ namespace DefenseGame
             earlyMiniShopMisses = 0;
             earlyRecoveryShopMisses = 0;
             regularShopMisses = 0;
+            recentOfferHistory.Clear();
         }
 
         private void BuildOffers(int round, bool miniShop, bool recoveryShop, bool insuranceShop)
@@ -415,81 +419,86 @@ namespace DefenseGame
                 return;
             }
 
+            int offerCount = recoveryShop ? Mathf.Clamp(earlyRecoveryShopOfferCount, 1, 3) : miniShop ? Mathf.Clamp(earlyMiniShopOfferCount, 1, 3) : 3;
             List<OfferType> pool = recoveryShop
                 ? BuildRecoveryShopPool()
                 : miniShop ? BuildMiniShopPool(round) : BuildRegularShopPool(round);
 
             RemoveUnavailableAugmentOffers(pool);
-            int offerCount = recoveryShop ? Mathf.Clamp(earlyRecoveryShopOfferCount, 1, 3) : miniShop ? Mathf.Clamp(earlyMiniShopOfferCount, 1, 3) : 3;
-            if (recoveryShop)
-            {
-                AddOffer(OfferType.RecoveryRareUnit, round, miniShop, recoveryShop);
-                pool.Remove(OfferType.RecoveryRareUnit);
-            }
-            else if (miniShop)
-            {
-                OfferType anchor = ResolveMiniShopAnchor(pool);
-                if (pool.Contains(anchor))
-                {
-                    AddOffer(anchor, round, miniShop, recoveryShop);
-                    pool.Remove(anchor);
-                }
-            }
+            RemoveRecentlyOfferedTypes(pool, offerCount);
 
-            else if (round >= firstShopRound)
+            while (currentOffers.Count < offerCount && pool.Count > 0)
             {
-                AddOffer(OfferType.BossIntel, round, miniShop, recoveryShop);
-                pool.Remove(OfferType.BossIntel);
-            }
-
-            OfferType practicalChoice = gameController != null && gameController.Life <= Mathf.CeilToInt(gameController.MaxLife * 0.5f)
-                ? OfferType.FieldMedic
-                : OfferType.Coupon;
-            if (currentOffers.Count < offerCount && pool.Contains(practicalChoice))
-            {
-                AddOffer(practicalChoice, round, miniShop, recoveryShop);
-                pool.Remove(practicalChoice);
-            }
-
-            for (int i = 0; i < offerCount && pool.Count > 0; i++)
-            {
-                if (currentOffers.Count >= offerCount)
-                {
-                    break;
-                }
-
                 int index = UnityEngine.Random.Range(0, pool.Count);
                 OfferType type = pool[index];
                 pool.RemoveAt(index);
                 AddOffer(type, round, miniShop, recoveryShop);
             }
 
+            RememberCurrentOffers();
+        }
+
+        private void RemoveRecentlyOfferedTypes(List<OfferType> pool, int minimumPoolSize)
+        {
+            if (pool == null || recentOfferHistory.Count == 0)
+            {
+                return;
+            }
+
+            int safeMinimum = Mathf.Max(1, minimumPoolSize);
+            for (int i = pool.Count - 1; i >= 0 && pool.Count > safeMinimum; i--)
+            {
+                if (recentOfferHistory.Contains(pool[i]))
+                {
+                    pool.RemoveAt(i);
+                }
+            }
+        }
+
+        private void RememberCurrentOffers()
+        {
+            for (int i = 0; i < currentOffers.Count; i++)
+            {
+                ShopOffer offer = currentOffers[i];
+                if (offer == null)
+                {
+                    continue;
+                }
+
+                recentOfferHistory.Remove(offer.type);
+                recentOfferHistory.Add(offer.type);
+            }
+
+            int historyLimit = Mathf.Max(3, recentOfferHistorySize);
+            while (recentOfferHistory.Count > historyLimit)
+            {
+                recentOfferHistory.RemoveAt(0);
+            }
         }
 
         private static List<OfferType> BuildRecoveryShopPool()
         {
+            // Emergency support still presents a real strategic choice instead of a fixed rare-unit slot.
             return new List<OfferType>
             {
                 OfferType.RecoveryRareUnit,
                 OfferType.RecoveryBossPrep,
                 OfferType.MergeAssist,
                 OfferType.FieldMedic,
-                OfferType.Coupon
+                OfferType.Coupon,
+                OfferType.RandomUnit,
+                OfferType.RareUnit,
+                OfferType.TileReroll,
+                OfferType.BossIntel,
+                OfferType.AugmentGuard,
+                OfferType.AugmentSkill
             };
         }
 
         private List<OfferType> BuildMiniShopPool(int round)
         {
-            if (round <= 7)
-            {
-                return new List<OfferType>
-                {
-                    OfferType.RandomUnit,
-                    OfferType.MergeAssist,
-                    OfferType.Coupon
-                };
-            }
-
+            // The mini shop is a strategic detour, not a fixed merge/coupon script.
+            // Its early pool intentionally starts with ten distinct gameplay choices.
             List<OfferType> pool = new List<OfferType>
             {
                 OfferType.RandomUnit,
@@ -497,25 +506,34 @@ namespace DefenseGame
                 OfferType.MergeAssist,
                 OfferType.TileReroll,
                 OfferType.BossIntel,
-                OfferType.Coupon
+                OfferType.Coupon,
+                OfferType.RiskChest,
+                OfferType.AugmentPower,
+                OfferType.AugmentGuard,
+                OfferType.AugmentSkill
             };
+
             if (NeedsFieldMedic())
             {
                 pool.Add(OfferType.FieldMedic);
             }
 
-            if (round >= 11)
+            if (round >= 8)
             {
-                pool.Add(OfferType.RiskChest);
-                pool.Add(OfferType.AugmentPower);
+                pool.Add(OfferType.FateMergeContract);
+                pool.Add(OfferType.FateBossContract);
+            }
+
+            if (round >= 12)
+            {
+                pool.Add(OfferType.FateShopReroll);
+                pool.Add(OfferType.FateGradeLock);
             }
 
             if (round >= 18)
             {
-                pool.Add(OfferType.AugmentGuard);
-                pool.Add(OfferType.AugmentSkill);
-                pool.Add(OfferType.FateMergeContract);
-                pool.Add(OfferType.FateBossContract);
+                pool.Add(OfferType.FateNormalBan);
+                pool.Add(OfferType.FateForceShop);
             }
 
             return pool;
@@ -532,7 +550,9 @@ namespace DefenseGame
                 OfferType.TileReroll,
                 OfferType.BossIntel,
                 OfferType.Coupon,
-                OfferType.AugmentPower
+                OfferType.AugmentPower,
+                OfferType.AugmentGuard,
+                OfferType.AugmentSkill
             };
             if (NeedsFieldMedic())
             {
@@ -541,8 +561,6 @@ namespace DefenseGame
 
             if (round >= 18)
             {
-                pool.Add(OfferType.AugmentGuard);
-                pool.Add(OfferType.AugmentSkill);
                 pool.Add(OfferType.FateMergeContract);
                 pool.Add(OfferType.FateBossContract);
             }
@@ -550,20 +568,6 @@ namespace DefenseGame
             return pool;
         }
 
-        private OfferType ResolveMiniShopAnchor(List<OfferType> pool)
-        {
-            if (pool == null || pool.Count == 0)
-            {
-                return OfferType.RandomUnit;
-            }
-
-            if (gameController != null && gameController.BoardUnitCount >= 2 && pool.Contains(OfferType.MergeAssist))
-            {
-                return OfferType.MergeAssist;
-            }
-
-            return pool.Contains(OfferType.RandomUnit) ? OfferType.RandomUnit : pool[0];
-        }
 
         private bool NeedsFieldMedic()
         {
@@ -1485,23 +1489,23 @@ namespace DefenseGame
                 }
 
                 RectTransform rect = button.GetComponent<RectTransform>();
-                float y = -142f - i * 202f;
+                float y = -158f - i * 176f;
                 float x = 0f;
-                Vector2 size = new Vector2(820f, 178f);
+                Vector2 size = new Vector2(790f, 164f);
                 if (currentShopIsRecovery)
                 {
-                    x = i % 2 == 0 ? -22f : 22f;
-                    size = new Vector2(770f, 178f);
+                    x = 0f;
+                    size = new Vector2(790f, 164f);
                 }
                 else if (currentShopIsMini)
                 {
-                    x = (i - 1) * 16f;
-                    size = new Vector2(790f, 178f);
+                    x = 0f;
+                    size = new Vector2(790f, 164f);
                 }
                 else if (currentShopIsInsurance)
                 {
-                    y = -230f;
-                    size = new Vector2(780f, 220f);
+                    y = -234f;
+                    size = new Vector2(790f, 192f);
                 }
 
                 rect.anchoredPosition = new Vector2(x, y);

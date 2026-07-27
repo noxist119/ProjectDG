@@ -3645,6 +3645,14 @@ namespace DefenseGame
             }
         }
 
+        private void HandleCombatTimeScaleChanged(int multiplier)
+        {
+            if (multiplier >= 2 && IsRoundRunning && !FateChoiceSlowMotionActive && !IsDefeatSlowMotionActive)
+            {
+                OnBannerRequested?.Invoke("장기전 가속  ×" + multiplier, new Color(1f, 0.78f, 0.26f), 1.15f);
+            }
+        }
+
         private void SubscribeRoundManager()
         {
             if (roundManager != null)
@@ -3653,6 +3661,8 @@ namespace DefenseGame
                 roundManager.OnRoundStateChanged += HandleRoundStateChanged;
                 roundManager.OnCountdownChanged -= HandleRoundCountdownChanged;
                 roundManager.OnCountdownChanged += HandleRoundCountdownChanged;
+                roundManager.OnCombatTimeScaleChanged -= HandleCombatTimeScaleChanged;
+                roundManager.OnCombatTimeScaleChanged += HandleCombatTimeScaleChanged;
             }
         }
 
@@ -3662,6 +3672,7 @@ namespace DefenseGame
             {
                 roundManager.OnRoundStateChanged -= HandleRoundStateChanged;
                 roundManager.OnCountdownChanged -= HandleRoundCountdownChanged;
+                roundManager.OnCombatTimeScaleChanged -= HandleCombatTimeScaleChanged;
             }
         }
 

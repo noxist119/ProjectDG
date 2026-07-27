@@ -20,6 +20,8 @@ namespace DefenseGame
         [SerializeField] private float defeatResultRevealDelay = 5.15f;
 
         private readonly List<PresetDefinition> presets = new List<PresetDefinition>();
+        private readonly Dictionary<Button, Vector2> outgameNavBasePositions = new Dictionary<Button, Vector2>();
+        private readonly Dictionary<Button, Coroutine> outgameNavAnimationRoutines = new Dictionary<Button, Coroutine>();
         private readonly List<Image> lobbyFeaturedAccentImages = new List<Image>();
         private readonly List<Image> lobbyFeaturedPortraitImages = new List<Image>();
         private readonly List<Text> lobbyFeaturedNameTexts = new List<Text>();
@@ -39,10 +41,12 @@ namespace DefenseGame
         private readonly Text[] rankingRowRankTexts = new Text[9];
         private readonly Text[] rankingRowNameTexts = new Text[9];
         private readonly Text[] rankingRowScoreTexts = new Text[9];
+        private readonly List<GameObject> resultVictoryDecorations = new List<GameObject>();
 
         private Font font;
         private UiSkinResources uiSkin;
         private GameObject root;
+        private GameObject outgameNavigationRoot;
         private GameObject gameplayHudRoot;
         private GameObject lobbyOverlay;
         private GameObject matchmakingOverlay;
@@ -53,11 +57,13 @@ namespace DefenseGame
         private GameObject exitConfirmOverlay;
         private GameObject shopOverlay;
         private GameObject shopPurchaseConfirmOverlay;
+        private GameObject shopPurchaseResultOverlay;
         private GameObject shopSceneCanvasRoot;
-        private Text lobbyPresetNameText;
-        private Text lobbyPresetDescriptionText;
         private Text lobbyModeText;
         private Text lobbyFortuneText;
+        private Text lobbyCollectionSummaryText;
+        private Text lobbyChestStatusText;
+        private Text lobbyRecordStatusText;
         private Text queueTimerText;
         private Text queueStatusText;
         private Text resultTitleText;
@@ -68,6 +74,7 @@ namespace DefenseGame
         private Text resultScoreText;
         private Text resultRecapText;
         private Text resultNextText;
+        private Image resultRibbonImage;
         private Text shopGoldText;
         private Text shopDiamondText;
         private Text shopDailyResetText;
@@ -76,6 +83,12 @@ namespace DefenseGame
         private Text shopResultText;
         private Text shopPurchaseConfirmTitleText;
         private Text shopPurchaseConfirmBodyText;
+        private Text shopPurchaseResultTitleText;
+        private Text shopPurchaseResultBodyText;
+        private Text shopPurchaseResultCurrencyText;
+        private Image shopPurchaseResultIconImage;
+        private RectTransform shopPurchaseResultModalRect;
+        private CanvasGroup shopPurchaseResultCanvasGroup;
         private readonly Button[] shopDailyOfferButtons = new Button[3];
         private readonly Button[] shopCashBundleButtons = new Button[3];
         private Text shopModeText;
@@ -91,18 +104,12 @@ namespace DefenseGame
         private Button resultContinueButton;
         private Button resultRetryButton;
         private Button matchmakingCancelButton;
-        private Button loadoutCloseButton;
-        private Button lobbyCollectionButton;
-        private Button lobbyShopButton;
         private Button lobbyModeButton;
-        private Button loadoutCollectionButton;
         private Button hubShopButton;
         private Button hubInventoryButton;
         private Button hubLobbyButton;
         private Button hubYahtzeeButton;
         private Button hubRankingButton;
-        private Button placeholderCloseButton;
-        private Button rankingCloseButton;
         private Button exitConfirmLeaveButton;
         private Button exitConfirmContinueButton;
         private Button shopEarnedDrawButton;
@@ -116,6 +123,8 @@ namespace DefenseGame
         private Coroutine matchmakingRoutine;
         private Coroutine resultRoutine;
         private Coroutine drawRevealRoutine;
+        private Coroutine shopPurchaseResultRoutine;
+        private Coroutine shopCurrencyCountRoutine;
         private UnityEngine.Events.UnityAction pendingShopPurchaseAction;
         private Sprite roundedSprite;
         private CharacterCollectionUI subscribedCollectionUI;
@@ -123,6 +132,8 @@ namespace DefenseGame
         private bool subscribed;
         private bool defeatPresented;
         private bool resultRewardGranted;
+        private int displayedShopGold;
+        private int displayedShopDiamonds;
         private Scene gameplayScene;
         private Scene shopScene;
 
@@ -176,6 +187,19 @@ namespace DefenseGame
             lobbyButton = externalLobbyButton;
             loadoutButton = externalLoadoutButton;
 
+            if (outgameNavigationRoot != null)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(outgameNavigationRoot);
+                }
+                else
+                {
+                    DestroyImmediate(outgameNavigationRoot);
+                }
+
+                outgameNavigationRoot = null;
+            }
             if (root != null)
             {
                 if (Application.isPlaying)
@@ -271,6 +295,7 @@ namespace DefenseGame
             if (subscribedCollectionUI != null)
             {
                 subscribedCollectionUI.OnClosed += HandleCollectionClosed;
+                subscribedCollectionUI.OnOpened += HandleCollectionOpened;
             }
         }
 
@@ -279,6 +304,7 @@ namespace DefenseGame
             if (subscribedCollectionUI != null)
             {
                 subscribedCollectionUI.OnClosed -= HandleCollectionClosed;
+                subscribedCollectionUI.OnOpened -= HandleCollectionOpened;
                 subscribedCollectionUI = null;
             }
         }
@@ -301,102 +327,161 @@ namespace DefenseGame
             BuildOutgamePlaceholderOverlay(root.transform);
             BuildSeasonRankingOverlay(root.transform);
             BuildExitConfirmOverlay(root.transform);
+            outgameNavigationRoot = new GameObject("OutgameNavigationRoot", typeof(RectTransform));
+            outgameNavigationRoot.transform.SetParent(parent, false);
+            RectTransform navRootRect = outgameNavigationRoot.GetComponent<RectTransform>();
+            navRootRect.anchorMin = Vector2.zero;
+            navRootRect.anchorMax = Vector2.one;
+            navRootRect.offsetMin = Vector2.zero;
+            navRootRect.offsetMax = Vector2.zero;
+            BuildOutgameBottomNav(outgameNavigationRoot.transform);
         }
 
+
         private void BuildLobbyOverlay(Transform parent)
+
         {
-            lobbyOverlay = CreateOverlayRoot(parent, "LobbyOverlay", new Color(0.03f, 0.05f, 0.15f, 0.60f));
-            Image modal = CreatePanel(lobbyOverlay.transform, "LobbyModal", new Vector2(0f, -18f), new Vector2(930f, 1340f), new Color(0.06f, 0.16f, 0.46f, 0.95f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            lobbyOverlay = CreateOverlayRoot(parent, "LobbyOverlay", Color.clear);
+            lobbyOverlay.GetComponent<Image>().raycastTarget = false;
+            Image modal = CreatePanel(lobbyOverlay.transform, "LobbyModal", new Vector2(0f, 76f), new Vector2(0f, -152f), Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), false, false);
+            RollRollUiResource.TryApplySprite(modal, "Common/loot-box-background", Image.Type.Simple, false);
+            modal.color = Color.white;
 
-            CreatePanel(modal.transform, "TopBanner", new Vector2(0f, -34f), new Vector2(760f, 104f), new Color(0.84f, 0.92f, 1f, 0.18f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreateText(modal.transform, "LobbyTitle", "로비", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(260f, 50f), 38, TextAnchor.MiddleCenter, true);
-            CreateText(modal.transform, "LobbySubTitle", "이번 라운드의 추천 조합을 참고하고 전투를 준비하세요.", new Color(0.86f, 0.91f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -92f), new Vector2(720f, 40f), 22, TextAnchor.MiddleCenter, false);
-            lobbyModeText = CreateText(modal.transform, "LobbyModeText", "SERVICE", new Color(0.43f, 1f, 0.80f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(42f, -48f), new Vector2(162f, 34f), 19, TextAnchor.MiddleLeft, true);
-            lobbyModeButton = CreateButton(modal.transform, "LobbyModeButton", "테스트 진입", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-44f, -42f), new Vector2(156f, 54f), new Color(0.23f, 0.72f, 0.82f, 1f), TogglePlayMode, 18);
-            lobbyFortuneText = CreateText(modal.transform, "LobbyFortuneText", DailyFortuneSystem.TodaySummary, new Color(1f, 0.88f, 0.40f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -128f), new Vector2(720f, 30f), 18, TextAnchor.MiddleCenter, true);
+            CreatePanel(modal.transform, "TopBanner", new Vector2(0f, -170f), new Vector2(760f, 104f), new Color(0.84f, 0.92f, 1f, 0.18f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreateText(modal.transform, "LobbyTitle", "로비", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -180f), new Vector2(260f, 50f), 38, TextAnchor.MiddleCenter, true);
+            CreateText(modal.transform, "LobbySubTitle", "전투를 준비하세요.", new Color(0.86f, 0.91f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -230f), new Vector2(720f, 40f), 22, TextAnchor.MiddleCenter, false);
+            lobbyModeText = CreateText(modal.transform, "LobbyModeText", "SERVICE", new Color(0.43f, 1f, 0.80f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(42f, -120f), new Vector2(162f, 34f), 19, TextAnchor.MiddleLeft, true);
+            lobbyModeButton = CreateButton(modal.transform, "LobbyModeButton", "테스트 진입", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-44f, -300f), new Vector2(156f, 54f), new Color(0.23f, 0.72f, 0.82f, 1f), TogglePlayMode, 18);
+            lobbyFortuneText = CreateText(modal.transform, "LobbyFortuneText", DailyFortuneSystem.TodaySummary, new Color(1f, 0.88f, 0.40f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -320f), new Vector2(720f, 30f), 18, TextAnchor.MiddleCenter, true);
 
-            Image coreFactory = CreatePanel(modal.transform, "CoreFactory", new Vector2(0f, -214f), new Vector2(760f, 226f), new Color(0.12f, 0.16f, 0.37f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            coreFactory.gameObject.AddComponent<RectMask2D>();
-            CreatePanel(coreFactory.transform, "FactoryGlow", new Vector2(-132f, -78f), new Vector2(116f, 86f), new Color(0.23f, 0.92f, 0.98f, 0.18f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreatePanel(coreFactory.transform, "FactoryStage", new Vector2(0f, -78f), new Vector2(116f, 86f), new Color(0.34f, 0.15f, 0.76f, 0.86f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreatePanel(coreFactory.transform, "FactoryCore", new Vector2(132f, -78f), new Vector2(116f, 86f), new Color(0.16f, 0.98f, 0.90f, 0.22f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreateText(modal.transform, "FactoryLabel", "이번 라운드 추천 조합", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -192f), new Vector2(420f, 44f), 32, TextAnchor.MiddleCenter, true);
-            CreateText(modal.transform, "FactoryHint", "운영 참고용 정보이며 실제 소환 유닛이나 확률에는 영향을 주지 않습니다.", new Color(0.82f, 0.90f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -398f), new Vector2(760f, 52f), 21, TextAnchor.MiddleCenter, false);
+            Image readyPanel = CreatePanel(modal.transform, "LobbyReadyPanel", new Vector2(0f, -650f), new Vector2(760f, 250f), new Color(0.10f, 0.16f, 0.38f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(readyPanel.transform, "LobbyReadyIcon", "Icons/icon-main-menu-battle", new Vector2(0f, -26f), new Vector2(92f, 92f), Color.white, new Vector2(0.5f, 1f));
+            CreateText(readyPanel.transform, "LobbyReadyTitle", "전투 준비 완료", new Color(1f, 0.88f, 0.36f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -126f), new Vector2(480f, 44f), 32, TextAnchor.MiddleCenter, true);
+            CreateText(readyPanel.transform, "LobbyReadyBody", "전장에 입장한 뒤 유닛을 소환하고\n다음 라운드로 전투를 시작하세요.", new Color(0.84f, 0.91f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -178f), new Vector2(620f, 66f), 21, TextAnchor.MiddleCenter, false);
 
-            lobbyPresetNameText = CreateText(modal.transform, "LobbyPresetName", "R1 추천 · 안정 성장", new Color(1f, 0.90f, 0.42f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -490f), new Vector2(620f, 44f), 32, TextAnchor.MiddleCenter, true);
-            lobbyPresetDescriptionText = CreateText(modal.transform, "LobbyPresetDescription", string.Empty, new Color(0.87f, 0.92f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -536f), new Vector2(820f, 54f), 22, TextAnchor.MiddleCenter, false);
+            Image statusPanel = CreatePanel(modal.transform, "LobbyStatusPanel", new Vector2(0f, -950f), new Vector2(760f, 194f), new Color(0.08f, 0.13f, 0.33f, 0.90f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateText(statusPanel.transform, "LobbyStatusTitle", "오늘의 준비 현황", new Color(0.42f, 0.94f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(480f, 36f), 24, TextAnchor.MiddleCenter, true);
+            Image collectionStatus = CreatePanel(statusPanel.transform, "LobbyCollectionStatus", new Vector2(-238f, -70f), new Vector2(220f, 92f), new Color(0.15f, 0.23f, 0.50f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            Image chestStatus = CreatePanel(statusPanel.transform, "LobbyChestStatus", new Vector2(0f, -70f), new Vector2(220f, 92f), new Color(0.14f, 0.39f, 0.38f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            Image recordStatus = CreatePanel(statusPanel.transform, "LobbyRecordStatus", new Vector2(238f, -70f), new Vector2(220f, 92f), new Color(0.32f, 0.22f, 0.56f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreateText(collectionStatus.transform, "LobbyCollectionLabel", "컬렉션", new Color(0.80f, 0.90f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(190f, 28f), 17, TextAnchor.MiddleCenter, true);
+            CreateText(chestStatus.transform, "LobbyChestLabel", "무료 상자", new Color(0.72f, 1f, 0.80f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(190f, 28f), 17, TextAnchor.MiddleCenter, true);
+            CreateText(recordStatus.transform, "LobbyRecordLabel", "최고 기록", new Color(0.90f, 0.82f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(190f, 28f), 17, TextAnchor.MiddleCenter, true);
+            lobbyCollectionSummaryText = CreateText(collectionStatus.transform, "LobbyCollectionValue", "보유 영웅", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(198f, 38f), 16, TextAnchor.MiddleCenter, false);
+            lobbyChestStatusText = CreateText(chestStatus.transform, "LobbyChestValue", "상자 준비", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(198f, 38f), 17, TextAnchor.MiddleCenter, true);
+            lobbyRecordStatusText = CreateText(recordStatus.transform, "LobbyRecordValue", "최고 R1", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(198f, 38f), 18, TextAnchor.MiddleCenter, true);
 
-            MoveRectInto(coreFactory.transform, modal.transform, "FactoryLabel", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(380f, 42f));
-            MoveRectInto(coreFactory.transform, modal.transform, "FactoryHint", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -176f), new Vector2(720f, 46f));
-            SetRect(lobbyPresetNameText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -492f), new Vector2(620f, 44f));
-            SetRect(lobbyPresetDescriptionText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -540f), new Vector2(780f, 54f));
+            lobbyBattleButton = CreateButton(modal.transform, "LobbyBattleButton", "전장 입장", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 500f), new Vector2(420f, 92f), new Color(0.98f, 0.20f, 0.13f, 1f), HandleEnterPreparationPressed, 33);
+            CreateText(modal.transform, "LobbyBottomHint", "전장 입장 후 유닛을 소환하면 전투를 시작할 수 있습니다.", new Color(0.88f, 0.92f, 1f, 0.88f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 400f), new Vector2(760f, 38f), 19, TextAnchor.MiddleCenter, false);
 
-            BuildRecommendationNotice(modal.transform, -616f);
-            BuildLobbyFeaturedCards(modal.transform);
-            lobbyCollectionButton = CreateButton(modal.transform, "LobbyCollectionButton", "도감", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(1f, 0f), new Vector2(-260f, 120f), new Vector2(200f, 78f), new Color(0.26f, 0.56f, 1f, 0.98f), ToggleCollection, 27);
-            lobbyShopButton = CreateButton(modal.transform, "LobbyShopButton", "상점", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 0f), new Vector2(260f, 120f), new Vector2(200f, 78f), new Color(0.02f, 0.72f, 0.88f, 0.98f), ToggleShop, 27);
-
-            lobbyBattleButton = CreateButton(modal.transform, "LobbyBattleButton", "전장 입장", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 118f), new Vector2(340f, 88f), new Color(0.98f, 0.20f, 0.13f, 1f), HandleEnterPreparationPressed, 33);
-            CreateText(modal.transform, "LobbyBottomHint", "전장에 입장해 유닛을 소환한 뒤 다음 라운드를 누르세요.", new Color(0.88f, 0.92f, 1f, 0.88f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 62f), new Vector2(760f, 38f), 19, TextAnchor.MiddleCenter, false);
-            BuildOutgameBottomNav(lobbyOverlay.transform);
         }
 
         private void BuildOutgameBottomNav(Transform parent)
         {
             Image dock = CreatePanel(parent, "OutgameBottomNavDock", new Vector2(0f, 0f), new Vector2(0f, 152f), new Color(0.88f, 0.93f, 1f, 0.96f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), false, true);
             CreatePanel(dock.transform, "DockTopLine", new Vector2(0f, 150f), new Vector2(0f, 4f), new Color(1f, 1f, 1f, 0.70f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), false, false);
+            RectTransform tabsLayer = CreateOutgameNavTabsLayer(parent, "OutgameBottomNavTabs");
 
-            hubShopButton = CreateOutgameNavButton(dock.transform, "OutgameNavShop", "상점", "SHOP", new Vector2(-432f, 76f), new Color(1f, 0.58f, 0.76f), ToggleShop);
-            hubInventoryButton = CreateOutgameNavButton(dock.transform, "OutgameNavInventory", "인벤", "CARD", new Vector2(-216f, 76f), new Color(0.98f, 0.36f, 0.36f), ToggleCollection);
-            hubLobbyButton = CreateOutgameNavButton(dock.transform, "OutgameNavLobby", "로비", "HOME", new Vector2(0f, 76f), new Color(0.30f, 0.62f, 1f), ShowLobbyTab);
-            hubYahtzeeButton = CreateOutgameNavButton(dock.transform, "OutgameNavYahtzee", "얏찌", "DICE", new Vector2(216f, 76f), new Color(1f, 0.62f, 0.22f), () => ShowOutgamePlaceholder("얏찌", "주사위 기반 보너스 컨텐츠 자리입니다.\n운빨존많겜식 일일/주간 변동 컨텐츠 후보로 남겨둡니다."));
+            hubShopButton = CreateOutgameNavButton(tabsLayer, "OutgameNavShop", "상점", "SHOP", new Vector2(-432f, 140f), new Color(1f, 0.58f, 0.76f), ToggleShop);
+            hubInventoryButton = CreateOutgameNavButton(tabsLayer, "OutgameNavInventory", "인벤", "CARD", new Vector2(-216f, 140f), new Color(0.98f, 0.36f, 0.36f), ShowCollectionTab);
+            hubLobbyButton = CreateOutgameNavButton(tabsLayer, "OutgameNavLobby", "로비", "HOME", new Vector2(0f, 140f), new Color(0.30f, 0.62f, 1f), ShowLobbyTab);
+            hubYahtzeeButton = CreateOutgameNavButton(tabsLayer, "OutgameNavYahtzee", "얏찌", "DICE", new Vector2(216f, 140f), new Color(1f, 0.62f, 0.22f), () => ShowOutgamePlaceholder("얏찌", "주사위 기반 보너스 컨텐츠 자리입니다.\n운빨존많겜식 일일/주간 변동 컨텐츠 후보로 남겨둡니다."));
             hubYahtzeeButton.onClick.RemoveAllListeners();
             hubYahtzeeButton.onClick.AddListener(() => ShowOutgamePlaceholder("\uc58f\ucc0c", "\uc58f\ucc0c\uc5d0\uc11c \ubb34\ub8cc \uc0c1\uc790 \uac8c\uc774\uc9c0\uc640 \uc0c1\uc790 \ud0a4\ub97c \ud68d\ub4dd\ud558\ub294 \uad6c\uc870\uc785\ub2c8\ub2e4.\n\uac8c\uc784\ub9cc \ud574\ub3c4 \uac19\uc740 \uc720\ub2db \ud480\uc744 \uc5bb\uc73c\uba70, \uc2e4\uc81c \uc58f\ucc0c \ub8f0 \ud655\uc815 \ud6c4 \uc810\uc218\u00b7\uc871\ubcf4 \ubcf4\uc0c1\uc774 \uc774 \uac8c\uc774\uc9c0\uc5d0 \uc5f0\uacb0\ub429\ub2c8\ub2e4."));
-            hubRankingButton = CreateOutgameNavButton(dock.transform, "OutgameNavRanking", "랭킹", "CUP", new Vector2(432f, 76f), new Color(0.74f, 0.52f, 1f), ShowSeasonRanking);
+            hubRankingButton = CreateOutgameNavButton(tabsLayer, "OutgameNavRanking", "랭킹", "CUP", new Vector2(432f, 140f), new Color(0.74f, 0.52f, 1f), ShowSeasonRanking);
             HighlightOutgameNav(hubLobbyButton);
+        }
+
+
+        private RectTransform CreateOutgameNavTabsLayer(Transform parent, string name)
+        {
+            GameObject layerObject = new GameObject(name, typeof(RectTransform));
+            layerObject.transform.SetParent(parent, false);
+            RectTransform rect = layerObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(0f, 232f);
+            layerObject.transform.SetAsLastSibling();
+            return rect;
         }
 
         private Button CreateOutgameNavButton(Transform parent, string name, string label, string icon, Vector2 position, Color accent, UnityEngine.Events.UnityAction action)
         {
             Button button = CreateButton(parent, name, string.Empty, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), position, new Vector2(164f, 118f), new Color(0.93f, 0.96f, 1f, 0.98f), action, 20);
-            Image iconPlate = CreatePanel(button.transform, "IconPlate", new Vector2(0f, 33f), new Vector2(68f, 58f), accent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, false);
-            CreateText(iconPlate.transform, "IconText", icon, Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, 14, TextAnchor.MiddleCenter, true);
-            Text labelText = CreateText(button.transform, "NavLabel", label, new Color(0.20f, 0.25f, 0.42f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 16f), new Vector2(132f, 30f), 20, TextAnchor.MiddleCenter, true);
-            AddReadableOutline(labelText);
+            Image background = button.GetComponent<Image>();
+            if (background != null && RollRollUiResource.TryApplySprite(background, "Lobby/000-main-lobby-bottom-menu-background", Image.Type.Sliced, false))
+            {
+                background.color = Color.white;
+            }
+
+            Image navIcon = CreateShopArtwork(button.transform, "NavIcon", ResolveOutgameNavIconPath(button, false), new Vector2(0f, 22f), new Vector2(48f, 48f), Color.white, new Vector2(0.5f, 0.5f));
+            navIcon.raycastTarget = false;
+
+            Text labelText = GetChildText(button.transform, "Label");
+            if (labelText != null)
+            {
+                labelText.gameObject.name = "NavLabel";
+                labelText.text = RuntimeKoreanTextUtility.Clean("NavLabel", label);
+                labelText.color = new Color(0.20f, 0.25f, 0.42f);
+                labelText.fontSize = 20;
+                labelText.resizeTextForBestFit = true;
+                labelText.resizeTextMinSize = 16;
+                labelText.resizeTextMaxSize = 20;
+                labelText.alignment = TextAnchor.MiddleCenter;
+                labelText.rectTransform.anchorMin = new Vector2(0f, 0f);
+                labelText.rectTransform.anchorMax = new Vector2(1f, 0f);
+                labelText.rectTransform.pivot = new Vector2(0.5f, 0f);
+                labelText.rectTransform.anchoredPosition = new Vector2(0f, 10f);
+                labelText.rectTransform.sizeDelta = new Vector2(-18f, 36f);
+                AddReadableOutline(labelText);
+                labelText.transform.SetAsLastSibling();
+            }
+
+            outgameNavBasePositions[button] = position;
+            SetOutgameNavButtonState(button, false);
             return button;
         }
 
         private void BuildOutgamePlaceholderOverlay(Transform parent)
         {
-            outgamePlaceholderOverlay = CreateOverlayRoot(parent, "OutgamePlaceholderOverlay", new Color(0.03f, 0.05f, 0.15f, 0.72f));
-            Image modal = CreatePanel(outgamePlaceholderOverlay.transform, "PlaceholderModal", new Vector2(0f, 40f), new Vector2(760f, 560f), new Color(0.10f, 0.16f, 0.42f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            outgamePlaceholderOverlay = CreateOverlayRoot(parent, "OutgamePlaceholderOverlay", Color.clear);
+            outgamePlaceholderOverlay.GetComponent<Image>().raycastTarget = false;
+            Image modal = CreatePanel(outgamePlaceholderOverlay.transform, "PlaceholderModal", new Vector2(0f, 76f), new Vector2(0f, -152f), new Color(0.10f, 0.16f, 0.42f, 1f), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), false, false);
+            modal.sprite = null;
+            modal.type = Image.Type.Simple;
+            modal.preserveAspect = false;
             CreatePanel(modal.transform, "PlaceholderGlow", new Vector2(0f, -40f), new Vector2(600f, 88f), new Color(0.36f, 0.78f, 1f, 0.18f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             CreateText(modal.transform, "PlaceholderTitle", "준비중", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(520f, 56f), 38, TextAnchor.MiddleCenter, true);
             CreateText(modal.transform, "PlaceholderBody", "아웃게임 컨텐츠 화면 자리입니다.", new Color(0.86f, 0.92f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), new Vector2(610f, 170f), 24, TextAnchor.MiddleCenter, false);
-            placeholderCloseButton = CreateButton(modal.transform, "PlaceholderCloseButton", "닫기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 70f), new Vector2(220f, 72f), new Color(0.30f, 0.62f, 1f, 1f), HideOutgamePlaceholder, 26);
         }
 
         private void BuildSeasonRankingOverlay(Transform parent)
         {
-            seasonRankingOverlay = CreateOverlayRoot(parent, "SeasonRankingOverlay", new Color(0.025f, 0.018f, 0.12f, 0.94f));
-            Image modal = CreatePanel(seasonRankingOverlay.transform, "SeasonRankingModal", new Vector2(0f, 18f), new Vector2(920f, 1660f), new Color(0.16f, 0.10f, 0.42f, 0.995f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            seasonRankingOverlay = CreateOverlayRoot(parent, "SeasonRankingOverlay", Color.clear);
+            seasonRankingOverlay.GetComponent<Image>().raycastTarget = false;
+            Image modal = CreatePanel(seasonRankingOverlay.transform, "SeasonRankingModal", new Vector2(0f, 76f), new Vector2(0f, -152f), new Color32(0x28, 0x04, 0x04, 0xFF), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), false, false);
+            modal.sprite = null;
+            modal.type = Image.Type.Simple;
+            modal.preserveAspect = false;
 
-            CreateShopArtwork(modal.transform, "RankingAmbientBackdrop", "DiceTower/seaseon-rank-buff-background", new Vector2(0f, -122f), new Vector2(860f, 570f), new Color(0.82f, 0.72f, 1f, 0.28f), new Vector2(0.5f, 1f));
-            CreateShopArtwork(modal.transform, "RankingTopVisual", "DiceTower/top-rank-visual-img", new Vector2(0f, -150f), new Vector2(820f, 430f), new Color(1f, 1f, 1f, 0.30f), new Vector2(0.5f, 1f));
+            Image rankingTopVisual = CreateShopArtwork(modal.transform, "RankingTopVisual", "DiceTower/top-rank-visual-img", new Vector2(0f, 5f), new Vector2(820f, 430f), new Color(1f, 1f, 1f, 0.30f), new Vector2(0.5f, 1f));
+            rankingTopVisual.rectTransform.anchoredPosition3D = new Vector3(0f, 5f, 0f);
+            rankingTopVisual.rectTransform.localScale = new Vector3(1.5f, 1.5f, 1f);
 
-            Image header = CreatePanel(modal.transform, "RankingHeader", new Vector2(0f, -20f), new Vector2(858f, 108f), new Color(0.37f, 0.20f, 0.76f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            Image header = CreatePanel(modal.transform, "RankingHeader", new Vector2(0f, -190f), new Vector2(858f, 108f), new Color(0.37f, 0.20f, 0.76f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             CreateShopArtwork(header.transform, "RankingHeaderTrophy", "Icons/icon-main-menu-trophy-activated", new Vector2(34f, -22f), new Vector2(66f, 66f), Color.white, new Vector2(0f, 1f));
             CreateText(header.transform, "RankingTitle", "시즌 랭킹", new Color(1f, 0.94f, 0.72f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(112f, -18f), new Vector2(300f, 48f), 37, TextAnchor.MiddleLeft, true);
             rankingSeasonText = CreateText(header.transform, "RankingSeasonText", "SEASON 1 · 주간 보스 리그", new Color(0.86f, 0.82f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(114f, -65f), new Vector2(420f, 28f), 18, TextAnchor.MiddleLeft, true);
-            rankingCloseButton = CreateButton(header.transform, "RankingCloseButton", "닫기", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-22f, -22f), new Vector2(102f, 64f), new Color(0.92f, 0.27f, 0.30f, 1f), CloseSeasonRanking, 23);
 
-            Image podium = CreatePanel(modal.transform, "RankingPodium", new Vector2(0f, -146f), new Vector2(850f, 414f), new Color(0.11f, 0.07f, 0.33f, 0.72f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            Image podium = CreatePanel(modal.transform, "RankingPodium", new Vector2(0f, -360f), new Vector2(850f, 414f), new Color(0.11f, 0.07f, 0.33f, 0.72f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             CreateText(podium.transform, "PodiumHint", "이번 주 최고의 수호자", new Color(0.94f, 0.86f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(420f, 30f), 21, TextAnchor.MiddleCenter, true);
-            BuildRankingTopCard(podium.transform, 1, 0f, -58f, new Vector2(250f, 326f), "DiceTower/rank-gold-bg", "RankedGrade/ranked-gold", new Color(1f, 0.80f, 0.22f));
-            BuildRankingTopCard(podium.transform, 2, -274f, -94f, new Vector2(222f, 286f), "DiceTower/rank-silver-bg", "RankedGrade/ranked-silver", new Color(0.78f, 0.88f, 1f));
-            BuildRankingTopCard(podium.transform, 3, 274f, -94f, new Vector2(222f, 286f), "DiceTower/rank-bronze-bg", "RankedGrade/ranked-bronze", new Color(1f, 0.63f, 0.36f));
+            BuildRankingTopCard(podium.transform, 1, 0f, -58f, new Vector2(300f, 326f), "DiceTower/rank-gold-bg", "RankedGrade/ranked-gold", new Color(1f, 0.80f, 0.22f));
+            BuildRankingTopCard(podium.transform, 2, -274f, -94f, new Vector2(250f, 280f), "DiceTower/rank-silver-bg", "RankedGrade/ranked-silver", new Color(0.78f, 0.88f, 1f));
+            BuildRankingTopCard(podium.transform, 3, 274f, -94f, new Vector2(250f, 280f), "DiceTower/rank-bronze-bg", "RankedGrade/ranked-bronze", new Color(1f, 0.63f, 0.36f));
 
-            Image list = CreatePanel(modal.transform, "RankingList", new Vector2(0f, -580f), new Vector2(850f, 894f), new Color(0.09f, 0.07f, 0.30f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            Image list = CreatePanel(modal.transform, "RankingList", new Vector2(0f, -808f), new Vector2(850f, 894f), new Color(0.09f, 0.07f, 0.30f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             CreateText(list.transform, "RankingListTitle", "전체 랭킹", new Color(0.98f, 0.90f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -20f), new Vector2(240f, 34f), 25, TextAnchor.MiddleLeft, true);
             CreateText(list.transform, "RankingListGuide", "순위     플레이어                                  점수", new Color(0.66f, 0.72f, 0.94f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(-66f, 28f), 16, TextAnchor.MiddleCenter, true);
             for (int index = 0; index < rankingRowPanels.Length; index++)
@@ -404,7 +489,7 @@ namespace DefenseGame
                 BuildRankingRow(list.transform, index, -92f - index * 86f);
             }
 
-            Image playerFooter = CreatePanel(modal.transform, "RankingPlayerFooter", new Vector2(0f, -1492f), new Vector2(850f, 126f), new Color(0.17f, 0.42f, 0.66f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            Image playerFooter = CreatePanel(modal.transform, "RankingPlayerFooter", new Vector2(0f, -1756f), new Vector2(850f, 126f), new Color(0.17f, 0.42f, 0.66f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             CreateShopArtwork(playerFooter.transform, "RankingPlayerTrophy", "Icons/icon-trophy", new Vector2(28f, -24f), new Vector2(72f, 72f), Color.white, new Vector2(0f, 1f));
             rankingPlayerSummaryText = CreateText(playerFooter.transform, "RankingPlayerSummary", "내 순위 -위  |  레드X  0점", Color.white, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(112f, -20f), new Vector2(-140f, 42f), 26, TextAnchor.MiddleLeft, true);
             rankingPlayerProgressText = CreateText(playerFooter.transform, "RankingPlayerProgress", "최고 런 0점 · 보스 처치 0회", new Color(0.72f, 0.94f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(112f, -68f), new Vector2(-140f, 32f), 18, TextAnchor.MiddleLeft, true);
@@ -421,6 +506,7 @@ namespace DefenseGame
             CreateShopArtwork(card.transform, "TopBadge", badgePath, new Vector2(0f, -20f), new Vector2(badgeSize, badgeSize), Color.white, new Vector2(0.5f, 1f));
             CreateText(card.transform, "TopRank", rank.ToString(), Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(72f, 46f), rank == 1 ? 35 : 29, TextAnchor.MiddleCenter, true);
             rankingTopNameTexts[index] = CreateText(card.transform, "TopName", "플레이어", Color.white, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, rank == 1 ? -150f : -126f), new Vector2(-24f, 42f), rank == 1 ? 25 : 22, TextAnchor.MiddleCenter, true);
+            ApplyTopRankingNameStyle(rankingTopNameTexts[index]);
             Image scorePlate = CreatePanel(card.transform, "TopScorePlate", new Vector2(0f, rank == 1 ? -208f : -178f), new Vector2(size.x - 34f, 58f), new Color(0.08f, 0.06f, 0.25f, 0.88f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             CreateShopArtwork(scorePlate.transform, "TopTrophy", "Icons/icon-trophy", new Vector2(18f, -10f), new Vector2(40f, 40f), Color.white, new Vector2(0f, 1f));
             rankingTopScoreTexts[index] = CreateText(scorePlate.transform, "TopScore", "0", accent, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(66f, -8f), new Vector2(-78f, 40f), rank == 1 ? 25 : 22, TextAnchor.MiddleRight, true);
@@ -428,12 +514,14 @@ namespace DefenseGame
 
         private void BuildRankingRow(Transform parent, int index, float y)
         {
-            Image row = CreatePanel(parent, "RankingRow_" + index, new Vector2(0f, y), new Vector2(790f, 76f), new Color(0.30f, 0.36f, 0.66f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            ApplyRankingPanelSprite(row, "DiceTower/rank-common-bg");
+            Image row = CreatePanel(parent, "RankingRow_" + index, new Vector2(0f, y), new Vector2(790f, 76f), new Color32(0x85, 0x83, 0xA4, 0xFF), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            // Keep the runtime rounded skin here; the rank-common background has squared, cut-off ends.
+            row.type = Image.Type.Sliced;
             rankingRowPanels[index] = row;
             CreateShopArtwork(row.transform, "RankBadge", "RankedGrade/ranked-bronze-small", new Vector2(18f, -10f), new Vector2(56f, 56f), Color.white, new Vector2(0f, 1f));
             rankingRowRankTexts[index] = CreateText(row.transform, "Rank", (index + 4).ToString(), Color.white, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(25f, -17f), new Vector2(42f, 40f), 19, TextAnchor.MiddleCenter, true);
             rankingRowNameTexts[index] = CreateText(row.transform, "PlayerName", "플레이어", Color.white, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(106f, -17f), new Vector2(350f, 40f), 22, TextAnchor.MiddleLeft, true);
+            ApplyRankingRowPlayerNameStyle(rankingRowNameTexts[index]);
             Image scorePlate = CreatePanel(row.transform, "ScorePlate", new Vector2(-18f, -10f), new Vector2(242f, 56f), new Color(0.08f, 0.07f, 0.25f, 0.78f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), true, false);
             CreateShopArtwork(scorePlate.transform, "Trophy", "Icons/icon-trophy", new Vector2(12f, -9f), new Vector2(38f, 38f), Color.white, new Vector2(0f, 1f));
             rankingRowScoreTexts[index] = CreateText(scorePlate.transform, "Score", "0", new Color(1f, 0.86f, 0.36f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(58f, -7f), new Vector2(-70f, 40f), 22, TextAnchor.MiddleRight, true);
@@ -465,21 +553,31 @@ namespace DefenseGame
 
         private void BuildShopOverlay(Transform parent)
         {
-            shopOverlay = CreateOverlayRoot(parent, "OutgameShopOverlay", new Color(0.02f, 0.04f, 0.13f, 0.86f));
-            Image modal = CreatePanel(shopOverlay.transform, "ShopModal", new Vector2(0f, 0f), new Vector2(920f, 1640f), new Color(0.10f, 0.27f, 0.62f, 0.995f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            shopOverlay = CreateOverlayRoot(parent, "OutgameShopOverlay", Color.clear);
+            shopOverlay.GetComponent<Image>().raycastTarget = false;
+            Image modal = CreatePanel(shopOverlay.transform, "ShopModal", new Vector2(0f, 76f), new Vector2(0f, -152f), Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), false, false);
+            RollRollUiResource.TryApplySprite(modal, "Common/background", Image.Type.Simple, false);
+            modal.color = Color.white;
 
-            CreatePanel(modal.transform, "ShopHeader", new Vector2(0f, -18f), new Vector2(850f, 104f), new Color(0.98f, 0.78f, 0.18f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreateShopArtwork(modal.transform, "HeaderGoldIcon", "Icons/goods_icon_gold", new Vector2(-94f, -43f), new Vector2(42f, 42f), new Color(1f, 1f, 1f, 0.98f), new Vector2(0.5f, 1f));
-            CreateShopArtwork(modal.transform, "HeaderDiamondIcon", "Icons/goods_icon_ruby", new Vector2(190f, -43f), new Vector2(42f, 42f), new Color(1f, 1f, 1f, 0.98f), new Vector2(0.5f, 1f));
-            CreateText(modal.transform, "ShopTitle", "상점", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-338f, -43f), new Vector2(140f, 48f), 38, TextAnchor.MiddleCenter, true);
-            shopGoldText = CreateText(modal.transform, "ShopGoldText", "GOLD 0", new Color(1f, 0.84f, 0.28f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(48f, -43f), new Vector2(220f, 42f), 24, TextAnchor.MiddleRight, true);
-            shopDiamondText = CreateText(modal.transform, "DiamondText", "DIA 0", new Color(0.46f, 0.94f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(286f, -43f), new Vector2(160f, 42f), 24, TextAnchor.MiddleRight, true);
-            CreateButton(modal.transform, "ShopCloseButton", "닫기", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -38f), new Vector2(94f, 62f), new Color(0.92f, 0.36f, 0.29f, 1f), HideShop, 22);
-            shopModeText = CreateText(modal.transform, "ShopModeText", "SERVICE", new Color(0.70f, 0.84f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(48f, -126f), new Vector2(340f, 32f), 17, TextAnchor.MiddleLeft, true);
-            shopTestDiamondButton = CreateButton(modal.transform, "TestCurrencyButton", "테스트 재화 충전", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-48f, -116f), new Vector2(224f, 52f), new Color(0.19f, 0.80f, 0.72f, 1f), RechargeTestDiamonds, 18);
+            CreatePanel(modal.transform, "ShopHeader", new Vector2(0f, -95f), new Vector2(850f, 104f), new Color(0.98f, 0.78f, 0.18f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreatePanel(modal.transform, "ShopGoldCurrencyChip", new Vector2(-128f, -129f), new Vector2(260f, 58f), new Color(0.08f, 0.12f, 0.30f, 0.82f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreatePanel(modal.transform, "ShopDiamondCurrencyChip", new Vector2(140f, -129f), new Vector2(250f, 58f), new Color(0.12f, 0.10f, 0.34f, 0.82f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreateShopArtwork(modal.transform, "HeaderGoldIcon", "Icons/goods_icon_gold", new Vector2(-222f, -137f), new Vector2(42f, 42f), new Color(1f, 1f, 1f, 0.98f), new Vector2(0.5f, 1f));
+            CreateShopArtwork(modal.transform, "HeaderDiamondIcon", "Icons/goods_icon_ruby", new Vector2(48f, -137f), new Vector2(42f, 42f), new Color(1f, 1f, 1f, 0.98f), new Vector2(0.5f, 1f));
+            CreateText(modal.transform, "ShopTitle", "상점", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-338f, -120f), new Vector2(140f, 48f), 38, TextAnchor.MiddleCenter, true);
+            shopGoldText = CreateText(modal.transform, "ShopGoldText", "GOLD 0", new Color(1f, 0.84f, 0.28f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-104f, -137f), new Vector2(190f, 42f), 20, TextAnchor.MiddleRight, true);
+            shopDiamondText = CreateText(modal.transform, "DiamondText", "DIA 0", new Color(0.46f, 0.94f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(162f, -137f), new Vector2(180f, 42f), 20, TextAnchor.MiddleRight, true);
+            shopGoldText.resizeTextForBestFit = true;
+            shopGoldText.resizeTextMinSize = 16;
+            shopGoldText.resizeTextMaxSize = 20;
+            shopDiamondText.resizeTextForBestFit = true;
+            shopDiamondText.resizeTextMinSize = 16;
+            shopDiamondText.resizeTextMaxSize = 20;
+            shopModeText = CreateText(modal.transform, "ShopModeText", "SERVICE", new Color(0.70f, 0.84f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(48f, -293f), new Vector2(340f, 32f), 17, TextAnchor.MiddleLeft, true);
+            shopTestDiamondButton = CreateButton(modal.transform, "TestCurrencyButton", "테스트 재화 충전", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-48f, -283f), new Vector2(224f, 52f), new Color(0.19f, 0.80f, 0.72f, 1f), RechargeTestDiamonds, 18);
 
-            Image cashSection = CreatePanel(modal.transform, "CashBundleSection", new Vector2(0f, -166f), new Vector2(820f, 250f), new Color(0.11f, 0.17f, 0.39f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            CreateShopArtwork(cashSection.transform, "CashSectionIcon", "GradeAndGoodsIcons/goods_icon_reward_box", new Vector2(26f, -18f), new Vector2(48f, 48f), Color.white, new Vector2(0f, 1f));
+            Image cashSection = CreatePanel(modal.transform, "CashBundleSection", new Vector2(0f, -363f), new Vector2(820f, 270f), new Color(0.11f, 0.17f, 0.39f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(cashSection.transform, "CashSectionIcon", "GradeAndGoodsIcons/goods_icon_reward_box", new Vector2(26f, -20f), new Vector2(56f, 56f), Color.white, new Vector2(0f, 1f));
             CreateText(cashSection.transform, "CashBundleTitle", "오늘의 꾸러미 · 현금 상품", new Color(1f, 0.88f, 0.42f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(84f, -16f), new Vector2(500f, 36f), 25, TextAnchor.MiddleLeft, true);
             CreatePanel(cashSection.transform, "CashSectionDivider", new Vector2(0f, -54f), new Vector2(760f, 3f), new Color(1f, 0.78f, 0.28f, 0.48f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             string[] cashLabels = { "골드 주머니\n10,000 GOLD\n₩3,300", "다이아 주머니\n1,200 DIA\n₩6,600", "성장 꾸러미\n20,000G + 2,000 DIA\n₩9,900" };
@@ -487,12 +585,12 @@ namespace DefenseGame
             for (int i = 0; i < shopCashBundleButtons.Length; i++)
             {
                 int index = i;
-                shopCashBundleButtons[i] = CreateButton(cashSection.transform, "CashBundleCard_" + i, cashLabels[i], new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-260f + i * 260f, -66f), new Vector2(238f, 158f), new Color(0.66f, 0.24f + i * 0.08f, 0.76f, 0.98f), () => ShowCashBundlePurchaseConfirm(index), 20);
+                shopCashBundleButtons[i] = CreateButton(cashSection.transform, "CashBundleCard_" + i, cashLabels[i], new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-260f + i * 260f, -70f), new Vector2(220f, 180f), new Color(0.66f, 0.24f + i * 0.08f, 0.76f, 0.98f), () => ShowCashBundlePurchaseConfirm(index), 20);
                 DecorateShopProductCard(shopCashBundleButtons[i], cashIcons[i], i == 0 ? new Color(1f, 0.72f, 0.18f, 1f) : i == 1 ? new Color(0.54f, 0.90f, 1f, 1f) : new Color(0.94f, 0.55f, 1f, 1f), false);
             }
 
-            Image dailySection = CreatePanel(modal.transform, "DailyShopSection", new Vector2(0f, -438f), new Vector2(820f, 286f), new Color(0.11f, 0.17f, 0.39f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            CreateShopArtwork(dailySection.transform, "DailySectionIcon", "GradeAndGoodsIcons/goods_icon_gold", new Vector2(26f, -18f), new Vector2(48f, 48f), Color.white, new Vector2(0f, 1f));
+            Image dailySection = CreatePanel(modal.transform, "DailyShopSection", new Vector2(0f, -657f), new Vector2(820f, 286f), new Color(0.11f, 0.17f, 0.39f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(dailySection.transform, "DailySectionIcon", "GradeAndGoodsIcons/goods_icon_gold", new Vector2(26f, -20f), new Vector2(56f, 56f), Color.white, new Vector2(0f, 1f));
             CreateText(dailySection.transform, "DailyShopTitle", "일일 상점", new Color(0.56f, 0.94f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(84f, -18f), new Vector2(240f, 36f), 27, TextAnchor.MiddleLeft, true);
             shopDailyResetText = CreateText(dailySection.transform, "DailyResetText", "갱신까지 00:00", new Color(0.78f, 0.84f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-26f, -20f), new Vector2(300f, 32f), 17, TextAnchor.MiddleRight, false);
             CreatePanel(dailySection.transform, "DailySectionDivider", new Vector2(0f, -58f), new Vector2(760f, 3f), new Color(0.34f, 0.88f, 1f, 0.46f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
@@ -501,20 +599,20 @@ namespace DefenseGame
             for (int i = 0; i < shopDailyOfferButtons.Length; i++)
             {
                 int index = i;
-                shopDailyOfferButtons[i] = CreateButton(dailySection.transform, "DailyOfferCard_" + i, dailyLabels[i], new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-260f + i * 260f, -74f), new Vector2(238f, 176f), i == 0 ? new Color(0.30f, 0.70f, 0.32f, 1f) : new Color(0.25f, 0.38f + i * 0.08f, 0.78f, 1f), () => ShowDailyOfferPurchaseConfirm(index), 20);
+                shopDailyOfferButtons[i] = CreateButton(dailySection.transform, "DailyOfferCard_" + i, dailyLabels[i], new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-260f + i * 260f, -78f), new Vector2(220f, 180f), i == 0 ? new Color(0.30f, 0.70f, 0.32f, 1f) : new Color(0.25f, 0.38f + i * 0.08f, 0.78f, 1f), () => ShowDailyOfferPurchaseConfirm(index), 20);
                 DecorateShopProductCard(shopDailyOfferButtons[i], dailyIcons[i], i == 0 ? new Color(0.54f, 1f, 0.52f, 1f) : i == 1 ? new Color(0.42f, 0.82f, 1f, 1f) : new Color(0.78f, 0.55f, 1f, 1f), false);
             }
 
-            Image chestSection = CreatePanel(modal.transform, "ChestShopSection", new Vector2(0f, -746f), new Vector2(820f, 438f), new Color(0.11f, 0.17f, 0.39f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            CreateShopArtwork(chestSection.transform, "ChestSectionIcon", "Lobby/top-panel-icon-chest-empty", new Vector2(26f, -18f), new Vector2(52f, 46f), Color.white, new Vector2(0f, 1f));
+            Image chestSection = CreatePanel(modal.transform, "ChestShopSection", new Vector2(0f, -967f), new Vector2(820f, 438f), new Color(0.11f, 0.17f, 0.39f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(chestSection.transform, "ChestSectionIcon", "Lobby/top-panel-icon-chest-empty", new Vector2(26f, -20f), new Vector2(56f, 56f), Color.white, new Vector2(0f, 1f));
             CreateText(chestSection.transform, "ChestShopTitle", "영웅 카드 상자 · 다이아 상품", new Color(1f, 0.82f, 0.30f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(84f, -16f), new Vector2(520f, 38f), 27, TextAnchor.MiddleLeft, true);
             CreatePanel(chestSection.transform, "ChestSectionDivider", new Vector2(0f, -54f), new Vector2(760f, 3f), new Color(1f, 0.76f, 0.24f, 0.46f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             shopEarnedDrawButton = CreateButton(chestSection.transform, "EarnedDrawButton", "무료 상자 열기", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(1f, 1f), new Vector2(-12f, -62f), new Vector2(360f, 58f), new Color(0.24f, 0.72f, 0.40f, 1f), ShowEarnedChestConfirm, 20);
             shopWishlistButton = CreateButton(chestSection.transform, "WishlistButton", "위시 영웅 설정", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, 1f), new Vector2(12f, -62f), new Vector2(360f, 58f), new Color(0.50f, 0.34f, 0.78f, 1f), CycleWishlist, 19);
-            shopSingleDrawButton = CreateButton(chestSection.transform, "FiveDrawCard", "5개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-288f, -146f), new Vector2(176f, 112f), new Color(0.20f, 0.66f, 0.78f, 1f), () => ShowPremiumChestPurchaseConfirm(5), 20);
-            shopTenDrawButton = CreateButton(chestSection.transform, "TwentyDrawCard", "20개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-96f, -146f), new Vector2(176f, 112f), new Color(0.34f, 0.54f, 0.88f, 1f), () => ShowPremiumChestPurchaseConfirm(20), 20);
-            shopFiftyDrawButton = CreateButton(chestSection.transform, "FiftyDrawCard", "50개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(96f, -146f), new Vector2(176f, 112f), new Color(0.58f, 0.38f, 0.90f, 1f), () => ShowPremiumChestPurchaseConfirm(50), 20);
-            shopHundredDrawButton = CreateButton(chestSection.transform, "HundredDrawCard", "100개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(288f, -146f), new Vector2(176f, 112f), new Color(0.92f, 0.48f, 0.24f, 1f), () => ShowPremiumChestPurchaseConfirm(100), 20);
+            shopSingleDrawButton = CreateButton(chestSection.transform, "FiveDrawCard", "5개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-288f, -150f), new Vector2(182f, 124f), new Color(0.20f, 0.66f, 0.78f, 1f), () => ShowPremiumChestPurchaseConfirm(5), 20);
+            shopTenDrawButton = CreateButton(chestSection.transform, "TwentyDrawCard", "20개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-96f, -150f), new Vector2(182f, 124f), new Color(0.34f, 0.54f, 0.88f, 1f), () => ShowPremiumChestPurchaseConfirm(20), 20);
+            shopFiftyDrawButton = CreateButton(chestSection.transform, "FiftyDrawCard", "50개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(96f, -150f), new Vector2(182f, 124f), new Color(0.58f, 0.38f, 0.90f, 1f), () => ShowPremiumChestPurchaseConfirm(50), 20);
+            shopHundredDrawButton = CreateButton(chestSection.transform, "HundredDrawCard", "100개", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(288f, -150f), new Vector2(182f, 124f), new Color(0.92f, 0.48f, 0.24f, 1f), () => ShowPremiumChestPurchaseConfirm(100), 20);
             DecorateShopProductCard(shopSingleDrawButton, "GradeAndGoodsIcons/goods_icon_reward_box", new Color(0.38f, 0.90f, 1f, 1f), true);
             DecorateShopProductCard(shopTenDrawButton, "GradeAndGoodsIcons/goods_icon_reward_box", new Color(0.45f, 0.68f, 1f, 1f), true);
             DecorateShopProductCard(shopFiftyDrawButton, "GradeAndGoodsIcons/goods_icon_reward_box", new Color(0.75f, 0.50f, 1f, 1f), true);
@@ -522,14 +620,42 @@ namespace DefenseGame
             shopRatesText = CreateText(chestSection.transform, "RatesText", string.Empty, new Color(0.83f, 0.91f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -280f), new Vector2(-44f, 74f), 16, TextAnchor.MiddleCenter, false);
             shopCollectionText = CreateText(chestSection.transform, "CollectionText", string.Empty, new Color(1f, 0.92f, 0.50f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 34f), new Vector2(-44f, 38f), 20, TextAnchor.MiddleCenter, true);
 
-            Image resultPanel = CreatePanel(modal.transform, "DrawResults", new Vector2(0f, -1208f), new Vector2(820f, 330f), new Color(0.07f, 0.10f, 0.26f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            CreateText(resultPanel.transform, "ResultTitle", "구매·획득 결과", new Color(0.45f, 0.96f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(360f, 34f), 24, TextAnchor.MiddleCenter, true);
-            shopResultText = CreateText(resultPanel.transform, "ResultBody", "상품을 선택하면 결과가 여기에 표시됩니다.", new Color(0.91f, 0.94f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -64f), new Vector2(-52f, 238f), 18, TextAnchor.UpperLeft, false);
+            Image resultPanel = CreatePanel(modal.transform, "DrawResults", new Vector2(0f, -1437f), new Vector2(820f, 330f), new Color(0.07f, 0.10f, 0.26f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateText(resultPanel.transform, "ResultTitle", "최근 구매 상태", new Color(0.45f, 0.96f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(360f, 34f), 24, TextAnchor.MiddleCenter, true);
+            shopResultText = CreateText(resultPanel.transform, "ResultBody", "구매하면 팝업으로 획득 결과가 표시됩니다.", new Color(0.91f, 0.94f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -64f), new Vector2(-52f, 238f), 18, TextAnchor.UpperLeft, false);
 
+            BuildShopBottomNavigation(shopOverlay.transform);
             BuildShopPurchaseConfirm(shopOverlay.transform);
+            BuildShopPurchaseResultPopup(shopOverlay.transform);
             RefreshShop();
         }
 
+        private void BuildShopBottomNavigation(Transform parent)
+        {
+            Image dock = CreatePanel(parent, "ShopBottomNavDock", new Vector2(0f, 0f), new Vector2(0f, 152f), new Color(0.88f, 0.93f, 1f, 1f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), false, true);
+            CreatePanel(dock.transform, "ShopDockTopLine", new Vector2(0f, 150f), new Vector2(0f, 4f), new Color(1f, 1f, 1f, 0.70f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), false, false);
+            RectTransform tabsLayer = CreateOutgameNavTabsLayer(parent, "ShopBottomNavTabs");
+
+            Button shopTab = CreateOutgameNavButton(tabsLayer, "ShopNavShop", "상점", "SHOP", new Vector2(-432f, 140f), new Color(1f, 0.58f, 0.76f), null);
+            Button inventoryTab = CreateOutgameNavButton(tabsLayer, "ShopNavInventory", "인벤", "CARD", new Vector2(-216f, 140f), new Color(0.98f, 0.36f, 0.36f), () =>
+            {
+                HideShop();
+                ShowCollectionTab();
+            });
+            Button lobbyTab = CreateOutgameNavButton(tabsLayer, "ShopNavLobby", "로비", "HOME", new Vector2(0f, 140f), new Color(0.30f, 0.62f, 1f), () =>
+            {
+                HideShop();
+                ShowLobby();
+            });
+            Button yahtzeeTab = CreateOutgameNavButton(tabsLayer, "ShopNavYahtzee", "얏찌", "DICE", new Vector2(216f, 140f), new Color(1f, 0.62f, 0.22f), () => ShowOutgamePlaceholder("얏찌", "얏찌에서 무료 상자 게이지와 상자 키를 획득하는 구조입니다."));
+            Button rankingTab = CreateOutgameNavButton(tabsLayer, "ShopNavRanking", "랭킹", "CUP", new Vector2(432f, 140f), new Color(0.74f, 0.52f, 1f), ShowSeasonRanking);
+
+            SetOutgameNavButtonState(shopTab, true);
+            SetOutgameNavButtonState(inventoryTab, false);
+            SetOutgameNavButtonState(lobbyTab, false);
+            SetOutgameNavButtonState(yahtzeeTab, false);
+            SetOutgameNavButtonState(rankingTab, false);
+        }
         private void BuildShopPurchaseConfirm(Transform parent)
         {
             shopPurchaseConfirmOverlay = CreateOverlayRoot(parent, "ShopPurchaseConfirmOverlay", new Color(0.01f, 0.02f, 0.08f, 0.82f));
@@ -541,6 +667,38 @@ namespace DefenseGame
             CreateButton(confirmModal.transform, "ShopPurchaseConfirmCancelButton", "취소", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(1f, 0f), new Vector2(-14f, 40f), new Vector2(250f, 74f), new Color(0.28f, 0.42f, 0.72f, 1f), HideShopPurchaseConfirm, 25);
             shopPurchaseConfirmButton = CreateButton(confirmModal.transform, "ShopPurchaseConfirmButton", "구매", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 0f), new Vector2(14f, 40f), new Vector2(250f, 74f), new Color(0.95f, 0.52f, 0.16f, 1f), ConfirmPendingShopPurchase, 25);
             shopPurchaseConfirmOverlay.SetActive(false);
+        }
+
+        private void BuildShopPurchaseResultPopup(Transform parent)
+        {
+            shopPurchaseResultOverlay = CreateOverlayRoot(parent, "ShopPurchaseResultOverlay", new Color(0.01f, 0.02f, 0.08f, 0.58f));
+            shopPurchaseResultCanvasGroup = shopPurchaseResultOverlay.AddComponent<CanvasGroup>();
+
+            Image resultModal = CreatePanel(shopPurchaseResultOverlay.transform, "ShopPurchaseResultModal", new Vector2(0f, 38f), new Vector2(720f, 560f), new Color(0.09f, 0.18f, 0.48f, 0.99f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            shopPurchaseResultModalRect = resultModal.rectTransform;
+            CreatePanel(resultModal.transform, "ShopPurchaseResultHeader", new Vector2(0f, -20f), new Vector2(640f, 88f), new Color(0.98f, 0.78f, 0.18f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            shopPurchaseResultTitleText = CreateText(resultModal.transform, "ShopPurchaseResultTitle", "구매 완료", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(540f, 48f), 34, TextAnchor.MiddleCenter, true);
+            CreatePanel(resultModal.transform, "ShopPurchaseResultIconGlow", new Vector2(0f, -138f), new Vector2(170f, 132f), new Color(0.60f, 0.42f, 1f, 0.34f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            shopPurchaseResultIconImage = CreateShopArtwork(resultModal.transform, "ShopPurchaseResultIcon", "GradeAndGoodsIcons/goods_icon_reward_box", new Vector2(0f, -120f), new Vector2(118f, 118f), Color.white, new Vector2(0.5f, 1f));
+            shopPurchaseResultBodyText = CreateText(resultModal.transform, "ShopPurchaseResultBody", "영웅 카드 x5를 구매했습니다.", new Color(0.94f, 0.97f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -254f), new Vector2(610f, 152f), 25, TextAnchor.MiddleCenter, false);
+            shopPurchaseResultBodyText.resizeTextForBestFit = true;
+            shopPurchaseResultBodyText.resizeTextMinSize = 16;
+            shopPurchaseResultBodyText.resizeTextMaxSize = 25;
+            shopPurchaseResultBodyText.rectTransform.anchoredPosition = new Vector2(0f, -266f);
+            shopPurchaseResultBodyText.rectTransform.sizeDelta = new Vector2(610f, 112f);
+            shopPurchaseResultCurrencyText = CreateText(resultModal.transform, "ShopPurchaseResultCurrency", string.Empty, new Color(1f, 0.91f, 0.42f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -350f), new Vector2(600f, 48f), 25, TextAnchor.MiddleCenter, true);
+            shopPurchaseResultCurrencyText.gameObject.SetActive(false);
+            CreateButton(resultModal.transform, "ShopPurchaseResultCloseButton", "확인", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 42f), new Vector2(270f, 74f), new Color(0.28f, 0.62f, 1f, 1f), HideShopPurchaseResultPopup, 26);
+            Transform closeButtonTransform = resultModal.transform.Find("ShopPurchaseResultCloseButton");
+            if (closeButtonTransform != null)
+            {
+                RectTransform closeButtonRect = closeButtonTransform.GetComponent<RectTransform>();
+                if (closeButtonRect != null)
+                {
+                    closeButtonRect.anchoredPosition = new Vector2(0f, 34f);
+                }
+            }
+            shopPurchaseResultOverlay.SetActive(false);
         }
 
         private void BuildMatchmakingOverlay(Transform parent)
@@ -562,16 +720,30 @@ namespace DefenseGame
         {
             resultOverlay = CreateOverlayRoot(parent, "RoundResultOverlay", new Color(0.03f, 0.05f, 0.15f, 0.74f));
             Image modal = CreatePanel(resultOverlay.transform, "ResultModal", new Vector2(0f, 24f), new Vector2(830f, 1120f), new Color(0.13f, 0.17f, 0.42f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
-            CreatePanel(modal.transform, "ResultRibbon", new Vector2(0f, -126f), new Vector2(620f, 112f), new Color(0.17f, 0.42f, 1f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            resultRibbonImage = CreatePanel(modal.transform, "ResultRibbon", new Vector2(0f, -126f), new Vector2(620f, 112f), new Color(0.17f, 0.42f, 1f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
 
-            resultTitleText = CreateText(modal.transform, "ResultTitle", "승리", new Color(1f, 0.84f, 0.18f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -132f), new Vector2(500f, 66f), 56, TextAnchor.MiddleCenter, true);
-            resultSummaryText = CreateText(modal.transform, "ResultSummary", "라운드 1 클리어", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -204f), new Vector2(620f, 40f), 28, TextAnchor.MiddleCenter, true);
-            resultMetaText = CreateText(modal.transform, "ResultMeta", "연속 클리어 +1", new Color(0.95f, 0.90f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -254f), new Vector2(700f, 48f), 24, TextAnchor.MiddleCenter, true);
+            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryBanner", "InGame/ingame-duel-mode-victory-title-background", new Vector2(0f, -108f), new Vector2(720f, 182f), Color.white, new Vector2(0.5f, 1f)));
+            Image leftTrumpet = CreateShopArtwork(modal.transform, "ResultVictoryTrumpetLeft", "InGame/ingame-duel-mode-victory-trumpet", new Vector2(-240f, -76f), new Vector2(198f, 158f), Color.white, new Vector2(0.5f, 1f));
+            RegisterResultVictoryDecoration(leftTrumpet);
+            Image rightTrumpet = CreateShopArtwork(modal.transform, "ResultVictoryTrumpetRight", "InGame/ingame-duel-mode-victory-trumpet", new Vector2(240f, -76f), new Vector2(198f, 158f), Color.white, new Vector2(0.5f, 1f));
+            if (leftTrumpet != null)
+            {
+                leftTrumpet.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
+            }
+            RegisterResultVictoryDecoration(rightTrumpet);
+            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryTrophy", "GradeAndGoodsIcons/icon-trophy", new Vector2(0f, -46f), new Vector2(82f, 82f), Color.white, new Vector2(0.5f, 1f)));
+            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryStarLeft", "InGame/minimi-star", new Vector2(-210f, -214f), new Vector2(30f, 30f), new Color(0.28f, 0.94f, 1f, 0.96f), new Vector2(0.5f, 1f)));
+            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryStarRight", "InGame/minimi-star", new Vector2(210f, -214f), new Vector2(26f, 26f), new Color(1f, 0.66f, 0.24f, 0.96f), new Vector2(0.5f, 1f)));
 
-            Image recapPanel = CreatePanel(modal.transform, "ResultRecapPanel", new Vector2(0f, -356f), new Vector2(730f, 390f), new Color(0.08f, 0.13f, 0.35f, 0.86f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            resultTitleText = CreateText(modal.transform, "ResultTitle", "승리", new Color(1f, 0.84f, 0.18f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -136f), new Vector2(500f, 66f), 56, TextAnchor.MiddleCenter, true);
+            resultSummaryText = CreateText(modal.transform, "ResultSummary", "라운드 1 클리어", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -222f), new Vector2(650f, 40f), 28, TextAnchor.MiddleCenter, true);
+            resultMetaText = CreateText(modal.transform, "ResultMeta", "연속 클리어 +1", new Color(0.95f, 0.90f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -266f), new Vector2(700f, 40f), 22, TextAnchor.MiddleCenter, true);
+
+            Image recapPanel = CreatePanel(modal.transform, "ResultRecapPanel", new Vector2(0f, -344f), new Vector2(730f, 306f), new Color(0.07f, 0.12f, 0.33f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateShopArtwork(recapPanel.transform, "ResultScoreTrophy", "GradeAndGoodsIcons/icon-trophy", new Vector2(-246f, -36f), new Vector2(40f, 40f), Color.white, new Vector2(0.5f, 1f));
             resultScoreText = CreateText(recapPanel.transform, "ResultScore", "RUN SCORE A / 000점", new Color(1f, 0.85f, 0.24f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(660f, 44f), 34, TextAnchor.MiddleCenter, true);
-            resultRecapText = CreateText(recapPanel.transform, "ResultRecap", "MVP 기록 대기\n시너지 준비  |  콤보 준비\n사건 다음 판 대박 조합 노리기", new Color(0.90f, 0.96f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -82f), new Vector2(660f, 132f), 27, TextAnchor.UpperLeft, false);
-            resultNextText = CreateText(recapPanel.transform, "ResultNext", "다음 추천덱\n카드 조각 목표  |  상점 보충", new Color(0.62f, 1f, 0.82f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -238f), new Vector2(660f, 96f), 25, TextAnchor.UpperLeft, true);
+            resultRecapText = CreateText(recapPanel.transform, "ResultRecap", "이번 판 사건 3개\nCARD 1  결과 대기\nCARD 2  결과 대기\nCARD 3  결과 대기", new Color(0.90f, 0.96f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -82f), new Vector2(660f, 132f), 27, TextAnchor.UpperLeft, false);
+            resultNextText = CreateText(recapPanel.transform, "ResultNext", "다음 라운드 준비", new Color(0.62f, 1f, 0.82f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -238f), new Vector2(660f, 96f), 25, TextAnchor.UpperLeft, true);
             resultRecapText.resizeTextForBestFit = true;
             resultRecapText.resizeTextMinSize = 12;
             resultRecapText.resizeTextMaxSize = 16;
@@ -580,20 +752,29 @@ namespace DefenseGame
             resultNextText.resizeTextMaxSize = 14;
             ApplyReadableResultTextLayout();
 
-            Image rewardPanel = CreatePanel(modal.transform, "RewardPanel", new Vector2(0f, -774f), new Vector2(610f, 178f), new Color(0.23f, 0.18f, 0.60f, 0.88f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            CreateText(rewardPanel.transform, "RewardHeader", "보상", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -28f), new Vector2(200f, 30f), 23, TextAnchor.MiddleCenter, true);
-            resultRewardGoldText = CreateRewardChip(rewardPanel.transform, "RewardGold", "ResultRewardGoldIcon", "골드", "Icons/goods_icon_gold", new Vector2(-130f, -58f), new Color(1f, 0.78f, 0.24f), "+000");
-            resultRewardCoreText = CreateRewardChip(rewardPanel.transform, "RewardDiamond", "ResultRewardDiamondIcon", "다이아", "Icons/goods_icon_ruby", new Vector2(130f, -58f), new Color(0.28f, 0.88f, 1f), "+000");
+            Image rewardPanel = CreatePanel(modal.transform, "RewardPanel", new Vector2(0f, -690f), new Vector2(690f, 190f), new Color(0.18f, 0.15f, 0.52f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateText(rewardPanel.transform, "RewardHeader", "전투 보상", new Color(1f, 0.90f, 0.46f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -28f), new Vector2(250f, 32f), 24, TextAnchor.MiddleCenter, true);
+            resultRewardGoldText = CreateRewardChip(rewardPanel.transform, "RewardGold", "ResultRewardGoldIcon", "골드", "GradeAndGoodsIcons/goods_icon_gold", new Vector2(-145f, -58f), new Color(1f, 0.74f, 0.20f), "+000");
+            resultRewardCoreText = CreateRewardChip(rewardPanel.transform, "RewardDiamond", "ResultRewardDiamondIcon", "다이아", "GradeAndGoodsIcons/goods_icon_ruby", new Vector2(145f, -58f), new Color(0.30f, 0.84f, 1f), "+000");
 
             resultRetryButton = CreateButton(modal.transform, "ResultRetryButton", "새 판 다시하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-120f, 58f), new Vector2(306f, 78f), new Color(0.30f, 0.86f, 0.36f, 1f), RetryFromResult, 27);
             resultContinueButton = CreateButton(modal.transform, "ResultContinueButton", "계속하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(190f, 58f), new Vector2(240f, 78f), new Color(0.30f, 0.62f, 1f, 1f), ContinueFromResult, 28);
+            CreateShopArtwork(resultContinueButton.transform, "ContinueStar", "InGame/minimi-star", new Vector2(-114f, 0f), new Vector2(28f, 28f), new Color(1f, 0.91f, 0.34f, 1f), new Vector2(0.5f, 0.5f));
+        }
+
+        private void RegisterResultVictoryDecoration(Image image)
+        {
+            if (image != null)
+            {
+                resultVictoryDecorations.Add(image.gameObject);
+            }
         }
 
         private void ApplyReadableResultTextLayout()
         {
-            ConfigureResultText(resultScoreText, new Vector2(0f, -38f), new Vector2(680f, 62f), 38, TextAnchor.MiddleCenter, 38, 38);
-            ConfigureResultText(resultRecapText, new Vector2(0f, -104f), new Vector2(680f, 170f), 26, TextAnchor.UpperLeft, 22, 26);
-            ConfigureResultText(resultNextText, new Vector2(0f, -278f), new Vector2(680f, 102f), 22, TextAnchor.UpperLeft, 18, 22);
+            ConfigureResultText(resultScoreText, new Vector2(0f, -36f), new Vector2(680f, 58f), 36, TextAnchor.MiddleCenter, 34, 36);
+            ConfigureResultText(resultRecapText, new Vector2(0f, -86f), new Vector2(650f, 124f), 23, TextAnchor.UpperLeft, 20, 23);
+            ConfigureResultText(resultNextText, new Vector2(0f, -222f), new Vector2(650f, 62f), 20, TextAnchor.MiddleCenter, 18, 20);
             AddReadableOutline(resultScoreText);
             AddReadableOutline(resultRecapText);
             AddReadableOutline(resultNextText);
@@ -624,15 +805,16 @@ namespace DefenseGame
 
         private void BuildLoadoutOverlay(Transform parent)
         {
-            loadoutOverlay = CreateOverlayRoot(parent, "LoadoutOverlay", new Color(0.03f, 0.05f, 0.16f, 0.78f));
-            Image modal = CreatePanel(loadoutOverlay.transform, "LoadoutModal", new Vector2(0f, 28f), new Vector2(970f, 1400f), new Color(0.27f, 0.38f, 0.74f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            loadoutOverlay = CreateOverlayRoot(parent, "LoadoutOverlay", Color.clear);
+            loadoutOverlay.GetComponent<Image>().raycastTarget = false;
+            Image modal = CreatePanel(loadoutOverlay.transform, "LoadoutModal", new Vector2(0f, 76f), new Vector2(0f, -152f), new Color(0.27f, 0.38f, 0.74f, 1f), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), false, false);
+            modal.sprite = null;
+            modal.type = Image.Type.Simple;
+            modal.preserveAspect = false;
 
             CreatePanel(modal.transform, "LoadoutHeader", new Vector2(0f, -18f), new Vector2(900f, 112f), new Color(0.96f, 0.80f, 0.20f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             loadoutHeaderText = CreateText(modal.transform, "LoadoutHeaderText", "이번 라운드 추천 조합", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(520f, 48f), 36, TextAnchor.MiddleCenter, true);
             loadoutSummaryText = CreateText(modal.transform, "LoadoutSummaryText", "현재 라운드 흐름에 맞춘 운영 참고용 조합입니다.", new Color(0.88f, 0.92f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -92f), new Vector2(760f, 32f), 18, TextAnchor.MiddleCenter, false);
-            loadoutCloseButton = CreateButton(modal.transform, "LoadoutCloseButton", "닫기", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-34f, -34f), new Vector2(94f, 68f), new Color(0.93f, 0.36f, 0.28f, 1f), HideLoadout, 24);
-
-            loadoutCollectionButton = CreateButton(modal.transform, "LoadoutCollectionButton", "도감", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-144f, -34f), new Vector2(96f, 68f), new Color(0.53f, 0.67f, 0.96f, 1f), ToggleCollection, 24);
             BuildRecommendationNotice(modal.transform, -172f);
 
             CreateText(modal.transform, "DeckHeader", "추천 핵심 유닛 (참고용)", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -286f), new Vector2(620f, 32f), 24, TextAnchor.MiddleCenter, true);
@@ -717,11 +899,12 @@ namespace DefenseGame
 
         private Text CreateRewardChip(Transform parent, string name, string iconName, string title, string iconResourcePath, Vector2 anchoredPosition, Color accentColor, string value)
         {
-            Image chip = CreatePanel(parent, name, anchoredPosition, new Vector2(200f, 132f), new Color(0.96f, 0.97f, 0.99f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            CreatePanel(chip.transform, "Accent", new Vector2(0f, -10f), new Vector2(124f, 42f), accentColor, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreateText(chip.transform, "Title", title, new Color(0.22f, 0.26f, 0.38f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(124f, 22f), 16, TextAnchor.MiddleCenter, true);
-            CreateShopArtwork(chip.transform, iconName, iconResourcePath, new Vector2(-50f, 25f), new Vector2(58f, 58f), Color.white, new Vector2(0.5f, 0f));
-            return CreateText(chip.transform, "Value", value, accentColor, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(32f, 28f), new Vector2(100f, 42f), 31, TextAnchor.MiddleCenter, true);
+            Color chipColor = Color.Lerp(new Color(0.08f, 0.12f, 0.34f, 0.98f), accentColor, 0.18f);
+            Image chip = CreatePanel(parent, name, anchoredPosition, new Vector2(254f, 126f), chipColor, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreatePanel(chip.transform, "Accent", new Vector2(0f, -8f), new Vector2(206f, 5f), accentColor, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreateText(chip.transform, "Title", title, new Color(0.94f, 0.97f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(22f, -26f), new Vector2(136f, 28f), 20, TextAnchor.MiddleLeft, true);
+            CreateShopArtwork(chip.transform, iconName, iconResourcePath, new Vector2(-78f, 24f), new Vector2(68f, 68f), Color.white, new Vector2(0.5f, 0f));
+            return CreateText(chip.transform, "Value", value, accentColor, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(38f, 28f), new Vector2(132f, 48f), 34, TextAnchor.MiddleCenter, true);
         }
 
         private void WireButtons()
@@ -743,32 +926,12 @@ namespace DefenseGame
                 loadoutButton.onClick.RemoveAllListeners();
                 AddButtonListener(loadoutButton, ToggleLoadout);
             }
-
-            if (lobbyCollectionButton != null)
-            {
-                lobbyCollectionButton.onClick.RemoveAllListeners();
-                AddButtonListener(lobbyCollectionButton, ToggleCollection);
-            }
-
-            if (lobbyShopButton != null)
-            {
-                lobbyShopButton.onClick.RemoveAllListeners();
-                AddButtonListener(lobbyShopButton, ToggleShop);
-            }
-
             if (lobbyModeButton != null)
             {
                 lobbyModeButton.onClick.RemoveAllListeners();
                 AddButtonListener(lobbyModeButton, TogglePlayMode);
             }
-
-            if (loadoutCollectionButton != null)
-            {
-                loadoutCollectionButton.onClick.RemoveAllListeners();
-                AddButtonListener(loadoutCollectionButton, ToggleCollection);
-            }
         }
-
         private void BuildPresets()
         {
             presets.Clear();
@@ -832,18 +995,6 @@ namespace DefenseGame
             int upcomingRound = ResolveUpcomingRecommendationRound();
             selectedPresetIndex = ResolveRecommendedPresetIndex(upcomingRound);
             PresetDefinition preset = presets[selectedPresetIndex];
-
-            if (lobbyPresetNameText != null)
-            {
-                lobbyPresetNameText.text = "R" + upcomingRound + " 추천 · " + preset.name;
-                RuntimeUiSkinUtility.ApplyReadableTextColor(lobbyPresetNameText, preset.accentColor, uiSkin);
-            }
-
-            if (lobbyPresetDescriptionText != null)
-            {
-                lobbyPresetDescriptionText.text = preset.description;
-            }
-
             if (loadoutHeaderText != null)
             {
                 loadoutHeaderText.text = "R" + upcomingRound + " 추천 조합 · " + preset.name;
@@ -859,6 +1010,34 @@ namespace DefenseGame
             UpdateLoadoutRosterCards(preset);
         }
 
+        private void RefreshLobbyPreparationStatus()
+        {
+            if (lobbyCollectionSummaryText != null)
+            {
+                lobbyCollectionSummaryText.text = outgameProgression != null ? outgameProgression.BuildCollectionSummary() : "보유 영웅 정보 없음";
+                lobbyCollectionSummaryText.resizeTextForBestFit = true;
+                lobbyCollectionSummaryText.resizeTextMinSize = 12;
+                lobbyCollectionSummaryText.resizeTextMaxSize = 16;
+            }
+
+            if (lobbyChestStatusText != null)
+            {
+                if (outgameProgression != null)
+                {
+                    lobbyChestStatusText.text = "보유 " + outgameProgression.EarnedChestKeys + "개  |  " + outgameProgression.EarnedChestProgress + "/" + outgameProgression.EarnedChestProgressTarget;
+                }
+                else
+                {
+                    lobbyChestStatusText.text = "상자 준비 정보 없음";
+                }
+            }
+
+            if (lobbyRecordStatusText != null)
+            {
+                int highestRound = outgameProgression != null ? Mathf.Max(1, outgameProgression.HighestRoundReached) : 1;
+                lobbyRecordStatusText.text = "최고 R" + highestRound;
+            }
+        }
         private int ResolveUpcomingRecommendationRound()
         {
             if (gameController == null)
@@ -1208,10 +1387,17 @@ namespace DefenseGame
             HideSeasonRanking();
             BuildPresets();
             ApplyRecommendedPreset();
+            RefreshLobbyPreparationStatus();
             SetGameplayHudVisible(false);
             if (lobbyOverlay != null)
             {
                 lobbyOverlay.SetActive(true);
+            }
+
+            if (outgameNavigationRoot != null)
+            {
+                outgameNavigationRoot.SetActive(true);
+                outgameNavigationRoot.transform.SetAsLastSibling();
             }
 
             HighlightOutgameNav(hubLobbyButton);
@@ -1222,6 +1408,11 @@ namespace DefenseGame
             if (lobbyOverlay != null)
             {
                 lobbyOverlay.SetActive(false);
+            }
+
+            if (outgameNavigationRoot != null)
+            {
+                outgameNavigationRoot.SetActive(false);
             }
         }
 
@@ -1237,6 +1428,10 @@ namespace DefenseGame
             HideShop();
             HideOutgamePlaceholder();
             HideExitConfirm();
+            if (characterCollectionUI != null && characterCollectionUI.IsOpen)
+            {
+                characterCollectionUI.Close();
+            }
             ShowLobby();
         }
 
@@ -1263,6 +1458,11 @@ namespace DefenseGame
                 HideShop();
                 HideOutgamePlaceholder();
                 HideExitConfirm();
+                if (characterCollectionUI != null && characterCollectionUI.IsOpen)
+                {
+                    characterCollectionUI.Close();
+                }
+                ShowLobby();
                 ShowLoadout();
                 HighlightOutgameNav(hubInventoryButton);
             }
@@ -1272,6 +1472,22 @@ namespace DefenseGame
         {
             ToggleCollection();
         }
+        private void ShowCollectionTab()
+        {
+            if (characterCollectionUI == null)
+            {
+                return;
+            }
+
+            if (characterCollectionUI.IsOpen)
+            {
+                HandleCollectionOpened();
+                return;
+            }
+
+            ToggleCollection();
+        }
+
 
         private void ToggleCollection()
         {
@@ -1290,14 +1506,7 @@ namespace DefenseGame
                 HideOutgamePlaceholder();
                 HideExitConfirm();
 
-                if (ShouldShowOutgameLobbyAfterCollection())
-                {
-                    ShowLobby();
-                }
-                else
-                {
-                    HideLobby();
-                }
+                ShowLobby();
 
                 HighlightOutgameNav(hubInventoryButton);
             }
@@ -1305,6 +1514,16 @@ namespace DefenseGame
             characterCollectionUI.Toggle();
         }
 
+        private void HandleCollectionOpened()
+        {
+            if (outgameNavigationRoot != null)
+            {
+                outgameNavigationRoot.SetActive(true);
+                outgameNavigationRoot.transform.SetAsLastSibling();
+            }
+
+            HighlightOutgameNav(hubInventoryButton);
+        }
         private void HandleCollectionClosed()
         {
             if (matchmakingOverlay != null && matchmakingOverlay.activeSelf ||
@@ -1353,6 +1572,10 @@ namespace DefenseGame
                 HideSeasonRanking();
                 HideOutgamePlaceholder();
                 HideExitConfirm();
+                if (characterCollectionUI != null && characterCollectionUI.IsOpen)
+                {
+                    characterCollectionUI.Close();
+                }
                 ShowShop();
                 HighlightOutgameNav(hubShopButton);
             }
@@ -1385,6 +1608,18 @@ namespace DefenseGame
                 drawRevealRoutine = null;
             }
 
+            if (shopPurchaseResultRoutine != null)
+            {
+                StopCoroutine(shopPurchaseResultRoutine);
+                shopPurchaseResultRoutine = null;
+            }
+
+            if (shopCurrencyCountRoutine != null)
+            {
+                StopCoroutine(shopCurrencyCountRoutine);
+                shopCurrencyCountRoutine = null;
+            }
+
             if (gameplayScene.IsValid() && gameplayScene.isLoaded)
             {
                 SceneManager.SetActiveScene(gameplayScene);
@@ -1409,6 +1644,13 @@ namespace DefenseGame
             shopPurchaseConfirmTitleText = null;
             shopPurchaseConfirmBodyText = null;
             shopPurchaseConfirmButton = null;
+            shopPurchaseResultOverlay = null;
+            shopPurchaseResultTitleText = null;
+            shopPurchaseResultBodyText = null;
+            shopPurchaseResultCurrencyText = null;
+            shopPurchaseResultIconImage = null;
+            shopPurchaseResultModalRect = null;
+            shopPurchaseResultCanvasGroup = null;
             pendingShopPurchaseAction = null;
             shopSingleDrawButton = null;
             shopTenDrawButton = null;
@@ -1551,6 +1793,7 @@ namespace DefenseGame
                 return;
             }
 
+            HideShopPurchaseResultPopup();
             pendingShopPurchaseAction = action;
             if (shopPurchaseConfirmTitleText != null) shopPurchaseConfirmTitleText.text = title;
             if (shopPurchaseConfirmBodyText != null) shopPurchaseConfirmBodyText.text = body;
@@ -1573,6 +1816,283 @@ namespace DefenseGame
             action?.Invoke();
         }
 
+        private void SetShopResultHint(string message)
+        {
+            if (shopResultText != null)
+            {
+                shopResultText.text = message;
+            }
+        }
+
+        private void ShowShopPurchaseResultPopup(string title, string body, string currencyLine, string iconResourcePath, Color accentColor)
+        {
+            SetShopResultHint(title + "\n팝업으로 획득 결과를 확인하세요.");
+            if (shopPurchaseResultOverlay == null)
+            {
+                return;
+            }
+
+            if (shopPurchaseResultTitleText != null) shopPurchaseResultTitleText.text = title;
+            if (shopPurchaseResultBodyText != null) shopPurchaseResultBodyText.text = body;
+            if (shopPurchaseResultCurrencyText != null)
+            {
+                bool hasCurrencyLine = !string.IsNullOrWhiteSpace(currencyLine);
+                shopPurchaseResultCurrencyText.gameObject.SetActive(hasCurrencyLine);
+                shopPurchaseResultCurrencyText.text = currencyLine;
+                shopPurchaseResultCurrencyText.color = Color.Lerp(new Color(1f, 0.84f, 0.26f), accentColor, 0.24f);
+            }
+
+            if (shopPurchaseResultIconImage != null)
+            {
+                Sprite sprite = RollRollUiResource.LoadSprite(iconResourcePath);
+                if (sprite != null)
+                {
+                    shopPurchaseResultIconImage.sprite = sprite;
+                }
+
+                shopPurchaseResultIconImage.color = Color.white;
+            }
+
+            shopPurchaseResultOverlay.transform.SetAsLastSibling();
+            shopPurchaseResultOverlay.SetActive(true);
+            if (shopPurchaseResultRoutine != null)
+            {
+                StopCoroutine(shopPurchaseResultRoutine);
+            }
+
+            shopPurchaseResultRoutine = StartCoroutine(AnimateShopPurchaseResultPopup());
+        }
+
+        private void HideShopPurchaseResultPopup()
+        {
+            if (shopPurchaseResultRoutine != null)
+            {
+                StopCoroutine(shopPurchaseResultRoutine);
+                shopPurchaseResultRoutine = null;
+            }
+
+            if (shopPurchaseResultOverlay != null)
+            {
+                shopPurchaseResultOverlay.SetActive(false);
+            }
+
+            if (shopPurchaseResultCanvasGroup != null)
+            {
+                shopPurchaseResultCanvasGroup.alpha = 1f;
+            }
+
+            if (shopPurchaseResultModalRect != null)
+            {
+                shopPurchaseResultModalRect.localScale = Vector3.one;
+            }
+        }
+
+        private IEnumerator AnimateShopPurchaseResultPopup()
+        {
+            if (shopPurchaseResultCanvasGroup != null)
+            {
+                shopPurchaseResultCanvasGroup.alpha = 0f;
+                shopPurchaseResultCanvasGroup.blocksRaycasts = true;
+            }
+
+            if (shopPurchaseResultModalRect != null)
+            {
+                shopPurchaseResultModalRect.localScale = Vector3.one * 0.88f;
+            }
+
+            float elapsed = 0f;
+            const float popDuration = 0.22f;
+            while (elapsed < popDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / popDuration);
+                float eased = Mathf.SmoothStep(0f, 1f, t);
+                if (shopPurchaseResultCanvasGroup != null)
+                {
+                    shopPurchaseResultCanvasGroup.alpha = eased;
+                }
+
+                if (shopPurchaseResultModalRect != null)
+                {
+                    float scale = Mathf.Lerp(0.88f, 1.04f, eased);
+                    shopPurchaseResultModalRect.localScale = Vector3.one * scale;
+                }
+
+                yield return null;
+            }
+
+            if (shopPurchaseResultCanvasGroup != null)
+            {
+                shopPurchaseResultCanvasGroup.alpha = 1f;
+            }
+
+            if (shopPurchaseResultModalRect != null)
+            {
+                shopPurchaseResultModalRect.localScale = Vector3.one;
+            }
+
+            yield return null;
+            shopPurchaseResultRoutine = null;
+        }
+
+        private void SetShopCurrencyText(int gold, int diamonds)
+        {
+            displayedShopGold = gold;
+            displayedShopDiamonds = diamonds;
+            if (shopGoldText != null)
+            {
+                shopGoldText.text = "GOLD " + gold.ToString("N0");
+            }
+
+            if (shopDiamondText != null)
+            {
+                shopDiamondText.text = "DIA " + diamonds.ToString("N0");
+            }
+        }
+
+        private void PlayShopCurrencyChange(int fromGold, int fromDiamonds)
+        {
+            if (outgameProgression == null)
+            {
+                return;
+            }
+
+            int startGold = fromGold;
+            int startDiamonds = fromDiamonds;
+            if (shopCurrencyCountRoutine != null)
+            {
+                startGold = displayedShopGold;
+                startDiamonds = displayedShopDiamonds;
+                StopCoroutine(shopCurrencyCountRoutine);
+                shopCurrencyCountRoutine = null;
+            }
+
+            int targetGold = outgameProgression.Gold;
+            int targetDiamonds = outgameProgression.Diamonds;
+            if (startGold == targetGold && startDiamonds == targetDiamonds)
+            {
+                SetShopCurrencyText(targetGold, targetDiamonds);
+                return;
+            }
+
+            shopCurrencyCountRoutine = StartCoroutine(AnimateShopCurrencyText(startGold, startDiamonds, targetGold, targetDiamonds));
+        }
+
+        private IEnumerator AnimateShopCurrencyText(int startGold, int startDiamonds, int targetGold, int targetDiamonds)
+        {
+            const float duration = 0.72f;
+            float elapsed = 0f;
+            SetShopCurrencyText(startGold, startDiamonds);
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
+                int gold = Mathf.RoundToInt(Mathf.Lerp(startGold, targetGold, t));
+                int diamonds = Mathf.RoundToInt(Mathf.Lerp(startDiamonds, targetDiamonds, t));
+                SetShopCurrencyText(gold, diamonds);
+
+                float pulse = 1f + Mathf.Sin(t * Mathf.PI) * 0.07f;
+                if (shopGoldText != null) shopGoldText.rectTransform.localScale = Vector3.one * pulse;
+                if (shopDiamondText != null) shopDiamondText.rectTransform.localScale = Vector3.one * pulse;
+                yield return null;
+            }
+
+            SetShopCurrencyText(targetGold, targetDiamonds);
+            if (shopGoldText != null) shopGoldText.rectTransform.localScale = Vector3.one;
+            if (shopDiamondText != null) shopDiamondText.rectTransform.localScale = Vector3.one;
+            shopCurrencyCountRoutine = null;
+        }
+
+        private string BuildDailyOfferPurchaseBody(int index, List<OutgameDrawResult> results, string fallbackMessage)
+        {
+            string main;
+            switch (index)
+            {
+                case 0:
+                    main = "일일 무료 선물을 받았습니다.";
+                    break;
+                case 1:
+                    main = "영웅 카드 x" + outgameProgression.Settings.dailyCardPackDrawCount + "를 구매했습니다.";
+                    break;
+                default:
+                    main = "프리미엄 카드 x" + outgameProgression.Settings.dailyPremiumPackDrawCount + "를 구매했습니다.";
+                    break;
+            }
+
+            string drawSummary = BuildDrawPopupSummary(results);
+            if (!string.IsNullOrEmpty(drawSummary))
+            {
+                return main + "\n" + drawSummary;
+            }
+
+            return string.IsNullOrWhiteSpace(fallbackMessage) ? main : main + "\n" + fallbackMessage;
+        }
+
+        private static string BuildCurrencyChangeLine(int beforeGold, int beforeDiamonds, int afterGold, int afterDiamonds)
+        {
+            int goldDelta = afterGold - beforeGold;
+            int diamondDelta = afterDiamonds - beforeDiamonds;
+            string line = string.Empty;
+            if (goldDelta != 0)
+            {
+                line = "GOLD " + FormatSignedCurrency(goldDelta);
+            }
+
+            if (diamondDelta != 0)
+            {
+                if (!string.IsNullOrEmpty(line)) line += "  |  ";
+                line += "DIA " + FormatSignedCurrency(diamondDelta);
+            }
+
+            return line;
+        }
+
+        private static string FormatSignedCurrency(int amount)
+        {
+            return (amount > 0 ? "+" : string.Empty) + amount.ToString("N0");
+        }
+
+        private static string BuildDrawPopupSummary(List<OutgameDrawResult> results)
+        {
+            if (results == null || results.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            if (results.Count > 10)
+            {
+                return BuildBulkDrawSummary(results);
+            }
+
+            string output = "획득 카드 " + results.Count + "장";
+            int shown = 0;
+            for (int i = 0; i < results.Count; i++)
+            {
+                OutgameDrawResult result = results[i];
+                if (result == null || result.character == null)
+                {
+                    continue;
+                }
+
+                string status = result.firstAcquisition ? "NEW" : result.leveledUp ? "LEVEL UP" : "획득";
+                if (result.wishlistHit) status += " / 위시";
+                else if (result.pityTriggered) status += " / 보장";
+                output += "\n[" + status + "] " + result.character.displayName + " Lv." + result.level;
+                shown++;
+                if (shown >= 5)
+                {
+                    break;
+                }
+            }
+
+            if (results.Count > shown)
+            {
+                output += "\n외 " + (results.Count - shown) + "장";
+            }
+
+            return output;
+        }
+
         private void HandleCashBundlePurchase(int index)
         {
             if (outgameProgression == null)
@@ -1583,23 +2103,31 @@ namespace DefenseGame
             int[] goldAmounts = { 10000, 0, 20000 };
             int[] diamondAmounts = { 0, 1200, 2000 };
             string[] productNames = { "골드 주머니", "다이아 주머니", "성장 꾸러미" };
+            string[] iconPaths = { "GradeAndGoodsIcons/goods_icon_gold", "GradeAndGoodsIcons/goods_icon_ruby", "GradeAndGoodsIcons/goods_icon_reward_box" };
+            Color[] accents = { new Color(1f, 0.74f, 0.20f), new Color(0.30f, 0.84f, 1f), new Color(0.72f, 0.54f, 1f) };
             int safeIndex = Mathf.Clamp(index, 0, productNames.Length - 1);
             if (!outgameProgression.IsTestMode)
             {
-                if (shopResultText != null)
-                {
-                    shopResultText.text = productNames[safeIndex] + "\n상용 결제 SDK 연결 후 실제 구매가 진행됩니다. 현재 서비스 빌드에서는 재화를 지급하지 않습니다.";
-                }
+                ShowShopPurchaseResultPopup(
+                    "구매 준비중",
+                    productNames[safeIndex] + " 결제 SDK 연결 후 실제 구매가 진행됩니다.",
+                    string.Empty,
+                    iconPaths[safeIndex],
+                    accents[safeIndex]);
                 return;
             }
 
+            int beforeGold = outgameProgression.Gold;
+            int beforeDiamonds = outgameProgression.Diamonds;
             outgameProgression.GrantTestShopCurrency(goldAmounts[safeIndex], diamondAmounts[safeIndex]);
-            if (shopResultText != null)
-            {
-                shopResultText.text = "[TEST] " + productNames[safeIndex] + " 지급 완료"
-                    + "\n+" + goldAmounts[safeIndex].ToString("N0") + " GOLD / +" + diamondAmounts[safeIndex].ToString("N0") + " DIA";
-            }
             RefreshShop();
+            PlayShopCurrencyChange(beforeGold, beforeDiamonds);
+            ShowShopPurchaseResultPopup(
+                "구매 완료",
+                productNames[safeIndex] + "를 구매했습니다.",
+                BuildCurrencyChangeLine(beforeGold, beforeDiamonds, outgameProgression.Gold, outgameProgression.Diamonds),
+                iconPaths[safeIndex],
+                accents[safeIndex]);
         }
 
         private void TryPurchaseDailyOffer(int index)
@@ -1609,22 +2137,31 @@ namespace DefenseGame
                 return;
             }
 
+            int beforeGold = outgameProgression.Gold;
+            int beforeDiamonds = outgameProgression.Diamonds;
             if (!outgameProgression.TryPurchaseDailyShopOffer(index, out List<OutgameDrawResult> results, out string message))
             {
-                if (shopResultText != null)
-                {
-                    shopResultText.text = message;
-                }
                 RefreshShop();
+                ShowShopPurchaseResultPopup(
+                    "구매 실패",
+                    message,
+                    string.Empty,
+                    "Icons/icon-main-menu-shop",
+                    new Color(1f, 0.48f, 0.42f));
                 return;
             }
 
-            if (shopResultText != null)
-            {
-                shopResultText.text = message;
-            }
             RefreshShop();
-            if (results.Count > 0)
+            PlayShopCurrencyChange(beforeGold, beforeDiamonds);
+            string iconPath = index == 0 ? "GradeAndGoodsIcons/goods_icon_gold" : index == 1 ? "GradeAndGoodsIcons/goods_icon_reward_box" : "GradeAndGoodsIcons/goods_icon_ruby";
+            Color accent = index == 0 ? new Color(1f, 0.74f, 0.20f) : index == 1 ? new Color(0.38f, 0.90f, 1f) : new Color(0.78f, 0.55f, 1f);
+            ShowShopPurchaseResultPopup(
+                "구매 완료",
+                BuildDailyOfferPurchaseBody(index, results, message),
+                BuildCurrencyChangeLine(beforeGold, beforeDiamonds, outgameProgression.Gold, outgameProgression.Diamonds),
+                iconPath,
+                accent);
+            if (results != null && results.Count > 0)
             {
                 RuntimeAudioUtility.PlayReroll();
                 drawRevealRoutine = StartCoroutine(RevealDrawResults(results));
@@ -1640,17 +2177,25 @@ namespace DefenseGame
 
             if (!outgameProgression.TryOpenEarnedChest(out List<OutgameDrawResult> results))
             {
-                if (shopResultText != null)
-                {
-                    shopResultText.text = "\ubb34\ub8cc \uc0c1\uc790\uac00 \uc5c6\uc2b5\ub2c8\ub2e4. \uc804\ud22c\ub97c \uc9c4\ud589\ud558\uac70\ub098 \uc774\ud6c4 \uc58f\ucc0c \ubcf4\uc0c1\uc73c\ub85c \uac8c\uc774\uc9c0\ub97c \ucc44\uc6b0\uc138\uc694.";
-                }
-
                 RefreshShop();
+                ShowShopPurchaseResultPopup(
+                    "개봉 실패",
+                    "무료 상자가 없습니다. 전투 보상이나 게이지 보상으로 상자를 채우세요.",
+                    string.Empty,
+                    "GradeAndGoodsIcons/goods_icon_reward_box",
+                    new Color(1f, 0.48f, 0.42f));
                 return;
             }
 
             RuntimeAudioUtility.PlayReroll();
             RefreshShop();
+            string summary = BuildDrawPopupSummary(results);
+            ShowShopPurchaseResultPopup(
+                "획득 완료",
+                "무료 영웅 상자 1개를 열었습니다." + (string.IsNullOrEmpty(summary) ? string.Empty : "\n" + summary),
+                string.Empty,
+                "GradeAndGoodsIcons/goods_icon_reward_box",
+                new Color(0.38f, 0.90f, 1f));
             drawRevealRoutine = StartCoroutine(RevealDrawResults(results));
         }
 
@@ -1662,13 +2207,14 @@ namespace DefenseGame
             }
 
             outgameProgression.CycleWishlist();
-            if (shopResultText != null)
-            {
-                shopResultText.text = "\uc704\uc2dc \uc601\uc6c5 \ubcc0\uacbd: " + outgameProgression.GetWishlistDisplayName()
-                    + "\n\ud504\ub9ac\ubbf8\uc5c4 \uc0c1\uc790\uc5d0\uc11c \ud655\ub960 \ubcf4\uc815\ub418\uba70 20\ud68c \uc548\uc5d0 \uc704\uc2dc\uac00 \ud655\uc815\ub429\ub2c8\ub2e4.";
-            }
-
+            string wishlistName = outgameProgression.GetWishlistDisplayName();
             RefreshShop();
+            ShowShopPurchaseResultPopup(
+                "위시 변경 완료",
+                "위시 영웅을 " + wishlistName + "으로 변경했습니다.\n프리미엄 상자에서 확률 보정되고 20회 안에 확정됩니다.",
+                string.Empty,
+                "Icons/icon-main-menu-collection",
+                new Color(0.78f, 0.55f, 1f));
         }
 
 
@@ -1679,71 +2225,42 @@ namespace DefenseGame
                 return;
             }
 
+            int beforeGold = outgameProgression.Gold;
+            int beforeDiamonds = outgameProgression.Diamonds;
             if (!outgameProgression.TryOpenChest(drawCount, out List<OutgameDrawResult> results))
             {
-                if (shopResultText != null)
-                {
-                    shopResultText.text = "다이아가 부족합니다.";
-                }
-
                 RefreshShop();
+                ShowShopPurchaseResultPopup(
+                    "구매 실패",
+                    "다이아가 부족합니다.",
+                    string.Empty,
+                    "GradeAndGoodsIcons/goods_icon_ruby",
+                    new Color(1f, 0.48f, 0.42f));
                 return;
             }
 
             RuntimeAudioUtility.PlayReroll();
             RefreshShop();
+            PlayShopCurrencyChange(beforeGold, beforeDiamonds);
+            string summary = BuildDrawPopupSummary(results);
+            ShowShopPurchaseResultPopup(
+                "구매 완료",
+                "영웅 카드 x" + drawCount + "를 구매했습니다." + (string.IsNullOrEmpty(summary) ? string.Empty : "\n" + summary),
+                BuildCurrencyChangeLine(beforeGold, beforeDiamonds, outgameProgression.Gold, outgameProgression.Diamonds),
+                "GradeAndGoodsIcons/goods_icon_reward_box",
+                new Color(0.38f, 0.90f, 1f));
             drawRevealRoutine = StartCoroutine(RevealDrawResults(results));
         }
 
         private IEnumerator RevealDrawResults(List<OutgameDrawResult> results)
         {
             SetShopDrawButtonsInteractable(false);
-            if (shopResultText != null)
-            {
-                shopResultText.text = "상자를 여는 중...";
-            }
-
-            yield return new WaitForSeconds(0.45f);
-            if (results != null && results.Count > 20)
-            {
-                shopResultText.text = BuildBulkDrawSummary(results);
-                yield return new WaitForSeconds(0.35f);
-                SetShopDrawButtonsInteractable(true);
-                drawRevealRoutine = null;
-                yield break;
-            }
-
-            string output = string.Empty;
-            for (int i = 0; i < results.Count; i++)
-            {
-                OutgameDrawResult result = results[i];
-                if (result == null || result.character == null)
-                {
-                    continue;
-                }
-
-                string status = result.firstAcquisition ? "NEW" : result.leveledUp ? "LEVEL UP" : "카드 획득";
-                string chestSource = result.chestType == OutgameChestType.Earned ? "\ubb34\ub8cc" : "\ud504\ub9ac\ubbf8\uc5c4";
-                string drawBonus = result.wishlistHit ? " / \uc704\uc2dc \uc801\uc911" : result.pityTriggered ? " / \ucc9c\uc7a5 \ubcf4\uc7a5" : string.Empty;
-                status = chestSource + " | " + status + drawBonus;
-
-                output += "[" + status + "] " + result.character.displayName + "  Lv." + result.level;
-                output += result.requiredCopies > 0 ? "  (" + result.remainingCopies + "/" + result.requiredCopies + ")\n" : "  (MAX)\n";
-                if (shopResultText != null)
-                {
-                    shopResultText.text = output;
-                }
-
-                yield return new WaitForSeconds(0.12f);
-            }
-
-            if (shopResultText != null && string.IsNullOrEmpty(output))
-            {
-                shopResultText.text = "획득 결과가 없습니다.";
-            }
-
-            SetShopDrawButtonsInteractable(true);
+            SetShopResultHint("상자를 여는 중...\n획득 결과는 팝업으로 표시됩니다.");
+            float lockSeconds = results == null ? 0.45f : Mathf.Clamp(0.35f + results.Count * 0.018f, 0.45f, 1.2f);
+            yield return new WaitForSecondsRealtime(lockSeconds);
             drawRevealRoutine = null;
+            SetShopDrawButtonsInteractable(true);
+            RefreshShop();
         }
 
         private static string BuildBulkDrawSummary(List<OutgameDrawResult> results)
@@ -1765,7 +2282,7 @@ namespace DefenseGame
                 if (result.leveledUp) levelUpCount++;
             }
 
-            return "프리미엄 상자 " + results.Count + "개 개봉 완료"
+            return "영웅 카드 " + results.Count + "장 획득 완료"
                 + "\n일반 " + gradeCounts[0] + " / 레어 " + gradeCounts[1] + " / 희귀 " + gradeCounts[2]
                 + "\n전설 " + gradeCounts[3] + " / 신화 " + gradeCounts[4] + " / 초월 " + gradeCounts[5]
                 + "\nNEW " + newCount + " / LEVEL UP " + levelUpCount
@@ -1779,14 +2296,9 @@ namespace DefenseGame
                 return;
             }
 
-            if (shopGoldText != null)
+            if (shopCurrencyCountRoutine == null)
             {
-                shopGoldText.text = "GOLD " + outgameProgression.Gold.ToString("N0");
-            }
-
-            if (shopDiamondText != null)
-            {
-                shopDiamondText.text = "DIA " + outgameProgression.Diamonds;
+                SetShopCurrencyText(outgameProgression.Gold, outgameProgression.Diamonds);
             }
 
             if (shopRatesText != null)
@@ -1830,10 +2342,6 @@ namespace DefenseGame
                 {
                     label.text = "10회 뽑기  " + outgameProgression.Settings.tenChestCost + " DIA";
                 }
-            }
-            if (shopDiamondText != null)
-            {
-                shopDiamondText.text = "DIA " + outgameProgression.Diamonds.ToString("N0");
             }
 
             if (shopEarnedDrawButton != null)
@@ -1893,10 +2401,6 @@ namespace DefenseGame
             RefreshChestPackButton(shopFiftyDrawButton, 50);
             RefreshChestPackButton(shopHundredDrawButton, 100);
 
-            if (shopDiamondText != null)
-            {
-                shopDiamondText.text = "DIA " + outgameProgression.Diamonds.ToString("N0");
-            }
 
             if (shopTestDiamondButton != null)
             {
@@ -1989,16 +2493,114 @@ namespace DefenseGame
             Image image = button.GetComponent<Image>();
             if (image != null)
             {
-                image.color = active ? new Color(0.28f, 0.55f, 1f, 1f) : new Color(0.93f, 0.96f, 1f, 0.98f);
+                // The lobby artwork contains a white tab behind the active state, so use one explicit rounded tile for every nav item.
+                image.sprite = RuntimeUiSkinUtility.GetRoundedPanelSprite();
+                image.type = Image.Type.Sliced;
+                image.preserveAspect = false;
+                image.color = active
+                    ? new Color(0.28f, 0.38f, 0.90f, 1f)
+                    : new Color(0.94f, 0.97f, 1f, 0.99f);
+            }
+
+            if (active)
+            {
+                button.transform.SetAsLastSibling();
+            }
+
+            Transform iconTransform = button.transform.Find("NavIcon");
+            Image navIcon = iconTransform != null ? iconTransform.GetComponent<Image>() : null;
+            Sprite iconSprite = RollRollUiResource.LoadSprite(ResolveOutgameNavIconPath(button, active));
+            if (navIcon != null && iconSprite != null)
+            {
+                navIcon.sprite = iconSprite;
+                navIcon.color = Color.white;
+                navIcon.type = Image.Type.Simple;
+                navIcon.preserveAspect = true;
             }
 
             Text label = GetChildText(button.transform, "NavLabel");
             if (label != null)
             {
-                label.color = active ? Color.white : new Color(0.20f, 0.25f, 0.42f);
+                ApplyOutgameNavLabelStyle(label, active);
             }
+
+            AnimateOutgameNavButton(button, active);
         }
 
+        private void AnimateOutgameNavButton(Button button, bool active)
+        {
+            if (button == null || !outgameNavBasePositions.TryGetValue(button, out Vector2 basePosition))
+            {
+                return;
+            }
+
+            if (outgameNavAnimationRoutines.TryGetValue(button, out Coroutine routine) && routine != null)
+            {
+                StopCoroutine(routine);
+            }
+
+            outgameNavAnimationRoutines[button] = StartCoroutine(AnimateOutgameNavButtonRoutine(button, basePosition, active));
+        }
+
+        private IEnumerator AnimateOutgameNavButtonRoutine(Button button, Vector2 basePosition, bool active)
+        {
+            if (button == null)
+            {
+                yield break;
+            }
+
+            RectTransform rect = button.GetComponent<RectTransform>();
+            if (rect == null)
+            {
+                yield break;
+            }
+
+            Vector2 startPosition = rect.anchoredPosition;
+            Vector2 targetPosition = basePosition + (active ? new Vector2(0f, 32f) : Vector2.zero);
+            Vector3 startScale = rect.localScale;
+            Vector3 targetScale = active ? new Vector3(1.05f, 1.05f, 1f) : Vector3.one;
+            const float duration = 0.18f;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                float eased = Mathf.SmoothStep(0f, 1f, t);
+                rect.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, eased);
+                rect.localScale = Vector3.Lerp(startScale, targetScale, eased);
+                yield return null;
+            }
+
+            rect.anchoredPosition = targetPosition;
+            rect.localScale = targetScale;
+            outgameNavAnimationRoutines.Remove(button);
+        }
+
+        private static string ResolveOutgameNavIconPath(Button button, bool active)
+        {
+            string suffix = active ? "-activated" : string.Empty;
+            string buttonName = button != null ? button.name : string.Empty;
+            switch (buttonName)
+            {
+                case "OutgameNavShop":
+                case "ShopNavShop":
+                    return "Icons/icon-main-menu-shop" + suffix;
+                case "OutgameNavInventory":
+                case "ShopNavInventory":
+                    return "Icons/icon-main-menu-collection" + suffix;
+                case "OutgameNavLobby":
+                case "ShopNavLobby":
+                    return "Icons/icon-main-menu-battle" + suffix;
+                case "OutgameNavYahtzee":
+                case "ShopNavYahtzee":
+                    return "Icons/icon-main-menu-roll" + suffix;
+                case "OutgameNavRanking":
+                case "ShopNavRanking":
+                    return "Icons/icon-main-menu-trophy" + suffix;
+                default:
+                    return "Icons/icon-main-menu-battle" + suffix;
+            }
+        }
         private void SetShopDrawButtonsInteractable(bool interactable)
         {
             if (shopSingleDrawButton != null)
@@ -2036,6 +2638,7 @@ namespace DefenseGame
             RefreshModeUi();
             BuildPresets();
             ApplyRecommendedPreset();
+            RefreshLobbyPreparationStatus();
         }
 
         private void ShowLoadout()
@@ -2069,6 +2672,10 @@ namespace DefenseGame
             HideShop();
             HideResult();
             HideExitConfirm();
+            if (characterCollectionUI != null && characterCollectionUI.IsOpen)
+            {
+                characterCollectionUI.Close();
+            }
             ShowLobby();
 
             if (outgamePlaceholderOverlay != null)
@@ -2099,6 +2706,10 @@ namespace DefenseGame
             HideResult();
             HideOutgamePlaceholder();
             HideExitConfirm();
+            if (characterCollectionUI != null && characterCollectionUI.IsOpen)
+            {
+                characterCollectionUI.Close();
+            }
             ShowLobby();
             RefreshSeasonRanking();
             if (seasonRankingOverlay != null)
@@ -2156,8 +2767,9 @@ namespace DefenseGame
                 RankingEntry entry = entries[entryIndex];
                 rankingRowRankTexts[index].text = (entryIndex + 1).ToString();
                 rankingRowNameTexts[index].text = entry.IsPlayer ? entry.Name + "  ·  나" : entry.Name;
+                ApplyRankingRowPlayerNameStyle(rankingRowNameTexts[index]);
                 rankingRowScoreTexts[index].text = entry.Score.ToString("N0");
-                rankingRowPanels[index].color = entry.IsPlayer ? new Color(0.64f, 0.96f, 1f, 1f) : Color.white;
+                rankingRowPanels[index].color = new Color32(0x85, 0x83, 0xA4, 0xFF);
             }
 
             int playerRank = entries.FindIndex(entry => entry.IsPlayer) + 1;
@@ -2235,6 +2847,19 @@ namespace DefenseGame
 
             HideExitConfirm();
             resultOverlay.SetActive(true);
+            for (int i = 0; i < resultVictoryDecorations.Count; i++)
+            {
+                if (resultVictoryDecorations[i] != null)
+                {
+                    resultVictoryDecorations[i].SetActive(victory);
+                }
+            }
+
+            if (resultRibbonImage != null)
+            {
+                resultRibbonImage.color = victory ? new Color(0.17f, 0.42f, 1f, 0.92f) : new Color(0.70f, 0.18f, 0.22f, 0.92f);
+            }
+
             Color accent = victory ? new Color(1f, 0.84f, 0.18f) : new Color(1f, 0.45f, 0.45f);
 
             if (resultTitleText != null)
@@ -2289,10 +2914,10 @@ namespace DefenseGame
                     RectTransform metaRect = resultMetaText.rectTransform;
                     if (metaRect != null)
                     {
-                        metaRect.sizeDelta = new Vector2(660f, 44f);
+                        metaRect.sizeDelta = new Vector2(700f, 40f);
                     }
 
-                    resultMetaText.fontSize = 24;
+                    resultMetaText.fontSize = 22;
                     resultMetaText.alignment = TextAnchor.MiddleCenter;
                     resultMetaText.text = victory ? "이번 결과: 라운드 " + round + " 클리어" : "이번 결과: 라운드 " + round + " 패배";
                 }
@@ -2348,16 +2973,6 @@ namespace DefenseGame
                 resultMetaText.text = meta;
             }
 
-            if (resultNextText != null && gameController != null)
-            {
-                string loopSummary = outgameProgression != null
-                    ? outgameProgression.BuildSeasonResultLoopSummary()
-                    : gameController.SeasonReplayDigestSummary;
-                if (!string.IsNullOrWhiteSpace(loopSummary))
-                {
-                    resultNextText.text = gameController.RunResultNextCompactSummary + "\n" + loopSummary;
-                }
-            }
 
             if (resultRewardGoldText != null)
             {
@@ -2528,18 +3143,15 @@ namespace DefenseGame
             Image cardImage = button.GetComponent<Image>();
             if (cardImage != null)
             {
-                Sprite cardSprite = RollRollUiResource.LoadSprite("Common/reward-item-tilelist-background-dark", true);
-                if (cardSprite != null)
-                {
-                    cardImage.sprite = cardSprite;
-                    cardImage.type = Image.Type.Sliced;
-                    cardImage.color = Color.white;
-                }
+                // 모든 상품을 같은 큰 둥근 사각 타일로 통일해, 세로 보상 타일처럼 보이는 문제를 없앤다.
+                cardImage.sprite = RuntimeUiSkinUtility.GetRoundedPanelSprite();
+                cardImage.type = Image.Type.Sliced;
+                cardImage.preserveAspect = false;
+                cardImage.color = Color.Lerp(new Color(0.18f, 0.24f, 0.52f, 1f), accent, 0.58f);
             }
 
-            float iconSize = compact ? 54f : 82f;
-            float iconY = compact ? 24f : 38f;
-            CreateShopArtwork(button.transform, "ShopCardAura", "Common/loot-box-background", new Vector2(0f, iconY), new Vector2(iconSize + 34f, iconSize + 34f), new Color(accent.r, accent.g, accent.b, 0.26f), new Vector2(0.5f, 0.5f));
+            float iconSize = compact ? 70f : 96f;
+            float iconY = compact ? 30f : 42f;
             CreateShopArtwork(button.transform, "ShopProductIcon", iconResourcePath, new Vector2(0f, iconY), new Vector2(iconSize, iconSize), Color.white, new Vector2(0.5f, 0.5f));
 
             Text label = GetChildText(button.transform, "Label");
@@ -2549,8 +3161,8 @@ namespace DefenseGame
                 labelRect.anchorMin = new Vector2(0f, 0f);
                 labelRect.anchorMax = new Vector2(1f, 0f);
                 labelRect.pivot = new Vector2(0.5f, 0f);
-                labelRect.anchoredPosition = new Vector2(0f, compact ? 7f : 10f);
-                labelRect.sizeDelta = new Vector2(-18f, compact ? 52f : 74f);
+                labelRect.anchoredPosition = new Vector2(0f, compact ? 5f : 8f);
+                labelRect.sizeDelta = new Vector2(-20f, compact ? 56f : 78f);
                 label.fontSize = compact ? 17 : 18;
                 label.resizeTextForBestFit = true;
                 label.resizeTextMinSize = compact ? 13 : 14;
@@ -2717,6 +3329,83 @@ namespace DefenseGame
 
             RollRollUiResource.TryApplyElementSprite(portraitImage, "Portrait", false, true);
             portraitImage.color = new Color(0.80f, 0.84f, 0.95f, 1f);
+        }
+
+        private static void ApplyOutgameNavLabelStyle(Text label, bool active)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            label.color = active ? Color.white : new Color32(0x1A, 0x22, 0x4B, 0xFF);
+            Shadow shadow = label.GetComponent<Shadow>();
+            if (shadow != null)
+            {
+                shadow.effectColor = active ? new Color(0f, 0f, 0f, 0.72f) : new Color(1f, 1f, 1f, 0.92f);
+                shadow.effectDistance = new Vector2(1.2f, -1.2f);
+            }
+
+            Outline outline = label.GetComponent<Outline>();
+            if (outline == null)
+            {
+                outline = label.gameObject.AddComponent<Outline>();
+            }
+
+            outline.effectColor = active ? new Color(0f, 0f, 0f, 0.88f) : new Color(1f, 1f, 1f, 0.96f);
+            outline.effectDistance = new Vector2(1.1f, -1.1f);
+        }
+
+        private static void ApplyTopRankingNameStyle(Text text)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            text.color = Color.white;
+            Shadow shadow = text.GetComponent<Shadow>();
+            if (shadow != null)
+            {
+                shadow.effectColor = Color.black;
+                shadow.effectDistance = new Vector2(1.5f, -1.5f);
+            }
+
+            Outline outline = text.GetComponent<Outline>();
+            if (outline == null)
+            {
+                outline = text.gameObject.AddComponent<Outline>();
+            }
+
+            outline.effectColor = Color.black;
+            outline.effectDistance = new Vector2(1.2f, -1.2f);
+        }
+
+        private static void ApplyRankingRowPlayerNameStyle(Text text)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            text.color = Color.white;
+            Shadow shadow = text.GetComponent<Shadow>();
+            if (shadow == null)
+            {
+                shadow = text.gameObject.AddComponent<Shadow>();
+            }
+
+            shadow.effectColor = Color.black;
+            shadow.effectDistance = new Vector2(2f, -2f);
+
+            Outline outline = text.GetComponent<Outline>();
+            if (outline == null)
+            {
+                outline = text.gameObject.AddComponent<Outline>();
+            }
+
+            outline.effectColor = Color.black;
+            outline.effectDistance = new Vector2(1.2f, -1.2f);
         }
 
         private void AddReadableOutline(Text text)

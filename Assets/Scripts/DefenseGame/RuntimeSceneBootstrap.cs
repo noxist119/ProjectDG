@@ -1250,8 +1250,8 @@ namespace DefenseGame
             CreatePanel(modal.transform, "AugmentRightRail", new Vector2(-18f, -18f), new Vector2(7f, 650f), new Color(0.67f, 0.36f, 1f, 0.92f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), true, false);
             Button closeButton = CreateButton(modal.transform, font, "AugmentCloseButton", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-32f, -40f), new Vector2(66f, 66f), new Color(0.94f, 0.36f, 0.30f, 0.98f), Color.white, null, out _);
             Text augmentSubtitle = modal.transform.Find("AugmentSubtitle").GetComponent<Text>();
-            augmentSubtitle.fontSize = 24;
-            augmentSubtitle.rectTransform.sizeDelta = new Vector2(780f, 42f);
+            augmentSubtitle.fontSize = 22;
+            augmentSubtitle.rectTransform.sizeDelta = new Vector2(760f, 34f);
             Button reopenButton = CreateButton(parent, font, "AugmentReopenButton", "증강체", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-136f, -206f), new Vector2(180f, 62f), new Color(0.50f, 0.28f, 0.96f, 0.96f), Color.white, null, out Text reopenLabel);
             reopenLabel.fontSize = 28;
             reopenButton.GetComponent<RectTransform>().sizeDelta = new Vector2(210f, 72f);
@@ -1264,11 +1264,11 @@ namespace DefenseGame
             Text[] descriptions = new Text[3];
             for (int i = 0; i < 3; i++)
             {
-                float y = -142f - i * 202f;
-                Button choiceButton = CreateButton(modal.transform, font, "AugmentChoice_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(820f, 178f), new Color(0.13f, 0.15f, 0.36f, 0.99f), Color.white, null, out _);
+                float y = -158f - i * 176f;
+                Button choiceButton = CreateButton(modal.transform, font, "AugmentChoice_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(790f, 164f), new Color(0.13f, 0.15f, 0.36f, 0.99f), Color.white, null, out _);
                 AddCardOutline(choiceButton, new Color(0.67f, 0.38f, 1f, 0.98f), 3f);
-                CreatePanel(choiceButton.transform, "IconBadgeBack", new Vector2(24f, -33f), new Vector2(112f, 112f), new Color(1f, 0.70f, 0.18f, 0.98f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
-                accents[i] = CreatePanel(choiceButton.transform, "IconPlate", new Vector2(36f, -45f), new Vector2(88f, 88f), new Color(0.82f, 0.48f, 1f, 0.98f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                CreatePanel(choiceButton.transform, "IconBadgeBack", new Vector2(26f, -32f), new Vector2(100f, 100f), new Color(1f, 0.70f, 0.18f, 0.98f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                accents[i] = CreatePanel(choiceButton.transform, "IconPlate", new Vector2(38f, -44f), new Vector2(76f, 76f), new Color(0.82f, 0.48f, 1f, 0.98f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
                 CreateSkinIcon(accents[i].transform, "AugmentIcon", "augment", Vector2.zero, new Vector2(62f, 62f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Color.white);
                 styles[i] = CreateText(choiceButton.transform, font, new Color(0.18f, 0.10f, 0.30f), "Style", new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(25f, 14f), new Vector2(110f, 28f), "확정", 18, TextAnchor.MiddleCenter, true);
                 titles[i] = CreateText(choiceButton.transform, font, new Color(1f, 0.86f, 0.28f), "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(160f, -20f), new Vector2(-270f, 42f), "Augment", 31, TextAnchor.MiddleLeft, true);
@@ -1306,8 +1306,8 @@ namespace DefenseGame
             Text header = CreateText(modal.transform, font, Color.white, "RunShopHeader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -42f), new Vector2(460f, 46f), "전투 상점", 36, TextAnchor.MiddleCenter, true);
             header.fontSize = 36;
             Text subtitle = CreateText(modal.transform, font, new Color(0.84f, 0.92f, 1f), "RunShopSubtitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -94f), new Vector2(720f, 32f), "이번 판 전용 상품입니다.", 21, TextAnchor.MiddleCenter, false);
-            subtitle.fontSize = 28;
-            subtitle.rectTransform.sizeDelta = new Vector2(780f, 42f);
+            subtitle.fontSize = 22;
+            subtitle.rectTransform.sizeDelta = new Vector2(760f, 34f);
             CreatePanel(modal.transform, "RunShopTopLine", new Vector2(0f, -122f), new Vector2(720f, 5f), new Color(0.28f, 0.78f, 1f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             CreatePanel(modal.transform, "RunShopBottomLine", new Vector2(0f, 78f), new Vector2(720f, 5f), new Color(0.28f, 0.78f, 1f, 0.78f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), true, false);
             CreatePanel(modal.transform, "RunShopLeftRail", new Vector2(18f, -18f), new Vector2(7f, 620f), new Color(1f, 0.62f, 0.18f, 0.92f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), true, false);
@@ -1326,15 +1326,15 @@ namespace DefenseGame
 
             for (int i = 0; i < buttons.Length; i++)
             {
-                float y = -142f - i * 202f;
-                buttons[i] = CreateButton(modal.transform, font, "RunShopOffer_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(820f, 178f), new Color(0.09f, 0.16f, 0.36f, 0.99f), Color.white, null, out _);
+                float y = -158f - i * 176f;
+                buttons[i] = CreateButton(modal.transform, font, "RunShopOffer_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(790f, 164f), new Color(0.09f, 0.16f, 0.36f, 0.99f), Color.white, null, out _);
                 AddCardOutline(buttons[i], new Color(0.28f, 0.78f, 1f, 0.96f), 3f);
-                CreatePanel(buttons[i].transform, "RunShopIconBadgeBack", new Vector2(24f, -33f), new Vector2(112f, 112f), new Color(0.18f, 0.46f, 0.72f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
-                accents[i] = CreatePanel(buttons[i].transform, "RunShopOfferAccent", new Vector2(36f, -45f), new Vector2(88f, 88f), new Color(0.38f, 0.82f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                CreatePanel(buttons[i].transform, "RunShopIconBadgeBack", new Vector2(26f, -32f), new Vector2(100f, 100f), new Color(0.18f, 0.46f, 0.72f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
+                accents[i] = CreatePanel(buttons[i].transform, "RunShopOfferAccent", new Vector2(38f, -44f), new Vector2(76f, 76f), new Color(0.38f, 0.82f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
                 CreateSkinIcon(accents[i].transform, "RunShopOfferIcon", "shop offer", Vector2.zero, new Vector2(64f, 56f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Color.white);
                 titles[i] = CreateText(buttons[i].transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(160f, -20f), new Vector2(-370f, 42f), "상품", 31, TextAnchor.MiddleLeft, true);
                 descriptions[i] = CreateText(buttons[i].transform, font, new Color(0.88f, 0.92f, 1f), "Description", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(160f, -66f), new Vector2(-368f, 94f), "설명", 24, TextAnchor.UpperLeft, false);
-                Image priceDock = CreatePanel(buttons[i].transform, "PriceDock", new Vector2(-18f, 0f), new Vector2(178f, 118f), new Color(0.055f, 0.09f, 0.23f, 0.98f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), true, false);
+                Image priceDock = CreatePanel(buttons[i].transform, "PriceDock", new Vector2(-18f, 0f), new Vector2(166f, 104f), new Color(0.055f, 0.09f, 0.23f, 0.98f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), true, false);
                 CreateText(priceDock.transform, font, new Color(0.62f, 0.82f, 1f), "PriceCaption", new Vector2(0f, 1f), Vector2.one, new Vector2(0.5f, 1f), new Vector2(0f, -10f), new Vector2(-18f, 28f), "가격", 17, TextAnchor.MiddleCenter, true);
                 prices[i] = CreateText(priceDock.transform, font, new Color(1f, 0.91f, 0.38f), "Price", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(0f, -13f), new Vector2(-14f, -38f), "0G", 30, TextAnchor.MiddleCenter, true);
                 prices[i].resizeTextForBestFit = true;

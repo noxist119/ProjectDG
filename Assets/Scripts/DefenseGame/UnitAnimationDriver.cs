@@ -142,6 +142,11 @@ namespace DefenseGame
 
         public bool PlaySkill(int skillSlot)
         {
+            return PlaySkill(skillSlot, -1f);
+        }
+
+        public bool PlaySkill(int skillSlot, float skillDuration)
+        {
             activeImpactType = AnimationImpactType.Skill;
             activeSkillImpactFallbackDelay = 0f;
             lastPlayedActionHasImpactEvent = false;
@@ -153,19 +158,19 @@ namespace DefenseGame
             {
                 played = TryPlaySkillSlot(skill01States, 1)
                     || TryPlaySkillSlot(skill02States, 2)
-                    || TryPlaySkill03Sequence()
+                    || TryPlaySkill03Sequence(skillDuration)
                     || TryPlaySkillStartOnly();
             }
             else if (skillSlot == 2)
             {
                 played = TryPlaySkillSlot(skill02States, 2)
-                    || TryPlaySkill03Sequence()
+                    || TryPlaySkill03Sequence(skillDuration)
                     || TryPlaySkillStartOnly()
                     || TryPlaySkillSlot(skill01States, 1);
             }
             else
             {
-                played = TryPlaySkill03Sequence()
+                played = TryPlaySkill03Sequence(skillDuration)
                     || TryPlaySkillStartOnly()
                     || TryPlaySkillSlot(skill01States, 1)
                     || TryPlaySkillSlot(skill02States, 2);
@@ -439,7 +444,7 @@ namespace DefenseGame
             return ResolveFirstPlayableState(stateNames);
         }
 
-        private bool TryPlaySkill03Sequence()
+        private bool TryPlaySkill03Sequence(float requestedLoopDuration)
         {
             if (IsLocked)
             {
@@ -460,7 +465,7 @@ namespace DefenseGame
 
             CancelScheduledReturn();
             CancelActionRoutine();
-            actionRoutine = StartCoroutine(PlaySkill03Sequence(startState, loopState, endState));
+            actionRoutine = StartCoroutine(PlaySkill03Sequence(startState, loopState, endState, ResolveSkill03LoopHoldDuration(requestedLoopDuration, skill03LoopHoldDuration)));
             return true;
         }
 
@@ -606,7 +611,15 @@ namespace DefenseGame
             return true;
         }
 
-        private IEnumerator PlaySkill03Sequence(string startState, string loopState, string endState)
+        public static float ResolveSkill03LoopHoldDuration(float requestedLoopDuration, float fallbackDuration)
+        {
+            float fallback = Mathf.Max(0.05f, fallbackDuration);
+            return requestedLoopDuration > 0f && !float.IsNaN(requestedLoopDuration) && !float.IsInfinity(requestedLoopDuration)
+                ? Mathf.Max(0.05f, requestedLoopDuration)
+                : fallback;
+        }
+
+        private IEnumerator PlaySkill03Sequence(string startState, string loopState, string endState, float loopHoldDuration)
         {
             actionInProgress = true;
             lockUntilTime = 0f;
@@ -615,7 +628,7 @@ namespace DefenseGame
             yield return WaitForStateToComplete(startState, skillReturnDelay * 0.45f);
 
             PlayActionState(loopState);
-            float loopEndTime = Time.time + Mathf.Max(0.05f, skill03LoopHoldDuration);
+            float loopEndTime = Time.time + Mathf.Max(0.05f, loopHoldDuration);
             while (Time.time < loopEndTime && IsCurrentlyInState(loopState))
             {
                 yield return null;
