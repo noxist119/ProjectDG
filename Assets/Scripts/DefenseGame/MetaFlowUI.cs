@@ -371,7 +371,7 @@ namespace DefenseGame
             lobbyChestStatusText = CreateText(chestStatus.transform, "LobbyChestValue", "상자 준비", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(198f, 38f), 17, TextAnchor.MiddleCenter, true);
             lobbyRecordStatusText = CreateText(recordStatus.transform, "LobbyRecordValue", "최고 R1", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(198f, 38f), 18, TextAnchor.MiddleCenter, true);
 
-            lobbyBattleButton = CreateButton(modal.transform, "LobbyBattleButton", "전장 입장", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 500f), new Vector2(420f, 92f), new Color(0.98f, 0.20f, 0.13f, 1f), HandleEnterPreparationPressed, 33);
+            lobbyBattleButton = CreateButton(modal.transform, "LobbyBattleButton", "전장 입장", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 500f), new Vector2(420f, 150f), new Color(0.98f, 0.20f, 0.13f, 1f), HandleEnterPreparationPressed, 45);
             CreateText(modal.transform, "LobbyBottomHint", "전장 입장 후 유닛을 소환하면 전투를 시작할 수 있습니다.", new Color(0.88f, 0.92f, 1f, 0.88f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 400f), new Vector2(760f, 38f), 19, TextAnchor.MiddleCenter, false);
 
         }
@@ -719,27 +719,26 @@ namespace DefenseGame
         private void BuildResultOverlay(Transform parent)
         {
             resultOverlay = CreateOverlayRoot(parent, "RoundResultOverlay", new Color(0.03f, 0.05f, 0.15f, 0.74f));
-            Image modal = CreatePanel(resultOverlay.transform, "ResultModal", new Vector2(0f, 24f), new Vector2(830f, 1120f), new Color(0.13f, 0.17f, 0.42f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
-            resultRibbonImage = CreatePanel(modal.transform, "ResultRibbon", new Vector2(0f, -126f), new Vector2(620f, 112f), new Color(0.17f, 0.42f, 1f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-
-            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryBanner", "InGame/ingame-duel-mode-victory-title-background", new Vector2(0f, -108f), new Vector2(720f, 182f), Color.white, new Vector2(0.5f, 1f)));
-            Image leftTrumpet = CreateShopArtwork(modal.transform, "ResultVictoryTrumpetLeft", "InGame/ingame-duel-mode-victory-trumpet", new Vector2(-240f, -76f), new Vector2(198f, 158f), Color.white, new Vector2(0.5f, 1f));
+            Image modal = CreatePanel(resultOverlay.transform, "ResultModal", new Vector2(0f, 24f), new Vector2(830f, 1300f), new Color(0.13f, 0.17f, 0.42f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), true, true);
+            Image leftTrumpet = CreateShopArtwork(modal.transform, "ResultVictoryTrumpetLeft", "InGame/ingame-duel-mode-victory-trumpet", new Vector2(-240f, -30f), new Vector2(198f, 158f), Color.white, new Vector2(0.5f, 1f));
             RegisterResultVictoryDecoration(leftTrumpet);
-            Image rightTrumpet = CreateShopArtwork(modal.transform, "ResultVictoryTrumpetRight", "InGame/ingame-duel-mode-victory-trumpet", new Vector2(240f, -76f), new Vector2(198f, 158f), Color.white, new Vector2(0.5f, 1f));
+            Image rightTrumpet = CreateShopArtwork(modal.transform, "ResultVictoryTrumpetRight", "InGame/ingame-duel-mode-victory-trumpet", new Vector2(240f, -30f), new Vector2(198f, 158f), Color.white, new Vector2(0.5f, 1f));
             if (leftTrumpet != null)
             {
                 leftTrumpet.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
             }
             RegisterResultVictoryDecoration(rightTrumpet);
+            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryBanner", "InGame/ingame-duel-mode-victory-title-background", new Vector2(0f, -108f), new Vector2(720f, 182f), Color.white, new Vector2(0.5f, 1f)));
             RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryTrophy", "GradeAndGoodsIcons/icon-trophy", new Vector2(0f, -46f), new Vector2(82f, 82f), Color.white, new Vector2(0.5f, 1f)));
-            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryStarLeft", "InGame/minimi-star", new Vector2(-210f, -214f), new Vector2(30f, 30f), new Color(0.28f, 0.94f, 1f, 0.96f), new Vector2(0.5f, 1f)));
-            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryStarRight", "InGame/minimi-star", new Vector2(210f, -214f), new Vector2(26f, 26f), new Color(1f, 0.66f, 0.24f, 0.96f), new Vector2(0.5f, 1f)));
+            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryStarLeft", "InGame/minimi-star", new Vector2(-290f, -195f), new Vector2(30f, 30f), new Color(0.28f, 0.94f, 1f, 0.96f), new Vector2(0.5f, 1f)));
+            RegisterResultVictoryDecoration(CreateShopArtwork(modal.transform, "ResultVictoryStarRight", "InGame/minimi-star", new Vector2(290f, -195f), new Vector2(26f, 26f), new Color(1f, 0.66f, 0.24f, 0.96f), new Vector2(0.5f, 1f)));
 
             resultTitleText = CreateText(modal.transform, "ResultTitle", "승리", new Color(1f, 0.84f, 0.18f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -136f), new Vector2(500f, 66f), 56, TextAnchor.MiddleCenter, true);
-            resultSummaryText = CreateText(modal.transform, "ResultSummary", "라운드 1 클리어", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -222f), new Vector2(650f, 40f), 28, TextAnchor.MiddleCenter, true);
-            resultMetaText = CreateText(modal.transform, "ResultMeta", "연속 클리어 +1", new Color(0.95f, 0.90f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -266f), new Vector2(700f, 40f), 22, TextAnchor.MiddleCenter, true);
+            resultRibbonImage = CreatePanel(modal.transform, "ResultRibbon", new Vector2(0f, -300f), new Vector2(650f, 140f), new Color(0.17f, 0.42f, 1f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            resultSummaryText = CreateText(modal.transform, "ResultSummary", "라운드 1 클리어", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -320f), new Vector2(650f, 40f), 28, TextAnchor.MiddleCenter, true);
+            resultMetaText = CreateText(modal.transform, "ResultMeta", "연속 클리어 +1", new Color(0.95f, 0.90f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -360f), new Vector2(700f, 40f), 22, TextAnchor.MiddleCenter, true);
 
-            Image recapPanel = CreatePanel(modal.transform, "ResultRecapPanel", new Vector2(0f, -344f), new Vector2(730f, 306f), new Color(0.07f, 0.12f, 0.33f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            Image recapPanel = CreatePanel(modal.transform, "ResultRecapPanel", new Vector2(0f, -470f), new Vector2(730f, 306f), new Color(0.07f, 0.12f, 0.33f, 0.92f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             CreateShopArtwork(recapPanel.transform, "ResultScoreTrophy", "GradeAndGoodsIcons/icon-trophy", new Vector2(-246f, -36f), new Vector2(40f, 40f), Color.white, new Vector2(0.5f, 1f));
             resultScoreText = CreateText(recapPanel.transform, "ResultScore", "RUN SCORE A / 000점", new Color(1f, 0.85f, 0.24f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(660f, 44f), 34, TextAnchor.MiddleCenter, true);
             resultRecapText = CreateText(recapPanel.transform, "ResultRecap", "이번 판 사건 3개\nCARD 1  결과 대기\nCARD 2  결과 대기\nCARD 3  결과 대기", new Color(0.90f, 0.96f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -82f), new Vector2(660f, 132f), 27, TextAnchor.UpperLeft, false);
@@ -752,13 +751,13 @@ namespace DefenseGame
             resultNextText.resizeTextMaxSize = 14;
             ApplyReadableResultTextLayout();
 
-            Image rewardPanel = CreatePanel(modal.transform, "RewardPanel", new Vector2(0f, -690f), new Vector2(690f, 190f), new Color(0.18f, 0.15f, 0.52f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
-            CreateText(rewardPanel.transform, "RewardHeader", "전투 보상", new Color(1f, 0.90f, 0.46f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -28f), new Vector2(250f, 32f), 24, TextAnchor.MiddleCenter, true);
+            Image rewardPanel = CreatePanel(modal.transform, "RewardPanel", new Vector2(0f, -800f), new Vector2(690f, 200f), new Color(0.18f, 0.15f, 0.52f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            CreateText(rewardPanel.transform, "RewardHeader", "전투 보상", new Color(1f, 0.90f, 0.46f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(250f, 32f), 24, TextAnchor.MiddleCenter, true);
             resultRewardGoldText = CreateRewardChip(rewardPanel.transform, "RewardGold", "ResultRewardGoldIcon", "골드", "GradeAndGoodsIcons/goods_icon_gold", new Vector2(-145f, -58f), new Color(1f, 0.74f, 0.20f), "+000");
             resultRewardCoreText = CreateRewardChip(rewardPanel.transform, "RewardDiamond", "ResultRewardDiamondIcon", "다이아", "GradeAndGoodsIcons/goods_icon_ruby", new Vector2(145f, -58f), new Color(0.30f, 0.84f, 1f), "+000");
 
             resultRetryButton = CreateButton(modal.transform, "ResultRetryButton", "새 판 다시하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-120f, 58f), new Vector2(306f, 78f), new Color(0.30f, 0.86f, 0.36f, 1f), RetryFromResult, 27);
-            resultContinueButton = CreateButton(modal.transform, "ResultContinueButton", "계속하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(190f, 58f), new Vector2(240f, 78f), new Color(0.30f, 0.62f, 1f, 1f), ContinueFromResult, 28);
+            resultContinueButton = CreateButton(modal.transform, "ResultContinueButton", "계속하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(190f, 75f), new Vector2(240f, 100f), new Color(0.30f, 0.62f, 1f, 1f), ContinueFromResult, 28);
             CreateShopArtwork(resultContinueButton.transform, "ContinueStar", "InGame/minimi-star", new Vector2(-114f, 0f), new Vector2(28f, 28f), new Color(1f, 0.91f, 0.34f, 1f), new Vector2(0.5f, 0.5f));
         }
 
@@ -772,6 +771,8 @@ namespace DefenseGame
 
         private void ApplyReadableResultTextLayout()
         {
+            ConfigureResultRibbonText(resultSummaryText, new Vector2(0f, -318f), new Vector2(610f, 50f), 28, 21);
+            ConfigureResultRibbonText(resultMetaText, new Vector2(0f, -370f), new Vector2(610f, 46f), 22, 18);
             ConfigureResultText(resultScoreText, new Vector2(0f, -36f), new Vector2(680f, 58f), 36, TextAnchor.MiddleCenter, 34, 36);
             ConfigureResultText(resultRecapText, new Vector2(0f, -86f), new Vector2(650f, 124f), 23, TextAnchor.UpperLeft, 20, 23);
             ConfigureResultText(resultNextText, new Vector2(0f, -222f), new Vector2(650f, 62f), 20, TextAnchor.MiddleCenter, 18, 20);
@@ -780,6 +781,29 @@ namespace DefenseGame
             AddReadableOutline(resultNextText);
             AddReadableOutline(resultSummaryText);
             AddReadableOutline(resultMetaText);
+        }
+
+        private static void ConfigureResultRibbonText(Text text, Vector2 position, Vector2 size, int fontSize, int minSize)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            RectTransform rect = text.rectTransform;
+            if (rect != null)
+            {
+                rect.anchoredPosition = position;
+                rect.sizeDelta = size;
+            }
+
+            text.fontSize = fontSize;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minSize;
+            text.resizeTextMaxSize = fontSize;
         }
 
         private static void ConfigureResultText(Text text, Vector2 position, Vector2 size, int fontSize, TextAnchor alignment, int minSize, int maxSize)
@@ -2989,8 +3013,8 @@ namespace DefenseGame
                 RectTransform continueRect = resultContinueButton.GetComponent<RectTransform>();
                 if (continueRect != null)
                 {
-                    continueRect.anchoredPosition = victory ? new Vector2(0f, 58f) : new Vector2(190f, 58f);
-                    continueRect.sizeDelta = victory ? new Vector2(340f, 78f) : new Vector2(220f, 72f);
+                    continueRect.anchoredPosition = victory ? new Vector2(0f, 75f) : new Vector2(190f, 75f);
+                    continueRect.sizeDelta = victory ? new Vector2(340f, 100f) : new Vector2(220f, 100f);
                 }
 
                 SetButtonLabel(resultContinueButton, victory ? "계속하기" : "재정비");
