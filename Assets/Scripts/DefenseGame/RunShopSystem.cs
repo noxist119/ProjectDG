@@ -29,7 +29,26 @@ namespace DefenseGame
             InsuranceBossCounter,
             AugmentPower,
             AugmentGuard,
-            AugmentSkill
+            AugmentSkill,
+            VanguardDrill,
+            TargetingLens,
+            ManaBattery,
+            SalvageCrate
+        }
+
+        private enum OfferRarity
+        {
+            Normal,
+            Rare,
+            Legendary
+        }
+
+        private enum OfferRole
+        {
+            Supply,
+            Build,
+            Tactical,
+            Wild
         }
 
         private sealed class ShopOffer
@@ -41,6 +60,7 @@ namespace DefenseGame
             public string priceLabel;
             public Color color;
             public int debtCostPenalty;
+            public OfferRarity rarity;
         }
 
         [SerializeField] private DefenseGameController gameController;
@@ -426,16 +446,28 @@ namespace DefenseGame
 
             RemoveUnavailableAugmentOffers(pool);
             RemoveRecentlyOfferedTypes(pool, offerCount);
+            if (miniShop)
+            {
+                RemoveLastRunMiniShopTypes(pool, round, offerCount);
+            }
 
+            OfferRole[] miniRoles = miniShop ? BuildMiniShopRoleSlots(round, offerCount) : null;
             while (currentOffers.Count < offerCount && pool.Count > 0)
             {
-                int index = UnityEngine.Random.Range(0, pool.Count);
+                OfferRarity rarity = RollOfferRarity(round);
+                int index = miniShop
+                    ? FindOfferIndexForRoleAndRarity(pool, miniRoles[currentOffers.Count], rarity)
+                    : FindOfferIndexForRarity(pool, rarity);
                 OfferType type = pool[index];
                 pool.RemoveAt(index);
                 AddOffer(type, round, miniShop, recoveryShop);
             }
 
             RememberCurrentOffers();
+            if (miniShop)
+            {
+                SaveLastRunMiniShopTypes(round);
+            }
         }
 
         private void RemoveRecentlyOfferedTypes(List<OfferType> pool, int minimumPoolSize)
@@ -455,6 +487,59 @@ namespace DefenseGame
             }
         }
 
+        private static string GetLastRunMiniShopKey(int round)
+        {
+            return "DefenseGame.LastRunMiniShopOffers." + round;
+        }
+
+        private static void RemoveLastRunMiniShopTypes(List<OfferType> pool, int round, int minimumPoolSize)
+        {
+            if (pool == null)
+            {
+                return;
+            }
+
+            string saved = PlayerPrefs.GetString(GetLastRunMiniShopKey(round), string.Empty);
+            if (string.IsNullOrEmpty(saved))
+            {
+                return;
+            }
+
+            HashSet<int> previousTypes = new HashSet<int>();
+            string[] tokens = saved.Split(',');
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                int value;
+                if (int.TryParse(tokens[i], out value))
+                {
+                    previousTypes.Add(value);
+                }
+            }
+
+            int safeMinimum = Mathf.Max(1, minimumPoolSize);
+            for (int i = pool.Count - 1; i >= 0 && pool.Count > safeMinimum; i--)
+            {
+                if (previousTypes.Contains((int)pool[i]))
+                {
+                    pool.RemoveAt(i);
+                }
+            }
+        }
+
+        private void SaveLastRunMiniShopTypes(int round)
+        {
+            List<string> types = new List<string>();
+            for (int i = 0; i < currentOffers.Count; i++)
+            {
+                if (currentOffers[i] != null)
+                {
+                    types.Add(((int)currentOffers[i].type).ToString());
+                }
+            }
+
+            PlayerPrefs.SetString(GetLastRunMiniShopKey(round), string.Join(",", types.ToArray()));
+            PlayerPrefs.Save();
+        }
         private void RememberCurrentOffers()
         {
             for (int i = 0; i < currentOffers.Count; i++)
@@ -495,10 +580,152 @@ namespace DefenseGame
             };
         }
 
+        private static OfferRole[] BuildMiniShopRoleSlots(int round, int offerCount)
+        {
+            int progressionPhase = Mathf.Max(0, (round - 3) / 8) % 4;
+            string key = "DefenseGame.LastRunMiniShopRolePack." + round;
+            int previousPack = PlayerPrefs.GetInt(key, -1);
+            int pack = UnityEngine.Random.Range(0, 4);
+            if (pack == previousPack)
+            {
+                pack = (pack + UnityEngine.Random.Range(1, 4)) % 4;
+            }
+
+            PlayerPrefs.SetInt(key, pack);
+            PlayerPrefs.Save();
+            int phase = (progressionPhase + pack) % 4;
+            OfferRole[] template = phase == 0
+                ? new[] { OfferRole.Supply, OfferRole.Build, OfferRole.Tactical }
+                : phase == 1
+                    ? new[] { OfferRole.Build, OfferRole.Wild, OfferRole.Tactical }
+                    : phase == 2
+                        ? new[] { OfferRole.Supply, OfferRole.Wild, OfferRole.Build }
+                        : new[] { OfferRole.Tactical, OfferRole.Supply, OfferRole.Wild };
+            OfferRole[] slots = new OfferRole[Mathf.Max(1, offerCount)];
+            for (int i = 0; i < slots.Length; i++)
+            {
+                slots[i] = template[i % template.Length];
+            }
+
+            return slots;
+        }
+
+        private static OfferRarity RollOfferRarity(int round)
+        {
+            float roll = UnityEngine.Random.value;
+            float legendaryChance = round <= 5 ? 0.02f : round <= 10 ? 0.06f : round <= 15 ? 0.10f : 0.13f;
+            float rareChance = round <= 5 ? 0.23f : round <= 10 ? 0.26f : round <= 15 ? 0.30f : 0.32f;
+            return roll < legendaryChance ? OfferRarity.Legendary : roll < legendaryChance + rareChance ? OfferRarity.Rare : OfferRarity.Normal;
+        }
+
+        private static OfferRarity GetOfferRarity(OfferType type)
+        {
+            switch (type)
+            {
+                case OfferType.RareUnit:
+                case OfferType.MergeAssist:
+                case OfferType.BossIntel:
+                case OfferType.AugmentPower:
+                case OfferType.AugmentGuard:
+                case OfferType.AugmentSkill:
+                case OfferType.ManaBattery:
+                case OfferType.RecoveryRareUnit:
+                case OfferType.RecoveryBossPrep:
+                    return OfferRarity.Rare;
+                case OfferType.FateMergeContract:
+                case OfferType.FateBossContract:
+                case OfferType.FateShopReroll:
+                case OfferType.FateGradeLock:
+                case OfferType.FateNormalBan:
+                case OfferType.FateForceShop:
+                    return OfferRarity.Legendary;
+                default:
+                    return OfferRarity.Normal;
+            }
+        }
+
+        private static int FindOfferIndexForRarity(List<OfferType> pool, OfferRarity rarity)
+        {
+            List<int> candidates = new List<int>();
+            for (int i = 0; i < pool.Count; i++)
+            {
+                if (GetOfferRarity(pool[i]) == rarity)
+                {
+                    candidates.Add(i);
+                }
+            }
+
+            return candidates.Count > 0 ? candidates[UnityEngine.Random.Range(0, candidates.Count)] : UnityEngine.Random.Range(0, pool.Count);
+        }
+
+        private static int FindOfferIndexForRoleAndRarity(List<OfferType> pool, OfferRole role, OfferRarity rarity)
+        {
+            List<int> candidates = new List<int>();
+            for (int i = 0; i < pool.Count; i++)
+            {
+                if (GetOfferRole(pool[i]) == role && GetOfferRarity(pool[i]) == rarity)
+                {
+                    candidates.Add(i);
+                }
+            }
+
+            return candidates.Count > 0 ? candidates[UnityEngine.Random.Range(0, candidates.Count)] : FindOfferIndexForRole(pool, role);
+        }
+
+        private static string GetOfferRarityLabel(OfferRarity rarity)
+        {
+            return rarity == OfferRarity.Legendary ? "\uc804\uc124" : rarity == OfferRarity.Rare ? "\ub808\uc5b4" : "\uc77c\ubc18";
+        }
+
+        private static Color GetOfferRarityColor(OfferRarity rarity)
+        {
+            return rarity == OfferRarity.Legendary ? new Color(1f, 0.72f, 0.20f, 1f) :
+                rarity == OfferRarity.Rare ? new Color(0.24f, 0.62f, 1f, 1f) : new Color(0.68f, 0.70f, 0.78f, 1f);
+        }
+        private static int FindOfferIndexForRole(List<OfferType> pool, OfferRole role)
+        {
+            List<int> candidates = new List<int>();
+            for (int i = 0; i < pool.Count; i++)
+            {
+                if (GetOfferRole(pool[i]) == role)
+                {
+                    candidates.Add(i);
+                }
+            }
+
+            return candidates.Count > 0
+                ? candidates[UnityEngine.Random.Range(0, candidates.Count)]
+                : UnityEngine.Random.Range(0, pool.Count);
+        }
+
+        private static OfferRole GetOfferRole(OfferType type)
+        {
+            switch (type)
+            {
+                case OfferType.RandomUnit:
+                case OfferType.RareUnit:
+                    return OfferRole.Supply;
+                case OfferType.MergeAssist:
+                case OfferType.TileReroll:
+                case OfferType.Coupon:
+                case OfferType.SalvageCrate:
+                    return OfferRole.Build;
+                case OfferType.RiskChest:
+                case OfferType.FateMergeContract:
+                case OfferType.FateBossContract:
+                case OfferType.FateShopReroll:
+                case OfferType.FateGradeLock:
+                case OfferType.FateNormalBan:
+                case OfferType.FateForceShop:
+                    return OfferRole.Wild;
+                default:
+                    return OfferRole.Tactical;
+            }
+        }
+
         private List<OfferType> BuildMiniShopPool(int round)
         {
-            // The mini shop is a strategic detour, not a fixed merge/coupon script.
-            // Its early pool intentionally starts with ten distinct gameplay choices.
+            // Every mini-shop starts with fourteen actual effects, then gains fate contracts later.
             List<OfferType> pool = new List<OfferType>
             {
                 OfferType.RandomUnit,
@@ -510,7 +737,11 @@ namespace DefenseGame
                 OfferType.RiskChest,
                 OfferType.AugmentPower,
                 OfferType.AugmentGuard,
-                OfferType.AugmentSkill
+                OfferType.AugmentSkill,
+                OfferType.VanguardDrill,
+                OfferType.TargetingLens,
+                OfferType.ManaBattery,
+                OfferType.SalvageCrate
             };
 
             if (NeedsFieldMedic())
@@ -615,6 +846,11 @@ namespace DefenseGame
                     return Mathf.Max(1, target - 3);
                 case OfferType.RiskChest:
                     return Mathf.Max(1, target - 4);
+                case OfferType.SalvageCrate:
+                    return Mathf.Max(1, target - 2);
+                case OfferType.TargetingLens:
+                case OfferType.ManaBattery:
+                    return Mathf.Max(1, target - 1);
                 default:
                     return target;
             }
@@ -699,6 +935,7 @@ namespace DefenseGame
                 return;
             }
 
+            offer.rarity = GetOfferRarity(type);
             bool miniPrefix = miniShop && !recoveryShop;
             if (miniPrefix)
             {
@@ -788,7 +1025,12 @@ namespace DefenseGame
                 case OfferType.AugmentPower:
                 case OfferType.AugmentGuard:
                 case OfferType.AugmentSkill:
+                case OfferType.VanguardDrill:
+                case OfferType.TargetingLens:
+                case OfferType.ManaBattery:
                     return 8.00f;
+                case OfferType.SalvageCrate:
+                    return 3.00f;
                 default:
                     return 0f;
             }
@@ -1057,7 +1299,42 @@ namespace DefenseGame
                         cost = 18 + scale * 4,
                         color = new Color(0.48f, 1f, 0.60f)
                     };
-                case OfferType.AugmentPower:
+                case OfferType.VanguardDrill:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "\uc804\uc5f4 \ub3cc\ud30c \ud6c8\ub828",
+                        description = "\ud604\uc7ac \uc0dd\uc874 \uc720\ub2db \uacf5\uaca9\ub825 +12%, \uacf5\uaca9 \uc18d\ub3c4 +6%. \uc989\uc2dc \uc804\ub825\uc744 \ub04c\uc5b4\uc62c\ub9bd\ub2c8\ub2e4.",
+                        cost = 22 + scale * 5,
+                        color = new Color(1f, 0.52f, 0.28f)
+                    };
+                case OfferType.TargetingLens:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "\uc870\uc900 \ub80c\uc988",
+                        description = "\ud604\uc7ac \uc0dd\uc874 \uc720\ub2db \uc0ac\uac70\ub9ac +0.75m, \uce58\uba85\ud0c0 \ud655\ub960 +8%. \ud6c4\ubc29 \ud3ec\ub300\ub97c \uc55e\ub2f9\uae41\ub2c8\ub2e4.",
+                        cost = 20 + scale * 5,
+                        color = new Color(0.36f, 0.82f, 1f)
+                    };
+                case OfferType.ManaBattery:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "\uacfc\ucda9\uc804 \ubc30\ud130\ub9ac",
+                        description = "\ud604\uc7ac \uc0dd\uc874 \uc720\ub2db \ub9c8\ub098 \uc7ac\uc0dd +3.5%, \uc2a4\ud0ac \uc704\ub825 +12%. \uc2a4\ud0ac \ud68c\uc804\uc744 \ub192\uc785\ub2c8\ub2e4.",
+                        cost = 20 + scale * 5,
+                        color = new Color(0.88f, 0.48f, 1f)
+                    };
+                case OfferType.SalvageCrate:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "\uc7ac\ud65c\uc6a9 \uc0c1\uc790",
+                        description = "\ud569\uc131 \uc7ac\ub8cc\ub97c \ubcf4\uae09\ud558\uace0 \uace8\ub4dc\ub97c \ud68c\uc218\ud569\ub2c8\ub2e4. \ud569\uc131\uc774 \uc5b4\ub824\uc6b4 \ud310\uc5d0\uc11c \uc720\uc6a9\ud569\ub2c8\ub2e4.",
+                        cost = 18 + scale * 4,
+                        color = new Color(0.50f, 1f, 0.68f)
+                    };                case OfferType.AugmentPower:
                     return new ShopOffer
                     {
                         type = type,
@@ -1339,6 +1616,16 @@ namespace DefenseGame
                         gameController.RecoverLife(1);
                     }
                     return true;
+                case OfferType.VanguardDrill:
+                    return ApplyCombatPackage(0.12f, 0.06f, 0f, 0f, 0f, 0f);
+                case OfferType.TargetingLens:
+                    return ApplyCombatPackage(0f, 0f, 0.75f, 0.08f, 0f, 0f);
+                case OfferType.ManaBattery:
+                    return ApplyCombatPackage(0f, 0f, 0f, 0f, 0.035f, 0.12f);
+                case OfferType.SalvageCrate:
+                    bool salvageGranted = gameController.TryGrantMergeAssistUnit();
+                    gameController.AddGold(salvageGranted ? 4 : 8);
+                    return true;
                 case OfferType.AugmentPower:
                     return augmentManager != null && augmentManager.TryGrantShopAugment("power_core");
                 case OfferType.AugmentGuard:
@@ -1350,6 +1637,29 @@ namespace DefenseGame
             }
         }
 
+        private bool ApplyCombatPackage(float attackPower, float attackSpeed, float range, float criticalChance, float manaRegen, float skillPower)
+        {
+            DefenderUnit[] defenders = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
+            bool applied = false;
+            for (int i = 0; i < defenders.Length; i++)
+            {
+                DefenderUnit defender = defenders[i];
+                if (defender == null)
+                {
+                    continue;
+                }
+
+                if (attackPower > 0f) defender.AddAttackPowerBonus(attackPower);
+                if (attackSpeed > 0f) defender.AddPermanentAttackSpeedBonus(attackSpeed);
+                if (range > 0f) defender.AddAttackRangeBonus(range);
+                if (criticalChance > 0f) defender.AddPermanentCriticalChanceBonus(criticalChance);
+                if (manaRegen > 0f) defender.AddManaRegenRateBonus(manaRegen);
+                if (skillPower > 0f) defender.AddSkillPowerBonus(skillPower);
+                applied = true;
+            }
+
+            return applied;
+        }
         private void HealAliveDefenders(float ratio)
         {
             DefenderUnit[] units = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
@@ -1580,17 +1890,41 @@ namespace DefenseGame
                 }
 
                 ShopOffer offer = currentOffers[i];
-                SetText(GetText(offerTitleTexts, i), offer.title);
+                SetText(GetText(offerTitleTexts, i), FormatOfferTitle(offer));
                 SetText(GetText(offerDescriptionTexts, i), offer.description);
                 SetText(GetText(offerPriceTexts, i), BuildOfferPriceLabel(offer));
+                Outline outline = offerButtons[i].GetComponent<Outline>();
+                if (outline != null)
+                {
+                    outline.effectColor = GetOfferRarityColor(offer.rarity);
+                }
+
                 Image accent = GetImage(offerAccentImages, i);
                 if (accent != null)
                 {
                     accent.color = offer.color;
                 }
+
+                Image icon = GetChildImage(offerButtons[i].transform, "RunShopOfferIcon");
+                if (icon != null)
+                {
+                    icon.color = Color.Lerp(Color.white, offer.color, 0.28f);
+                }
             }
         }
 
+        private static string FormatOfferTitle(ShopOffer offer)
+        {
+            if (offer == null)
+            {
+                return string.Empty;
+            }
+
+            string role = GetOfferRole(offer.type) == OfferRole.Supply ? "\ubcf4\uae09" :
+                GetOfferRole(offer.type) == OfferRole.Build ? "\ube4c\ub4dc" :
+                GetOfferRole(offer.type) == OfferRole.Tactical ? "\uc804\uc220" : "\ubcc0\uc218";
+            return GetOfferRarityLabel(offer.rarity) + "  |  " + role + "  |  " + offer.title;
+        }
         private string BuildOfferPriceLabel(ShopOffer offer)
         {
             if (offer == null)
