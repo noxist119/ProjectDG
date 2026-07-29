@@ -1,0 +1,19 @@
+diff --git a/Assets/Data/DefenseGamePresentationConfig.asset b/Assets/Data/DefenseGamePresentationConfig.asset
+--- a/Assets/Data/DefenseGamePresentationConfig.asset
++++ b/Assets/Data/DefenseGamePresentationConfig.asset
+@@ -47,6 +47,17 @@ MonoBehaviour:
+   laneColors: []
+   usePerInstanceUnitTint: 0
+   enableRuntimeGpuInstancing: 0
++  enableGpuSkinnedUnitBatching: 1
++  gpuSkinnedBatchingLowEndOnly: 1
++  gpuSkinnedBatchMinInstanceCount: 4
++  gpuSkinnedBatchDefenders: 1
++  gpuSkinnedBatchBosses: 0
++  enableUnitAnimatorLod: 1
++  unitAnimatorLodLowEndOnly: 1
++  lowEndRegularMonsterAnimatorFps: 15
++  unitAnimatorLodDefenders: 0
++  unitAnimatorLodBosses: 0
++  unitAnimatorActionGraceDuration: 0.12
+   forceRuntimeUnitCastShadowsOff: 1

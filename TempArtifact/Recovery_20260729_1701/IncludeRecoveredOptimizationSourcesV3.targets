@@ -1,0 +1,6 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)IncludeRecoveredOptimizationSourcesV2.targets" />
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Assembly-CSharp'">
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\MobilePerformanceTier.cs" />
+  </ItemGroup>
+</Project>

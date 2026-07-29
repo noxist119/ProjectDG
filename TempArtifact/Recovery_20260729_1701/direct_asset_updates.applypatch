@@ -1,0 +1,58 @@
+*** Begin Patch
+*** Update File: Assets/Low End Universal Render Pipeline Asset.asset
+@@
+-  m_Name: New Universal Render Pipeline Asset
++  m_Name: Low End Universal Render Pipeline Asset
+@@
+-  - {fileID: 11400000, guid: 3544fc902a7d5514392df41229472f08, type: 2}
++  - {fileID: 11400000, guid: f44e8b4147704c588ed747364543155d, type: 2}
+@@
+-  m_SupportsTerrainHoles: 1
+-  m_SupportsHDR: 1
++  m_SupportsTerrainHoles: 0
++  m_SupportsHDR: 0
+@@
+-  m_RenderScale: 1
++  m_RenderScale: 0.8
+@@
+-  m_EnableLODCrossFade: 1
++  m_EnableLODCrossFade: 0
+@@
+-  m_MainLightShadowsSupported: 1
+-  m_MainLightShadowmapResolution: 2048
+-  m_AdditionalLightsRenderingMode: 1
+-  m_AdditionalLightsPerObjectLimit: 4
++  m_MainLightShadowsSupported: 0
++  m_MainLightShadowmapResolution: 512
++  m_AdditionalLightsRenderingMode: 0
++  m_AdditionalLightsPerObjectLimit: 0
+@@
+-  m_ShadowDistance: 50
++  m_ShadowDistance: 0
+@@
+-  m_AnyShadowsSupported: 1
++  m_AnyShadowsSupported: 0
+@@
+-  m_MixedLightingSupported: 1
+-  m_SupportsLightCookies: 1
++  m_MixedLightingSupported: 0
++  m_SupportsLightCookies: 0
+@@
+-  m_UseFastSRGBLinearConversion: 0
++  m_UseFastSRGBLinearConversion: 1
+*** Update File: Assets/Low End Universal Render Pipeline Asset_Renderer.asset
+@@
+-  m_Name: New Universal Render Pipeline Asset_Renderer
++  m_Name: Low End Universal Render Pipeline Asset_Renderer
+*** Update File: ProjectSettings/QualitySettings.asset
+@@
+   - serializedVersion: 3
+     name: Very Low
+@@
+-    customRenderPipeline: {fileID: 0}
++    customRenderPipeline: {fileID: 11400000, guid: b1cfa4e0c9074e63b202207300000001, type: 2}
+*** Update File: ProjectSettings/GraphicsSettings.asset
+@@
+   - {fileID: 4800000, guid: 0406db5a14f94604a8c57ccfbc9f3b46, type: 3}
++  - {fileID: 4800000, guid: 6fb362c1990f4cf7a645f55e531846d4, type: 3}
+*** End Patch

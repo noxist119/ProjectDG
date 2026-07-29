@@ -1,0 +1,104 @@
+diff --git a/Assets/Low End Universal Render Pipeline Asset.asset b/Assets/Low End Universal Render Pipeline Asset.asset
+--- a/Assets/Low End Universal Render Pipeline Asset.asset
++++ b/Assets/Low End Universal Render Pipeline Asset.asset
+@@ -10,7 +10,7 @@ MonoBehaviour:
+   m_Enabled: 1
+   m_EditorHideFlags: 0
+   m_Script: {fileID: 11500000, guid: bf2edee5c58d82540a51f03df9d42094, type: 3}
+-  m_Name: New Universal Render Pipeline Asset
++  m_Name: Low End Universal Render Pipeline Asset
+   m_EditorClassIdentifier: 
+   k_AssetVersion: 11
+   k_AssetPreviousVersion: 11
+@@ -18,7 +18,7 @@ MonoBehaviour:
+   m_RendererType: 1
+   m_RendererData: {fileID: 0}
+   m_RendererDataList:
+-  - {fileID: 11400000, guid: 3544fc902a7d5514392df41229472f08, type: 2}
++  - {fileID: 11400000, guid: f44e8b4147704c588ed747364543155d, type: 2}
+   m_DefaultRendererIndex: 0
+   m_RequireDepthTexture: 0
+   m_RequireOpaqueTexture: 0
+@@ -26,14 +26,14 @@ MonoBehaviour:
+   m_OpaqueDownsampling: 1
+-  m_SupportsTerrainHoles: 1
+-  m_SupportsHDR: 1
++  m_SupportsTerrainHoles: 0
++  m_SupportsHDR: 0
+   m_HDRColorBufferPrecision: 0
+   m_MSAA: 1
+-  m_RenderScale: 1
++  m_RenderScale: 0.8
+   m_UpscalingFilter: 0
+   m_FsrOverrideSharpness: 0
+   m_FsrSharpness: 0.92
+-  m_EnableLODCrossFade: 1
++  m_EnableLODCrossFade: 0
+   m_LODCrossFadeDitheringType: 1
+   m_ShEvalMode: 0
+   m_MainLightRenderingMode: 1
+-  m_MainLightShadowsSupported: 1
+-  m_MainLightShadowmapResolution: 2048
+-  m_AdditionalLightsRenderingMode: 1
+-  m_AdditionalLightsPerObjectLimit: 4
++  m_MainLightShadowsSupported: 0
++  m_MainLightShadowmapResolution: 512
++  m_AdditionalLightsRenderingMode: 0
++  m_AdditionalLightsPerObjectLimit: 0
+@@ -50,7 +50,7 @@ MonoBehaviour:
+   m_ReflectionProbeBlending: 0
+   m_ReflectionProbeBoxProjection: 0
+-  m_ShadowDistance: 50
++  m_ShadowDistance: 0
+   m_ShadowCascadeCount: 1
+@@ -63,7 +63,7 @@ MonoBehaviour:
+   m_ShadowNormalBias: 1
+-  m_AnyShadowsSupported: 1
++  m_AnyShadowsSupported: 0
+   m_SoftShadowsSupported: 0
+@@ -79,9 +79,9 @@ MonoBehaviour:
+   m_UseSRPBatcher: 1
+   m_SupportsDynamicBatching: 0
+-  m_MixedLightingSupported: 1
+-  m_SupportsLightCookies: 1
++  m_MixedLightingSupported: 0
++  m_SupportsLightCookies: 0
+   m_SupportsLightLayers: 0
+@@ -94,7 +94,7 @@ MonoBehaviour:
+   m_ColorGradingMode: 0
+   m_ColorGradingLutSize: 32
+-  m_UseFastSRGBLinearConversion: 0
++  m_UseFastSRGBLinearConversion: 1
+   m_SupportDataDrivenLensFlare: 1
+diff --git a/Assets/Low End Universal Render Pipeline Asset_Renderer.asset b/Assets/Low End Universal Render Pipeline Asset_Renderer.asset
+--- a/Assets/Low End Universal Render Pipeline Asset_Renderer.asset
++++ b/Assets/Low End Universal Render Pipeline Asset_Renderer.asset
+@@ -10,7 +10,7 @@ MonoBehaviour:
+   m_Enabled: 1
+   m_EditorHideFlags: 0
+   m_Script: {fileID: 11500000, guid: de640fe3d0db1804a85f9fc8f5cadab6, type: 3}
+-  m_Name: New Universal Render Pipeline Asset_Renderer
++  m_Name: Low End Universal Render Pipeline Asset_Renderer
+   m_EditorClassIdentifier: 
+diff --git a/ProjectSettings/QualitySettings.asset b/ProjectSettings/QualitySettings.asset
+--- a/ProjectSettings/QualitySettings.asset
++++ b/ProjectSettings/QualitySettings.asset
+@@ -44,7 +44,7 @@ QualitySettings:
+     streamingMipmapsMaxFileIORequests: 1024
+     particleRaycastBudget: 4
+     asyncUploadTimeSlice: 2
+     asyncUploadBufferSize: 4
+     asyncUploadPersistentBuffer: 1
+     resolutionScalingFixedDPIFactor: 1
+-    customRenderPipeline: {fileID: 0}
++    customRenderPipeline: {fileID: 11400000, guid: b1cfa4e0c9074e63b202207300000001, type: 2}
+     terrainQualityOverrides: 0
+diff --git a/ProjectSettings/GraphicsSettings.asset b/ProjectSettings/GraphicsSettings.asset
+--- a/ProjectSettings/GraphicsSettings.asset
++++ b/ProjectSettings/GraphicsSettings.asset
+@@ -34,6 +34,7 @@ GraphicsSettings:
+   - {fileID: 10753, guid: 0000000000000000f000000000000000, type: 0}
+   - {fileID: 10770, guid: 0000000000000000f000000000000000, type: 0}
+   - {fileID: 4800000, guid: 0406db5a14f94604a8c57ccfbc9f3b46, type: 3}
++  - {fileID: 4800000, guid: 6fb362c1990f4cf7a645f55e531846d4, type: 3}
+   m_PreloadedShaders: []

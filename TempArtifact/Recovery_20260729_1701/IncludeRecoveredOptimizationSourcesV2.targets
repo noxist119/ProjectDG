@@ -1,0 +1,25 @@
+<Project>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Assembly-CSharp'">
+    <ProjectReference Remove="@(ProjectReference)" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\AnimationImpactType.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\CharacterPresentationOverride.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\GpuSkinnedUnitRenderer.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\LuckySummonChoiceUI.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\MonsterPresentationOverride.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimeAreaDamageZone.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimeCameraShake.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimeCombatFeedback.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimeGameFeel.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimeGameFeelRunner.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimeGroundRing.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimeHitRim.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimeParticleVfxCompatibility.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimePulseEffect.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\RuntimeRenderBatchingUtility.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\TimedStatusMotion.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\UltimateRecipeOption.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\UltimateRecipeSelectionUI.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\UnitAnimatorLodController.cs" />
+    <Compile Include="$(MSBuildProjectDirectory)\Assets\Scripts\DefenseGame\UnitAnimatorUpdateScheduler.cs" />
+  </ItemGroup>
+</Project>

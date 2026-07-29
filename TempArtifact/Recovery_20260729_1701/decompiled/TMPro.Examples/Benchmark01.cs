@@ -1,0 +1,93 @@
+using System.Collections;
+using UnityEngine;
+
+namespace TMPro.Examples;
+
+public class Benchmark01 : MonoBehaviour
+{
+	public int BenchmarkType = 0;
+
+	public TMP_FontAsset TMProFont;
+
+	public Font TextMeshFont;
+
+	private TextMeshPro m_textMeshPro;
+
+	private TextContainer m_textContainer;
+
+	private TextMesh m_textMesh;
+
+	private const string label01 = "The <#0050FF>count is: </color>{0}";
+
+	private const string label02 = "The <color=#0050FF>count is: </color>";
+
+	private Material m_material01;
+
+	private Material m_material02;
+
+	private IEnumerator Start()
+	{
+		if (BenchmarkType == 0)
+		{
+			m_textMeshPro = ((Component)this).gameObject.AddComponent<TextMeshPro>();
+			((TMP_Text)m_textMeshPro).autoSizeTextContainer = true;
+			if ((Object)(object)TMProFont != (Object)null)
+			{
+				((TMP_Text)m_textMeshPro).font = TMProFont;
+			}
+			((TMP_Text)m_textMeshPro).fontSize = 48f;
+			((TMP_Text)m_textMeshPro).alignment = (TextAlignmentOptions)514;
+			((TMP_Text)m_textMeshPro).extraPadding = true;
+			((TMP_Text)m_textMeshPro).enableWordWrapping = false;
+			m_material01 = ((TMP_Asset)((TMP_Text)m_textMeshPro).font).material;
+			m_material02 = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF - Drop Shadow");
+		}
+		else if (BenchmarkType == 1)
+		{
+			m_textMesh = ((Component)this).gameObject.AddComponent<TextMesh>();
+			if ((Object)(object)TextMeshFont != (Object)null)
+			{
+				m_textMesh.font = TextMeshFont;
+				((Component)m_textMesh).GetComponent<Renderer>().sharedMaterial = m_textMesh.font.material;
+			}
+			else
+			{
+				TextMesh textMesh = m_textMesh;
+				Object obj = Resources.Load("Fonts/ARIAL", typeof(Font));
+				textMesh.font = (Font)(object)((obj is Font) ? obj : null);
+				((Component)m_textMesh).GetComponent<Renderer>().sharedMaterial = m_textMesh.font.material;
+			}
+			m_textMesh.fontSize = 48;
+			m_textMesh.anchor = (TextAnchor)4;
+		}
+		for (int i = 0; i <= 1000000; i++)
+		{
+			if (BenchmarkType == 0)
+			{
+				((TMP_Text)m_textMeshPro).SetText("The <#0050FF>count is: </color>{0}", (float)(i % 1000));
+				if (i % 1000 == 999)
+				{
+					TextMeshPro textMeshPro = m_textMeshPro;
+					Material fontSharedMaterial;
+					if (!((Object)(object)((TMP_Text)m_textMeshPro).fontSharedMaterial == (Object)(object)m_material01))
+					{
+						Material val = (((TMP_Text)m_textMeshPro).fontSharedMaterial = m_material01);
+						fontSharedMaterial = val;
+					}
+					else
+					{
+						Material val = (((TMP_Text)m_textMeshPro).fontSharedMaterial = m_material02);
+						fontSharedMaterial = val;
+					}
+					((TMP_Text)textMeshPro).fontSharedMaterial = fontSharedMaterial;
+				}
+			}
+			else if (BenchmarkType == 1)
+			{
+				m_textMesh.text = "The <color=#0050FF>count is: </color>" + i % 1000;
+			}
+			yield return null;
+		}
+		yield return null;
+	}
+}

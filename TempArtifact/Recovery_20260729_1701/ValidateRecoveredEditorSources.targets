@@ -1,0 +1,9 @@
+<Project>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Assembly-CSharp-Editor'">
+    <ProjectReference Remove="@(ProjectReference)" />
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(MSBuildProjectDirectory)\Temp\bin\Debug\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
