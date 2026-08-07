@@ -171,4 +171,138 @@ namespace DefenseGame
 			}
 		}
 	}
+
+	public sealed class BossForecastBetUI : MonoBehaviour
+	{
+		private DefenseGameController gameController;
+		private CanvasGroup canvasGroup;
+		private Text instructionText;
+		private Button[] choiceButtons = new Button[0];
+		private Text[] choiceLabels = new Text[0];
+
+		public void Configure(DefenseGameController controller, CanvasGroup group, Text instruction, Button[] buttons, Text[] labels)
+		{
+			Unsubscribe();
+			gameController = controller;
+			canvasGroup = group;
+			instructionText = instruction;
+			choiceButtons = buttons ?? new Button[0];
+			choiceLabels = labels ?? new Text[0];
+
+			for (int i = 0; i < choiceButtons.Length; i++)
+			{
+				int index = i;
+				if (choiceButtons[i] != null)
+				{
+					choiceButtons[i].onClick.RemoveAllListeners();
+					choiceButtons[i].onClick.AddListener(() => Choose((BossForecastBet)(index + 1)));
+				}
+			}
+
+			if (gameController != null)
+			{
+				gameController.OnBossForecastBetRequested += Open;
+				gameController.OnStateChanged += HandleStateChanged;
+			}
+		}
+
+		private void OnDestroy()
+		{
+			Unsubscribe();
+		}
+
+		private void Unsubscribe()
+		{
+			if (gameController == null)
+			{
+				return;
+			}
+
+			gameController.OnBossForecastBetRequested -= Open;
+			gameController.OnStateChanged -= HandleStateChanged;
+		}
+
+		private void Open()
+		{
+			if (gameController == null || !gameController.CanChooseBossForecastBet)
+			{
+				return;
+			}
+
+			gameObject.SetActive(true);
+			transform.SetAsLastSibling();
+			if (canvasGroup != null)
+			{
+				canvasGroup.alpha = 1f;
+				canvasGroup.interactable = true;
+				canvasGroup.blocksRaycasts = true;
+			}
+
+			Refresh();
+		}
+
+		private void Choose(BossForecastBet choice)
+		{
+			if (gameController != null && gameController.TryChooseBossForecastBet(choice))
+			{
+				gameObject.SetActive(false);
+			}
+		}
+
+		private void HandleStateChanged()
+		{
+			if (!gameObject.activeSelf)
+			{
+				return;
+			}
+
+			if (gameController == null || !gameController.CanChooseBossForecastBet)
+			{
+				gameObject.SetActive(false);
+				return;
+			}
+
+			Refresh();
+		}
+
+		private void Refresh()
+		{
+			if (gameController == null)
+			{
+				return;
+			}
+
+			if (instructionText != null)
+			{
+				instructionText.text = gameController.DailyFateCupEnabled
+					? gameController.DailyFateCupSummary + "\n첫 소형 상점이 선택한 방향으로 기울어집니다."
+					: "첫 소형 상점이 선택한 방향으로 기울어집니다. R10 조건 성공 시 +45점, +18G";
+			}
+
+			string supplyBonus = gameController.IsOverdriveMode ? "폭주 시동 골드 +10\n" : string.Empty;
+            string buildBonus = gameController.IsOverdriveMode ? "폭주 운 보호 +2칸\n" : string.Empty;
+            string tacticalBonus = gameController.IsOverdriveMode ? "폭주 최대 HP +1\n" : string.Empty;
+            SetChoice(0, "보급 예측\n\n" + supplyBonus + "R10 유닛 8기 이상\n첫 상점 보급 편향");
+            SetChoice(1, "빌드 예측\n\n" + buildBonus + "R10 에픽+ 1기\n첫 상점 빌드 편향");
+            SetChoice(2, "전술 예측\n\n" + tacticalBonus + "R10 HP 60% 이상\n첫 상점 전술 편향");
+		}
+
+		private void SetChoice(int index, string label)
+		{
+			if (index < 0 || index >= choiceButtons.Length)
+			{
+				return;
+			}
+
+			if (choiceButtons[index] != null)
+			{
+				choiceButtons[index].interactable = true;
+			}
+
+			if (index < choiceLabels.Length && choiceLabels[index] != null)
+			{
+				choiceLabels[index].text = label;
+			}
+		}
+	}
 }

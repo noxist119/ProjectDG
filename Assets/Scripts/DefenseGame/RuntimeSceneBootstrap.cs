@@ -131,6 +131,7 @@ namespace DefenseGame
 			CharacterCollectionUI collectionUI = GetOrAdd<CharacterCollectionUI>(base.gameObject);
 			MetaFlowUI metaFlowUI = GetOrAdd<MetaFlowUI>(base.gameObject);
 			OutgameProgressionSystem outgameProgression = GetOrAdd<OutgameProgressionSystem>(base.gameObject);
+			YahtzeeProgressionSystem yahtzeeProgression = GetOrAdd<YahtzeeProgressionSystem>(base.gameObject);
 			BoardSynergySystem synergySystem = GetOrAdd<BoardSynergySystem>(base.gameObject);
 			TacticalMissionSystem missionSystem = GetOrAdd<TacticalMissionSystem>(base.gameObject);
 			BoardTileModifierSystem tileModifierSystem = GetOrAdd<BoardTileModifierSystem>(base.gameObject);
@@ -142,6 +143,7 @@ namespace DefenseGame
 			characterDatabase.ApplyPresentationConfig(presentationConfig);
 			characterDatabase.ApplyCombatTuningConfig(characterCombatTuningConfig);
 			outgameProgression.Configure(outgameProgressionConfig, characterDatabase);
+			yahtzeeProgression.Configure(outgameProgression);
 			monsterDatabase.ApplyPresentationConfig(presentationConfig);
 			monsterDatabase.ApplyCombatTuningConfig(monsterCombatTuningConfig);
 			Transform root = EnsureRoot("RuntimeStageRoot");
@@ -763,7 +765,9 @@ namespace DefenseGame
 			BuildHamburgerIcon(((Component)(object)optionsButton).transform);
 			((UnityEvent)(object)optionsButton.onClick).AddListener((UnityAction)delegate
 			{
-				((Component)(object)optionsMenu).gameObject.SetActive(!((Component)(object)optionsMenu).gameObject.activeSelf);
+				bool open = !((Component)(object)optionsMenu).gameObject.activeSelf;
+				((Component)(object)optionsMenu).gameObject.SetActive(open);
+				gameController.SetCombatTimeAccelerationUiPaused(open);
 			});
 			((Component)(object)optionsMenu).gameObject.SetActive(value: false);
 			Image mergeStrip = CreatePanel(hudRoot, "MergeResultStrip", new Vector2(-80f, -116f), new Vector2(865f, 30f), new Color(0.1f, 0.12f, 0.3f, 0.72f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: true);
@@ -979,10 +983,60 @@ namespace DefenseGame
 			GameObject bossWarningPanel = BuildBossWarningPanel(hudRoot, font, out bossWarningGroup, out bossWarningTitle, out bossWarningSub);
 			ultimateRecipeSelection = BuildUltimateRecipeSelectionPanel(hudRoot, font, gameController);
 			BuildLuckySummonChoicePanel(hudRoot, font, gameController);
+			BuildBossForecastBetPanel(hudRoot, font, gameController);
 			hud.Configure(gameController, gold, life, round, board, content, hint, mergeResult, mergeCelebration, mergeCelebrationSub, countdown, roundBanner, hintValue, playerName, rank, state, battleLabel, summonLabel, summonCost, deckSummary, capacity, normalCount, rareCount, epicCount, legendaryCount, mythicCount, transcendentCount, ultimateRecipeHud, bossRoundHud, synergyInsight, recipeInsight, tileInsight, null, earlyRunInsight, fateGaugeText, fateGaugeFill, fateDebtText, fateCostBenefit, fateGradeLockButton, fateGradeLockLabel, fateNormalBanButton, fateNormalBanLabel, fateForceShopButton, fateForceShopLabel, fateSurvivalButton, fateSurvivalLabel, ((Component)(object)fatePanel).gameObject, fatePanelCanvasGroup, fatePanelReopenButton, fatePanelReopenLabel, roundProgressFill, battleButton, summonButton, bossWarningPanel, bossWarningGroup, bossWarningTitle, bossWarningSub, boardManager, ((Component)(object)unitSellPanel).gameObject, unitSellTitle, unitSellDetail, unitSellButton, unitSellButtonLabel, lifeProgressFill, luckySummonProgress);
 			canvasObject.SetActive(value: true);
 		}
 
+		private BossForecastBetUI BuildBossForecastBetPanel(Transform parent, Font font, DefenseGameController gameController)
+		{
+			GameObject root = new GameObject("BossForecastBetOverlay", typeof(RectTransform));
+			root.transform.SetParent(parent, worldPositionStays: false);
+			RectTransform rootRect = root.GetComponent<RectTransform>();
+			rootRect.anchorMin = Vector2.zero;
+			rootRect.anchorMax = Vector2.one;
+			rootRect.offsetMin = Vector2.zero;
+			rootRect.offsetMax = Vector2.zero;
+			Image backdrop = root.AddComponent<Image>();
+			backdrop.color = new Color(0.01f, 0.02f, 0.07f, 0.86f);
+			backdrop.raycastTarget = true;
+			CanvasGroup group = root.AddComponent<CanvasGroup>();
+
+			Image panel = CreatePanel(root.transform, "BossForecastBetPanel", new Vector2(0f, 72f), new Vector2(980f, 690f), new Color(0.04f, 0.08f, 0.19f, 0.99f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
+			CreatePanel(panel.transform, "ForecastTopLine", new Vector2(0f, -6f), new Vector2(870f, 8f), new Color(1f, 0.68f, 0.20f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: false);
+			CreateText(panel.transform, font, new Color(1f, 0.86f, 0.42f), "BossForecastTitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(760f, 50f), "R10 보스 예고 베팅", 35, TextAnchor.MiddleCenter, bold: true);
+			Text instruction = CreateText(panel.transform, font, new Color(0.82f, 0.91f, 1f), "BossForecastInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -118f), new Vector2(850f, 62f), "첫 소형 상점이 선택한 방향으로 기울어집니다.", 20, TextAnchor.MiddleCenter, bold: false);
+
+			Button[] buttons = new Button[3];
+			Text[] labels = new Text[3];
+			Color[] colors =
+			{
+				new Color(0.20f, 0.66f, 0.46f, 0.98f),
+				new Color(0.28f, 0.52f, 0.94f, 0.98f),
+				new Color(0.74f, 0.36f, 0.88f, 0.98f)
+			};
+			for (int i = 0; i < buttons.Length; i++)
+			{
+				float x = (i - 1) * 310f;
+				buttons[i] = CreateButton(panel.transform, font, "BossForecastChoice_" + i, string.Empty, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, -28f), new Vector2(286f, 350f), colors[i], Color.white, null, out Text label);
+				label.fontSize = 23;
+				label.resizeTextForBestFit = true;
+				label.resizeTextMinSize = 16;
+				label.resizeTextMaxSize = 23;
+				label.rectTransform.offsetMin = new Vector2(16f, 18f);
+				label.rectTransform.offsetMax = new Vector2(-16f, -18f);
+				Outline outline = buttons[i].gameObject.AddComponent<Outline>();
+				outline.effectColor = new Color(1f, 0.82f, 0.38f, 0.76f);
+				outline.effectDistance = new Vector2(2f, -2f);
+				labels[i] = label;
+			}
+
+			CreateText(panel.transform, font, new Color(0.74f, 0.82f, 1f), "BossForecastFooter", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 30f), new Vector2(780f, 34f), "예측은 한 판에 한 번만 선택할 수 있습니다.", 19, TextAnchor.MiddleCenter, bold: false);
+			BossForecastBetUI ui = root.AddComponent<BossForecastBetUI>();
+			ui.Configure(gameController, group, instruction, buttons, labels);
+			root.SetActive(false);
+			return ui;
+		}
 		private LuckySummonChoiceUI BuildLuckySummonChoicePanel(Transform parent, Font font, DefenseGameController gameController)
 		{
 			GameObject root = new GameObject("LuckySummonChoiceOverlay", typeof(RectTransform));

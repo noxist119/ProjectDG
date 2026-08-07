@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.coplaydev.unity-mcp": "file:D:/GameDev/unity-mcp-9.7.0/unity-mcp-9.7.0/MCPForUnity",
+    "com.demigiant.dotween": "file:D:/프로그램/DOTween-master/DOTween-master",
     "com.unity.burst": "1.8.29",
     "com.unity.cinemachine": "3.1.7",
     "com.unity.collab-proxy": "2.12.4",

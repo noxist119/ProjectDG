@@ -1138,6 +1138,11 @@ namespace DefenseGame
         public string lastCoopMvpName;
         public string lastDeckShareCode;
         public string lastReplayDigest;
+        public int dailyFateCupDate;
+        public int dailyFateCupAttempts;
+        public int dailyFateCupBestScore;
+        public int dailyFateCupBestRound;
+        public string dailyFateCupBestReplay;
     }
 
     public sealed class OutgameDrawResult
@@ -1208,6 +1213,8 @@ namespace DefenseGame
         public OutgamePlayMode CurrentPlayMode => currentPlayMode;
         public bool IsTestMode => currentPlayMode == OutgamePlayMode.Test;
         public string LastSeasonRewardSummary => lastSeasonRewardSummary;
+        public int DailyFateCupBestScore => EnsureSaveData().dailyFateCupBestScore;
+        public int DailyFateCupAttempts => EnsureSaveData().dailyFateCupAttempts;
 
         private void Awake()
         {
@@ -1294,6 +1301,50 @@ namespace DefenseGame
             OnProgressChanged?.Invoke();
         }
 
+        public bool TrySpendGold(int amount)
+        {
+            int cost = Mathf.Max(0, amount);
+            OutgameSaveData data = EnsureSaveData();
+            if (data.gold < cost)
+            {
+                return false;
+            }
+
+            data.gold -= cost;
+            Save();
+            OnProgressChanged?.Invoke();
+            return true;
+        }
+
+        public bool TrySpendDiamonds(int amount)
+        {
+            int cost = Mathf.Max(0, amount);
+            OutgameSaveData data = EnsureSaveData();
+            if (data.diamonds < cost)
+            {
+                return false;
+            }
+
+            data.diamonds -= cost;
+            Save();
+            OnProgressChanged?.Invoke();
+            return true;
+        }
+
+        public bool GrantYahtzeeCards(int drawCount, out List<OutgameDrawResult> results)
+        {
+            results = new List<OutgameDrawResult>();
+            if (characterDatabase == null || drawCount <= 0)
+            {
+                return false;
+            }
+
+            DrawCardsInto(results, OutgameChestType.Premium, Mathf.Clamp(drawCount, 1, 100));
+            Save();
+            OnProgressChanged?.Invoke();
+            return results.Count > 0;
+        }
+
         public bool GrantTestShopCurrency(int gold, int diamonds)
         {
             if (!IsTestMode)
@@ -1337,6 +1388,11 @@ namespace DefenseGame
 
             data.lastDeckShareCode = BuildDeckShareCode(safeRunScore, safeBossScore, safeBossKills, mvpName, round, victory);
             data.lastReplayDigest = BuildReplayDigest(safeRunScore, safeBossScore, safeBossKills, mvpName, round, victory);
+            DefenseGameController controller = DefenseGameController.Active;
+            if (controller != null && controller.DailyFateCupEnabled)
+            {
+                RecordDailyFateCupRun(data, safeRunScore, round, data.lastReplayDigest);
+            }
 
             int reward = GrantSeasonMissionRewards(data);
             lastSeasonRewardSummary = reward > 0 ? "시즌 미션 보상 +" + reward + " DIA" : string.Empty;
@@ -1349,6 +1405,56 @@ namespace DefenseGame
             OnProgressChanged?.Invoke();
         }
 
+        private static void RecordDailyFateCupRun(OutgameSaveData data, int score, int round, string replayDigest)
+        {
+            if (data == null)
+            {
+                return;
+            }
+
+            int today = DailyFateCupRules.TodayKey;
+            if (data.dailyFateCupDate != today)
+            {
+                data.dailyFateCupDate = today;
+                data.dailyFateCupAttempts = 0;
+                data.dailyFateCupBestScore = 0;
+                data.dailyFateCupBestRound = 0;
+                data.dailyFateCupBestReplay = string.Empty;
+            }
+
+            data.dailyFateCupAttempts++;
+            if (score >= data.dailyFateCupBestScore)
+            {
+                data.dailyFateCupBestScore = Mathf.Max(0, score);
+                data.dailyFateCupBestRound = Mathf.Max(0, round);
+                data.dailyFateCupBestReplay = replayDigest ?? string.Empty;
+            }
+        }
+
+        public string BuildDailyFateCupSummary()
+        {
+            OutgameSaveData data = EnsureSaveData();
+            int today = DailyFateCupRules.TodayKey;
+            if (data.dailyFateCupDate != today)
+            {
+                data.dailyFateCupDate = today;
+                data.dailyFateCupAttempts = 0;
+                data.dailyFateCupBestScore = 0;
+                data.dailyFateCupBestRound = 0;
+                data.dailyFateCupBestReplay = string.Empty;
+                Save();
+            }
+
+            string replay = string.IsNullOrWhiteSpace(data.dailyFateCupBestReplay)
+                ? "첫 도전 대기"
+                : data.dailyFateCupBestReplay;
+            return DailyFateCupRules.TodayLabel
+                + "\n개인 최고  " + data.dailyFateCupBestScore.ToString("N0") + "점"
+                + "  |  R" + data.dailyFateCupBestRound
+                + "  |  도전 " + data.dailyFateCupAttempts + "회"
+                + "\n" + replay
+                + "\n서버 랭킹 연결 전 로컬 동일 시드 기록";
+        }
         public string BuildSeasonRankingSummary()
         {
             OutgameSaveData data = EnsureSaveData();
@@ -1377,7 +1483,10 @@ namespace DefenseGame
 
         public string BuildSeasonResultLoopSummary()
         {
-            return BuildChestEconomySummary() + "\n" + BuildSeasonLegacyResultLoopSummary();
+            string daily = DefenseGameController.Active != null && DefenseGameController.Active.DailyFateCupEnabled
+                ? BuildDailyFateCupSummary() + "\n"
+                : string.Empty;
+            return daily + BuildChestEconomySummary() + "\n" + BuildSeasonLegacyResultLoopSummary();
         }
 
         private string BuildSeasonLegacyResultLoopSummary()

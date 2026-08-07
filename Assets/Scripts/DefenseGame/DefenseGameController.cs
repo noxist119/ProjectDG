@@ -4,6 +4,39 @@ using UnityEngine;
 
 namespace DefenseGame
 {
+    public enum BossForecastBet
+    {
+        None = 0,
+        Supply = 1,
+        Build = 2,
+        Tactical = 3
+    }
+
+    public static class DailyFateCupRules
+    {
+        public static int TodayKey
+        {
+            get
+            {
+                System.DateTime today = System.DateTime.Now.Date;
+                return today.Year * 10000 + today.Month * 100 + today.Day;
+            }
+        }
+
+        public static int TodaySeed
+        {
+            get
+            {
+                unchecked
+                {
+                    return TodayKey * 397 ^ 0x5F3759DF;
+                }
+            }
+        }
+
+        public static string TodayLabel => "DAILY #" + TodayKey + "  같은 운, 다른 선택";
+    }
+
     public sealed class DailyFortuneRule
     {
         public string title;
@@ -109,6 +142,8 @@ namespace DefenseGame
     public class DefenseGameController : MonoBehaviour
     {
         private const string EarlyRunTuningLogPrefsKey = "DefenseGame.EarlyRunTuningLog.v1";
+        private const string CombatModePrefsKey = "DefenseGame.CombatMode.v1";
+        private const string DailyFateCupPrefsKey = "DefenseGame.DailyFateCup.v1";
         private const int EarlyRunTuningLogMaxEntries = 60;
         private const int EarlyRunRequiredRoundCount = 10;
         private const int RunClipMaxEvents = 6;
@@ -122,6 +157,20 @@ namespace DefenseGame
         [SerializeField] private RoundManager roundManager;
         private AugmentManager augmentManager;
         [SerializeField] private DefenderUnit defaultUnitPrefab;
+
+        [Header("Combat Mode")]
+        [SerializeField] private CombatGameMode defaultCombatMode = CombatGameMode.Classic;
+        [SerializeField] private CombatModeProfile classicCombatModeProfile = CombatModeProfile.CreateClassic();
+        [SerializeField] private CombatModeProfile overdriveCombatModeProfile = CombatModeProfile.CreateOverdrive();
+        [SerializeField] private bool defaultDailyFateCup;
+        private CombatGameMode currentCombatMode;
+        private bool dailyFateCupEnabled;
+        private bool runContentSeedOverrideEnabled;
+        private int runContentSeedOverride;
+        private BossForecastBet bossForecastBet;
+        private bool bossForecastBetResolved;
+        private bool bossForecastRequestRaised;
+        private int bossForecastBonusScore;
 
         [Header("Economy")]
         [SerializeField] private int startGold = 36;
@@ -268,6 +317,7 @@ namespace DefenseGame
         [SerializeField] private int fateCardGradeRiggingGold = 35;
 
         private int maxLife;
+        private int baseMaxLife;
         private int currentSummonBaseCost;
         private int roundGoldBonus;
         private int currentRoundLeakDamageTaken;
@@ -327,6 +377,10 @@ namespace DefenseGame
         private int currentKillCombo;
         private int bestKillCombo;
         private float lastKillTime;
+        private int currentRoundPeakActiveMonsters;
+        private int currentRoundPeakKillsPerSecond;
+        private int currentRoundBestKillCombo;
+        private readonly Queue<float> recentKillTimes = new Queue<float>();
         private int bestSynergyCount;
         private string bestSynergyTitle = "시너지 없음";
         private int currentSynergyCount;
@@ -529,6 +583,8 @@ namespace DefenseGame
         public event System.Action OnGameOver;
         public event System.Action OnLuckySummonChoiceRequested;
         public event System.Action<string, Color, float> OnBannerRequested;
+        public event System.Action<CombatGameMode> OnCombatModeChanged;
+        public event System.Action OnBossForecastBetRequested;
 
         public int Gold { get; private set; }
         public int Life => life;
@@ -537,6 +593,25 @@ namespace DefenseGame
         public int SummonCost => ResolveSummonCost();
         public int CurrentRound => roundManager != null ? roundManager.CurrentRound : 0;
         public bool IsRoundRunning => roundManager != null && roundManager.IsRoundRunning;
+        public CombatGameMode CurrentCombatMode => currentCombatMode;
+        public CombatModeProfile ActiveCombatModeProfile => ResolveCombatModeProfile(currentCombatMode);
+        public bool IsOverdriveMode => currentCombatMode == CombatGameMode.Overdrive;
+        public bool DailyFateCupEnabled => dailyFateCupEnabled;
+        public int DailyFateCupSeed => DailyFateCupRules.TodaySeed;
+        public bool HasRunContentSeedOverride => runContentSeedOverrideEnabled;
+        public int ActiveRunContentSeed => runContentSeedOverrideEnabled ? runContentSeedOverride : DailyFateCupSeed;
+        public string DailyFateCupSummary => dailyFateCupEnabled
+            ? DailyFateCupRules.TodayLabel + "  ·  시드 " + Mathf.Abs(DailyFateCupSeed % 100000).ToString("D5")
+            : "데일리 운명컵 OFF  ·  일반 랜덤 시드";
+        public BossForecastBet CurrentBossForecastBet => bossForecastBet;
+        public bool CanChooseBossForecastBet => bossForecastBet == BossForecastBet.None && !bossForecastBetResolved &&
+            CurrentRound <= 0 && !IsRoundRunning;
+        public int BossForecastPreferredShopRoleIndex => bossForecastBet == BossForecastBet.Supply ? 0 :
+            bossForecastBet == BossForecastBet.Build ? 1 : bossForecastBet == BossForecastBet.Tactical ? 2 : -1;
+        public string BossForecastSummary => BuildBossForecastSummary();
+        public string LuckProtectionLedgerSummary => BuildLuckProtectionLedgerSummary();
+        public int BossForecastBonusScore => Mathf.Max(0, bossForecastBonusScore);
+        public string CombatModeDisplayName => ActiveCombatModeProfile.displayName;
         public bool IsCombatInteractionLocked => IsRoundRunning && CurrentRound > 0 && roundManager != null && roundManager.CurrentRoundSpawnedCount > 0 && !FateCombatEditingActive;
         public bool IsBossRound => roundManager != null && roundManager.IsBossRound;
         public int NextBossRound => roundManager != null ? roundManager.GetNextBossRound(CurrentRound) : 10;
@@ -552,7 +627,7 @@ namespace DefenseGame
             ? CurrentRound > 0 && !IsRoundRunning ? 1f : 0f
             : Mathf.Clamp01((float)currentRoundResolvedMonsters / RoundTargetCount);
         public bool WasRoundShopOpened(int round) => round > 0 && lastRoundShopOpenRound == round;
-        public string CurrentStateSummary => "Gold " + Gold + " | Life " + Life + " | Round " + CurrentRound + (IsBossRound ? " Boss" : string.Empty);
+        public string CurrentStateSummary => CombatModeDisplayName + " | Gold " + Gold + " | Life " + Life + " | Round " + CurrentRound + (IsBossRound ? " Boss" : string.Empty);
         public int LastRoundClearGoldReward { get; private set; }
         public MergeResultInfo? LastMergeResult { get; private set; }
         public string BestSynergySummary => bestSynergyCount > 0 ? bestSynergyTitle + " (" + bestSynergyCount + "개 활성)" : "활성 시너지 없음";
@@ -666,9 +741,15 @@ namespace DefenseGame
         private void Awake()
         {
             Active = this;
+            LoadCombatModePreference();
+            LoadDailyFateCupPreference();
             if (maxLife <= 0)
             {
                 maxLife = life;
+            }
+            if (baseMaxLife <= 0)
+            {
+                baseMaxLife = Mathf.Max(1, maxLife);
             }
 
             if (currentSummonBaseCost <= 0)
@@ -684,6 +765,7 @@ namespace DefenseGame
             if (monsterDatabase == null) monsterDatabase = GetComponent<MonsterDatabase>();
             if (boardManager == null) boardManager = GetComponent<DefenseBoardManager>();
             if (roundManager == null) roundManager = GetComponent<RoundManager>();
+            ApplyCombatModeProfile();
         }
 
         private void OnEnable()
@@ -802,10 +884,15 @@ namespace DefenseGame
             boardManager = board;
             roundManager = rounds;
             defaultUnitPrefab = fallbackUnit;
+            ApplyCombatModeProfile();
             SubscribeRoundManager();
             if (maxLife <= 0)
             {
                 maxLife = life;
+            }
+            if (baseMaxLife <= 0)
+            {
+                baseMaxLife = Mathf.Max(1, maxLife);
             }
 
             if (currentSummonBaseCost <= 0)
@@ -878,6 +965,7 @@ namespace DefenseGame
             RecordEarlyRoundSummon(summon);
             ResolveUltimateRecipeBingoReward();
             OnUnitSummoned?.Invoke(summon);
+            RequestBossForecastBetIfNeeded();
             NotifyStateChanged();
             return true;
         }
@@ -1053,8 +1141,11 @@ namespace DefenseGame
                 boardManager.RefreshSlotLocks(0);
             }
 
+            augmentManager?.ResetRunState();
+
+            maxLife = Mathf.Max(1, baseMaxLife > 0 ? baseMaxLife : MaxLife);
             Gold = ResolveStartGold();
-            life = MaxLife;
+            life = maxLife;
             currentSummonBaseCost = summonCost;
             summonCostDiscountRate = 0f;
             temporaryShopSummonDiscountRate = 0f;
@@ -1066,7 +1157,11 @@ namespace DefenseGame
             LastMergeResult = null;
             gameOverRaised = false;
             ResetRunStats();
-            OnBannerRequested?.Invoke("새 판 준비", new Color(0.52f, 0.82f, 1f), 1.6f);
+            ApplyDailyFateCupSeed();
+            OnBannerRequested?.Invoke(
+                dailyFateCupEnabled ? DailyFateCupRules.TodayLabel : "새 판 준비",
+                dailyFateCupEnabled ? new Color(0.86f, 0.62f, 1f) : new Color(0.52f, 0.82f, 1f),
+                dailyFateCupEnabled ? 2.2f : 1.6f);
             NotifyStateChanged();
         }
 
@@ -1085,8 +1180,11 @@ namespace DefenseGame
                 boardManager.RefreshSlotLocks(0);
             }
 
+            augmentManager?.ResetRunState();
+
+            maxLife = Mathf.Max(1, baseMaxLife > 0 ? baseMaxLife : MaxLife);
             Gold = ResolveStartGold();
-            life = MaxLife;
+            life = maxLife;
             currentSummonBaseCost = summonCost;
             summonCostDiscountRate = 0f;
             temporaryShopSummonDiscountRate = 0f;
@@ -1159,6 +1257,275 @@ namespace DefenseGame
         public void RegisterAugmentManager(AugmentManager manager)
         {
             augmentManager = manager;
+            augmentManager?.RefreshCombatModeTuning();
+        }
+
+        public bool ToggleCombatMode()
+        {
+            CombatGameMode nextMode = IsOverdriveMode ? CombatGameMode.Classic : CombatGameMode.Overdrive;
+            return TrySetCombatMode(nextMode);
+        }
+
+        public bool TrySetCombatMode(CombatGameMode mode)
+        {
+            if (IsRoundRunning || CurrentRound > 0)
+            {
+                RequestBanner("전투 모드는 새 판을 시작하기 전에만 변경할 수 있습니다", new Color(1f, 0.62f, 0.28f), 2f);
+                return false;
+            }
+
+            if (!System.Enum.IsDefined(typeof(CombatGameMode), mode))
+            {
+                mode = CombatGameMode.Classic;
+            }
+
+            currentCombatMode = mode;
+            PlayerPrefs.SetInt(CombatModePrefsKey, (int)currentCombatMode);
+            PlayerPrefs.Save();
+            ApplyCombatModeProfile();
+            augmentManager?.RefreshCombatModeTuning();
+            OnCombatModeChanged?.Invoke(currentCombatMode);
+            RequestBanner(
+                ActiveCombatModeProfile.displayName + " 모드 선택  " + ActiveCombatModeProfile.description,
+                IsOverdriveMode ? new Color(1f, 0.40f, 0.20f) : new Color(0.42f, 0.82f, 1f),
+                2.6f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        private void LoadCombatModePreference()
+        {
+            int fallback = (int)defaultCombatMode;
+            int stored = PlayerPrefs.GetInt(CombatModePrefsKey, fallback);
+            currentCombatMode = System.Enum.IsDefined(typeof(CombatGameMode), stored)
+                ? (CombatGameMode)stored
+                : CombatGameMode.Classic;
+        }
+
+        private void LoadDailyFateCupPreference()
+        {
+            dailyFateCupEnabled = PlayerPrefs.GetInt(DailyFateCupPrefsKey, defaultDailyFateCup ? 1 : 0) != 0;
+            if (dailyFateCupEnabled)
+            {
+                currentCombatMode = CombatGameMode.Overdrive;
+            }
+        }
+
+        public bool TrySetDailyFateCupEnabled(bool enabled)
+        {
+            if (IsRoundRunning || CurrentRound > 0 || BoardUnitCount > 0)
+            {
+                RequestBanner("데일리 운명컵은 새 판을 시작하기 전에만 변경할 수 있습니다.", new Color(1f, 0.62f, 0.28f), 2.0f);
+                return false;
+            }
+
+            dailyFateCupEnabled = enabled;
+            PlayerPrefs.SetInt(DailyFateCupPrefsKey, enabled ? 1 : 0);
+            if (enabled)
+            {
+                currentCombatMode = CombatGameMode.Overdrive;
+                PlayerPrefs.SetInt(CombatModePrefsKey, (int)currentCombatMode);
+                ApplyCombatModeProfile();
+                augmentManager?.RefreshCombatModeTuning();
+                OnCombatModeChanged?.Invoke(currentCombatMode);
+            }
+
+            PlayerPrefs.Save();
+            ResetRunForRetry();
+            return true;
+        }
+
+        public void SetRunContentSeedOverride(int? seed)
+        {
+            runContentSeedOverrideEnabled = seed.HasValue;
+            runContentSeedOverride = seed.GetValueOrDefault();
+        }
+
+        private void ApplyDailyFateCupSeed()
+        {
+            if (!dailyFateCupEnabled && !runContentSeedOverrideEnabled)
+            {
+                return;
+            }
+
+            int modeSalt = (int)currentCombatMode * 7919;
+            UnityEngine.Random.InitState(ActiveRunContentSeed ^ modeSalt);
+        }
+
+
+        private void RequestBossForecastBetIfNeeded()
+        {
+            if (bossForecastRequestRaised || !CanChooseBossForecastBet)
+            {
+                return;
+            }
+
+            bossForecastRequestRaised = true;
+            OnBossForecastBetRequested?.Invoke();
+        }
+
+        public bool TryChooseBossForecastBet(BossForecastBet choice)
+        {
+            if (!CanChooseBossForecastBet || choice == BossForecastBet.None)
+            {
+                return false;
+            }
+
+            bossForecastBet = choice;
+            bossForecastRequestRaised = true;
+            string entryBonus = "첫 상점 방향 확정";
+            if (IsOverdriveMode && choice == BossForecastBet.Supply)
+            {
+                const int sponsorGold = 10;
+                Gold += sponsorGold;
+                bool grantedRare = TryGrantRandomUnitByGrade(CharacterGrade.Rare);
+                entryBonus = grantedRare
+                    ? "레어 보급 1기 + 폭주 시동 골드 +" + sponsorGold
+                    : "폭주 시동 골드 +" + sponsorGold;
+            }
+            else if (IsOverdriveMode && choice == BossForecastBet.Build)
+            {
+                luckySummonNormalStreak = Mathf.Min(LuckySummonThreshold, luckySummonNormalStreak + 3);
+                RefreshLuckySummonReadiness();
+                entryBonus = "폭주 운 보호 +3칸";
+            }
+            else if (IsOverdriveMode && choice == BossForecastBet.Tactical)
+            {
+                IncreaseMaxLife(1);
+                entryBonus = "폭주 최대 HP +1";
+            }
+
+            string title = choice == BossForecastBet.Supply ? "보급 예측" :
+                choice == BossForecastBet.Build ? "빌드 예측" : "전술 예측";
+            AddRunHighlightCard("보스 예고 베팅", title + " / " + entryBonus + " / R10 목표 등록");
+            RequestBanner("보스 예고 베팅 확정  " + BuildBossForecastSummary(), new Color(1f, 0.78f, 0.30f), 2.6f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        private string BuildBossForecastSummary()
+        {
+            if (bossForecastBetResolved)
+            {
+                return bossForecastBonusScore > 0
+                    ? "보스 베팅 성공  +" + bossForecastBonusScore + "점"
+                    : "보스 베팅 실패  다음 판 재도전";
+            }
+
+            switch (bossForecastBet)
+            {
+                case BossForecastBet.Supply:
+                    return "보급 예측  ·  R10에 유닛 8기 이상";
+                case BossForecastBet.Build:
+                    return "빌드 예측  ·  R10에 에픽 이상 1기";
+                case BossForecastBet.Tactical:
+                    return "전술 예측  ·  R10 클리어 후 HP 60% 이상";
+                default:
+                    return "첫 소환 후 R10 보스 공략 방향을 선택";
+            }
+        }
+
+        private string BuildLuckProtectionLedgerSummary()
+        {
+            if (!enableLuckySummonComeback)
+            {
+                return "운 보정 OFF";
+            }
+
+            if (LuckySummonReady)
+            {
+                return "운 보정 READY  ·  합성/레어/승부 중 선택";
+            }
+
+            if (luckySummonConsumed)
+            {
+                return "운 보정 사용 완료  ·  이번 판 대박 기록됨";
+            }
+
+            if (badLuckInsuranceOfferPending)
+            {
+                return "운 보정  보험 상점 대기  ·  " + BadLuckInsuranceReason;
+            }
+
+            return "운 보정 " + LuckySummonNormalStreak + "/" + LuckySummonThreshold +
+                "  ·  일반 연속 시 다음 소환 3갈래 확정";
+        }
+
+        private void ResolveBossForecastBet(int round, bool bossRound)
+        {
+            if (bossForecastBetResolved || !bossRound || round < 10)
+            {
+                return;
+            }
+
+            bossForecastBetResolved = true;
+            bool success = false;
+            switch (bossForecastBet)
+            {
+                case BossForecastBet.Supply:
+                    success = BoardUnitCount >= 8;
+                    break;
+                case BossForecastBet.Build:
+                    success = CountUnitsAtLeastGrade(CharacterGrade.Epic) > 0;
+                    break;
+                case BossForecastBet.Tactical:
+                    success = MaxLife > 0 && Life >= Mathf.CeilToInt(MaxLife * 0.60f);
+                    break;
+            }
+
+            if (success)
+            {
+                bossForecastBonusScore = 45;
+                Gold += 18;
+                AddRunHighlightCard("보스 베팅 적중", BuildBossForecastSummary() + " / +18G");
+                RequestBanner("보스 베팅 적중!  +45점  +18G", new Color(1f, 0.86f, 0.28f), 3.0f);
+            }
+            else
+            {
+                bossForecastBonusScore = 0;
+                AddRunHighlightCard("보스 베팅 빗나감", BuildBossForecastSummary());
+                RequestBanner("보스 베팅 실패  조건을 확인하고 다음 판에 재도전", new Color(0.78f, 0.70f, 1f), 2.6f);
+            }
+        }
+
+        private int CountUnitsAtLeastGrade(CharacterGrade minimum)
+        {
+            int count = 0;
+            for (int value = (int)minimum; value <= (int)CharacterGrade.Transcendent; value++)
+            {
+                count += CountUnitsOfGrade((CharacterGrade)value);
+            }
+
+            return count;
+        }
+        private CombatModeProfile ResolveCombatModeProfile(CombatGameMode mode)
+        {
+            if (mode == CombatGameMode.Overdrive)
+            {
+                if (overdriveCombatModeProfile == null)
+                {
+                    overdriveCombatModeProfile = CombatModeProfile.CreateOverdrive();
+                }
+
+                overdriveCombatModeProfile.mode = CombatGameMode.Overdrive;
+                return overdriveCombatModeProfile;
+            }
+
+            if (classicCombatModeProfile == null)
+            {
+                classicCombatModeProfile = CombatModeProfile.CreateClassic();
+            }
+
+            classicCombatModeProfile.mode = CombatGameMode.Classic;
+            return classicCombatModeProfile;
+        }
+
+        private void ApplyCombatModeProfile()
+        {
+            if (roundManager != null)
+            {
+                roundManager.SetCombatModeProfile(ActiveCombatModeProfile);
+            }
         }
 
         public void StartRound()
@@ -2467,6 +2834,8 @@ namespace DefenseGame
                 return;
             }
 
+            currentRoundPeakActiveMonsters = Mathf.Max(currentRoundPeakActiveMonsters, MonsterUnit.ActiveCount);
+
             if (fateTimeStopRound == round)
             {
                 monster.ApplyStun(Mathf.Max(0.1f, fateCardTimeStopDuration));
@@ -2778,6 +3147,11 @@ namespace DefenseGame
         public void RequestBanner(string message, Color color, float duration)
         {
             OnBannerRequested?.Invoke(message, color, duration);
+        }
+
+        public void SetCombatTimeAccelerationUiPaused(bool paused)
+        {
+            roundManager?.SetCombatTimeAccelerationUiPaused(paused);
         }
 
         public void RecordBossSkillCast(SkillDefinition skill, bool majorBoss)
@@ -3133,6 +3507,7 @@ namespace DefenseGame
         {
             int rewardGold = monster != null ? monster.GetRewardGold() : 0;
             Gold += rewardGold;
+            RecordKillRateTelemetry();
             if (monster != null && monster.IsBoss)
             {
                 totalBossKills++;
@@ -3216,6 +3591,13 @@ namespace DefenseGame
             if (CurrentRound <= Mathf.Max(0, earlyLeakGraceRoundLimit) && earlyRoundLeakDamageCap > 0)
             {
                 int remaining = Mathf.Max(0, earlyRoundLeakDamageCap - currentRoundLeakDamageTaken);
+                damage = Mathf.Min(damage, remaining);
+            }
+
+            int modeLeakCap = ActiveCombatModeProfile != null ? Mathf.Max(0, ActiveCombatModeProfile.roundLeakDamageCap) : 0;
+            if (modeLeakCap > 0)
+            {
+                int remaining = Mathf.Max(0, modeLeakCap - currentRoundLeakDamageTaken);
                 damage = Mathf.Min(damage, remaining);
             }
 
@@ -3451,6 +3833,10 @@ namespace DefenseGame
             if (running)
             {
                 DismissTemporarySummons();
+                currentRoundPeakActiveMonsters = 0;
+                currentRoundPeakKillsPerSecond = 0;
+                currentRoundBestKillCombo = 0;
+                recentKillTimes.Clear();
                 currentRoundKilledMonsters = 0;
                 currentRoundResolvedMonsters = 0;
                 currentRoundLeakDamageTaken = 0;
@@ -3462,6 +3848,13 @@ namespace DefenseGame
                     ApplyFateMonsterCrushToActiveMonsters();
                 }
                 AnnounceEarlyCrisisRound(round);
+                if (IsOverdriveMode)
+                {
+                    bool horde = roundManager != null && roundManager.IsCurrentRoundHorde;
+                    OnBannerRequested?.Invoke(
+                        horde ? "HORDE WAVE  물량 폭주!" : "OVERDRIVE  PACK WAVE",
+                        horde ? new Color(1f, 0.26f, 0.16f) : new Color(1f, 0.58f, 0.24f), horde ? 2.5f : 1.5f);
+                }
                 OnRoundStarted?.Invoke(round);
             }
             else
@@ -3551,6 +3944,7 @@ namespace DefenseGame
                 }
 
                 OnBannerRequested?.Invoke("ROUND CLEAR  +" + clearReward + "G", new Color(0.48f, 1f, 0.72f), 2.5f);
+                ReportCombatModeRoundTelemetry(round);
                 ReportRoundCombatRecap(bossRound);
                 if (unlockedFrontSlots > 0)
                 {
@@ -3562,6 +3956,7 @@ namespace DefenseGame
                 OnRoundEconomySettlement?.Invoke(round);
                 ResolveEarlyRunFallback(round);
                 ResolveEarlyBossPrepReward(round);
+                ResolveBossForecastBet(round, bossRound);
                 OnRoundBoardPreparation?.Invoke(round);
                 pendingPostRoundChoiceRound = round;
                 OnRoundCompleted?.Invoke(round);
@@ -3647,9 +4042,9 @@ namespace DefenseGame
 
         private void HandleCombatTimeScaleChanged(int multiplier)
         {
-            if (multiplier >= 2 && IsRoundRunning && !FateChoiceSlowMotionActive && !IsDefeatSlowMotionActive)
+            if (multiplier == 2 && IsRoundRunning && !FateChoiceSlowMotionActive && !IsDefeatSlowMotionActive)
             {
-                OnBannerRequested?.Invoke("장기전 가속  ×" + multiplier, new Color(1f, 0.78f, 0.26f), 1.15f);
+                OnBannerRequested?.Invoke("전투 30초 경과 · 장기전 2배속 시작", new Color(1f, 0.78f, 0.26f), 1.8f);
             }
         }
 
@@ -3741,11 +4136,17 @@ namespace DefenseGame
         private void RegisterKillCombo(MonsterUnit monster)
         {
             float now = Time.time;
-            currentKillCombo = now - lastKillTime <= 2.2f ? currentKillCombo + 1 : 1;
+            float comboWindow = Mathf.Max(0.2f, ActiveCombatModeProfile.killComboWindow);
+            currentKillCombo = now - lastKillTime <= comboWindow ? currentKillCombo + 1 : 1;
             lastKillTime = now;
             bestKillCombo = Mathf.Max(bestKillCombo, currentKillCombo);
+            currentRoundBestKillCombo = Mathf.Max(currentRoundBestKillCombo, currentKillCombo);
 
-            if (currentKillCombo >= 5 && currentKillCombo % 5 == 0)
+            if (IsOverdriveMode && ActiveCombatModeProfile.useEscalatingKillFeedback)
+            {
+                PlayOverdriveKillFeedback(monster, currentKillCombo);
+            }
+            else if (currentKillCombo >= 5 && currentKillCombo % 5 == 0)
             {
                 OnBannerRequested?.Invoke(currentKillCombo + " COMBO!", new Color(1f, 0.82f, 0.24f), 1.35f);
                 RuntimeCameraShake.Request(0.035f, 0.10f);
@@ -3763,6 +4164,68 @@ namespace DefenseGame
                 RuntimeGameFeel.PlayJackpotPulse(monster.transform.position, color, monster.Definition != null && monster.Definition.IsMajorBoss ? 2.15f : 1.55f, monster.Definition != null && monster.Definition.IsMajorBoss ? 0.20f : 0.14f, 0.42f, 0.15f, 0.10f, 3);
                 RuntimeGameFeel.ShowJackpotReveal("보스 처치!", bossGrade, bossName, color, "+" + rewardGold + "G / 대응 " + responseDamage, 2.4f);
             }
+        }
+
+        private void PlayOverdriveKillFeedback(MonsterUnit monster, int combo)
+        {
+            bool milestone = combo == 5 || combo == 10 || combo == 25 || combo >= 50 && combo % 25 == 0;
+            if (!milestone)
+            {
+                return;
+            }
+
+            Vector3 position = monster != null ? monster.transform.position : Vector3.zero;
+            Color color = combo >= 25 ? new Color(1f, 0.24f, 0.12f) : combo >= 10 ? new Color(1f, 0.58f, 0.16f) : new Color(1f, 0.84f, 0.24f);
+            string label = combo >= 50 ? "ANNIHILATION" : combo >= 25 ? "RAMPAGE" : combo >= 10 ? "MASSACRE" : "CHAIN KILL";
+            OnBannerRequested?.Invoke(label + "  x" + combo, color, combo >= 25 ? 1.65f : 1.2f);
+
+            if (combo >= 10)
+            {
+                RuntimeAudioUtility.PlayJackpotMinor();
+                RuntimeGameFeel.PlayJackpotPulse(
+                    position,
+                    color,
+                    combo >= 25 ? 1.45f : 0.95f,
+                    combo >= 25 ? 0.075f : 0.04f,
+                    combo >= 25 ? 0.16f : 0.10f,
+                    combo >= 25 ? 0.58f : 0.76f,
+                    combo >= 25 ? 0.055f : 0.03f,
+                    combo >= 25 ? 2 : 1);
+            }
+            else
+            {
+                RuntimeCombatFeedback.ShowGroundPulse(position, color, 0.72f, 0.28f, 0.08f);
+                RuntimeCameraShake.Request(0.025f, 0.08f);
+            }
+        }
+
+        private void RecordKillRateTelemetry()
+        {
+            if (!IsRoundRunning)
+            {
+                return;
+            }
+
+            float now = Time.unscaledTime;
+            recentKillTimes.Enqueue(now);
+            while (recentKillTimes.Count > 0 && now - recentKillTimes.Peek() > 1f)
+            {
+                recentKillTimes.Dequeue();
+            }
+
+            currentRoundPeakKillsPerSecond = Mathf.Max(currentRoundPeakKillsPerSecond, recentKillTimes.Count);
+        }
+
+        private void ReportCombatModeRoundTelemetry(int round)
+        {
+            Debug.Log(
+                "[CombatModeTelemetry] mode=" + CurrentCombatMode +
+                " round=" + round +
+                " horde=" + (roundManager != null && roundManager.IsCurrentRoundHorde) +
+                " target=" + RoundTargetCount +
+                " peakActive=" + currentRoundPeakActiveMonsters +
+                " peakKillsPerSecond=" + currentRoundPeakKillsPerSecond +
+                " roundBestCombo=" + currentRoundBestKillCombo);
         }
 
         private int CalculateGrowthCurrency()
@@ -3789,6 +4252,10 @@ namespace DefenseGame
             currentKillCombo = 0;
             bestKillCombo = 0;
             lastKillTime = -999f;
+            currentRoundPeakActiveMonsters = 0;
+            currentRoundPeakKillsPerSecond = 0;
+            currentRoundBestKillCombo = 0;
+            recentKillTimes.Clear();
             bestSynergyCount = 0;
             bestSynergyTitle = "시너지 없음";
             currentSynergyCount = 0;
@@ -3828,6 +4295,10 @@ namespace DefenseGame
             luckySummonReady = false;
             luckySummonConsumed = false;
             luckySummonChoiceOpen = false;
+            bossForecastBet = BossForecastBet.None;
+            bossForecastBetResolved = false;
+            bossForecastRequestRaised = false;
+            bossForecastBonusScore = 0;
             earlyRunTuningLogRecorded = false;
             runR3BoosterOffered = false;
             runR3BoosterPurchased = false;
@@ -5174,6 +5645,12 @@ namespace DefenseGame
             if (earlyRunRecoveryRecommended)
             {
                 score -= 20;
+            }
+
+            score += Mathf.Max(0, bossForecastBonusScore);
+            if (dailyFateCupEnabled)
+            {
+                score += Mathf.Max(0, CurrentRound) * 2;
             }
 
             return Mathf.Max(0, score);

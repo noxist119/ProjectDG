@@ -14,6 +14,8 @@ namespace DefenseGame
 		private Coroutine hitStopRoutine;
 
 		private float baseFixedDeltaTime;
+		private float hitStopPreviousTimeScale = 1f;
+		private float hitStopPreviousFixedDeltaTime = 0.02f;
 
 		private void Awake()
 		{
@@ -29,12 +31,11 @@ namespace DefenseGame
 			if (hitStopRoutine != null)
 			{
 				StopCoroutine(hitStopRoutine);
-				if (!DefenseGameController.IsDefeatSlowMotionActive)
-				{
-					Time.timeScale = 1f;
-					Time.fixedDeltaTime = baseFixedDeltaTime;
-				}
+				RestoreHitStopTimeScale();
 			}
+
+			hitStopPreviousTimeScale = Mathf.Approximately(Time.timeScale, 0f) ? 1f : Time.timeScale;
+			hitStopPreviousFixedDeltaTime = Mathf.Max(0.001f, Time.fixedDeltaTime);
 			hitStopRoutine = StartCoroutine(HitStopRoutine(Mathf.Clamp(targetScale, 0.08f, 1f), Mathf.Max(0.02f, duration)));
 		}
 
@@ -65,16 +66,26 @@ namespace DefenseGame
 
 		private IEnumerator HitStopRoutine(float targetScale, float duration)
 		{
-			float previousScale = Time.timeScale;
 			Time.timeScale = targetScale;
 			Time.fixedDeltaTime = baseFixedDeltaTime * targetScale;
 			yield return new WaitForSecondsRealtime(duration);
-			if (!DefenseGameController.IsDefeatSlowMotionActive)
-			{
-				Time.timeScale = (Mathf.Approximately(previousScale, 0f) ? 1f : previousScale);
-				Time.fixedDeltaTime = baseFixedDeltaTime * Time.timeScale;
-			}
+			RestoreHitStopTimeScale();
 			hitStopRoutine = null;
+		}
+
+		private void RestoreHitStopTimeScale()
+		{
+			if (DefenseGameController.IsDefeatSlowMotionActive)
+			{
+				return;
+			}
+
+			DefenseGameController controller = DefenseGameController.Active;
+			bool activeCombat = controller != null && controller.IsCombatInteractionLocked;
+			Time.timeScale = activeCombat ? Mathf.Max(0.01f, hitStopPreviousTimeScale) : 1f;
+			Time.fixedDeltaTime = activeCombat
+				? Mathf.Max(0.001f, hitStopPreviousFixedDeltaTime)
+				: Mathf.Max(0.001f, baseFixedDeltaTime);
 		}
 
 		private IEnumerator DelayedPulseRoutine(Vector3 position, Color color, float radius, float delay)

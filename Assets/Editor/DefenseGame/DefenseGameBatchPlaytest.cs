@@ -12,7 +12,7 @@ namespace DefenseGame.Editor
 {
     public static class DefenseGameBatchPlaytest
     {
-        private const int TargetRuns = 20;
+        private const int DefaultTargetRuns = 20;
         private const int TargetRound = 10;
         private const float BatchTimeScale = 40f;
         private const float BatchFixedDeltaTime = 0.025f;
@@ -21,13 +21,21 @@ namespace DefenseGame.Editor
         private const double RunTimeoutSeconds = 300d;
         private const string ScenePath = "Assets/Scenes/DG.unity";
         private const string OutputDirectoryName = "BatchPlaytestResults";
-        private const string OutputFileName = "DefenseGame_Playtest20_Human3.json";
+        private const string ClassicOutputFileName = "DefenseGame_Playtest20_ClassicBaseline.json";
+        private const string OverdriveOutputFileName = "DefenseGame_Playtest20_Overdrive.json";
+        private const string OverdrivePairedOutputFileName = "DefenseGame_Playtest30_OverdrivePaired.json";
+        private const string OverdriveFairPairedOutputFileName = "DefenseGame_Playtest30_OverdriveFairPaired.json";
         private const string MissingScriptReportFileName = "RuntimeMissingScripts.json";
         private static string OutputDirectory => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName));
-        private static string OutputPath => Path.Combine(OutputDirectory, OutputFileName);
+        private static string OutputPath => Path.Combine(OutputDirectory, requestedOutputFileName);
         private static string MissingScriptReportPath => Path.Combine(OutputDirectory, MissingScriptReportFileName);
 
         private static readonly List<RunResult> Results = new List<RunResult>();
+        private static CombatGameMode requestedCombatMode = CombatGameMode.Classic;
+        private static int requestedRunCount = DefaultTargetRuns;
+        private static bool pairedSeedMode;
+        private static bool fairStrategyPolicy;
+        private static string requestedOutputFileName = ClassicOutputFileName;
         private static DefenseGameController controller;
         private static RunResult current;
         private static int runIndex;
@@ -53,6 +61,34 @@ namespace DefenseGame.Editor
         [MenuItem("DefenseGame/Batch Playtest/Run Human Strategies 20 Total")]
         public static void RunHumanStrategies20()
         {
+            RunHumanStrategies(CombatGameMode.Classic, DefaultTargetRuns, false, false, ClassicOutputFileName);
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Run Overdrive Human Strategies 20 Total")]
+        public static void RunOverdriveHumanStrategies20()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, DefaultTargetRuns, false, false, OverdriveOutputFileName);
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Run Overdrive Paired Seeds 30 Total")]
+        public static void RunOverdrivePairedStrategies30()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, 30, true, false, OverdrivePairedOutputFileName);
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Run Overdrive Fair Paired Seeds 30 Total")]
+        public static void RunOverdriveFairPairedStrategies30()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, 30, true, true, OverdriveFairPairedOutputFileName);
+        }
+
+        private static void RunHumanStrategies(CombatGameMode combatMode, int runCount, bool usePairedSeeds, bool useFairPolicy, string outputFileName)
+        {
+            requestedCombatMode = combatMode;
+            requestedRunCount = Mathf.Max(3, runCount);
+            pairedSeedMode = usePairedSeeds;
+            fairStrategyPolicy = useFairPolicy;
+            requestedOutputFileName = string.IsNullOrWhiteSpace(outputFileName) ? ClassicOutputFileName : outputFileName;
             Results.Clear();
             controller = null;
             current = null;
@@ -108,6 +144,7 @@ namespace DefenseGame.Editor
 
             EditorSceneManager.OpenScene(ScenePath);
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
+            controller?.SetRunContentSeedOverride(null);
             EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
             EditorApplication.update -= Tick;
             EditorApplication.update += Tick;
@@ -247,15 +284,40 @@ namespace DefenseGame.Editor
 
         private static void StartRun()
         {
-            UnityEngine.Random.InitState(90210 + runIndex * 7919);
+            int seedIndex = pairedSeedMode ? runIndex / 3 : runIndex;
+            int contentSeed = 90210 + seedIndex * 7919;
             current = new RunResult
             {
                 index = runIndex + 1,
                 strategy = ResolveStrategy(runIndex),
+                contentSeed = contentSeed,
                 startGold = controller.Gold
             };
 
+            controller.SetRunContentSeedOverride(null);
             controller.ResetRunForRetry();
+            if (controller.DailyFateCupEnabled)
+            {
+                controller.TrySetDailyFateCupEnabled(false);
+            }
+
+            if (!controller.TrySetCombatMode(requestedCombatMode) &&
+                controller.CurrentCombatMode != requestedCombatMode)
+            {
+                current.notes.Add("combat_mode_switch_failed_" + requestedCombatMode);
+            }
+
+            UnityEngine.Random.InitState(contentSeed);
+            controller.SetRunContentSeedOverride(contentSeed);
+            controller.ResetRunForRetry();
+
+            BossForecastBet forecastBet = ResolveBossForecastBet(current.strategy);
+            if (!controller.TryChooseBossForecastBet(forecastBet))
+            {
+                current.notes.Add("boss_forecast_bet_failed_" + forecastBet);
+            }
+            current.bossForecastBet = forecastBet.ToString();
+
             runStartEditorTime = EditorApplication.timeSinceStartup;
             current.startGold = controller.Gold;
             lastObservedRound = controller.CurrentRound;
@@ -265,7 +327,14 @@ namespace DefenseGame.Editor
 
         private static string ResolveStrategy(int index)
         {
-            switch (index % 3)
+            int strategyIndex = index % 3;
+            if (pairedSeedMode)
+            {
+                int seedIndex = index / 3;
+                strategyIndex = (strategyIndex + seedIndex) % 3;
+            }
+
+            switch (strategyIndex)
             {
                 case 0:
                     return "summon-heavy";
@@ -276,6 +345,21 @@ namespace DefenseGame.Editor
             }
         }
 
+        private static BossForecastBet ResolveBossForecastBet(string strategy)
+        {
+            if (strategy == "summon-heavy")
+            {
+                return BossForecastBet.Supply;
+            }
+
+            if (strategy == "balanced")
+            {
+                return BossForecastBet.Build;
+            }
+
+            return BossForecastBet.Tactical;
+        }
+
         private static void CompleteRun()
         {
             current.reachedRound = Mathf.Max(current.reachedRound, controller.CurrentRound);
@@ -283,12 +367,14 @@ namespace DefenseGame.Editor
             current.endLife = controller.Life;
             current.r10BossHealthRemaining01 = ResolveRemainingBossHealth01();
             CaptureFateCardSnapshot("complete");
+            current.bossForecastBonusScore = controller.BossForecastBonusScore;
+            current.bossForecastSuccess = controller.BossForecastBonusScore > 0;
             current.clearedR10 = controller.Life > 0 && lastObservedRound >= TargetRound && !current.timeout;
             Results.Add(current);
             File.WriteAllText(OutputPath + ".partial", BuildJson("partial"), Encoding.UTF8);
 
             runIndex++;
-            if (runIndex >= TargetRuns)
+            if (runIndex >= requestedRunCount)
             {
                 FinishAll("complete");
                 return;
@@ -301,6 +387,7 @@ namespace DefenseGame.Editor
         {
             EditorApplication.update -= Tick;
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
+            controller?.SetRunContentSeedOverride(null);
 
             string json = BuildJson(status);
             File.WriteAllText(OutputPath, json, Encoding.UTF8);
@@ -418,6 +505,19 @@ namespace DefenseGame.Editor
             }
 
             float lifeRatio = (float)controller.Life / controller.MaxLife;
+            if (fairStrategyPolicy)
+            {
+                if (lifeRatio > 0.75f || !controller.CanUseFateSurvival)
+                {
+                    return;
+                }
+
+                if (controller.TryActivateFateSurvival())
+                {
+                    RecordFateUse("crisis_slot0", 0);
+                }
+                return;
+            }
             float threshold = current.strategy == "shop-save"
                 ? 0.78f
                 : current.strategy == "balanced" ? 0.75f : 0.72f;
@@ -470,6 +570,10 @@ namespace DefenseGame.Editor
             }
 
             float lifeRatio = controller.MaxLife > 0 ? (float)controller.Life / controller.MaxLife : 1f;
+            if (fairStrategyPolicy)
+            {
+                return controller.CurrentRound >= 6 && lifeRatio <= 0.78f;
+            }
             if (controller.CurrentRound >= TargetRound)
             {
                 return true;
@@ -560,6 +664,10 @@ namespace DefenseGame.Editor
 
             int nextRound = controller.CurrentRound + 1;
             float lifeRatio = controller.MaxLife > 0 ? (float)controller.Life / controller.MaxLife : 1f;
+            if (fairStrategyPolicy)
+            {
+                return controller.CurrentRound >= 6 && lifeRatio <= 0.78f;
+            }
             if (ContainsAny(label, "시간 정지", "심판 번개") && !controller.IsRoundRunning)
             {
                 return false;
@@ -634,6 +742,12 @@ namespace DefenseGame.Editor
 
         private static int ResolveGoldReserve()
         {
+            if (fairStrategyPolicy)
+            {
+                int fairNextRound = controller.CurrentRound + 1;
+                return fairNextRound <= 3 ? 12 : fairNextRound <= 6 ? 24 : 20;
+            }
+
             if (current.strategy == "summon-heavy")
             {
                 return 0;
@@ -672,7 +786,7 @@ namespace DefenseGame.Editor
                 return 3;
             }
 
-            if (current != null && current.strategy == "shop-save" && nextRound <= 5)
+            if (!fairStrategyPolicy && current != null && current.strategy == "shop-save" && nextRound <= 5)
             {
                 return 6;
             }
@@ -783,7 +897,7 @@ namespace DefenseGame.Editor
                 current.r6ShopSeen = true;
             }
 
-            bool shopFocused = current.strategy == "shop-save";
+            bool shopFocused = current.strategy == "shop-save" && !fairStrategyPolicy;
             bool shouldConsiderPurchase = current.shopPurchases < ResolveShopPurchaseLimit();
             bool bought = false;
             if (shouldConsiderPurchase)
@@ -848,7 +962,7 @@ namespace DefenseGame.Editor
                 return 0;
             }
 
-            if (current.strategy == "shop-save")
+            if (!fairStrategyPolicy && current.strategy == "shop-save")
             {
                 return 2;
             }
@@ -861,6 +975,11 @@ namespace DefenseGame.Editor
             if (controller == null || current == null)
             {
                 return 0;
+            }
+
+            if (fairStrategyPolicy)
+            {
+                return round <= 3 ? Mathf.Max(0, controller.SummonCost / 2) : Mathf.Max(0, controller.SummonCost);
             }
 
             if (shopFocused)
@@ -878,6 +997,11 @@ namespace DefenseGame.Editor
 
         private static int ResolveShopMinimumScore(bool shopFocused, int offerCost)
         {
+            if (fairStrategyPolicy)
+            {
+                return offerCost <= 0 ? 30 : 45;
+            }
+
             if (shopFocused)
             {
                 return offerCost <= 0 ? 20 : 35;
@@ -1267,8 +1391,11 @@ namespace DefenseGame.Editor
             StringBuilder builder = new StringBuilder(4096);
             builder.AppendLine("{");
             builder.AppendLine("  \"status\": \"" + status + "\",");
+            builder.AppendLine("  \"combatMode\": \"" + requestedCombatMode + "\",");
+            builder.AppendLine("  \"pairedSeedMode\": " + (pairedSeedMode ? "true" : "false") + ",");
+            builder.AppendLine("  \"fairStrategyPolicy\": " + (fairStrategyPolicy ? "true" : "false") + ",");
             builder.AppendLine("  \"runs\": " + Results.Count + ",");
-            builder.AppendLine("  \"targetRuns\": " + TargetRuns + ",");
+            builder.AppendLine("  \"targetRuns\": " + requestedRunCount + ",");
             builder.AppendLine("  \"r10Clears\": " + cleared + ",");
             builder.AppendLine("  \"r10SuccessRate\": " + FormatRatio(cleared, Results.Count) + ",");
             builder.AppendLine("  \"r3ShopSeen\": " + r3Seen + ",");
@@ -1313,6 +1440,7 @@ namespace DefenseGame.Editor
                 RunResult result = Results[i];
                 builder.Append("    {");
                 builder.Append("\"index\":").Append(result.index).Append(',');
+                builder.Append("\"contentSeed\":").Append(result.contentSeed).Append(',');
                 builder.Append("\"strategy\":\"").Append(result.strategy).Append("\",");
                 builder.Append("\"reachedRound\":").Append(result.reachedRound).Append(',');
                 builder.Append("\"clearedR10\":").Append(result.clearedR10 ? "true" : "false").Append(',');
@@ -1334,6 +1462,9 @@ namespace DefenseGame.Editor
                 builder.Append("\"endGold\":").Append(result.endGold).Append(',');
                 builder.Append("\"endLife\":").Append(result.endLife).Append(',');
                 builder.Append("\"r10BossHealthRemaining01\":").Append(FormatFloat(result.r10BossHealthRemaining01)).Append(',');
+                builder.Append("\"bossForecastBet\":\"").Append(EscapeJson(result.bossForecastBet)).Append("\",");
+                builder.Append("\"bossForecastSuccess\":").Append(result.bossForecastSuccess ? "true" : "false").Append(',');
+                builder.Append("\"bossForecastBonusScore\":").Append(result.bossForecastBonusScore).Append(',');
                 builder.Append("\"timeout\":").Append(result.timeout ? "true" : "false").Append(',');
                 builder.Append("\"notes\":\"").Append(EscapeJson(string.Join(";", result.notes))).Append("\"");
                 builder.Append("}");
@@ -1374,6 +1505,7 @@ namespace DefenseGame.Editor
         private sealed class RunResult
         {
             public int index;
+            public int contentSeed;
             public string strategy;
             public int startGold;
             public int reachedRound;
@@ -1396,6 +1528,9 @@ namespace DefenseGame.Editor
             public int endGold;
             public int endLife;
             public float r10BossHealthRemaining01 = -1f;
+            public string bossForecastBet = string.Empty;
+            public bool bossForecastSuccess;
+            public int bossForecastBonusScore;
             public bool timeout;
             public readonly List<string> notes = new List<string>();
         }

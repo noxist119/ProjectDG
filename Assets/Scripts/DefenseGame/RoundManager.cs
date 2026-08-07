@@ -91,8 +91,10 @@ namespace DefenseGame
         public bool LastRoundEndedByDefeat { get; private set; }
         public bool IsBossRound => CurrentRound > 0 && CurrentRound % 10 == 0;
         public bool IsMidBossRound => CurrentRound > 0 && !IsBossRound && CreateSpawnPlan(CurrentRound).midBossMonsterCount > 0;
+        public bool IsCurrentRoundHorde { get; private set; }
         public int CurrentRoundTargetCount { get; private set; }
         public int CurrentRoundSpawnedCount { get; private set; }
+        public CombatModeProfile ActiveCombatModeProfile => combatModeProfile;
 
         /// <summary>카운트다운과 선택 슬로모션을 제외한 실제 전투 대기 시간입니다.</summary>
         public float CombatElapsedRealtime { get; private set; }
@@ -101,11 +103,15 @@ namespace DefenseGame
         private int nextSpawnPointIndex;
         private Coroutine roundRoutine;
         private bool combatTimeAccelerationActive;
+        private bool combatTimeAccelerationUiPaused;
+        private float uiPauseResumeTimeScale = 1f;
+        private float uiPauseResumeFixedDeltaTime = 0.02f;
         private bool combatSpeedBaselineCaptured;
         private float combatSpeedBaselineTimeScale = 1f;
         private float combatSpeedBaselineFixedDeltaTime = 0.02f;
         private float combatSpeedAppliedTimeScale = 1f;
         private float combatTimeLastRealtime;
+        private CombatModeProfile combatModeProfile = CombatModeProfile.CreateClassic();
 
         private struct RoundSpawnPlan
         {
@@ -114,6 +120,10 @@ namespace DefenseGame
             public int bossMonsterCount;
             public float interval;
             public float intervalVariance;
+            public bool useBurstPacks;
+            public bool isHordeRound;
+            public float regularHealthMultiplier;
+            public float regularAttackMultiplier;
 
             public int TotalCount => regularMonsterCount + midBossMonsterCount + bossMonsterCount;
         }
@@ -132,6 +142,11 @@ namespace DefenseGame
 
         private void OnDisable()
         {
+            if (combatTimeAccelerationUiPaused)
+            {
+                SetCombatTimeAccelerationUiPaused(false);
+            }
+
             EndCombatTimeAcceleration(true);
         }
 
@@ -167,12 +182,26 @@ namespace DefenseGame
 
         private void UpdateCombatTimeAcceleration()
         {
-            if (!combatTimeAccelerationActive || !IsRoundRunning || !combatSpeedBaselineCaptured)
+            float now = Time.unscaledTime;
+            if (combatTimeAccelerationUiPaused)
             {
+                if (!Mathf.Approximately(Time.timeScale, 0f))
+                {
+                    uiPauseResumeTimeScale = Mathf.Max(0.01f, Time.timeScale);
+                    uiPauseResumeFixedDeltaTime = Mathf.Max(0.001f, Time.fixedDeltaTime);
+                    Time.timeScale = 0f;
+                }
+
+                combatTimeLastRealtime = now;
                 return;
             }
 
-            float now = Time.unscaledTime;
+            if (!combatTimeAccelerationActive || !IsActiveCombatTimeAccelerationPhase() || !combatSpeedBaselineCaptured)
+            {
+                combatTimeLastRealtime = now;
+                return;
+            }
+
             if (IsCombatTimeAccelerationPaused())
             {
                 combatTimeLastRealtime = now;
@@ -182,19 +211,26 @@ namespace DefenseGame
             CombatElapsedRealtime += Mathf.Max(0f, now - combatTimeLastRealtime);
             combatTimeLastRealtime = now;
             int targetMultiplier = ResolveCombatTimeScaleMultiplier(CombatElapsedRealtime, longCombatAccelerationStartSeconds, longCombatAccelerationStepSeconds, longCombatAccelerationMaxMultiplier);
-            if (targetMultiplier == CombatTimeScaleMultiplier || !Mathf.Approximately(Time.timeScale, combatSpeedAppliedTimeScale))
+            if (targetMultiplier == CombatTimeScaleMultiplier)
+            {
+                return;
+            }
+
+            if (!TryApplyCombatTimeScale(targetMultiplier))
             {
                 return;
             }
 
             CombatTimeScaleMultiplier = targetMultiplier;
-            combatSpeedAppliedTimeScale = combatSpeedBaselineTimeScale * CombatTimeScaleMultiplier;
-            Time.timeScale = combatSpeedAppliedTimeScale;
-            Time.fixedDeltaTime = Mathf.Max(0.001f, combatSpeedBaselineFixedDeltaTime * CombatTimeScaleMultiplier);
             OnCombatTimeScaleChanged?.Invoke(CombatTimeScaleMultiplier);
         }
 
-        private static bool IsCombatTimeAccelerationPaused()
+        private bool IsActiveCombatTimeAccelerationPhase()
+        {
+            return IsRoundRunning && CurrentRoundSpawnedCount > 0;
+        }
+
+        private bool IsCombatTimeAccelerationPaused()
         {
             if (DefenseGameController.IsDefeatSlowMotionActive)
             {
@@ -203,6 +239,47 @@ namespace DefenseGame
 
             DefenseGameController controller = DefenseGameController.Active;
             return (controller != null && controller.FateChoiceSlowMotionActive) || Time.timeScale < 0.5f;
+        }
+
+        private bool TryApplyCombatTimeScale(int multiplier)
+        {
+            if (!combatSpeedBaselineCaptured || !Mathf.Approximately(Time.timeScale, combatSpeedAppliedTimeScale))
+            {
+                return false;
+            }
+
+            combatSpeedAppliedTimeScale = combatSpeedBaselineTimeScale * Mathf.Max(1, multiplier);
+            Time.timeScale = combatSpeedAppliedTimeScale;
+            Time.fixedDeltaTime = Mathf.Max(0.001f, combatSpeedBaselineFixedDeltaTime * Mathf.Max(1, multiplier));
+            return true;
+        }
+
+        public void SetCombatTimeAccelerationUiPaused(bool paused)
+        {
+            if (combatTimeAccelerationUiPaused == paused)
+            {
+                return;
+            }
+
+            combatTimeLastRealtime = Time.unscaledTime;
+            if (paused)
+            {
+                uiPauseResumeTimeScale = Mathf.Approximately(Time.timeScale, 0f) ? 1f : Mathf.Max(0.01f, Time.timeScale);
+                uiPauseResumeFixedDeltaTime = Mathf.Max(0.001f, Time.fixedDeltaTime);
+                combatTimeAccelerationUiPaused = true;
+                Time.timeScale = 0f;
+                return;
+            }
+
+            combatTimeAccelerationUiPaused = false;
+            DefenseGameController controller = DefenseGameController.Active;
+            bool externalSlowMotionActive = DefenseGameController.IsDefeatSlowMotionActive ||
+                (controller != null && controller.FateChoiceSlowMotionActive);
+            if (!externalSlowMotionActive)
+            {
+                Time.timeScale = Mathf.Max(0.01f, uiPauseResumeTimeScale);
+                Time.fixedDeltaTime = Mathf.Max(0.001f, uiPauseResumeFixedDeltaTime);
+            }
         }
 
         private void SuspendCombatTimeAcceleration()
@@ -220,13 +297,15 @@ namespace DefenseGame
                 return;
             }
 
-            if (!restoreBaseline || DefenseGameController.IsDefeatSlowMotionActive || !Mathf.Approximately(Time.timeScale, combatSpeedAppliedTimeScale))
+            bool canRestoreBaseline = restoreBaseline &&
+                !DefenseGameController.IsDefeatSlowMotionActive &&
+                Mathf.Approximately(Time.timeScale, combatSpeedAppliedTimeScale);
+            if (canRestoreBaseline)
             {
-                return;
+                Time.timeScale = combatSpeedBaselineTimeScale;
+                Time.fixedDeltaTime = combatSpeedBaselineFixedDeltaTime;
             }
 
-            Time.timeScale = combatSpeedBaselineTimeScale;
-            Time.fixedDeltaTime = combatSpeedBaselineFixedDeltaTime;
             combatSpeedBaselineCaptured = false;
             CombatElapsedRealtime = 0f;
             CombatTimeScaleMultiplier = 1;
@@ -240,6 +319,18 @@ namespace DefenseGame
             spawnPoints = newSpawnPoints;
             goalPoint = newGoalPoint;
             spawnEffectPrefab = newSpawnEffectPrefab;
+        }
+
+        public void SetCombatModeProfile(CombatModeProfile profile)
+        {
+            if (IsRoundRunning)
+            {
+                Debug.LogWarning("[RoundManager] Combat mode cannot change while a round is running.");
+                return;
+            }
+
+            combatModeProfile = profile ?? CombatModeProfile.CreateClassic();
+            IsCurrentRoundHorde = false;
         }
 
         public void StartNextRound()
@@ -332,6 +423,7 @@ namespace DefenseGame
             CurrentRoundTargetCount = 0;
             CurrentRoundSpawnedCount = 0;
             nextSpawnPointIndex = 0;
+            IsCurrentRoundHorde = false;
             LastRoundEndedByDefeat = false;
             IsRoundRunning = false;
             EndCombatTimeAcceleration(true);
@@ -345,6 +437,7 @@ namespace DefenseGame
             CurrentRound++;
             nextSpawnPointIndex = 0;
             RoundSpawnPlan spawnPlan = CreateSpawnPlan(CurrentRound);
+            IsCurrentRoundHorde = spawnPlan.isHordeRound;
             CurrentRoundTargetCount = spawnPlan.TotalCount;
             CurrentRoundSpawnedCount = 0;
             OnRoundStateChanged?.Invoke(CurrentRound, IsBossRound, true);
@@ -360,6 +453,8 @@ namespace DefenseGame
 
             int midBossesSpawned = 0;
             int[] midBossSpawnIndices = BuildMidBossSpawnIndices(spawnPlan.regularMonsterCount, spawnPlan.midBossMonsterCount);
+            int packIndex = 0;
+            int remainingInPack = ResolvePackSize(spawnPlan, packIndex);
             for (int regularIndex = 0; regularIndex < spawnPlan.regularMonsterCount; regularIndex++)
             {
                 while (midBossesSpawned < spawnPlan.midBossMonsterCount &&
@@ -370,12 +465,37 @@ namespace DefenseGame
                 }
 
                 yield return WaitForSpawnBudget(MonsterThreatLevel.Regular);
-                if (SpawnMonster(monsterDatabase.GetRandomMonsterForRound(CurrentRound)))
+                if (SpawnMonster(
+                    monsterDatabase.GetRandomMonsterForRound(CurrentRound),
+                    spawnPlan.regularHealthMultiplier,
+                    spawnPlan.regularAttackMultiplier))
                 {
                     CurrentRoundSpawnedCount++;
                 }
 
-                yield return new WaitForSeconds(GetSpawnDelay(spawnPlan, regularIndex));
+                bool hasMoreRegularMonsters = regularIndex + 1 < spawnPlan.regularMonsterCount;
+                if (!hasMoreRegularMonsters)
+                {
+                    continue;
+                }
+
+                if (!spawnPlan.useBurstPacks)
+                {
+                    yield return new WaitForSeconds(GetSpawnDelay(spawnPlan, regularIndex));
+                    continue;
+                }
+
+                remainingInPack--;
+                if (remainingInPack <= 0)
+                {
+                    packIndex++;
+                    remainingInPack = ResolvePackSize(spawnPlan, packIndex);
+                    yield return new WaitForSeconds(combatModeProfile.ResolvePackGap(spawnPlan.isHordeRound));
+                }
+                else
+                {
+                    yield return new WaitForSeconds(combatModeProfile.ResolveIntraPackInterval(spawnPlan.isHordeRound));
+                }
             }
 
             while (midBossesSpawned < spawnPlan.midBossMonsterCount)
@@ -458,7 +578,10 @@ namespace DefenseGame
 
             regularCount = ApplyPreBossLeakEaseToRegularCount(round, bossRound, regularCount);
             regularCount = CommercialRoundPacing.ApplySpawnCount(round, bossRound, regularCount);
+            CombatModeProfile profile = combatModeProfile ?? CombatModeProfile.CreateClassic();
+            regularCount = profile.ApplyRegularCount(round, bossRound, regularCount);
             float spawnInterval = CommercialRoundPacing.ApplySpawnInterval(round, bossRound, CalculateSpawnInterval(round, bossRound));
+            bool hordeRound = profile.IsHordeRound(round, bossRound);
 
             return new RoundSpawnPlan
             {
@@ -466,7 +589,11 @@ namespace DefenseGame
                 midBossMonsterCount = Mathf.Max(0, midBossCount),
                 bossMonsterCount = bossRound ? 1 : 0,
                 interval = spawnInterval,
-                intervalVariance = Mathf.Max(0f, spawnIntervalVariance)
+                intervalVariance = Mathf.Max(0f, spawnIntervalVariance),
+                useBurstPacks = profile.useBurstPacks,
+                isHordeRound = hordeRound,
+                regularHealthMultiplier = profile.ResolveRegularHealthMultiplier(round, bossRound),
+                regularAttackMultiplier = profile.ResolveRegularAttackMultiplier(round, bossRound)
             };
         }
 
@@ -669,6 +796,17 @@ namespace DefenseGame
             return Mathf.Max(minimumSpawnInterval, variedInterval);
         }
 
+        private int ResolvePackSize(RoundSpawnPlan plan, int packIndex)
+        {
+            if (!plan.useBurstPacks)
+            {
+                return 1;
+            }
+
+            CombatModeProfile profile = combatModeProfile ?? CombatModeProfile.CreateClassic();
+            return Mathf.Max(1, profile.ResolvePackSize(CurrentRound, packIndex, plan.isHordeRound));
+        }
+
         private IEnumerator WaitForSpawnBudget(MonsterThreatLevel threatLevel)
         {
             while (IsSpawnBudgetFull(threatLevel))
@@ -838,7 +976,7 @@ namespace DefenseGame
             }
         }
 
-        private bool SpawnMonster(MonsterDefinition definition)
+        private bool SpawnMonster(MonsterDefinition definition, float healthMultiplier = 1f, float attackMultiplier = 1f)
         {
             if (definition == null || spawnPoints == null || spawnPoints.Length == 0 || goalPoint == null)
             {
@@ -876,7 +1014,7 @@ namespace DefenseGame
             }
 
             monster.gameObject.SetActive(true);
-            monster.Initialize(definition, goalPoint, CurrentRound);
+            monster.Initialize(definition, goalPoint, CurrentRound, healthMultiplier, attackMultiplier);
             return true;
         }
 

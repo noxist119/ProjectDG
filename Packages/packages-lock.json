@@ -9,6 +9,12 @@
         "com.unity.test-framework": "1.1.31"
       }
     },
+    "com.demigiant.dotween": {
+      "version": "file:D:/프로그램/DOTween-master/DOTween-master",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
     "com.unity.burst": {
       "version": "1.8.29",
       "depth": 0,

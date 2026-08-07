@@ -2,11 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using DG.Tweening;
 using UnityEngine.UI;
 
 namespace DefenseGame
 {
-    public class MetaFlowUI : MonoBehaviour
+    public partial class MetaFlowUI : MonoBehaviour
     {
         [SerializeField] private DefenseGameController gameController;
         [SerializeField] private GameUIButtonBinder buttonBinder;
@@ -61,9 +62,11 @@ namespace DefenseGame
         private GameObject shopSceneCanvasRoot;
         private Text lobbyModeText;
         private Text lobbyFortuneText;
+        private Text lobbyDailyFateCupText;
         private Text lobbyCollectionSummaryText;
         private Text lobbyChestStatusText;
         private Text lobbyRecordStatusText;
+        private Text lobbyCombatModeText;
         private Text queueTimerText;
         private Text queueStatusText;
         private Text resultTitleText;
@@ -105,6 +108,8 @@ namespace DefenseGame
         private Button resultRetryButton;
         private Button matchmakingCancelButton;
         private Button lobbyModeButton;
+        private Button lobbyCombatModeButton;
+        private Button lobbyDailyFateCupButton;
         private Button hubShopButton;
         private Button hubInventoryButton;
         private Button hubLobbyButton;
@@ -179,6 +184,12 @@ namespace DefenseGame
             augmentManager = augments;
             characterDatabase = database;
             outgameProgression = progression;
+            yahtzeeProgression = GetComponent<YahtzeeProgressionSystem>();
+            if (yahtzeeProgression == null)
+            {
+                yahtzeeProgression = gameObject.AddComponent<YahtzeeProgressionSystem>();
+            }
+            yahtzeeProgression.Configure(outgameProgression);
             characterCollectionUI = collection;
             font = uiFont;
             uiSkin = skin;
@@ -223,6 +234,7 @@ namespace DefenseGame
             HideResult();
             HideLoadout();
             HideOutgamePlaceholder();
+            HideYahtzee();
             HideExitConfirm();
             HideShop();
             RefreshModeUi();
@@ -259,6 +271,7 @@ namespace DefenseGame
             gameController.OnRoundStarted += HandleRoundStarted;
             gameController.OnRoundCompleted += HandleRoundCompleted;
             gameController.OnGameOver += HandleGameOver;
+            gameController.OnCombatModeChanged += HandleCombatModeChanged;
             if (outgameProgression != null)
             {
                 outgameProgression.OnProgressChanged += HandleProgressChanged;
@@ -276,6 +289,7 @@ namespace DefenseGame
             gameController.OnRoundStarted -= HandleRoundStarted;
             gameController.OnRoundCompleted -= HandleRoundCompleted;
             gameController.OnGameOver -= HandleGameOver;
+            gameController.OnCombatModeChanged -= HandleCombatModeChanged;
             if (outgameProgression != null)
             {
                 outgameProgression.OnProgressChanged -= HandleProgressChanged;
@@ -325,6 +339,7 @@ namespace DefenseGame
             BuildResultOverlay(root.transform);
             BuildLoadoutOverlay(root.transform);
             BuildOutgamePlaceholderOverlay(root.transform);
+            BuildYahtzeeOverlay(root.transform);
             BuildSeasonRankingOverlay(root.transform);
             BuildExitConfirmOverlay(root.transform);
             outgameNavigationRoot = new GameObject("OutgameNavigationRoot", typeof(RectTransform));
@@ -343,7 +358,7 @@ namespace DefenseGame
         {
             lobbyOverlay = CreateOverlayRoot(parent, "LobbyOverlay", Color.clear);
             lobbyOverlay.GetComponent<Image>().raycastTarget = false;
-            Image modal = CreatePanel(lobbyOverlay.transform, "LobbyModal", new Vector2(0f, 76f), new Vector2(0f, -152f), Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), false, false);
+            Image modal = CreatePanel(lobbyOverlay.transform, "LobbyModal", Vector2.zero, Vector2.zero, Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), false, false);
             RollRollUiResource.TryApplySprite(modal, "Common/loot-box-background", Image.Type.Simple, false);
             modal.color = Color.white;
 
@@ -351,15 +366,19 @@ namespace DefenseGame
             CreateText(modal.transform, "LobbyTitle", "로비", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -180f), new Vector2(260f, 50f), 38, TextAnchor.MiddleCenter, true);
             CreateText(modal.transform, "LobbySubTitle", "전투를 준비하세요.", new Color(0.86f, 0.91f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -230f), new Vector2(720f, 40f), 22, TextAnchor.MiddleCenter, false);
             lobbyModeText = CreateText(modal.transform, "LobbyModeText", "SERVICE", new Color(0.43f, 1f, 0.80f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(42f, -120f), new Vector2(162f, 34f), 19, TextAnchor.MiddleLeft, true);
-            lobbyModeButton = CreateButton(modal.transform, "LobbyModeButton", "테스트 진입", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-44f, -300f), new Vector2(156f, 54f), new Color(0.23f, 0.72f, 0.82f, 1f), TogglePlayMode, 18);
-            lobbyFortuneText = CreateText(modal.transform, "LobbyFortuneText", DailyFortuneSystem.TodaySummary, new Color(1f, 0.88f, 0.40f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -320f), new Vector2(720f, 30f), 18, TextAnchor.MiddleCenter, true);
+            lobbyModeButton = CreateButton(modal.transform, "LobbyModeButton", "테스트 진입", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-44f, -120f), new Vector2(156f, 54f), new Color(0.23f, 0.72f, 0.82f, 1f), TogglePlayMode, 18);
+            lobbyCombatModeText = CreateText(modal.transform, "LobbyCombatModeText", "전투 규칙  클래식", new Color(0.72f, 0.88f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -276f), new Vector2(620f, 32f), 19, TextAnchor.MiddleCenter, true);
+            lobbyCombatModeButton = CreateButton(modal.transform, "LobbyCombatModeButton", "폭주 모드로 전환", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -324f), new Vector2(470f, 56f), new Color(0.94f, 0.34f, 0.18f, 1f), ToggleCombatMode, 21);
+            lobbyDailyFateCupText = CreateText(modal.transform, "LobbyDailyFateCupText", DailyFateCupRules.TodayLabel, new Color(0.88f, 0.72f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -384f), new Vector2(720f, 32f), 18, TextAnchor.MiddleCenter, true);
+            lobbyDailyFateCupButton = CreateButton(modal.transform, "LobbyDailyFateCupButton", "데일리 운명컵 참가", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -432f), new Vector2(470f, 56f), new Color(0.64f, 0.34f, 0.88f, 1f), ToggleDailyFateCup, 21);
+            lobbyFortuneText = CreateText(modal.transform, "LobbyFortuneText", DailyFortuneSystem.TodaySummary, new Color(1f, 0.88f, 0.40f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -490f), new Vector2(720f, 30f), 17, TextAnchor.MiddleCenter, true);
 
-            Image readyPanel = CreatePanel(modal.transform, "LobbyReadyPanel", new Vector2(0f, -650f), new Vector2(760f, 250f), new Color(0.10f, 0.16f, 0.38f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            Image readyPanel = CreatePanel(modal.transform, "LobbyReadyPanel", new Vector2(0f, -760f), new Vector2(760f, 250f), new Color(0.10f, 0.16f, 0.38f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             CreateShopArtwork(readyPanel.transform, "LobbyReadyIcon", "Icons/icon-main-menu-battle", new Vector2(0f, -26f), new Vector2(92f, 92f), Color.white, new Vector2(0.5f, 1f));
             CreateText(readyPanel.transform, "LobbyReadyTitle", "전투 준비 완료", new Color(1f, 0.88f, 0.36f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -126f), new Vector2(480f, 44f), 32, TextAnchor.MiddleCenter, true);
             CreateText(readyPanel.transform, "LobbyReadyBody", "전장에 입장한 뒤 유닛을 소환하고\n다음 라운드로 전투를 시작하세요.", new Color(0.84f, 0.91f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -178f), new Vector2(620f, 66f), 21, TextAnchor.MiddleCenter, false);
 
-            Image statusPanel = CreatePanel(modal.transform, "LobbyStatusPanel", new Vector2(0f, -950f), new Vector2(760f, 194f), new Color(0.08f, 0.13f, 0.33f, 0.90f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
+            Image statusPanel = CreatePanel(modal.transform, "LobbyStatusPanel", new Vector2(0f, -1060f), new Vector2(760f, 194f), new Color(0.08f, 0.13f, 0.33f, 0.90f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, true);
             CreateText(statusPanel.transform, "LobbyStatusTitle", "오늘의 준비 현황", new Color(0.42f, 0.94f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(480f, 36f), 24, TextAnchor.MiddleCenter, true);
             Image collectionStatus = CreatePanel(statusPanel.transform, "LobbyCollectionStatus", new Vector2(-238f, -70f), new Vector2(220f, 92f), new Color(0.15f, 0.23f, 0.50f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             Image chestStatus = CreatePanel(statusPanel.transform, "LobbyChestStatus", new Vector2(0f, -70f), new Vector2(220f, 92f), new Color(0.14f, 0.39f, 0.38f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
@@ -385,9 +404,7 @@ namespace DefenseGame
             hubShopButton = CreateOutgameNavButton(tabsLayer, "OutgameNavShop", "상점", "SHOP", new Vector2(-432f, 140f), new Color(1f, 0.58f, 0.76f), ToggleShop);
             hubInventoryButton = CreateOutgameNavButton(tabsLayer, "OutgameNavInventory", "인벤", "CARD", new Vector2(-216f, 140f), new Color(0.98f, 0.36f, 0.36f), ShowCollectionTab);
             hubLobbyButton = CreateOutgameNavButton(tabsLayer, "OutgameNavLobby", "로비", "HOME", new Vector2(0f, 140f), new Color(0.30f, 0.62f, 1f), ShowLobbyTab);
-            hubYahtzeeButton = CreateOutgameNavButton(tabsLayer, "OutgameNavYahtzee", "얏찌", "DICE", new Vector2(216f, 140f), new Color(1f, 0.62f, 0.22f), () => ShowOutgamePlaceholder("얏찌", "주사위 기반 보너스 컨텐츠 자리입니다.\n운빨존많겜식 일일/주간 변동 컨텐츠 후보로 남겨둡니다."));
-            hubYahtzeeButton.onClick.RemoveAllListeners();
-            hubYahtzeeButton.onClick.AddListener(() => ShowOutgamePlaceholder("\uc58f\ucc0c", "\uc58f\ucc0c\uc5d0\uc11c \ubb34\ub8cc \uc0c1\uc790 \uac8c\uc774\uc9c0\uc640 \uc0c1\uc790 \ud0a4\ub97c \ud68d\ub4dd\ud558\ub294 \uad6c\uc870\uc785\ub2c8\ub2e4.\n\uac8c\uc784\ub9cc \ud574\ub3c4 \uac19\uc740 \uc720\ub2db \ud480\uc744 \uc5bb\uc73c\uba70, \uc2e4\uc81c \uc58f\ucc0c \ub8f0 \ud655\uc815 \ud6c4 \uc810\uc218\u00b7\uc871\ubcf4 \ubcf4\uc0c1\uc774 \uc774 \uac8c\uc774\uc9c0\uc5d0 \uc5f0\uacb0\ub429\ub2c8\ub2e4."));
+            hubYahtzeeButton = CreateOutgameNavButton(tabsLayer, "OutgameNavYahtzee", "얏찌", "DICE", new Vector2(216f, 140f), new Color(1f, 0.62f, 0.22f), ShowYahtzee);
             hubRankingButton = CreateOutgameNavButton(tabsLayer, "OutgameNavRanking", "랭킹", "CUP", new Vector2(432f, 140f), new Color(0.74f, 0.52f, 1f), ShowSeasonRanking);
             HighlightOutgameNav(hubLobbyButton);
         }
@@ -647,7 +664,7 @@ namespace DefenseGame
                 HideShop();
                 ShowLobby();
             });
-            Button yahtzeeTab = CreateOutgameNavButton(tabsLayer, "ShopNavYahtzee", "얏찌", "DICE", new Vector2(216f, 140f), new Color(1f, 0.62f, 0.22f), () => ShowOutgamePlaceholder("얏찌", "얏찌에서 무료 상자 게이지와 상자 키를 획득하는 구조입니다."));
+            Button yahtzeeTab = CreateOutgameNavButton(tabsLayer, "ShopNavYahtzee", "얏찌", "DICE", new Vector2(216f, 140f), new Color(1f, 0.62f, 0.22f), ShowYahtzee);
             Button rankingTab = CreateOutgameNavButton(tabsLayer, "ShopNavRanking", "랭킹", "CUP", new Vector2(432f, 140f), new Color(0.74f, 0.52f, 1f), ShowSeasonRanking);
 
             SetOutgameNavButtonState(shopTab, true);
@@ -756,7 +773,7 @@ namespace DefenseGame
             resultRewardGoldText = CreateRewardChip(rewardPanel.transform, "RewardGold", "ResultRewardGoldIcon", "골드", "GradeAndGoodsIcons/goods_icon_gold", new Vector2(-145f, -58f), new Color(1f, 0.74f, 0.20f), "+000");
             resultRewardCoreText = CreateRewardChip(rewardPanel.transform, "RewardDiamond", "ResultRewardDiamondIcon", "다이아", "GradeAndGoodsIcons/goods_icon_ruby", new Vector2(145f, -58f), new Color(0.30f, 0.84f, 1f), "+000");
 
-            resultRetryButton = CreateButton(modal.transform, "ResultRetryButton", "새 판 다시하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-120f, 58f), new Vector2(306f, 78f), new Color(0.30f, 0.86f, 0.36f, 1f), RetryFromResult, 27);
+            resultRetryButton = CreateButton(modal.transform, "ResultRetryButton", "새 판 다시하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-145f, 75f), new Vector2(240f, 100f), new Color(0.30f, 0.86f, 0.36f, 1f), RetryFromResult, 27);
             resultContinueButton = CreateButton(modal.transform, "ResultContinueButton", "계속하기", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(190f, 75f), new Vector2(240f, 100f), new Color(0.30f, 0.62f, 1f, 1f), ContinueFromResult, 28);
             CreateShopArtwork(resultContinueButton.transform, "ContinueStar", "InGame/minimi-star", new Vector2(-114f, 0f), new Vector2(28f, 28f), new Color(1f, 0.91f, 0.34f, 1f), new Vector2(0.5f, 0.5f));
         }
@@ -950,6 +967,17 @@ namespace DefenseGame
                 loadoutButton.onClick.RemoveAllListeners();
                 AddButtonListener(loadoutButton, ToggleLoadout);
             }
+            if (lobbyCombatModeButton != null)
+            {
+                lobbyCombatModeButton.onClick.RemoveAllListeners();
+                AddButtonListener(lobbyCombatModeButton, ToggleCombatMode);
+            }
+            if (lobbyDailyFateCupButton != null)
+            {
+                lobbyDailyFateCupButton.onClick.RemoveAllListeners();
+                AddButtonListener(lobbyDailyFateCupButton, ToggleDailyFateCup);
+            }
+
             if (lobbyModeButton != null)
             {
                 lobbyModeButton.onClick.RemoveAllListeners();
@@ -1309,7 +1337,7 @@ namespace DefenseGame
                 return;
             }
 
-            exitConfirmOverlay.SetActive(true);
+            PlayOverlayEnter(exitConfirmOverlay, "ExitConfirmModal");
         }
 
         private void HideExitConfirm()
@@ -1408,6 +1436,8 @@ namespace DefenseGame
                 return;
             }
 
+            HideYahtzee();
+
             HideSeasonRanking();
             BuildPresets();
             ApplyRecommendedPreset();
@@ -1415,7 +1445,7 @@ namespace DefenseGame
             SetGameplayHudVisible(false);
             if (lobbyOverlay != null)
             {
-                lobbyOverlay.SetActive(true);
+                PlayOverlayEnter(lobbyOverlay, "LobbyModal");
             }
 
             if (outgameNavigationRoot != null)
@@ -1584,6 +1614,8 @@ namespace DefenseGame
                 return;
             }
 
+            HideYahtzee();
+
             if (shopScene.IsValid() && shopScene.isLoaded)
             {
                 HideShop();
@@ -1615,7 +1647,7 @@ namespace DefenseGame
             RefreshShop();
             if (shopOverlay != null)
             {
-                shopOverlay.SetActive(true);
+                PlayOverlayEnter(shopOverlay, "ShopModal");
             }
 
             if (shopScene.IsValid() && shopScene.isLoaded)
@@ -1716,6 +1748,38 @@ namespace DefenseGame
             scaler.matchWidthOrHeight = 0.84f;
             shopSceneCanvasRoot.AddComponent<RuntimeKoreanTextCleaner>();
             BuildShopOverlay(shopSceneCanvasRoot.transform);
+        }
+
+        private void ToggleDailyFateCup()
+        {
+            if (gameController == null)
+            {
+                return;
+            }
+
+            if (gameController.TrySetDailyFateCupEnabled(!gameController.DailyFateCupEnabled))
+            {
+                RefreshModeUi();
+                RefreshLobbyPreparationStatus();
+            }
+        }
+        private void ToggleCombatMode()
+        {
+            if (gameController == null)
+            {
+                return;
+            }
+
+            if (gameController.ToggleCombatMode())
+            {
+                RefreshModeUi();
+            }
+        }
+
+        private void HandleCombatModeChanged(CombatGameMode mode)
+        {
+            RefreshModeUi();
+            RefreshLobbyPreparationStatus();
         }
 
         private void TogglePlayMode()
@@ -1823,7 +1887,7 @@ namespace DefenseGame
             if (shopPurchaseConfirmBodyText != null) shopPurchaseConfirmBodyText.text = body;
             SetButtonLabel(shopPurchaseConfirmButton, confirmLabel);
             shopPurchaseConfirmOverlay.transform.SetAsLastSibling();
-            shopPurchaseConfirmOverlay.SetActive(true);
+            PlayOverlayEnter(shopPurchaseConfirmOverlay, "ShopPurchaseConfirmModal");
         }
 
         private void HideShopPurchaseConfirm()
@@ -2484,6 +2548,54 @@ namespace DefenseGame
                 }
             }
 
+            if (gameController != null && lobbyCombatModeText != null)
+            {
+                CombatModeProfile profile = gameController.ActiveCombatModeProfile;
+                lobbyCombatModeText.text = "전투 규칙  " + profile.displayName + "  ·  " + profile.description;
+                lobbyCombatModeText.color = profile.IsOverdrive
+                    ? new Color(1f, 0.66f, 0.24f)
+                    : new Color(0.72f, 0.88f, 1f);
+            }
+
+            if (gameController != null && lobbyCombatModeButton != null)
+            {
+                bool overdrive = gameController.IsOverdriveMode;
+                bool dailyCup = gameController.DailyFateCupEnabled;
+                lobbyCombatModeButton.interactable = !dailyCup;
+                Text label = lobbyCombatModeButton.GetComponentInChildren<Text>();
+                if (label != null)
+                {
+                    label.text = dailyCup ? "운명컵은 폭주 규칙 고정" :
+                        overdrive ? "클래식 모드로 전환" : "폭주 모드로 전환";
+                }
+
+                Image image = lobbyCombatModeButton.GetComponent<Image>();
+                if (image != null)
+                {
+                    image.color = dailyCup
+                        ? new Color(0.38f, 0.34f, 0.56f, 1f)
+                        : overdrive ? new Color(0.22f, 0.56f, 0.92f, 1f) : new Color(0.94f, 0.34f, 0.18f, 1f);
+                }
+            }
+
+            if (gameController != null && lobbyDailyFateCupText != null)
+            {
+                lobbyDailyFateCupText.text = gameController.DailyFateCupSummary;
+            }
+
+            if (gameController != null && lobbyDailyFateCupButton != null)
+            {
+                bool enabled = gameController.DailyFateCupEnabled;
+                SetButtonLabel(lobbyDailyFateCupButton, enabled ? "데일리 운명컵 나가기" : "데일리 운명컵 참가");
+                Image image = lobbyDailyFateCupButton.GetComponent<Image>();
+                if (image != null)
+                {
+                    image.color = enabled
+                        ? new Color(0.26f, 0.72f, 0.54f, 1f)
+                        : new Color(0.64f, 0.34f, 0.88f, 1f);
+                }
+            }
+
             if (lobbyFortuneText != null)
             {
                 lobbyFortuneText.text = DailyFortuneSystem.TodaySummary;
@@ -2558,48 +2670,19 @@ namespace DefenseGame
                 return;
             }
 
-            if (outgameNavAnimationRoutines.TryGetValue(button, out Coroutine routine) && routine != null)
-            {
-                StopCoroutine(routine);
-            }
-
-            outgameNavAnimationRoutines[button] = StartCoroutine(AnimateOutgameNavButtonRoutine(button, basePosition, active));
-        }
-
-        private IEnumerator AnimateOutgameNavButtonRoutine(Button button, Vector2 basePosition, bool active)
-        {
-            if (button == null)
-            {
-                yield break;
-            }
-
             RectTransform rect = button.GetComponent<RectTransform>();
             if (rect == null)
             {
-                yield break;
+                return;
             }
 
-            Vector2 startPosition = rect.anchoredPosition;
+            rect.DOKill();
             Vector2 targetPosition = basePosition + (active ? new Vector2(0f, 32f) : Vector2.zero);
-            Vector3 startScale = rect.localScale;
             Vector3 targetScale = active ? new Vector3(1.05f, 1.05f, 1f) : Vector3.one;
-            const float duration = 0.18f;
-            float elapsed = 0f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                float eased = Mathf.SmoothStep(0f, 1f, t);
-                rect.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, eased);
-                rect.localScale = Vector3.Lerp(startScale, targetScale, eased);
-                yield return null;
-            }
-
-            rect.anchoredPosition = targetPosition;
-            rect.localScale = targetScale;
-            outgameNavAnimationRoutines.Remove(button);
+            Sequence sequence = DOTween.Sequence().SetUpdate(true).SetTarget(button);
+            sequence.Join(rect.DOAnchorPos(targetPosition, 0.18f).SetEase(Ease.OutCubic));
+            sequence.Join(rect.DOScale(targetScale, 0.18f).SetEase(Ease.OutCubic));
         }
-
         private static string ResolveOutgameNavIconPath(Button button, bool active)
         {
             string suffix = active ? "-activated" : string.Empty;
@@ -2659,6 +2742,7 @@ namespace DefenseGame
         private void HandleProgressChanged()
         {
             RefreshShop();
+            RefreshYahtzee();
             RefreshModeUi();
             BuildPresets();
             ApplyRecommendedPreset();
@@ -2671,7 +2755,7 @@ namespace DefenseGame
             ApplyRecommendedPreset();
             if (loadoutOverlay != null)
             {
-                loadoutOverlay.SetActive(true);
+                PlayOverlayEnter(loadoutOverlay, "LoadoutModal");
             }
         }
 
@@ -2716,7 +2800,7 @@ namespace DefenseGame
                     bodyText.text = body;
                 }
 
-                outgamePlaceholderOverlay.SetActive(true);
+                PlayOverlayEnter(outgamePlaceholderOverlay, "PlaceholderModal");
             }
 
             HighlightOutgameNav(title.Contains("랭킹") ? hubRankingButton : hubYahtzeeButton);
@@ -2738,7 +2822,7 @@ namespace DefenseGame
             RefreshSeasonRanking();
             if (seasonRankingOverlay != null)
             {
-                seasonRankingOverlay.SetActive(true);
+                PlayOverlayEnter(seasonRankingOverlay, "SeasonRankingModal");
             }
 
             HighlightOutgameNav(hubRankingButton);
@@ -2771,7 +2855,7 @@ namespace DefenseGame
 
             if (rankingSeasonText != null)
             {
-                rankingSeasonText.text = "SEASON " + seasonId + " · 주간 보스 리그";
+                rankingSeasonText.text = "DAILY 동일 시드 · SEASON " + seasonId;
             }
 
             for (int index = 0; index < rankingTopNameTexts.Length; index++)
@@ -2805,8 +2889,9 @@ namespace DefenseGame
             if (rankingPlayerProgressText != null)
             {
                 int bestRun = outgameProgression != null ? outgameProgression.WeeklyBestRunScore : 0;
-                int bossKills = outgameProgression != null ? outgameProgression.WeeklyBossKills : 0;
-                rankingPlayerProgressText.text = "최고 런 " + bestRun.ToString("N0") + "점 · 보스 처치 " + bossKills + "회";
+                int dailyBest = outgameProgression != null ? outgameProgression.DailyFateCupBestScore : 0;
+                int dailyAttempts = outgameProgression != null ? outgameProgression.DailyFateCupAttempts : 0;
+                rankingPlayerProgressText.text = "주간 " + bestRun.ToString("N0") + "점 · 데일리 " + dailyBest.ToString("N0") + "점/" + dailyAttempts + "회";
             }
         }
 
@@ -2838,7 +2923,7 @@ namespace DefenseGame
             HideExitConfirm();
             if (matchmakingOverlay != null)
             {
-                matchmakingOverlay.SetActive(true);
+                PlayOverlayEnter(matchmakingOverlay, "MatchmakingModal");
             }
 
             if (queueTimerText != null)
@@ -2870,7 +2955,7 @@ namespace DefenseGame
             }
 
             HideExitConfirm();
-            resultOverlay.SetActive(true);
+            PlayOverlayEnter(resultOverlay, "ResultModal");
             for (int i = 0; i < resultVictoryDecorations.Count; i++)
             {
                 if (resultVictoryDecorations[i] != null)
@@ -3067,6 +3152,43 @@ namespace DefenseGame
             HandleEnterPreparationPressed();
         }
 
+        private void PlayOverlayEnter(GameObject overlay, string modalName)
+        {
+            if (overlay == null)
+            {
+                return;
+            }
+
+            overlay.SetActive(true);
+            CanvasGroup canvasGroup = overlay.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = overlay.AddComponent<CanvasGroup>();
+            }
+
+            canvasGroup.DOKill();
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = true;
+            canvasGroup.blocksRaycasts = true;
+
+            RectTransform modal = overlay.transform.Find(modalName) as RectTransform;
+            if (modal == null)
+            {
+                canvasGroup.DOFade(1f, 0.16f).SetUpdate(true).SetTarget(overlay);
+                return;
+            }
+
+            modal.DOKill();
+            Vector2 destination = modal.anchoredPosition;
+            Vector3 targetScale = modal.localScale.sqrMagnitude > 0.001f ? modal.localScale : Vector3.one;
+            modal.anchoredPosition = destination + new Vector2(0f, -28f);
+            modal.localScale = targetScale * 0.97f;
+
+            Sequence sequence = DOTween.Sequence().SetUpdate(true).SetTarget(overlay);
+            sequence.Append(canvasGroup.DOFade(1f, 0.16f));
+            sequence.Join(modal.DOAnchorPos(destination, 0.20f).SetEase(Ease.OutCubic));
+            sequence.Join(modal.DOScale(targetScale, 0.20f).SetEase(Ease.OutCubic));
+        }
         private GameObject CreateOverlayRoot(Transform parent, string name, Color blockerColor)
         {
             GameObject overlay = new GameObject(name, typeof(RectTransform));
@@ -3125,6 +3247,7 @@ namespace DefenseGame
             shadow.effectDistance = new Vector2(0f, -6f);
 
             Button button = buttonObject.AddComponent<Button>();
+            buttonObject.AddComponent<DOTweenUiPressFeedback>();
             AddButtonListener(button, onClick);
 
             RectTransform rect = button.GetComponent<RectTransform>();

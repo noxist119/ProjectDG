@@ -33,7 +33,13 @@ namespace DefenseGame
             VanguardDrill,
             TargetingLens,
             ManaBattery,
-            SalvageCrate
+            SalvageCrate,
+            TwinRecruit,
+            FusionWorkshop,
+            CriticalForge,
+            ArcaneConductor,
+            EpicDraft,
+            BossRaidWager
         }
 
         private enum OfferRarity
@@ -122,6 +128,7 @@ namespace DefenseGame
         private int earlyRecoveryShopMisses;
         private int regularShopMisses;
         [SerializeField, Range(3, 12)] private int recentOfferHistorySize = 6;
+        [SerializeField, Range(1, 5)] private int retryOfferHistoryRuns = 3;
         private readonly List<OfferType> recentOfferHistory = new List<OfferType>();
 
         public void Configure(
@@ -446,12 +453,17 @@ namespace DefenseGame
 
             RemoveUnavailableAugmentOffers(pool);
             RemoveRecentlyOfferedTypes(pool, offerCount);
-            if (miniShop)
+            bool deterministicContent = gameController != null && (gameController.DailyFateCupEnabled || gameController.HasRunContentSeedOverride);
+            if (!deterministicContent)
             {
-                RemoveLastRunMiniShopTypes(pool, round, offerCount);
+                RemoveRecentRunShopTypes(pool, round, miniShop, recoveryShop, offerCount);
             }
 
-            OfferRole[] miniRoles = miniShop ? BuildMiniShopRoleSlots(round, offerCount) : null;
+            int preferredRole = gameController != null ? gameController.BossForecastPreferredShopRoleIndex : -1;
+            int contentSeed = gameController != null ? gameController.ActiveRunContentSeed : DailyFateCupRules.TodaySeed;
+            OfferRole[] miniRoles = miniShop
+                ? BuildMiniShopRoleSlots(round, offerCount, preferredRole, deterministicContent, contentSeed)
+                : null;
             while (currentOffers.Count < offerCount && pool.Count > 0)
             {
                 OfferRarity rarity = RollOfferRarity(round);
@@ -464,9 +476,9 @@ namespace DefenseGame
             }
 
             RememberCurrentOffers();
-            if (miniShop)
+            if (!deterministicContent)
             {
-                SaveLastRunMiniShopTypes(round);
+                SaveRecentRunShopTypes(round, miniShop, recoveryShop);
             }
         }
 
@@ -487,57 +499,99 @@ namespace DefenseGame
             }
         }
 
-        private static string GetLastRunMiniShopKey(int round)
+        private static string GetRetryShopHistoryKey(int round, bool miniShop, bool recoveryShop)
+        {
+            string context = recoveryShop ? "recovery" : miniShop ? "mini" : "regular";
+            return "DefenseGame.RetryShopHistory." + context + "." + round;
+        }
+
+        private static string GetLegacyLastRunMiniShopKey(int round)
         {
             return "DefenseGame.LastRunMiniShopOffers." + round;
         }
 
-        private static void RemoveLastRunMiniShopTypes(List<OfferType> pool, int round, int minimumPoolSize)
+        private void RemoveRecentRunShopTypes(List<OfferType> pool, int round, bool miniShop, bool recoveryShop, int minimumPoolSize)
         {
             if (pool == null)
             {
                 return;
             }
 
-            string saved = PlayerPrefs.GetString(GetLastRunMiniShopKey(round), string.Empty);
+            string key = GetRetryShopHistoryKey(round, miniShop, recoveryShop);
+            string saved = PlayerPrefs.GetString(key, string.Empty);
+            if (string.IsNullOrEmpty(saved) && miniShop)
+            {
+                saved = PlayerPrefs.GetString(GetLegacyLastRunMiniShopKey(round), string.Empty);
+            }
+
             if (string.IsNullOrEmpty(saved))
             {
                 return;
             }
 
-            HashSet<int> previousTypes = new HashSet<int>();
+            HashSet<int> recentTypes = new HashSet<int>();
             string[] tokens = saved.Split(',');
             for (int i = 0; i < tokens.Length; i++)
             {
                 int value;
                 if (int.TryParse(tokens[i], out value))
                 {
-                    previousTypes.Add(value);
+                    recentTypes.Add(value);
                 }
             }
 
             int safeMinimum = Mathf.Max(1, minimumPoolSize);
             for (int i = pool.Count - 1; i >= 0 && pool.Count > safeMinimum; i--)
             {
-                if (previousTypes.Contains((int)pool[i]))
+                if (recentTypes.Contains((int)pool[i]))
                 {
                     pool.RemoveAt(i);
                 }
             }
         }
 
-        private void SaveLastRunMiniShopTypes(int round)
+        private void SaveRecentRunShopTypes(int round, bool miniShop, bool recoveryShop)
         {
-            List<string> types = new List<string>();
-            for (int i = 0; i < currentOffers.Count; i++)
+            string key = GetRetryShopHistoryKey(round, miniShop, recoveryShop);
+            List<int> history = new List<int>();
+            string saved = PlayerPrefs.GetString(key, string.Empty);
+            string[] tokens = saved.Split(',');
+            for (int i = 0; i < tokens.Length; i++)
             {
-                if (currentOffers[i] != null)
+                int value;
+                if (int.TryParse(tokens[i], out value) && !history.Contains(value))
                 {
-                    types.Add(((int)currentOffers[i].type).ToString());
+                    history.Add(value);
                 }
             }
 
-            PlayerPrefs.SetString(GetLastRunMiniShopKey(round), string.Join(",", types.ToArray()));
+            for (int i = 0; i < currentOffers.Count; i++)
+            {
+                ShopOffer offer = currentOffers[i];
+                if (offer == null)
+                {
+                    continue;
+                }
+
+                int value = (int)offer.type;
+                history.Remove(value);
+                history.Add(value);
+            }
+
+            int offersPerRun = Mathf.Max(1, currentOffers.Count);
+            int historyLimit = offersPerRun * Mathf.Max(1, retryOfferHistoryRuns);
+            while (history.Count > historyLimit)
+            {
+                history.RemoveAt(0);
+            }
+
+            List<string> serialized = new List<string>(history.Count);
+            for (int i = 0; i < history.Count; i++)
+            {
+                serialized.Add(history[i].ToString());
+            }
+
+            PlayerPrefs.SetString(key, string.Join(",", serialized.ToArray()));
             PlayerPrefs.Save();
         }
         private void RememberCurrentOffers()
@@ -580,19 +634,28 @@ namespace DefenseGame
             };
         }
 
-        private static OfferRole[] BuildMiniShopRoleSlots(int round, int offerCount)
+        private static OfferRole[] BuildMiniShopRoleSlots(int round, int offerCount, int preferredRole, bool deterministicContent, int contentSeed)
         {
             int progressionPhase = Mathf.Max(0, (round - 3) / 8) % 4;
-            string key = "DefenseGame.LastRunMiniShopRolePack." + round;
-            int previousPack = PlayerPrefs.GetInt(key, -1);
-            int pack = UnityEngine.Random.Range(0, 4);
-            if (pack == previousPack)
+            int pack;
+            if (deterministicContent)
             {
-                pack = (pack + UnityEngine.Random.Range(1, 4)) % 4;
+                pack = (contentSeed ^ (round * 397)) & 3;
+            }
+            else
+            {
+                string key = "DefenseGame.LastRunMiniShopRolePack." + round;
+                int previousPack = PlayerPrefs.GetInt(key, -1);
+                pack = UnityEngine.Random.Range(0, 4);
+                if (pack == previousPack)
+                {
+                    pack = (pack + UnityEngine.Random.Range(1, 4)) % 4;
+                }
+
+                PlayerPrefs.SetInt(key, pack);
+                PlayerPrefs.Save();
             }
 
-            PlayerPrefs.SetInt(key, pack);
-            PlayerPrefs.Save();
             int phase = (progressionPhase + pack) % 4;
             OfferRole[] template = phase == 0
                 ? new[] { OfferRole.Supply, OfferRole.Build, OfferRole.Tactical }
@@ -605,6 +668,13 @@ namespace DefenseGame
             for (int i = 0; i < slots.Length; i++)
             {
                 slots[i] = template[i % template.Length];
+            }
+
+            if (slots.Length > 0)
+            {
+                if (preferredRole == 0) slots[0] = OfferRole.Supply;
+                else if (preferredRole == 1) slots[0] = OfferRole.Build;
+                else if (preferredRole == 2) slots[0] = OfferRole.Tactical;
             }
 
             return slots;
@@ -629,9 +699,15 @@ namespace DefenseGame
                 case OfferType.AugmentGuard:
                 case OfferType.AugmentSkill:
                 case OfferType.ManaBattery:
+                case OfferType.TwinRecruit:
+                case OfferType.FusionWorkshop:
+                case OfferType.CriticalForge:
+                case OfferType.ArcaneConductor:
                 case OfferType.RecoveryRareUnit:
                 case OfferType.RecoveryBossPrep:
                     return OfferRarity.Rare;
+                case OfferType.EpicDraft:
+                case OfferType.BossRaidWager:
                 case OfferType.FateMergeContract:
                 case OfferType.FateBossContract:
                 case OfferType.FateShopReroll:
@@ -704,13 +780,17 @@ namespace DefenseGame
             {
                 case OfferType.RandomUnit:
                 case OfferType.RareUnit:
+                case OfferType.TwinRecruit:
+                case OfferType.EpicDraft:
                     return OfferRole.Supply;
                 case OfferType.MergeAssist:
                 case OfferType.TileReroll:
                 case OfferType.Coupon:
                 case OfferType.SalvageCrate:
+                case OfferType.FusionWorkshop:
                     return OfferRole.Build;
                 case OfferType.RiskChest:
+                case OfferType.BossRaidWager:
                 case OfferType.FateMergeContract:
                 case OfferType.FateBossContract:
                 case OfferType.FateShopReroll:
@@ -744,6 +824,7 @@ namespace DefenseGame
                 OfferType.SalvageCrate
             };
 
+            AddProgressionShopOffers(pool, round);
             if (NeedsFieldMedic())
             {
                 pool.Add(OfferType.FieldMedic);
@@ -783,8 +864,14 @@ namespace DefenseGame
                 OfferType.Coupon,
                 OfferType.AugmentPower,
                 OfferType.AugmentGuard,
-                OfferType.AugmentSkill
+                OfferType.AugmentSkill,
+                OfferType.VanguardDrill,
+                OfferType.TargetingLens,
+                OfferType.ManaBattery,
+                OfferType.SalvageCrate
             };
+
+            AddProgressionShopOffers(pool, round);
             if (NeedsFieldMedic())
             {
                 pool.Add(OfferType.FieldMedic);
@@ -799,6 +886,21 @@ namespace DefenseGame
             return pool;
         }
 
+
+        private static void AddProgressionShopOffers(List<OfferType> pool, int round)
+        {
+            if (pool == null)
+            {
+                return;
+            }
+
+            if (round >= 5) pool.Add(OfferType.TwinRecruit);
+            if (round >= 6) pool.Add(OfferType.FusionWorkshop);
+            if (round >= 7) pool.Add(OfferType.CriticalForge);
+            if (round >= 9) pool.Add(OfferType.ArcaneConductor);
+            if (round >= 11) pool.Add(OfferType.EpicDraft);
+            if (round >= 11) pool.Add(OfferType.BossRaidWager);
+        }
 
         private bool NeedsFieldMedic()
         {
@@ -851,6 +953,17 @@ namespace DefenseGame
                 case OfferType.TargetingLens:
                 case OfferType.ManaBattery:
                     return Mathf.Max(1, target - 1);
+                case OfferType.TwinRecruit:
+                    return target + 5;
+                case OfferType.FusionWorkshop:
+                    return target + 3;
+                case OfferType.CriticalForge:
+                case OfferType.ArcaneConductor:
+                    return target + 5;
+                case OfferType.EpicDraft:
+                    return target + 14;
+                case OfferType.BossRaidWager:
+                    return Mathf.Max(1, target - 4);
                 default:
                     return target;
             }
@@ -1031,6 +1144,17 @@ namespace DefenseGame
                     return 8.00f;
                 case OfferType.SalvageCrate:
                     return 3.00f;
+                case OfferType.TwinRecruit:
+                    return 4.50f;
+                case OfferType.FusionWorkshop:
+                    return 4.00f;
+                case OfferType.CriticalForge:
+                case OfferType.ArcaneConductor:
+                    return 7.00f;
+                case OfferType.EpicDraft:
+                    return 10.00f;
+                case OfferType.BossRaidWager:
+                    return 5.00f;
                 default:
                     return 0f;
             }
@@ -1334,7 +1458,63 @@ namespace DefenseGame
                         description = "\ud569\uc131 \uc7ac\ub8cc\ub97c \ubcf4\uae09\ud558\uace0 \uace8\ub4dc\ub97c \ud68c\uc218\ud569\ub2c8\ub2e4. \ud569\uc131\uc774 \uc5b4\ub824\uc6b4 \ud310\uc5d0\uc11c \uc720\uc6a9\ud569\ub2c8\ub2e4.",
                         cost = 18 + scale * 4,
                         color = new Color(0.50f, 1f, 0.68f)
-                    };                case OfferType.AugmentPower:
+                    };
+                case OfferType.TwinRecruit:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "쌍둥이 소환 계약",
+                        description = "현재 라운드 확률표로 랜덤 유닛 2마리를 연속 배치합니다. 빈 슬롯 2칸이 가장 효율적입니다.",
+                        cost = 25 + scale * 5,
+                        color = new Color(0.30f, 0.84f, 1f)
+                    };
+                case OfferType.FusionWorkshop:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "합성 공방 이용권",
+                        description = "가장 가까운 합성선의 재료를 보급하고 다음 3라운드 소환 비용을 10% 낮춥니다.",
+                        cost = 23 + scale * 5,
+                        color = new Color(0.62f, 1f, 0.32f)
+                    };
+                case OfferType.CriticalForge:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "치명 개조 키트",
+                        description = "현재 생존 유닛 공격력 +8%, 치명타 확률 +10%. 치명 빌드의 시동을 겁니다.",
+                        cost = 25 + scale * 6,
+                        color = new Color(1f, 0.66f, 0.24f)
+                    };
+                case OfferType.ArcaneConductor:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "마나 공명 도체",
+                        description = "현재 생존 유닛 공격속도 +4%, 마나 재생 +2.5%, 스킬 위력 +16%.",
+                        cost = 27 + scale * 6,
+                        color = new Color(0.70f, 0.48f, 1f)
+                    };
+                case OfferType.EpicDraft:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "에픽 지명 소환",
+                        description = "에픽 등급 유닛 1마리를 즉시 배치합니다. 중후반 조합 방향을 크게 바꿉니다.",
+                        cost = 48 + scale * 9,
+                        color = new Color(1f, 0.50f, 0.92f)
+                    };
+                case OfferType.BossRaidWager:
+                    return new ShopOffer
+                    {
+                        type = type,
+                        title = "보스 담보 계약",
+                        description = "라이프 -1. 현재 생존 유닛 보스 피해 +35%, 이후 라운드 클리어 보상 +2G.",
+                        cost = 24 + scale * 5,
+                        priceLabel = "골드+HP",
+                        color = new Color(1f, 0.34f, 0.28f)
+                    };
+                case OfferType.AugmentPower:
                     return new ShopOffer
                     {
                         type = type,
@@ -1625,6 +1805,37 @@ namespace DefenseGame
                 case OfferType.SalvageCrate:
                     bool salvageGranted = gameController.TryGrantMergeAssistUnit();
                     gameController.AddGold(salvageGranted ? 4 : 8);
+                    return true;
+                case OfferType.TwinRecruit:
+                    bool firstRecruit = gameController.TryGrantRandomSummonableUnit();
+                    bool secondRecruit = gameController.TryGrantRandomSummonableUnit();
+                    return firstRecruit || secondRecruit;
+                case OfferType.FusionWorkshop:
+                    gameController.TryGrantMergeAssistUnit();
+                    gameController.AddTemporaryShopSummonDiscount(0.10f, 3);
+                    return true;
+                case OfferType.CriticalForge:
+                    return ApplyCombatPackage(0.08f, 0f, 0f, 0.10f, 0f, 0f);
+                case OfferType.ArcaneConductor:
+                    return ApplyCombatPackage(0f, 0.04f, 0f, 0f, 0.025f, 0.16f);
+                case OfferType.EpicDraft:
+                    return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Epic);
+                case OfferType.BossRaidWager:
+                    DefenderUnit[] raidUnits = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
+                    if (raidUnits.Length == 0 || !gameController.TrySpendLifeForContract(1, "보스 담보 계약"))
+                    {
+                        return false;
+                    }
+
+                    for (int i = 0; i < raidUnits.Length; i++)
+                    {
+                        if (raidUnits[i] != null)
+                        {
+                            raidUnits[i].AddBossDamageBonus(0.35f);
+                        }
+                    }
+
+                    gameController.AddRoundGoldBonus(2);
                     return true;
                 case OfferType.AugmentPower:
                     return augmentManager != null && augmentManager.TryGrantShopAugment("power_core");

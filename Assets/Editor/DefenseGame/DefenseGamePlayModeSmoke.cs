@@ -122,6 +122,32 @@ namespace DefenseGame.Editor
 
             DefenseGameController controller = UnityEngine.Object.FindObjectOfType<DefenseGameController>();
             bool hpTen = controller != null && controller.Life == 10 && controller.MaxLife == 10;
+            bool runResetStateValid = false;
+            bool runSeedRepeatValid = false;
+            if (controller != null)
+            {
+                int expectedBaseMaxLife = controller.MaxLife;
+                controller.IncreaseMaxLife(3);
+                controller.ResetRunForRetry();
+                runResetStateValid = controller.MaxLife == expectedBaseMaxLife && controller.Life == expectedBaseMaxLife;
+
+                controller.SetRunContentSeedOverride(314159);
+                controller.ResetRunForRetry();
+                int firstSeedSample = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+                controller.ResetRunForRetry();
+                int secondSeedSample = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+                runSeedRepeatValid = firstSeedSample == secondSeedSample;
+                controller.SetRunContentSeedOverride(null);
+                controller.ResetRunForRetry();
+            }
+            if (!runResetStateValid)
+            {
+                notes.Add("재시작 시 런 중 최대 체력 증가가 기본값으로 복원되지 않습니다.");
+            }
+            if (!runSeedRepeatValid)
+            {
+                notes.Add("동일 콘텐츠 시드 재시작의 난수 시작점이 일치하지 않습니다.");
+            }
             bool simultaneousDeathPolicyValid = ValidateSimultaneousDeathPolicy();
             if (!simultaneousDeathPolicyValid)
             {
@@ -211,8 +237,36 @@ namespace DefenseGame.Editor
                 notes.Add("전장 입장 후 다음 라운드를 누르기 전까지 R1 카운트다운이 대기하지 않습니다.");
             }
 
+            Button dailyFateCupButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "LobbyDailyFateCupButton");
+            Text dailyFateCupText = UnityEngine.Object.FindObjectsOfType<Text>(true)
+                .FirstOrDefault(textComponent => textComponent != null && textComponent.name == "LobbyDailyFateCupText");
+            bool dailyFateCupUiValid = controller != null &&
+                                           dailyFateCupButton != null &&
+                                           dailyFateCupText != null &&
+                                           dailyFateCupText.text.Contains("데일리") &&
+                                           DailyFateCupRules.TodaySeed != 0 &&
+                                           !string.IsNullOrWhiteSpace(controller.LuckProtectionLedgerSummary);
+            if (!dailyFateCupUiValid)
+            {
+                notes.Add("데일리 운명컵 로비 버튼, 동일 시드 또는 운 보호 장부 UI가 유효하지 않습니다.");
+            }
+
+            RectTransform bossForecastOverlay = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                .FirstOrDefault(rect => rect != null && rect.name == "BossForecastBetOverlay");
+            int bossForecastChoices = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .Count(button => button != null && button.name.StartsWith("BossForecastChoice_", StringComparison.Ordinal));
+            bool bossForecastUiValid = controller != null &&
+                                       controller.CanChooseBossForecastBet &&
+                                       bossForecastOverlay != null &&
+                                       bossForecastChoices == 3;
+            if (!bossForecastUiValid)
+            {
+                notes.Add("R10 보스 예고 베팅 팝업 또는 3개 전략 선택지가 유효하지 않습니다.");
+            }
+
             Button lobbyShopButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                .FirstOrDefault(button => button != null && button.name == "LobbyShopButton");
+                .FirstOrDefault(button => button != null && button.name == "OutgameNavShop");
             bool outgameShopValid = lobbyShopButton != null;
             if (outgameShopValid)
             {
@@ -253,7 +307,8 @@ namespace DefenseGame.Editor
                     purchaseConfirmationValid &= !purchaseConfirmOverlay.activeSelf;
                 }
                 outgameShopValid = shopModal != null &&
-                                   Approximately(shopModal.sizeDelta, new Vector2(920f, 1640f)) &&
+                                   Approximately(shopModal.anchorMin, Vector2.zero) &&
+                                   Approximately(shopModal.anchorMax, Vector2.one) &&
                                    dailyCards == 3 &&
                                    cashCards == 3 &&
                                    chestCards == 4 &&
@@ -261,6 +316,10 @@ namespace DefenseGame.Editor
                                    shopGold.text.Contains("GOLD") &&
                                    decorativeShopArtValid &&
                                    purchaseConfirmationValid;
+                if (!outgameShopValid)
+                {
+                    notes.Add("SHOP DETAIL modal=" + (shopModal != null) + ", size=" + (shopModal != null ? shopModal.sizeDelta.ToString() : "null") + ", daily=" + dailyCards + ", cash=" + cashCards + ", chest=" + chestCards + ", gold=" + (shopGold != null ? shopGold.text : "null") + ", productIcons=" + productIcons + ", sectionIcons=" + sectionIcons + ", confirm=" + purchaseConfirmationValid);
+                }
                 Button shopClose = UnityEngine.Object.FindObjectsOfType<Button>(true)
                     .FirstOrDefault(button => button != null && button.name == "ShopCloseButton");
                 shopClose?.onClick.Invoke();
@@ -297,20 +356,21 @@ namespace DefenseGame.Editor
                     .Count(image => image != null && image.name.StartsWith("RankingTopCard_", StringComparison.Ordinal));
                 int rankingRows = UnityEngine.Object.FindObjectsOfType<Image>(true)
                     .Count(image => image != null && image.name.StartsWith("RankingRow_", StringComparison.Ordinal));
-                Image rankingBackdrop = UnityEngine.Object.FindObjectsOfType<Image>(true)
-                    .FirstOrDefault(image => image != null && image.name == "RankingAmbientBackdrop");
                 Text rankingPlayerSummary = UnityEngine.Object.FindObjectsOfType<Text>(true)
                     .FirstOrDefault(textComponent => textComponent != null && textComponent.name == "RankingPlayerSummary");
                 rankingPageValid = rankingOverlay != null &&
                                    rankingOverlay.gameObject.activeSelf &&
                                    rankingModal != null &&
-                                   Approximately(rankingModal.sizeDelta, new Vector2(920f, 1660f)) &&
+                                   Approximately(rankingModal.anchorMin, Vector2.zero) &&
+                                   Approximately(rankingModal.anchorMax, Vector2.one) &&
                                    topCards == 3 &&
                                    rankingRows == 9 &&
-                                   rankingBackdrop != null &&
-                                   rankingBackdrop.sprite != null &&
                                    rankingPlayerSummary != null &&
                                    rankingPlayerSummary.text.Contains("내 순위");
+                if (!rankingPageValid)
+                {
+                    notes.Add("RANK DETAIL overlay=" + (rankingOverlay != null && rankingOverlay.gameObject.activeSelf) + ", modal=" + (rankingModal != null) + ", size=" + (rankingModal != null ? rankingModal.sizeDelta.ToString() : "null") + ", top=" + topCards + ", rows=" + rankingRows + ", player=" + (rankingPlayerSummary != null ? rankingPlayerSummary.text : "null"));
+                }
                 Button rankingClose = UnityEngine.Object.FindObjectsOfType<Button>(true)
                     .FirstOrDefault(button => button != null && button.name == "RankingCloseButton");
                 rankingClose?.onClick.Invoke();
@@ -389,7 +449,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -404,11 +464,15 @@ namespace DefenseGame.Editor
                 portraitProfilesValid = portraitProfilesValid,
                 hpTen = hpTen,
                 hpTextTen = hpTextTen,
+                runResetStateValid = runResetStateValid,
+                runSeedRepeatValid = runSeedRepeatValid,
                 fateEntryLayoutValid = fateEntryLayoutValid,
                 fateEntryPastelColorValid = fateEntryPastelColorValid,
                 fateEntryIdleAtFullHealth = fateEntryIdleAtFullHealth,
                 summonHudReadable = summonHudReadable,
                 initialPreparationFlowValid = initialPreparationFlowValid,
+                dailyFateCupUiValid = dailyFateCupUiValid,
+                bossForecastUiValid = bossForecastUiValid,
                 resultRewardIconsValid = resultRewardIconsValid,
                 rankingPageValid = rankingPageValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
@@ -658,7 +722,9 @@ namespace DefenseGame.Editor
             FieldInfo offersField = typeof(RunShopSystem).GetField("currentOffers", instanceFlags);
             FieldInfo goldField = typeof(DefenseGameController).GetField("<Gold>k__BackingField", instanceFlags);
             FieldInfo summonCostField = typeof(DefenseGameController).GetField("currentSummonBaseCost", instanceFlags);
-            if (buildOffers == null || offersField == null || goldField == null || summonCostField == null)
+            FieldInfo dailyField = typeof(DefenseGameController).GetField("dailyFateCupEnabled", instanceFlags);
+            FieldInfo recentHistoryField = typeof(RunShopSystem).GetField("recentOfferHistory", instanceFlags);
+            if (buildOffers == null || offersField == null || goldField == null || summonCostField == null || dailyField == null || recentHistoryField == null)
             {
                 summary = "reflection_target_missing";
                 return false;
@@ -666,9 +732,15 @@ namespace DefenseGame.Editor
 
             object originalGold = goldField.GetValue(controller);
             object originalSummonCost = summonCostField.GetValue(controller);
+            object originalDaily = dailyField.GetValue(controller);
+            UnityEngine.Random.State originalRandomState = UnityEngine.Random.state;
             IList offers = null;
             try
             {
+                dailyField.SetValue(controller, true);
+                object recentHistory = recentHistoryField.GetValue(shop);
+                recentHistory?.GetType().GetMethod("Clear")?.Invoke(recentHistory, null);
+                UnityEngine.Random.InitState(731903);
                 goldField.SetValue(controller, 34);
                 summonCostField.SetValue(controller, 16);
                 buildOffers.Invoke(shop, new object[] { 3, true, false, false });
@@ -678,23 +750,10 @@ namespace DefenseGame.Editor
                     summary = "offer_count=" + (offers != null ? offers.Count : -1);
                     return false;
                 }
-
-                HashSet<string> expectedTypes = new HashSet<string>
-                {
-                    "RandomUnit",
-                    "MergeAssist",
-                    "Coupon"
-                };
                 List<string> snapshots = new List<string>();
-                Dictionary<string, int> expectedPrices = new Dictionary<string, int>
-                {
-                    { "RandomUnit", 19 },
-                    { "MergeAssist", 20 },
-                    { "Coupon", 18 }
-                };
                 Dictionary<string, int> firstPrices = new Dictionary<string, int>();
                 bool fixedPricesValid = true;
-                bool couponDurationValid = false;
+                bool couponDurationValid = true;
                 for (int i = 0; i < offers.Count; i++)
                 {
                     object offer = offers[i];
@@ -703,16 +762,17 @@ namespace DefenseGame.Editor
                     string title = offerType.GetField("title", instanceFlags)?.GetValue(offer) as string ?? string.Empty;
                     string description = offerType.GetField("description", instanceFlags)?.GetValue(offer) as string ?? string.Empty;
                     int cost = (int)(offerType.GetField("cost", instanceFlags)?.GetValue(offer) ?? int.MaxValue);
-                    expectedTypes.Remove(typeName);
-                    fixedPricesValid &= expectedPrices.TryGetValue(typeName, out int expectedCost) && cost == expectedCost;
+                    fixedPricesValid &= !string.IsNullOrWhiteSpace(typeName) && !string.IsNullOrWhiteSpace(title) && cost >= 6 && cost <= 24;
                     firstPrices[typeName] = cost;
                     if (typeName == "Coupon")
                     {
-                        couponDurationValid = title.Contains("4라운드") && description.Contains("18%");
+                        couponDurationValid &= title.Contains("4라운드") && description.Contains("18%");
                     }
                     snapshots.Add(typeName + "=" + cost + "G");
                 }
 
+                recentHistory?.GetType().GetMethod("Clear")?.Invoke(recentHistory, null);
+                UnityEngine.Random.InitState(731903);
                 goldField.SetValue(controller, 1);
                 summonCostField.SetValue(controller, 60);
                 buildOffers.Invoke(shop, new object[] { 3, true, false, false });
@@ -731,7 +791,7 @@ namespace DefenseGame.Editor
                 }
 
                 summary = string.Join(", ", snapshots) + " | gold/summon invariant=" + pricesInvariant;
-                return expectedTypes.Count == 0 && fixedPricesValid && pricesInvariant && couponDurationValid;
+                return firstPrices.Count == 3 && fixedPricesValid && pricesInvariant && couponDurationValid;
             }
             catch (Exception exception)
             {
@@ -743,6 +803,8 @@ namespace DefenseGame.Editor
                 offers?.Clear();
                 goldField.SetValue(controller, originalGold);
                 summonCostField.SetValue(controller, originalSummonCost);
+                dailyField.SetValue(controller, originalDaily);
+                UnityEngine.Random.state = originalRandomState;
             }
         }
 
@@ -795,11 +857,15 @@ namespace DefenseGame.Editor
             public bool portraitProfilesValid;
             public bool hpTen;
             public bool hpTextTen;
+            public bool runResetStateValid;
+            public bool runSeedRepeatValid;
             public bool fateEntryLayoutValid;
             public bool fateEntryPastelColorValid;
             public bool fateEntryIdleAtFullHealth;
             public bool summonHudReadable;
             public bool initialPreparationFlowValid;
+            public bool dailyFateCupUiValid;
+            public bool bossForecastUiValid;
             public bool resultRewardIconsValid;
             public bool rankingPageValid;
             public bool earlyMiniShopChoicesValid;

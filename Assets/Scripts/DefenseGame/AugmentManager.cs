@@ -46,7 +46,10 @@ namespace DefenseGame
         LowHealthFury = 35,
         CriticalDoubleTap = 36,
         SkillManaRelay = 37,
-        SkillChainBlast = 38
+        SkillChainBlast = 38,
+        MergeMomentum = 39,
+        MergeDividend = 40,
+        BossTrophyGrowth = 41
     }
 
     public enum AugmentStyle
@@ -83,6 +86,7 @@ namespace DefenseGame
         public HeroAugmentTier heroTier;
         public ChoiceRarity rarity = ChoiceRarity.Normal;
         public string requiredHeroId;
+        public int minimumRound = 1;
         public float value;
         public float secondaryValue;
         public float duration;
@@ -102,8 +106,10 @@ namespace DefenseGame
         [SerializeField] private float rareHeroAugmentOfferChance = 0.28f;
         [SerializeField] private float mythicHeroAugmentOfferChance = 0.10f;
         [SerializeField] private float extraHeroCopyOfferBonus = 0.08f;
+        [SerializeField, Range(0, 2)] private int guaranteedHeroAugmentAfterMisses = 1;
         [SerializeField] private List<AugmentDefinition> augmentPool = new List<AugmentDefinition>();
         [SerializeField, Range(3, 18)] private int recentAugmentHistorySize = 9;
+        [SerializeField, Range(1, 5)] private int retryAugmentHistoryRuns = 3;
 
         private GameObject panelRoot;
         private Text headerText;
@@ -119,6 +125,7 @@ namespace DefenseGame
         private readonly List<string> recentAugmentOfferIds = new List<string>();
         private readonly List<string> recentAugmentOfferFamilies = new List<string>();
         private readonly HashSet<string> lastRunChoiceIds = new HashSet<string>();
+        private readonly HashSet<string> lastRunChoiceFamilies = new HashSet<string>();
         private readonly Dictionary<string, int> buildupStacks = new Dictionary<string, int>();
         private readonly Dictionary<string, bool> heroAugmentOfferRolls = new Dictionary<string, bool>();
         private readonly Dictionary<DefenderUnit, float> hero54StoredDamage = new Dictionary<DefenderUnit, float>();
@@ -128,6 +135,7 @@ namespace DefenseGame
         private readonly Dictionary<DefenderUnit, float> hero11MaxHealthGrowth = new Dictionary<DefenderUnit, float>();
         private readonly Dictionary<DefenderUnit, float> hero31MaxHealthGrowth = new Dictionary<DefenderUnit, float>();
         private int skillChainCastCount;
+        private int heroAugmentChoiceMisses;
         private bool subscribed;
         private bool resolvingHeroAugmentDamage;
         private bool resolvingHeroSkillEcho;
@@ -232,6 +240,7 @@ namespace DefenseGame
             hero11MaxHealthGrowth.Clear();
             hero31MaxHealthGrowth.Clear();
             skillChainCastCount = 0;
+            heroAugmentChoiceMisses = 0;
             nextChoiceRound = -1;
             pendingChoiceRound = -1;
             hoardIncomeTimer = 0f;
@@ -240,10 +249,53 @@ namespace DefenseGame
             Subscribe();
         }
 
+        public void RefreshCombatModeTuning()
+        {
+            if (chosenAugments.Count > 0 || HasPendingChoiceData)
+            {
+                return;
+            }
+
+            nextChoiceRound = -1;
+            EnsureChoiceSchedule();
+        }
+
+        public void ResetRunState()
+        {
+            bool wasOpen = IsChoiceOpen;
+            currentChoices.Clear();
+            chosenAugments.Clear();
+            recentAugmentOfferIds.Clear();
+            recentAugmentOfferFamilies.Clear();
+            buildupStacks.Clear();
+            hero54StoredDamage.Clear();
+            hero07KillCounts.Clear();
+            hero07StrikeCounts.Clear();
+            hero07ReaperActive.Clear();
+            hero11MaxHealthGrowth.Clear();
+            hero31MaxHealthGrowth.Clear();
+            skillChainCastCount = 0;
+            heroAugmentChoiceMisses = 0;
+            nextChoiceRound = -1;
+            pendingChoiceRound = -1;
+            hoardIncomeTimer = 0f;
+            if (panelRoot != null)
+            {
+                panelRoot.SetActive(false);
+            }
+
+            EnsureChoiceSchedule();
+            UpdateReopenButton();
+            if (wasOpen)
+            {
+                OnChoiceClosed?.Invoke();
+            }
+        }
+
         public bool WillOfferChoice(int round)
         {
             EnsureChoiceSchedule();
-            return HasPendingChoice || (round >= firstChoiceRound && round >= nextChoiceRound);
+            return HasPendingChoice || (round >= ResolveFirstChoiceRound() && round >= nextChoiceRound);
         }
 
         public void OpenPendingChoice()
@@ -296,6 +348,7 @@ namespace DefenseGame
                 gameController.OnRoundEconomySettlement += HandleRoundEconomySettlement;
                 gameController.OnRoundAugmentChoicePhase += HandleRoundAugmentChoicePhase;
                 gameController.OnRoundStarted += HandleRoundStarted;
+                gameController.OnMergeCompleted += HandleMergeCompleted;
             }
 
             DefenderUnit.OnDefenderSpawned += HandleDefenderSpawned;
@@ -376,6 +429,7 @@ namespace DefenseGame
                 gameController.OnRoundEconomySettlement -= HandleRoundEconomySettlement;
                 gameController.OnRoundAugmentChoicePhase -= HandleRoundAugmentChoicePhase;
                 gameController.OnRoundStarted -= HandleRoundStarted;
+                gameController.OnMergeCompleted -= HandleMergeCompleted;
             }
 
             DefenderUnit.OnDefenderSpawned -= HandleDefenderSpawned;
@@ -482,6 +536,56 @@ namespace DefenseGame
                 }
 
                 ResolveRoundStartedEconomy(augment, round);
+            }
+        }
+
+        private void HandleMergeCompleted(MergeResultInfo mergeResult)
+        {
+            if (gameController == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < chosenAugments.Count; i++)
+            {
+                AugmentDefinition augment = chosenAugments[i];
+                if (augment == null)
+                {
+                    continue;
+                }
+
+                if (augment.effectType == AugmentEffectType.MergeMomentum)
+                {
+                    IncrementBuildup(augment);
+                    DefenderUnit[] defenders = FindObjectsOfType<DefenderUnit>();
+                    for (int defenderIndex = 0; defenderIndex < defenders.Length; defenderIndex++)
+                    {
+                        DefenderUnit defender = defenders[defenderIndex];
+                        if (defender == null)
+                        {
+                            continue;
+                        }
+
+                        defender.AddAttackPowerBonus(Mathf.Max(0f, augment.value));
+                        defender.AddPermanentAttackSpeedBonus(Mathf.Max(0f, augment.secondaryValue));
+                    }
+
+                    int stacks = GetBuildupStacks(augment);
+                    gameController.RequestBanner("합성 연쇄 " + stacks + "단계  화력 상승", augment.accentColor, 1.6f);
+                }
+                else if (augment.effectType == AugmentEffectType.MergeDividend)
+                {
+                    int gradeStep = Mathf.Max(0, (int)mergeResult.resultGrade);
+                    int reward = Mathf.Max(1, Mathf.RoundToInt(augment.value + gradeStep * augment.secondaryValue));
+                    bool jackpot = UnityEngine.Random.value <= Mathf.Clamp01(augment.duration);
+                    if (jackpot)
+                    {
+                        reward *= 2;
+                    }
+
+                    gameController.AddGold(reward);
+                    ShowEconomyBanner((jackpot ? "합성 배당 대박 +" : "합성 배당 +") + reward + "G", augment.accentColor, 1.7f, 0.5f);
+                }
             }
         }
 
@@ -768,12 +872,33 @@ namespace DefenseGame
             for (int i = 0; i < chosenAugments.Count; i++)
             {
                 AugmentDefinition augment = chosenAugments[i];
-                if (augment == null || augment.effectType != AugmentEffectType.KillGoldChance)
+                if (augment == null)
                 {
                     continue;
                 }
 
-                if (UnityEngine.Random.value > Mathf.Clamp01(augment.value))
+                if (augment.effectType == AugmentEffectType.BossTrophyGrowth && monster.IsBoss)
+                {
+                    IncrementBuildup(augment);
+                    DefenderUnit[] defenders = FindObjectsOfType<DefenderUnit>();
+                    for (int defenderIndex = 0; defenderIndex < defenders.Length; defenderIndex++)
+                    {
+                        DefenderUnit defender = defenders[defenderIndex];
+                        if (defender == null)
+                        {
+                            continue;
+                        }
+
+                        defender.AddBossDamageBonus(Mathf.Max(0f, augment.value));
+                        defender.AddAttackPowerBonus(Mathf.Max(0f, augment.secondaryValue));
+                    }
+
+                    gameController.RequestBanner("보스 전리품 " + GetBuildupStacks(augment) + "개  전군 진화", augment.accentColor, 2f);
+                    continue;
+                }
+
+                if (augment.effectType != AugmentEffectType.KillGoldChance ||
+                    UnityEngine.Random.value > Mathf.Clamp01(augment.value))
                 {
                     continue;
                 }
@@ -890,12 +1015,14 @@ namespace DefenseGame
             }
 
             FillMissingChoices();
+            EnsureOwnedHeroChoice(round);
+            EnsureTransformingChoice();
             RememberCurrentChoices();
             SaveLastRunChoiceIds(round);
 
             if (headerText != null)
             {
-                headerText.text = "증강체 선택  ROUND " + round;
+                headerText.text = (IsOverdriveMode() ? "폭주 증강 선택  ROUND " : "증강체 선택  ROUND ") + round;
             }
 
             for (int i = 0; i < choiceButtons.Length; i++)
@@ -955,7 +1082,9 @@ namespace DefenseGame
 
             if (headerText != null)
             {
-                headerText.text = "증강체 선택  ROUND " + round;
+                bool isOverdrive = gameController != null && gameController.IsOverdriveMode;
+                headerText.text = (isOverdrive ? "폭주 증강 선택" : "증강체 선택") +
+                    "  ROUND " + round;
             }
 
             for (int i = 0; i < choiceButtons.Length; i++)
@@ -1004,18 +1133,29 @@ namespace DefenseGame
 
         private AugmentStyle[] BuildChoiceStyleSlots(int round)
         {
-            int safeInterval = Mathf.Max(1, minChoiceInterval);
-            int progressionPhase = Mathf.Max(0, round - Mathf.Max(1, firstChoiceRound)) / safeInterval;
-            string key = "DefenseGame.LastRunAugmentStylePack." + round;
-            int previousPack = PlayerPrefs.GetInt(key, -1);
-            int pack = UnityEngine.Random.Range(0, 4);
-            if (pack == previousPack)
+            int safeInterval = ResolveFixedChoiceInterval();
+            int progressionPhase = Mathf.Max(0, round - ResolveFirstChoiceRound()) / safeInterval;
+            bool deterministicContent = gameController != null && (gameController.DailyFateCupEnabled || gameController.HasRunContentSeedOverride);
+            int pack;
+            if (deterministicContent)
             {
-                pack = (pack + UnityEngine.Random.Range(1, 4)) % 4;
+                int contentSeed = gameController != null ? gameController.ActiveRunContentSeed : DailyFateCupRules.TodaySeed;
+                pack = (contentSeed ^ (round * 193)) & 3;
+            }
+            else
+            {
+                string key = "DefenseGame.LastRunAugmentStylePack." + round;
+                int previousPack = PlayerPrefs.GetInt(key, -1);
+                pack = UnityEngine.Random.Range(0, 4);
+                if (pack == previousPack)
+                {
+                    pack = (pack + UnityEngine.Random.Range(1, 4)) % 4;
+                }
+
+                PlayerPrefs.SetInt(key, pack);
+                PlayerPrefs.Save();
             }
 
-            PlayerPrefs.SetInt(key, pack);
-            PlayerPrefs.Save();
             switch ((progressionPhase + pack) % 4)
             {
                 case 0:
@@ -1031,47 +1171,85 @@ namespace DefenseGame
 
         private AugmentDefinition PickChoice(AugmentStyle style, ChoiceRarity rarity)
         {
-            List<AugmentDefinition> candidates = new List<AugmentDefinition>();
-            for (int i = 0; i < augmentPool.Count; i++)
+            List<AugmentDefinition> candidates = BuildChoiceCandidates(style, rarity, true, true);
+            if (candidates.Count == 0)
             {
-                AugmentDefinition augment = augmentPool[i];
-                if (augment != null &&
-                    augment.style == style &&
-                    GetChoiceRarity(augment) == rarity &&
-                    !currentChoices.Contains(augment) &&
-                    !HasChoiceFamily(augment) &&
-                    !HasChosen(augment.id) &&
-                    !WasLastRunChoice(augment) &&
-                    !WasRecentlyOffered(augment) && !WasRecentlyOfferedFamily(augment) &&
-                    CanOfferAugment(augment))
-                {
-                    candidates.Add(augment);
-                }
+                candidates = BuildChoiceCandidates(style, null, true, true);
             }
 
             if (candidates.Count == 0)
             {
-                for (int i = 0; i < augmentPool.Count; i++)
-                {
-                    AugmentDefinition augment = augmentPool[i];
-                    if (augment != null &&
-                        augment.style == style &&
-                        !currentChoices.Contains(augment) &&
-                        CanOfferAugment(augment))
-                    {
-                        candidates.Add(augment);
-                    }
-                }
+                candidates = BuildChoiceCandidates(null, null, true, true);
+            }
+
+            if (candidates.Count == 0)
+            {
+                candidates = BuildChoiceCandidates(style, null, false, true);
+            }
+
+            if (candidates.Count == 0)
+            {
+                candidates = BuildChoiceCandidates(null, null, false, false);
             }
 
             return candidates.Count > 0 ? candidates[UnityEngine.Random.Range(0, candidates.Count)] : null;
         }
 
-        private static ChoiceRarity RollChoiceRarity(int round)
+        private List<AugmentDefinition> BuildChoiceCandidates(
+            AugmentStyle? requiredStyle,
+            ChoiceRarity? requiredRarity,
+            bool avoidRetryHistory,
+            bool avoidCurrentRunHistory)
+        {
+            List<AugmentDefinition> candidates = new List<AugmentDefinition>();
+            for (int i = 0; i < augmentPool.Count; i++)
+            {
+                AugmentDefinition augment = augmentPool[i];
+                if (augment == null ||
+                    currentChoices.Contains(augment) ||
+                    HasChoiceFamily(augment) ||
+                    HasChosen(augment.id) ||
+                    !CanOfferAugment(augment))
+                {
+                    continue;
+                }
+
+                if (requiredStyle.HasValue && augment.style != requiredStyle.Value)
+                {
+                    continue;
+                }
+
+                if (requiredRarity.HasValue && GetChoiceRarity(augment) != requiredRarity.Value)
+                {
+                    continue;
+                }
+
+                if (avoidRetryHistory && WasLastRunChoice(augment))
+                {
+                    continue;
+                }
+
+                if (avoidCurrentRunHistory && (WasRecentlyOffered(augment) || WasRecentlyOfferedFamily(augment)))
+                {
+                    continue;
+                }
+
+                candidates.Add(augment);
+            }
+
+            return candidates;
+        }
+
+        private ChoiceRarity RollChoiceRarity(int round)
         {
             float roll = UnityEngine.Random.value;
             float legendaryChance = round <= 5 ? 0.02f : round <= 10 ? 0.06f : round <= 15 ? 0.10f : 0.13f;
             float rareChance = round <= 5 ? 0.23f : round <= 10 ? 0.26f : round <= 15 ? 0.30f : 0.32f;
+            if (IsOverdriveMode())
+            {
+                legendaryChance = Mathf.Min(0.24f, legendaryChance + 0.04f);
+                rareChance = Mathf.Min(0.44f, rareChance + 0.10f);
+            }
             return roll < legendaryChance ? ChoiceRarity.Legendary : roll < legendaryChance + rareChance ? ChoiceRarity.Rare : ChoiceRarity.Normal;
         }
 
@@ -1098,41 +1276,185 @@ namespace DefenseGame
         private void FillMissingChoices()
         {
             int choiceCount = choiceButtons != null ? Mathf.Min(3, choiceButtons.Length) : 3;
-            List<AugmentDefinition> candidates = new List<AugmentDefinition>();
-            for (int i = 0; i < augmentPool.Count; i++)
+            while (currentChoices.Count < choiceCount)
             {
-                AugmentDefinition augment = augmentPool[i];
-                if (augment != null &&
-                    !currentChoices.Contains(augment) &&
-                    !HasChoiceFamily(augment) &&
-                    !HasChosen(augment.id) &&
-                    !WasLastRunChoice(augment) &&
-                    !WasRecentlyOffered(augment) && !WasRecentlyOfferedFamily(augment) &&
-                    CanOfferAugment(augment))
+                List<AugmentDefinition> candidates = BuildChoiceCandidates(null, null, true, true);
+                if (candidates.Count == 0)
                 {
-                    candidates.Add(augment);
+                    candidates = BuildChoiceCandidates(null, null, false, true);
                 }
+
+                if (candidates.Count == 0)
+                {
+                    candidates = BuildChoiceCandidates(null, null, false, false);
+                }
+
+                if (candidates.Count == 0)
+                {
+                    break;
+                }
+
+                currentChoices.Add(candidates[UnityEngine.Random.Range(0, candidates.Count)]);
+            }
+        }
+
+        private void EnsureOwnedHeroChoice(int round)
+        {
+            for (int i = 0; i < currentChoices.Count; i++)
+            {
+                if (currentChoices[i] != null && currentChoices[i].heroTier != HeroAugmentTier.None)
+                {
+                    heroAugmentChoiceMisses = 0;
+                    return;
+                }
+            }
+
+            List<AugmentDefinition> allEligible = BuildOwnedHeroChoiceCandidates(round, false, false);
+            if (allEligible.Count == 0)
+            {
+                return;
+            }
+
+            if (heroAugmentChoiceMisses < Mathf.Max(0, guaranteedHeroAugmentAfterMisses))
+            {
+                heroAugmentChoiceMisses++;
+                return;
+            }
+
+            List<AugmentDefinition> candidates = BuildOwnedHeroChoiceCandidates(round, true, true);
+            if (candidates.Count == 0)
+            {
+                candidates = BuildOwnedHeroChoiceCandidates(round, false, true);
             }
 
             if (candidates.Count == 0)
             {
-                for (int i = 0; i < augmentPool.Count; i++)
+                candidates = allEligible;
+            }
+
+            if (candidates.Count == 0 || currentChoices.Count == 0)
+            {
+                return;
+            }
+
+            currentChoices[currentChoices.Count - 1] = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            heroAugmentChoiceMisses = 0;
+        }
+
+        private List<AugmentDefinition> BuildOwnedHeroChoiceCandidates(int round, bool avoidRetryHistory, bool avoidCurrentRunHistory)
+        {
+            List<AugmentDefinition> candidates = new List<AugmentDefinition>();
+            for (int i = 0; i < augmentPool.Count; i++)
+            {
+                AugmentDefinition augment = augmentPool[i];
+                if (augment == null ||
+                    currentChoices.Contains(augment) ||
+                    HasChoiceFamily(augment) ||
+                    HasChosen(augment.id) ||
+                    !CanForceOfferOwnedHeroAugment(augment, round))
                 {
-                    AugmentDefinition augment = augmentPool[i];
-                    if (augment != null &&
-                        !currentChoices.Contains(augment) &&
-                        CanOfferAugment(augment))
-                    {
-                        candidates.Add(augment);
-                    }
+                    continue;
+                }
+
+                if (avoidRetryHistory && WasLastRunChoice(augment))
+                {
+                    continue;
+                }
+
+                if (avoidCurrentRunHistory && (WasRecentlyOffered(augment) || WasRecentlyOfferedFamily(augment)))
+                {
+                    continue;
+                }
+
+                candidates.Add(augment);
+            }
+
+            return candidates;
+        }
+
+        private bool CanForceOfferOwnedHeroAugment(AugmentDefinition augment, int round)
+        {
+            if (augment == null ||
+                augment.heroTier == HeroAugmentTier.None ||
+                string.IsNullOrEmpty(augment.requiredHeroId) ||
+                CountFieldHero(augment.requiredHeroId) <= 0 ||
+                round < Mathf.Max(1, augment.minimumRound))
+            {
+                return false;
+            }
+
+            if (augment.heroTier == HeroAugmentTier.Rare && round < ResolveRareHeroAugmentUnlockRound())
+            {
+                return false;
+            }
+
+            return augment.heroTier != HeroAugmentTier.Mythic || round >= ResolveMythicHeroAugmentUnlockRound();
+        }
+
+        private void EnsureTransformingChoice()
+        {
+            CombatModeProfile profile = ResolveCombatModeProfile();
+            if (!profile.guaranteeTransformingAugment || currentChoices.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < currentChoices.Count; i++)
+            {
+                if (IsTransformingAugment(currentChoices[i]))
+                {
+                    return;
                 }
             }
 
-            while (currentChoices.Count < choiceCount && candidates.Count > 0)
+            List<AugmentDefinition> candidates = BuildChoiceCandidates(null, null, true, true);
+            candidates.RemoveAll(augment => !IsTransformingAugment(augment));
+            if (candidates.Count == 0)
             {
-                int selectedIndex = UnityEngine.Random.Range(0, candidates.Count);
-                currentChoices.Add(candidates[selectedIndex]);
-                candidates.RemoveAt(selectedIndex);
+                candidates = BuildChoiceCandidates(null, null, false, true);
+                candidates.RemoveAll(augment => !IsTransformingAugment(augment));
+            }
+
+            if (candidates.Count == 0)
+            {
+                candidates = BuildChoiceCandidates(null, null, false, false);
+                candidates.RemoveAll(augment => !IsTransformingAugment(augment));
+            }
+
+            if (candidates.Count == 0)
+            {
+                return;
+            }
+
+            int replacementIndex = currentChoices.Count - 1;
+            currentChoices[replacementIndex] = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        }
+
+        private static bool IsTransformingAugment(AugmentDefinition augment)
+        {
+            if (augment == null)
+            {
+                return false;
+            }
+
+            if (augment.heroTier != HeroAugmentTier.None)
+            {
+                return true;
+            }
+
+            switch (augment.effectType)
+            {
+                case AugmentEffectType.BasicAttackSplash:
+                case AugmentEffectType.SkillChainBlast:
+                case AugmentEffectType.CriticalDoubleTap:
+                case AugmentEffectType.ExecuteDamage:
+                case AugmentEffectType.RoundStartBurst:
+                case AugmentEffectType.MergeMomentum:
+                case AugmentEffectType.MergeDividend:
+                case AugmentEffectType.BossTrophyGrowth:
+                    return true;
+                default:
+                    return false;
             }
         }
 
@@ -1182,6 +1504,11 @@ namespace DefenseGame
                 case AugmentEffectType.CriticalDoubleTap:
                 case AugmentEffectType.LowHealthFury:
                     return "offense";
+                case AugmentEffectType.MergeMomentum:
+                case AugmentEffectType.MergeDividend:
+                    return "merge";
+                case AugmentEffectType.BossTrophyGrowth:
+                    return "boss-growth";
                 case AugmentEffectType.MaxHealthMultiplier:
                 case AugmentEffectType.AttackHealthTradeoff:
                     return "survival";
@@ -1207,44 +1534,124 @@ namespace DefenseGame
             }
         }
 
+        private static string GetRetryAugmentIdHistoryKey(int round)
+        {
+            return "DefenseGame.LastRunAugmentChoices." + round;
+        }
+
+        private static string GetRetryAugmentFamilyHistoryKey(int round)
+        {
+            return "DefenseGame.RetryAugmentFamilies." + round;
+        }
+
         private void LoadLastRunChoiceIds(int round)
         {
             lastRunChoiceIds.Clear();
-            string saved = PlayerPrefs.GetString("DefenseGame.LastRunAugmentChoices." + round, string.Empty);
+            lastRunChoiceFamilies.Clear();
+            AddSavedHistoryToSet(GetRetryAugmentIdHistoryKey(round), lastRunChoiceIds);
+            AddSavedHistoryToSet(GetRetryAugmentFamilyHistoryKey(round), lastRunChoiceFamilies);
+        }
+
+        private static void AddSavedHistoryToSet(string key, HashSet<string> destination)
+        {
+            string saved = PlayerPrefs.GetString(key, string.Empty);
             if (string.IsNullOrEmpty(saved))
             {
                 return;
             }
 
-            string[] ids = saved.Split(',');
-            for (int i = 0; i < ids.Length; i++)
+            string[] values = saved.Split(',');
+            for (int i = 0; i < values.Length; i++)
             {
-                if (!string.IsNullOrWhiteSpace(ids[i]))
+                if (!string.IsNullOrWhiteSpace(values[i]))
                 {
-                    lastRunChoiceIds.Add(ids[i]);
+                    destination.Add(values[i]);
                 }
             }
         }
 
         private bool WasLastRunChoice(AugmentDefinition augment)
         {
-            return augment != null && !string.IsNullOrWhiteSpace(augment.id) && lastRunChoiceIds.Contains(augment.id);
+            if (gameController != null && (gameController.DailyFateCupEnabled || gameController.HasRunContentSeedOverride))
+            {
+                return false;
+            }
+
+            if (augment == null)
+            {
+                return false;
+            }
+
+            string family = GetAugmentOfferFamily(augment);
+            return (!string.IsNullOrWhiteSpace(augment.id) && lastRunChoiceIds.Contains(augment.id)) ||
+                   (!string.IsNullOrWhiteSpace(family) && lastRunChoiceFamilies.Contains(family));
         }
 
         private void SaveLastRunChoiceIds(int round)
         {
-            List<string> ids = new List<string>();
+            if (gameController != null && (gameController.DailyFateCupEnabled || gameController.HasRunContentSeedOverride))
+            {
+                return;
+            }
+
+            int choicesPerRun = Mathf.Max(1, currentChoices.Count);
+            int historyLimit = choicesPerRun * Mathf.Max(1, retryAugmentHistoryRuns);
+            List<string> ids = LoadSavedHistory(GetRetryAugmentIdHistoryKey(round));
+            List<string> families = LoadSavedHistory(GetRetryAugmentFamilyHistoryKey(round));
             for (int i = 0; i < currentChoices.Count; i++)
             {
                 AugmentDefinition choice = currentChoices[i];
-                if (choice != null && !string.IsNullOrWhiteSpace(choice.id))
+                if (choice == null)
                 {
-                    ids.Add(choice.id);
+                    continue;
+                }
+
+                MoveHistoryValueToEnd(ids, choice.id);
+                MoveHistoryValueToEnd(families, GetAugmentOfferFamily(choice));
+            }
+
+            TrimHistory(ids, historyLimit);
+            TrimHistory(families, historyLimit);
+            PlayerPrefs.SetString(GetRetryAugmentIdHistoryKey(round), string.Join(",", ids.ToArray()));
+            PlayerPrefs.SetString(GetRetryAugmentFamilyHistoryKey(round), string.Join(",", families.ToArray()));
+            PlayerPrefs.Save();
+        }
+
+        private static List<string> LoadSavedHistory(string key)
+        {
+            List<string> history = new List<string>();
+            string saved = PlayerPrefs.GetString(key, string.Empty);
+            string[] values = saved.Split(',');
+            for (int i = 0; i < values.Length; i++)
+            {
+                string value = values[i];
+                if (!string.IsNullOrWhiteSpace(value) && !history.Contains(value))
+                {
+                    history.Add(value);
                 }
             }
 
-            PlayerPrefs.SetString("DefenseGame.LastRunAugmentChoices." + round, string.Join(",", ids.ToArray()));
-            PlayerPrefs.Save();
+            return history;
+        }
+
+        private static void MoveHistoryValueToEnd(List<string> history, string value)
+        {
+            if (history == null || string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            history.Remove(value);
+            history.Add(value);
+        }
+
+        private static void TrimHistory(List<string> history, int limit)
+        {
+            int safeLimit = Mathf.Max(1, limit);
+            while (history.Count > safeLimit)
+            {
+                history.RemoveAt(0);
+            }
         }
         private bool WasRecentlyOffered(AugmentDefinition augment)
         {
@@ -1355,7 +1762,7 @@ namespace DefenseGame
 
         private void DelayChoiceForShop(int round)
         {
-            int delayedRound = Mathf.Max(round + 1, Mathf.Max(1, firstChoiceRound));
+            int delayedRound = Mathf.Max(round + 1, ResolveFirstChoiceRound());
             if (HasPendingChoiceData)
             {
                 pendingChoiceRound = Mathf.Max(delayedRound, pendingChoiceRound);
@@ -1373,7 +1780,7 @@ namespace DefenseGame
             }
 
             UpdateReopenButton();
-            if (gameController != null && round >= firstChoiceRound)
+            if (gameController != null && round >= ResolveFirstChoiceRound())
             {
                 gameController.RequestBanner("증강체 선택은 다음 라운드로 연기됩니다", new Color(0.72f, 0.88f, 1f), 1.8f);
             }
@@ -1429,6 +1836,16 @@ namespace DefenseGame
                 case AugmentEffectType.AttackHealthTradeoff:
                     defender.AddAttackPowerBonus(Mathf.Max(0f, augment.value));
                     defender.AddMaxHealthBonus(-Mathf.Abs(augment.secondaryValue));
+                    break;
+                case AugmentEffectType.MergeMomentum:
+                    int mergeStacks = GetBuildupStacks(augment);
+                    defender.AddAttackPowerBonus(Mathf.Max(0f, augment.value) * mergeStacks);
+                    defender.AddPermanentAttackSpeedBonus(Mathf.Max(0f, augment.secondaryValue) * mergeStacks);
+                    break;
+                case AugmentEffectType.BossTrophyGrowth:
+                    int trophyStacks = GetBuildupStacks(augment);
+                    defender.AddBossDamageBonus(Mathf.Max(0f, augment.value) * trophyStacks);
+                    defender.AddAttackPowerBonus(Mathf.Max(0f, augment.secondaryValue) * trophyStacks);
                     break;
                 default:
                     if (IsBuildupEffect(augment.effectType))
@@ -1640,6 +2057,12 @@ namespace DefenseGame
                 return false;
             }
 
+            int round = pendingChoiceRound > 0 ? pendingChoiceRound : gameController != null ? gameController.CurrentRound : 1;
+            if (round < Mathf.Max(1, augment.minimumRound))
+            {
+                return false;
+            }
+
             if (!string.IsNullOrEmpty(augment.requiredHeroId))
             {
                 return CanOfferHeroAugment(augment);
@@ -1671,12 +2094,12 @@ namespace DefenseGame
             }
 
             int round = pendingChoiceRound > 0 ? pendingChoiceRound : gameController != null ? gameController.CurrentRound : 1;
-            if (augment.heroTier == HeroAugmentTier.Rare && round < rareHeroAugmentUnlockRound)
+            if (augment.heroTier == HeroAugmentTier.Rare && round < ResolveRareHeroAugmentUnlockRound())
             {
                 return false;
             }
 
-            if (augment.heroTier == HeroAugmentTier.Mythic && round < mythicHeroAugmentUnlockRound)
+            if (augment.heroTier == HeroAugmentTier.Mythic && round < ResolveMythicHeroAugmentUnlockRound())
             {
                 return false;
             }
@@ -1685,7 +2108,8 @@ namespace DefenseGame
             {
                 float baseChance = GetHeroAugmentBaseOfferChance(augment.heroTier);
                 float maxChance = GetHeroAugmentMaxOfferChance(augment.heroTier);
-                float chance = Mathf.Clamp(baseChance + Mathf.Max(0, heroCount - 1) * extraHeroCopyOfferBonus, 0f, maxChance);
+                float modeMultiplier = Mathf.Max(0f, ResolveCombatModeProfile().heroAugmentOfferChanceMultiplier);
+                float chance = Mathf.Clamp((baseChance + Mathf.Max(0, heroCount - 1) * extraHeroCopyOfferBonus) * modeMultiplier, 0f, maxChance);
                 canOffer = UnityEngine.Random.value <= chance;
                 heroAugmentOfferRolls[augment.id] = canOffer;
             }
@@ -1702,9 +2126,10 @@ namespace DefenseGame
 
         private float GetHeroAugmentMaxOfferChance(HeroAugmentTier tier)
         {
-            if (tier == HeroAugmentTier.Mythic) return 0.35f;
-            if (tier == HeroAugmentTier.Rare) return 0.60f;
-            return 0.85f;
+            float modeBonus = IsOverdriveMode() ? 0.12f : 0f;
+            if (tier == HeroAugmentTier.Mythic) return Mathf.Min(0.55f, 0.35f + modeBonus);
+            if (tier == HeroAugmentTier.Rare) return Mathf.Min(0.78f, 0.60f + modeBonus);
+            return Mathf.Min(0.95f, 0.85f + modeBonus);
         }
 
         private bool CanOfferHeroAugment(AugmentDefinition augment, string heroId, float baseChance)
@@ -3185,7 +3610,7 @@ namespace DefenseGame
                 return;
             }
 
-            nextChoiceRound = Mathf.Max(1, firstChoiceRound);
+            nextChoiceRound = ResolveFirstChoiceRound();
         }
 
         private void ScheduleNextChoice(int completedRound)
@@ -3195,7 +3620,7 @@ namespace DefenseGame
 
         private int ResolveNextFixedChoiceRound(int completedRound)
         {
-            int firstRound = Mathf.Max(1, firstChoiceRound);
+            int firstRound = ResolveFirstChoiceRound();
             int interval = ResolveFixedChoiceInterval();
             int baselineRound = Mathf.Max(0, completedRound);
             if (baselineRound < firstRound)
@@ -3209,9 +3634,51 @@ namespace DefenseGame
 
         private int ResolveFixedChoiceInterval()
         {
+            CombatModeProfile profile = ResolveCombatModeProfile();
+            if (profile.IsOverdrive)
+            {
+                return Mathf.Max(1, profile.augmentChoiceInterval);
+            }
+
             int minInterval = Mathf.Max(1, minChoiceInterval);
             int maxInterval = Mathf.Max(minInterval, maxChoiceInterval);
             return Mathf.RoundToInt((minInterval + maxInterval) * 0.5f);
+        }
+
+        private int ResolveFirstChoiceRound()
+        {
+            CombatModeProfile profile = ResolveCombatModeProfile();
+            return profile.IsOverdrive
+                ? Mathf.Max(1, profile.firstAugmentChoiceRound)
+                : Mathf.Max(1, firstChoiceRound);
+        }
+
+        private int ResolveRareHeroAugmentUnlockRound()
+        {
+            CombatModeProfile profile = ResolveCombatModeProfile();
+            return profile.IsOverdrive
+                ? Mathf.Max(1, profile.rareHeroAugmentUnlockRound)
+                : Mathf.Max(1, rareHeroAugmentUnlockRound);
+        }
+
+        private int ResolveMythicHeroAugmentUnlockRound()
+        {
+            CombatModeProfile profile = ResolveCombatModeProfile();
+            return profile.IsOverdrive
+                ? Mathf.Max(1, profile.mythicHeroAugmentUnlockRound)
+                : Mathf.Max(1, mythicHeroAugmentUnlockRound);
+        }
+
+        private bool IsOverdriveMode()
+        {
+            return ResolveCombatModeProfile().IsOverdrive;
+        }
+
+        private CombatModeProfile ResolveCombatModeProfile()
+        {
+            return gameController != null
+                ? gameController.ActiveCombatModeProfile
+                : CombatModeProfile.CreateClassic();
         }
 
         private string GetStyleLabel(AugmentStyle style)
@@ -3306,7 +3773,32 @@ namespace DefenseGame
                 "bounty_exchange", "\ud604\uc0c1\uae08 \ud658\uc804",
                 "\ub77c\uc6b4\ub4dc \ud074\ub9ac\uc5b4 \ubcf4\uc0c1 +3G. \uc5b4\ub5a4 \ub371\uc5d0\uc11c\ub3c4 \ub2e4\uc74c \uc120\ud0dd\uc9c0\ub97c \ubd80\ub4dc\ub7fd\uac8c \ub9cc\ub4ed\ub2c8\ub2e4.",
                 AugmentStyle.Growth, AugmentEffectType.RoundGoldBonus, 3f, 0f, 0f, new Color(1f, 0.78f, 0.30f)));
-AddAugmentIfMissing(CreateAugment(
+            AddAugmentIfMissing(CreateRoundAugment(
+                "merge_combo_engine", "합성 연쇄 엔진",
+                "합성할 때마다 모든 현재·미래 유닛 공격력 +3.5%, 공격속도 +2%가 누적됩니다.",
+                AugmentStyle.Growth, AugmentEffectType.MergeMomentum, 0.035f, 0.02f, 0f, new Color(0.36f, 1f, 0.70f), ChoiceRarity.Normal, 3));
+            AddAugmentIfMissing(CreateRoundAugment(
+                "merge_dividend", "합성 배당",
+                "합성할 때 결과 등급에 따라 골드를 받고 20% 확률로 두 배가 됩니다. 합성을 경제 엔진으로 바꿉니다.",
+                AugmentStyle.Gamble, AugmentEffectType.MergeDividend, 3f, 2f, 0.20f, new Color(1f, 0.82f, 0.22f), ChoiceRarity.Rare, 5));
+            AddAugmentIfMissing(CreateRoundAugment(
+                "boss_trophy_growth", "보스 전리품 진화",
+                "보스를 처치할 때마다 모든 현재·미래 유닛의 보스 피해 +8%, 공격력 +3%가 누적됩니다.",
+                AugmentStyle.Buildup, AugmentEffectType.BossTrophyGrowth, 0.08f, 0.03f, 0f, new Color(1f, 0.46f, 0.24f), ChoiceRarity.Rare, 8));
+            AddAugmentIfMissing(CreateRoundAugment(
+                "berserker_threshold", "광전사 임계점",
+                "체력이 50% 이하인 유닛이 주는 피해가 60% 증가합니다. 회복과 방치 사이의 판단을 만듭니다.",
+                AugmentStyle.Gamble, AugmentEffectType.LowHealthFury, 0.50f, 0.60f, 0f, new Color(1f, 0.25f, 0.34f), ChoiceRarity.Rare, 6));
+            AddAugmentIfMissing(CreateRoundAugment(
+                "forbidden_overcharge", "금단 과충전",
+                "모든 유닛 공격력 +45%, 최대 체력 -28%. 보스 전에 화력으로 밀어붙이는 고위험 선택입니다.",
+                AugmentStyle.Gamble, AugmentEffectType.AttackHealthTradeoff, 0.45f, 0.28f, 0f, new Color(1f, 0.22f, 0.56f), ChoiceRarity.Rare, 8));
+            AddAugmentIfMissing(CreateRoundAugment(
+                "arcane_domino", "비전 도미노",
+                "아군의 매 4번째 스킬이 대상 주변 2.8m에 시전자 공격력 135% 피해를 줍니다.",
+                AugmentStyle.Growth, AugmentEffectType.SkillChainBlast, 4f, 1.35f, 2.8f, new Color(0.72f, 0.42f, 1f), ChoiceRarity.Rare, 9));
+
+            AddAugmentIfMissing(CreateAugment(
                 "rare_overclock_array", "\uc624\ubc84\ud074\ub7ed \ubc30\uc5f4",
                 "\ubaa8\ub4e0 \uc720\ub2db \uacf5\uaca9 \uc18d\ub3c4 +30%. \ub808\uc5b4 \ub4f1\uae09\uc758 \uacf5\uc138 \uc804\ud658 \uc99d\uac15\uccb4\uc785\ub2c8\ub2e4.",
                 AugmentStyle.Growth, AugmentEffectType.AttackSpeedMultiplier, 0.30f, 0f, 0f, new Color(0.24f, 0.62f, 1f), ChoiceRarity.Rare));
@@ -3586,6 +4078,34 @@ AddAugmentIfMissing(CreateAugment(
             augmentPool.Add(CreateAugment("overclock_growth", "과열 성장", "라운드가 시작될 때마다 공격속도가 1.3%씩 누적 증가합니다.", AugmentStyle.Buildup, AugmentEffectType.ScalingAttackSpeedPerRound, 0.013f, 0f, 0f, new Color(0.36f, 1f, 0.72f)));
             augmentPool.Add(CreateAugment("fever_engine", "피버 엔진", "라운드가 시작될 때마다 스킬 위력이 2.2%씩 누적 증가합니다. 장기전 스킬 빌드용입니다.", AugmentStyle.Buildup, AugmentEffectType.ScalingSkillPowerPerRound, 0.022f, 0f, 0f, new Color(1f, 0.46f, 1f)));
             augmentPool.Add(CreateAugment("boss_tax_account", "보스 세금통장", "라운드가 시작될 때마다 보스 피해가 2.0%씩 누적됩니다. 보스 허들 대응용입니다.", AugmentStyle.Buildup, AugmentEffectType.ScalingBossDamagePerRound, 0.020f, 0f, 0f, new Color(1f, 0.55f, 0.24f)));
+        }
+
+        private AugmentDefinition CreateRoundAugment(
+            string id,
+            string title,
+            string description,
+            AugmentStyle style,
+            AugmentEffectType effectType,
+            float value,
+            float secondaryValue,
+            float duration,
+            Color accentColor,
+            ChoiceRarity rarity,
+            int minimumRound)
+        {
+            AugmentDefinition augment = CreateAugment(
+                id,
+                title,
+                description,
+                style,
+                effectType,
+                value,
+                secondaryValue,
+                duration,
+                accentColor,
+                rarity);
+            augment.minimumRound = Mathf.Max(1, minimumRound);
+            return augment;
         }
 
         private AugmentDefinition CreateAugment(string id, string title, string description, AugmentStyle style, AugmentEffectType effectType, float value, float secondaryValue, float duration, Color accentColor, ChoiceRarity rarity = ChoiceRarity.Normal)

@@ -115,6 +115,15 @@ namespace DefenseGame
 		[Min(0.5f)]
 		private float maximumRangedAttackRange = 3f;
 
+		[Header("Melee Contact Combat")]
+		[SerializeField]
+		[Min(0.8f)]
+		private float maximumMeleeAttackRange = 1.6f;
+
+		[SerializeField]
+		[Range(0.03f, 0.35f)]
+		private float meleeContactClearance = 0.12f;
+
 		[SerializeField]
 		[Range(0f, 0.5f)]
 		private float retaliationRangeMargin = 0.12f;
@@ -512,8 +521,10 @@ namespace DefenseGame
 			DefenderUnit target = ((forcedTarget != null) ? forcedTarget : FindNearestDefender());
 			if (target != null)
 			{
-				float attackRange = GetEffectiveAttackRange();
-				bool isInsideAttackRange = (target.transform.position - base.transform.position).sqrMagnitude <= attackRange * attackRange;
+				float attackRange = GetEffectiveAttackRange(target);
+				Vector3 targetOffset = target.transform.position - base.transform.position;
+				targetOffset.y = 0f;
+				bool isInsideAttackRange = targetOffset.sqrMagnitude <= attackRange * attackRange;
 				bool canBeCounterAttacked = !IsRangedAttacker() || CanAnyLivingDefenderRetaliate();
 				if (isInsideAttackRange && canBeCounterAttacked)
 				{
@@ -538,7 +549,7 @@ namespace DefenseGame
 			MoveTowardsGoal();
 		}
 
-		public void Initialize(MonsterDefinition newDefinition, Transform goalPoint, int spawnRound = 0)
+		public void Initialize(MonsterDefinition newDefinition, Transform goalPoint, int spawnRound = 0, float runtimeHealthMultiplier = 1f, float runtimeAttackMultiplier = 1f)
 		{
 			definition = newDefinition;
 			outgameHealthMultiplier = 1f;
@@ -549,8 +560,8 @@ namespace DefenseGame
 				OutgameProgressionSystem.Active.ResolveMonsterBalanceMultipliers(definition, out outgameHealthMultiplier, out outgameAttackMultiplier);
 			}
 			CommercialRoundPacing.ResolveCombatMultipliers(spawnRound, definition != null && definition.IsBossLike, out var hurdleHealthMultiplier, out var hurdleAttackMultiplier);
-			outgameHealthMultiplier *= hurdleHealthMultiplier;
-			outgameAttackMultiplier *= hurdleAttackMultiplier;
+			outgameHealthMultiplier *= hurdleHealthMultiplier * Mathf.Max(0.1f, runtimeHealthMultiplier);
+			outgameAttackMultiplier *= hurdleAttackMultiplier * Mathf.Max(0.1f, runtimeAttackMultiplier);
 			DailyFortuneRule fortune = DailyFortuneSystem.Today;
 			if (fortune != null && definition != null && definition.IsBossLike)
 			{
@@ -959,6 +970,15 @@ namespace DefenseGame
 			{
 				Vector3 moveTarget = target.transform.position;
 				moveTarget.y = base.transform.position.y;
+				if (!IsRangedAttacker())
+				{
+					Vector3 fromTarget = base.transform.position - moveTarget;
+					fromTarget.y = 0f;
+					if (fromTarget.sqrMagnitude > 0.0001f)
+					{
+						moveTarget += fromTarget.normalized * GetEffectiveAttackRange(target);
+					}
+				}
 				FaceTarget(moveTarget);
 				float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus) * (1f - slowRatio) * (1f - fateStatCrushRatio) * globalMoveSpeedMultiplier;
 				base.transform.position = Vector3.MoveTowards(base.transform.position, moveTarget, moveSpeed * Time.deltaTime);
@@ -1203,6 +1223,10 @@ namespace DefenseGame
 			{
 				return false;
 			}
+			if (RequiresMeleeEngagementForSkill(skill) && !HasDefenderWithinSkillRange(skill))
+			{
+				return false;
+			}
 			if (skill.effectType == SkillEffectType.DamageReflect)
 			{
 				return damageReflectTimer <= 0.05f && CountLivingDefenders() > 0 && HasDefenderWithinSkillRange(skill);
@@ -1232,7 +1256,7 @@ namespace DefenseGame
 			int skillSlot = ((definition == null || definition.skills == null) ? 1 : Mathf.Max(1, definition.skills.IndexOf(skill) + 1));
 			bool usedAttackAnimationFallback = false;
 			bool animationStarted = animationDriver != null && animationDriver.PlaySkill(skillSlot);
-			if (!animationStarted && animationDriver != null)
+			if (!animationStarted && animationDriver != null && SkillTargetsDefenders(skill))
 			{
 				usedAttackAnimationFallback = animationDriver.PlayAttack();
 				animationStarted = usedAttackAnimationFallback;
@@ -1768,6 +1792,18 @@ namespace DefenseGame
 			return skill.effectType == SkillEffectType.DeathPact || skill.effectType == SkillEffectType.Stun || skill.effectType == SkillEffectType.MassStun || skill.effectType == SkillEffectType.SummonRush || skill.effectType == SkillEffectType.DirectDamage || skill.effectType == SkillEffectType.AreaDamage || skill.effectType == SkillEffectType.ManaBurn || skill.effectType == SkillEffectType.AttackPowerReduction;
 		}
 
+		private bool RequiresMeleeEngagementForSkill(SkillDefinition skill)
+		{
+			if (skill == null || IsRangedAttacker() || skill.isGlobalTargeting)
+			{
+				return false;
+			}
+
+			return skill.effectType != SkillEffectType.MoveSpeedBoost &&
+				skill.effectType != SkillEffectType.SummonRush &&
+				skill.effectType != SkillEffectType.MonsterRally;
+		}
+
 		private bool HasDefenderWithinSkillRange(SkillDefinition skill)
 		{
 			return FindNearestDefenderForSkill(skill) != null;
@@ -1775,9 +1811,7 @@ namespace DefenseGame
 
 		private DefenderUnit FindNearestDefenderForSkill(SkillDefinition skill)
 		{
-			float castRange = ResolveSkillCastRange(skill);
-			float castRangeSqr = castRange * castRange;
-			float bestSqrDistance = castRangeSqr;
+			float bestSqrDistance = float.MaxValue;
 			DefenderUnit bestTarget = null;
 			Vector3 origin = base.transform.position;
 			for (int i = defenders.Count - 1; i >= 0; i--)
@@ -1793,7 +1827,8 @@ namespace DefenseGame
 				else
 				{
 					float sqrDistance = (origin - defender.transform.position).sqrMagnitude;
-					if (sqrDistance <= bestSqrDistance)
+					float castRange = ResolveSkillCastRange(skill, defender);
+					if (sqrDistance <= castRange * castRange && sqrDistance <= bestSqrDistance)
 					{
 						bestSqrDistance = sqrDistance;
 						bestTarget = defender;
@@ -1865,25 +1900,37 @@ namespace DefenseGame
 			return candidates;
 		}
 
-		private float ResolveSkillCastRange(SkillDefinition skill)
+		private float ResolveSkillCastRange(SkillDefinition skill, DefenderUnit target = null)
 		{
 			if (skill == null)
 			{
 				return 0f;
 			}
+
+			float resolvedRange;
 			if (skill.effectType == SkillEffectType.AreaDamage)
 			{
-				return Mathf.Max(0.1f, skill.radius);
+				resolvedRange = Mathf.Max(0.1f, skill.radius);
 			}
-			if (skill.useCustomCastRange)
+			else if (skill.useCustomCastRange)
 			{
-				return Mathf.Max(0.5f, skill.castRange);
+				resolvedRange = Mathf.Max(0.5f, skill.castRange);
 			}
-			if (skill.effectType == SkillEffectType.SummonRush)
+			else if (skill.effectType == SkillEffectType.SummonRush)
 			{
-				return Mathf.Max(GetEffectiveAttackRange(), defaultRushCastRange);
+				resolvedRange = Mathf.Max(GetEffectiveAttackRange(), defaultRushCastRange);
 			}
-			return Mathf.Max(0.5f, GetEffectiveAttackRange());
+			else
+			{
+				resolvedRange = Mathf.Max(0.5f, GetEffectiveAttackRange(target));
+			}
+
+			if (RequiresMeleeEngagementForSkill(skill))
+			{
+				resolvedRange = Mathf.Min(resolvedRange, GetEffectiveAttackRange(target));
+			}
+
+			return resolvedRange;
 		}
 
 		private void NotifySkillWarning(SkillDefinition skill, float duration)
@@ -2518,16 +2565,48 @@ namespace DefenseGame
 			return (definition != null) ? (definition.stats.attackPower * outgameAttackMultiplier * (1f - fateStatCrushRatio)) : 0f;
 		}
 
-		private float GetEffectiveAttackRange()
+		private float GetEffectiveAttackRange(DefenderUnit target = null)
 		{
 			if (definition == null)
 			{
 				return 0f;
 			}
+
 			float resolvedRange = definition.attackBehavior.ResolveAttackRange(definition.stats.attackRange);
-			return IsRangedAttacker() ? Mathf.Min(Mathf.Max(0.5f, maximumRangedAttackRange), resolvedRange) : resolvedRange;
+			if (IsRangedAttacker())
+			{
+				return Mathf.Min(Mathf.Max(0.5f, maximumRangedAttackRange), resolvedRange);
+			}
+
+			float contactRange = Mathf.Min(resolvedRange, Mathf.Max(0.8f, maximumMeleeAttackRange));
+			float targetRadius = target != null ? GetPlanarColliderRadius(target.gameObject) : 0.4f;
+			float visualContactRange = GetPlanarColliderRadius(base.gameObject) + targetRadius + meleeContactClearance;
+			return Mathf.Min(contactRange, Mathf.Max(0.8f, visualContactRange));
 		}
 
+		private static float GetPlanarColliderRadius(GameObject unitObject)
+		{
+			if (unitObject == null)
+			{
+				return 0.4f;
+			}
+
+			Collider collider = unitObject.GetComponentInChildren<Collider>(includeInactive: false);
+			if (collider != null)
+			{
+				Bounds colliderBounds = collider.bounds;
+				return Mathf.Max(0.25f, Mathf.Max(colliderBounds.extents.x, colliderBounds.extents.z));
+			}
+
+			Renderer renderer = unitObject.GetComponentInChildren<Renderer>(includeInactive: false);
+			if (renderer != null)
+			{
+				Bounds rendererBounds = renderer.bounds;
+				return Mathf.Max(0.25f, Mathf.Max(rendererBounds.extents.x, rendererBounds.extents.z));
+			}
+
+			return 0.4f;
+		}
 		private void ApplyBasicAttackExtensions(DefenderUnit primaryTarget, float damage)
 		{
 			if (primaryTarget == null || definition == null)

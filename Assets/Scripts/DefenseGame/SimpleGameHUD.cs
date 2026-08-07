@@ -577,19 +577,19 @@ namespace DefenseGame
                 : gameController.EmptySlotCount <= 0 ? "\uC790\uB9AC \uC5C6\uC74C" : "\uACE8\uB4DC \uBD80\uC871";
             SetText(summonButtonText, summonLabel);
             SetText(summonCostText, gameController.SummonCost + " GOLD");
-            SetText(
-                luckySummonProgressText,
-                luckySummonReady ? "\uD589\uC6B4 \uC18C\uD658  READY"
-                    : gameController.LuckySummonProgressVisible
-                        ? "\uD589\uC6B4 \uC18C\uD658  " + gameController.LuckySummonNormalStreak + " / " + gameController.LuckySummonThreshold
-                        : string.Empty);
+            bool showLuckLedger = gameController.CurrentRound <= 10 ||
+                luckySummonReady || gameController.LuckySummonProgressVisible ||
+                gameController.BadLuckInsuranceAvailable;
+            SetText(luckySummonProgressText, showLuckLedger ? gameController.LuckProtectionLedgerSummary : string.Empty);
             SetColor(luckySummonProgressText, luckySummonReady ? new Color(0.20f, 0.13f, 0.05f) : new Color(0.94f, 1f, 0.78f));
             if (luckySummonProgressBadge != null)
             {
-                luckySummonProgressBadge.gameObject.SetActive(luckySummonReady || gameController.LuckySummonProgressVisible);
+                luckySummonProgressBadge.gameObject.SetActive(showLuckLedger);
                 luckySummonProgressBadge.color = luckySummonReady
                     ? new Color(0.96f, 0.72f, 0.22f, 0.98f)
-                    : new Color(0.07f, 0.20f, 0.17f, 0.96f);
+                    : gameController.BadLuckInsuranceAvailable
+                        ? new Color(0.46f, 0.28f, 0.72f, 0.98f)
+                        : new Color(0.07f, 0.20f, 0.17f, 0.96f);
             }
             if (summonButtonImage != null)
             {
@@ -1451,7 +1451,11 @@ namespace DefenseGame
                 return;
             }
 
-            int stage = Mathf.Clamp(Mathf.FloorToInt(elapsed / OpeningTutorialStageDuration), 0, 3);
+            int timedStage = Mathf.Clamp(Mathf.FloorToInt(elapsed / OpeningTutorialStageDuration), 0, 3);
+            int actionStage = gameController.LastMergeResult.HasValue ? 3 :
+                gameController.CurrentRound > 0 ? 2 :
+                gameController.BoardUnitCount > 0 ? 1 : 0;
+            int stage = Mathf.Max(timedStage, actionStage);
             Transform target = GetOpeningTutorialTarget(stage);
             string message = GetOpeningTutorialMessage(stage);
 
@@ -1515,7 +1519,7 @@ namespace DefenseGame
                 case 2:
                     return "3. 합친다  같은 등급 3개면 합성";
                 default:
-                    return "4. 더 센 게 나온다  R3 상점에서 방향 선택";
+                    return "4. 더 센 게 나온다  합성 결과로 등급 상승";
             }
         }
 
