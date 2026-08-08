@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -143,6 +144,7 @@ namespace DefenseGame
         private int ultimateReadyCount;
         private int previousUltimateReadyCount;
         private bool ultimateReadyStateInitialized;
+        private readonly HashSet<string> readyUltimateRecipeNames = new HashSet<string>();
 
         public void Configure(
             DefenseGameController controller,
@@ -613,7 +615,7 @@ namespace DefenseGame
                 int readyCount = gameController.ReadyUltimateRecipeCount;
                 bool canOpenUltimateRecipes = !combatLocked;
                 bool canMergeUltimate = canOpenUltimateRecipes && readyCount > 0;
-                SetText(transcendentMergeText, readyCount > 0 ? "READY ×" + readyCount : gameController.GetUltimateMergeStatus());
+                SetText(transcendentMergeText, "\ucd08\uc6d4 " + readyCount + " READY");
                 SetColor(transcendentMergeText, canMergeUltimate ? new Color(0.92f, 0.42f, 1f) : combatLocked ? new Color(0.58f, 0.62f, 0.78f) : Color.white);
                 SetGradeCardInteractable(transcendentMergeText, canOpenUltimateRecipes);
                 SetUltimateReadyState(readyCount);
@@ -1139,6 +1141,7 @@ namespace DefenseGame
         private void SetUltimateReadyState(int readyCount)
         {
             EnsureUltimateReadyVisuals();
+            bool wasInitialized = ultimateReadyStateInitialized;
             ultimateReadyCount = Mathf.Max(0, readyCount);
             if (ultimateReadyBadge != null)
             {
@@ -1156,17 +1159,55 @@ namespace DefenseGame
                 previousUltimateReadyCount = 0;
             }
 
-            if (ultimateReadyCount > previousUltimateReadyCount && ultimateReadyCount > 0)
-            {
-                string message = ultimateReadyCount > 1
-                    ? "초월 레시피 " + ultimateReadyCount + "개 준비!  초월 버튼에서 선택하세요"
-                    : "초월 조합 준비 완료!  초월 버튼을 확인하세요";
-                gameController.RequestBanner(message, new Color(1f, 0.78f, 0.22f), 2.8f);
-                RuntimeAudioUtility.PlayJackpotMinor();
-                RuntimeCameraShake.Request(0.04f, 0.14f);
-            }
+            NotifyUltimateRecipeReadyTransitions(wasInitialized);
 
             previousUltimateReadyCount = ultimateReadyCount;
+        }
+
+        private void NotifyUltimateRecipeReadyTransitions(bool wasInitialized)
+        {
+            if (gameController == null)
+            {
+                return;
+            }
+
+            UltimateRecipeOption[] options = gameController.GetAllUltimateRecipeOptions();
+            HashSet<string> currentReady = new HashSet<string>();
+            List<string> newlyReadyResults = new List<string>();
+            for (int i = 0; options != null && i < options.Length; i++)
+            {
+                UltimateRecipeOption option = options[i];
+                if (!option.isReady || string.IsNullOrWhiteSpace(option.recipeName))
+                {
+                    continue;
+                }
+
+                currentReady.Add(option.recipeName);
+                if (wasInitialized && !readyUltimateRecipeNames.Contains(option.recipeName))
+                {
+                    newlyReadyResults.Add(string.IsNullOrWhiteSpace(option.resultSummary) ? option.displayName : option.resultSummary);
+                }
+            }
+
+            readyUltimateRecipeNames.Clear();
+            foreach (string recipeName in currentReady)
+            {
+                readyUltimateRecipeNames.Add(recipeName);
+            }
+
+            if (newlyReadyResults.Count == 0)
+            {
+                return;
+            }
+
+            string results = newlyReadyResults[0];
+            if (newlyReadyResults.Count > 1)
+            {
+                results += " \uc678 " + (newlyReadyResults.Count - 1) + "\uac1c";
+            }
+            gameController.RequestBanner("\ucd08\uc6d4 \uc870\ud569 \uc644\uc131! " + results + " \uc18c\ud658 \uac00\ub2a5", new Color(1f, 0.78f, 0.22f), 2.8f);
+            RuntimeAudioUtility.PlayJackpotMinor();
+            RuntimeCameraShake.Request(0.04f, 0.14f);
         }
 
         private void EnsureUltimateReadyVisuals()

@@ -460,7 +460,8 @@ namespace DefenseGame
 					string resultSummary = ((results.Count > 0) ? string.Join(" / ", results.Select((CharacterDefinition character) => character.displayName).Distinct().ToArray()) : "결과 확인 필요");
 					Color accentColor = ((results.Count > 0) ? results[0].accentColor : CharacterGradeUtility.GetColor(CharacterGrade.Transcendent, new Color(0.92f, 0.42f, 1f)));
 					string materialSummary = ((recipe.requiredCharacterIds != null && recipe.requiredCharacterIds.Length != 0) ? string.Join(" + ", recipe.requiredCharacterIds.Select((string id) => ResolveCharacterName(database, id)).ToArray()) : BuildGradeRecipeStatus(recipe));
-					options.Add(new UltimateRecipeOption(recipe.name, CompactRecipeName(recipe.name), materialSummary, resultSummary, accentColor, isReady: true, GetUltimateRecipeRequiredCount(recipe), GetUltimateRecipeRequiredCount(recipe), string.Empty));
+					UltimateRecipeMaterialView[] materials = BuildUltimateRecipeMaterialViews(recipe, database);
+					options.Add(new UltimateRecipeOption(recipe.name, CompactRecipeName(recipe.name), materialSummary, resultSummary, accentColor, isReady: true, GetUltimateRecipeRequiredCount(recipe), GetUltimateRecipeRequiredCount(recipe), string.Empty, (results.Count > 0) ? results[0] : null, materials, 0, i));
 				}
 			}
 			return options.ToArray();
@@ -483,7 +484,9 @@ namespace DefenseGame
 					int progress = GetUltimateRecipeProgress(recipe);
 					int required = Mathf.Max(1, GetUltimateRecipeRequiredCount(recipe));
 					bool ready = progress >= required && HasAvailableUltimateResult(database, recipe);
-					options.Add(new UltimateRecipeOption(recipe.name, CompactRecipeName(recipe.name), materialSummary, resultSummary, accentColor, ready, progress, required, BuildMissingRecipeMaterialSummary(recipe, database)));
+					UltimateRecipeMaterialView[] materials = BuildUltimateRecipeMaterialViews(recipe, database);
+					int missingMaterialCount = materials.Sum((UltimateRecipeMaterialView material) => Mathf.Max(0, material.requiredCount - material.ownedCount));
+					options.Add(new UltimateRecipeOption(recipe.name, CompactRecipeName(recipe.name), materialSummary, resultSummary, accentColor, ready, progress, required, BuildMissingRecipeMaterialSummary(recipe, database), (results.Count > 0) ? results[0] : null, materials, missingMaterialCount, i));
 				}
 			}
 			options.Sort(delegate(UltimateRecipeOption left, UltimateRecipeOption right)
@@ -492,11 +495,58 @@ namespace DefenseGame
 				{
 					return (!left.isReady) ? 1 : (-1);
 				}
+				if (left.missingMaterialCount != right.missingMaterialCount)
+				{
+					return left.missingMaterialCount.CompareTo(right.missingMaterialCount);
+				}
 				int num = left.progress * Mathf.Max(1, right.required);
 				int num2 = right.progress * Mathf.Max(1, left.required);
-				return (num2 != num) ? num2.CompareTo(num) : left.displayName.CompareTo(right.displayName);
+				return (num2 != num) ? num2.CompareTo(num) : left.definitionOrder.CompareTo(right.definitionOrder);
 			});
 			return options.ToArray();
+		}
+
+		private UltimateRecipeMaterialView[] BuildUltimateRecipeMaterialViews(UltimateMergeRecipe recipe, CharacterDatabase database)
+		{
+			if (recipe == null)
+			{
+				return new UltimateRecipeMaterialView[0];
+			}
+			List<UltimateRecipeMaterialView> materials = new List<UltimateRecipeMaterialView>();
+			if (recipe.requiredCharacterIds != null && recipe.requiredCharacterIds.Length != 0)
+			{
+				List<DefenderUnit> candidates = GetRecipeCandidateUnits();
+				for (int i = 0; i < recipe.requiredCharacterIds.Length; i++)
+				{
+					string requiredId = recipe.requiredCharacterIds[i];
+					if (materials.Any((UltimateRecipeMaterialView material) => material.characterId == requiredId))
+					{
+						continue;
+					}
+					int requiredCount = recipe.requiredCharacterIds.Count((string id) => id == requiredId);
+					int ownedCount = candidates.Count((DefenderUnit unit) => unit != null && unit.Definition != null && unit.Definition.id == requiredId);
+					CharacterDefinition definition = (database != null) ? database.GetCharacterById(requiredId) : null;
+					Color accentColor = (definition != null) ? definition.accentColor : CharacterGradeUtility.GetColor(CharacterGrade.Mythic, new Color(0.9f, 0.55f, 0.25f));
+					materials.Add(new UltimateRecipeMaterialView(requiredId, ResolveCharacterName(database, requiredId), (definition != null) ? definition.grade : CharacterGrade.Mythic, accentColor, Mathf.Min(ownedCount, requiredCount), requiredCount, definition));
+				}
+			}
+			else
+			{
+				AddUltimateRecipeGradeMaterial(materials, CharacterGrade.Mythic, recipe.mythicCount);
+				AddUltimateRecipeGradeMaterial(materials, CharacterGrade.Legendary, recipe.legendaryCount);
+				AddUltimateRecipeGradeMaterial(materials, CharacterGrade.Epic, recipe.epicCount);
+			}
+			return materials.ToArray();
+		}
+
+		private void AddUltimateRecipeGradeMaterial(List<UltimateRecipeMaterialView> materials, CharacterGrade grade, int requiredCount)
+		{
+			if (requiredCount <= 0)
+			{
+				return;
+			}
+			int ownedCount = Mathf.Min(CountUnitsOfGrade(grade), requiredCount);
+			materials.Add(new UltimateRecipeMaterialView(string.Empty, CharacterGradeUtility.GetDisplayName(grade), grade, CharacterGradeUtility.GetColor(grade, new Color(0.72f, 0.54f, 1f)), ownedCount, requiredCount, null));
 		}
 
 		private string BuildMissingRecipeMaterialSummary(UltimateMergeRecipe recipe, CharacterDatabase database)

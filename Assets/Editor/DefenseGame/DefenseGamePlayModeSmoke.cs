@@ -480,6 +480,12 @@ namespace DefenseGame.Editor
                 notes.Add("R3 소형 전투상점의 3개 선택지 분류/가격 검증에 실패했습니다. " + earlyMiniShopSummary);
             }
 
+            bool ultimateRecipeUxValid = ValidateUltimateRecipeUx(controller, out string ultimateRecipeUxSummary);
+            if (!ultimateRecipeUxValid)
+            {
+                notes.Add("Ultimate recipe UX data/layout validation failed. " + ultimateRecipeUxSummary);
+            }
+
             GamePresentationConfig presentation = AssetDatabase.LoadAssetAtPath<GamePresentationConfig>("Assets/Data/DefenseGamePresentationConfig.asset");
             bool defaultVfxConfigured = presentation != null &&
                                         presentation.projectilePrefab != null &&
@@ -543,7 +549,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -576,6 +582,8 @@ namespace DefenseGame.Editor
                 yahtzeeTicketNewRunResetValid = yahtzeeTicketNewRunResetValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
                 earlyMiniShopSummary = earlyMiniShopSummary,
+                ultimateRecipeUxValid = ultimateRecipeUxValid,
+                ultimateRecipeUxSummary = ultimateRecipeUxSummary,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
                 hero32SignatureValid = hero32SignatureValid,
                 gargoyleLoopDurationValid = gargoyleLoopDurationValid,
@@ -806,6 +814,61 @@ namespace DefenseGame.Editor
                    Approximately(anchorMax, new Vector2(safeArea.xMax / screenSize.x, safeArea.yMax / screenSize.y));
         }
 
+        private static bool ValidateUltimateRecipeUx(DefenseGameController controller, out string summary)
+        {
+            UltimateRecipeOption[] options = controller != null ? controller.GetAllUltimateRecipeOptions() : Array.Empty<UltimateRecipeOption>();
+            bool structuredDataValid = options.Length == 11;
+            for (int i = 0; i < options.Length; i++)
+            {
+                UltimateRecipeOption option = options[i];
+                int materialProgress = option.materials != null
+                    ? option.materials.Sum(material => Mathf.Min(material.ownedCount, material.requiredCount))
+                    : -1;
+                int missingCount = option.materials != null
+                    ? option.materials.Sum(material => Mathf.Max(0, material.requiredCount - material.ownedCount))
+                    : -1;
+                structuredDataValid &= !string.IsNullOrWhiteSpace(option.recipeName) &&
+                                       option.materials != null && option.materials.Length > 0 &&
+                                       materialProgress == option.progress &&
+                                       missingCount == option.missingMaterialCount &&
+                                       (!option.isReady || option.materials.All(material => material.isReady));
+                if (i == 0)
+                {
+                    continue;
+                }
+
+                UltimateRecipeOption previous = options[i - 1];
+                bool orderValid = previous.isReady || !option.isReady;
+                if (previous.isReady == option.isReady)
+                {
+                    orderValid &= previous.missingMaterialCount <= option.missingMaterialCount;
+                    if (previous.missingMaterialCount == option.missingMaterialCount)
+                    {
+                        int previousNormalized = previous.progress * Mathf.Max(1, option.required);
+                        int currentNormalized = option.progress * Mathf.Max(1, previous.required);
+                        orderValid &= previousNormalized >= currentNormalized;
+                        if (previousNormalized == currentNormalized)
+                        {
+                            orderValid &= previous.definitionOrder <= option.definitionOrder;
+                        }
+                    }
+                }
+                structuredDataValid &= orderValid;
+            }
+
+            RectTransform detailPanel = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                .FirstOrDefault(rect => rect != null && rect.name == "UltimateRecipeDetailPanel");
+            int materialCardCount = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                .Count(image => image != null && image.name.StartsWith("MaterialCard_", StringComparison.Ordinal));
+            Image resultPortrait = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                .FirstOrDefault(image => image != null && image.name == "ResultPortrait" && image.transform.parent != null && image.transform.parent.name == "ResultCard");
+            Button confirmButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "UltimateRecipeConfirmButton");
+            bool layoutValid = detailPanel != null && materialCardCount == 5 && resultPortrait != null && confirmButton != null;
+            summary = "options=" + options.Length + ", detail=" + (detailPanel != null) + ", materialCards=" + materialCardCount + ", resultPortrait=" + (resultPortrait != null) + ", confirm=" + (confirmButton != null);
+            return structuredDataValid && layoutValid;
+        }
+
         private static bool ValidateRoundTieredMiniShop(out string summary)
         {
             RunShopSystem shop = UnityEngine.Object.FindObjectOfType<RunShopSystem>();
@@ -974,6 +1037,8 @@ namespace DefenseGame.Editor
             public bool yahtzeeTicketNewRunResetValid;
             public bool earlyMiniShopChoicesValid;
             public string earlyMiniShopSummary;
+            public bool ultimateRecipeUxValid;
+            public string ultimateRecipeUxSummary;
             public bool simultaneousDeathPolicyValid;
             public bool hero32SignatureValid;
             public bool gargoyleLoopDurationValid;

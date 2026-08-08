@@ -4,6 +4,21 @@ using UnityEngine.UI;
 
 namespace DefenseGame
 {
+	public sealed class UltimateRecipeDetailView
+	{
+		public Image panel;
+		public Image resultPortrait;
+		public Text resultFallback;
+		public Text resultName;
+		public Text resultState;
+		public Text materialHeader;
+		public Text missingText;
+		public Image[] materialCards;
+		public Image[] materialPortraits;
+		public Text[] materialFallbacks;
+		public Text[] materialLabels;
+	}
+
 	public sealed class UltimateRecipeSelectionUI : MonoBehaviour
 	{
 		private const float SlideDuration = 0.24f;
@@ -30,6 +45,8 @@ namespace DefenseGame
 
 		private Text confirmLabel;
 
+		private UltimateRecipeDetailView detailView;
+
 		private UltimateRecipeOption[] options = new UltimateRecipeOption[0];
 
 		private Vector2 drawerOpenPosition;
@@ -42,7 +59,7 @@ namespace DefenseGame
 
 		private int selectedIndex = -1;
 
-		public void Configure(DefenseGameController controller, RectTransform drawerRect, CanvasGroup group, Button blocker, Text header, Text instruction, Button[] buttons, Text[] labels, Button close, Button confirm, Text confirmText)
+		public void Configure(DefenseGameController controller, RectTransform drawerRect, CanvasGroup group, Button blocker, Text header, Text instruction, Button[] buttons, Text[] labels, Button close, Button confirm, Text confirmText, UltimateRecipeDetailView detail)
 		{
 			gameController = controller;
 			drawer = drawerRect;
@@ -55,6 +72,7 @@ namespace DefenseGame
 			closeButton = close;
 			confirmButton = confirm;
 			confirmLabel = confirmText;
+			detailView = detail;
 			drawerOpenPosition = ((drawer != null) ? drawer.anchoredPosition : Vector2.zero);
 			drawerClosedPosition = drawerOpenPosition + Vector2.down * 860f;
 			if ((Object)(object)blockerButton != null)
@@ -255,6 +273,7 @@ namespace DefenseGame
 			{
 				instructionText.text = ((selectedIndex < 0) ? "레시피를 누르면 보유 재료와 부족한 유닛을 확인할 수 있습니다." : (options[selectedIndex].isReady ? "재료가 모두 준비됐습니다. 보드의 빛나는 재료를 확인하고 실행하세요." : ("부족 재료: " + options[selectedIndex].missingSummary)));
 			}
+			RefreshDetailVisual();
 			for (int j = 0; j < optionButtons.Length; j++)
 			{
 				Button button = optionButtons[j];
@@ -297,6 +316,128 @@ namespace DefenseGame
 			{
 				confirmLabel.text = (canConfirm ? "선택한 초월 실행" : "레시피를 선택하세요");
 			}
+		}
+
+		private void RefreshDetailVisual()
+		{
+			if (detailView == null)
+			{
+				return;
+			}
+			bool hasSelection = selectedIndex >= 0 && selectedIndex < ((options != null) ? options.Length : 0);
+			if (detailView.panel != null)
+			{
+				detailView.panel.gameObject.SetActive(true);
+			}
+			if (!hasSelection)
+			{
+				SetDetailEmptyState();
+				return;
+			}
+			UltimateRecipeOption option = options[selectedIndex];
+			ApplyPortrait(detailView.resultPortrait, detailView.resultFallback, option.primaryResultDefinition, option.accentColor, option.resultSummary);
+			if (detailView.resultName != null)
+			{
+				detailView.resultName.text = option.resultSummary;
+			}
+			if (detailView.resultState != null)
+			{
+				detailView.resultState.text = option.isReady ? "READY - \ucd08\uc6d4 \uc18c\ud658 \uac00\ub2a5" : ("\uc9c4\ud589 " + option.progress + "/" + option.required);
+				detailView.resultState.color = option.isReady ? new Color(1f, 0.86f, 0.24f) : new Color(0.74f, 0.84f, 1f);
+			}
+			if (detailView.materialHeader != null)
+			{
+				detailView.materialHeader.text = "\ud544\uc694 \uc7ac\ub8cc";
+			}
+			if (detailView.missingText != null)
+			{
+				detailView.missingText.text = option.isReady ? "\ubaa8\ub4e0 \uc7ac\ub8cc \uc900\ube44 \uc644\ub8cc" : ("\ubd80\uc871 \uc7ac\ub8cc: " + option.missingSummary);
+				detailView.missingText.color = option.isReady ? new Color(0.38f, 1f, 0.72f) : new Color(1f, 0.56f, 0.36f);
+			}
+			int materialCount = (option.materials != null) ? option.materials.Length : 0;
+			for (int i = 0; detailView.materialCards != null && i < detailView.materialCards.Length; i++)
+			{
+				bool visible = i < materialCount;
+				Image card = detailView.materialCards[i];
+				if (card != null)
+				{
+					card.gameObject.SetActive(visible);
+				}
+				if (!visible)
+				{
+					continue;
+				}
+				UltimateRecipeMaterialView material = option.materials[i];
+				if (card != null)
+				{
+					card.color = Color.Lerp(material.isReady ? new Color(0.10f, 0.35f, 0.24f) : new Color(0.38f, 0.13f, 0.20f), material.accentColor, 0.20f);
+				}
+				Text fallback = (detailView.materialFallbacks != null && i < detailView.materialFallbacks.Length) ? detailView.materialFallbacks[i] : null;
+				Image portrait = (detailView.materialPortraits != null && i < detailView.materialPortraits.Length) ? detailView.materialPortraits[i] : null;
+				ApplyPortrait(portrait, fallback, material.definition, material.accentColor, material.displayName);
+				if (detailView.materialLabels != null && i < detailView.materialLabels.Length && detailView.materialLabels[i] != null)
+				{
+					detailView.materialLabels[i].text = (material.isReady ? "\u2713 " : "\u2715 ") + material.displayName + "\n" + material.ownedCount + " / " + material.requiredCount;
+					detailView.materialLabels[i].color = material.isReady ? Color.white : new Color(1f, 0.78f, 0.72f);
+				}
+			}
+		}
+
+		private void SetDetailEmptyState()
+		{
+			if (detailView.resultName != null)
+			{
+				detailView.resultName.text = "\ucd08\uc6d4 \ub808\uc2dc\ud53c\ub97c \uc120\ud0dd\ud558\uc138\uc694";
+			}
+			if (detailView.resultState != null)
+			{
+				detailView.resultState.text = "\uc120\ud0dd \uc2dc \ud544\uc694 \uc7ac\ub8cc\uc640 \ubcf4\ub4dc \ubbf8\ub9ac\ubcf4\uae30\ub97c \ud655\uc778\ud569\ub2c8\ub2e4.";
+			}
+			if (detailView.materialHeader != null)
+			{
+				detailView.materialHeader.text = "\uc7ac\ub8cc \uc0c1\ud0dc";
+			}
+			if (detailView.missingText != null)
+			{
+				detailView.missingText.text = "\ub808\uc2dc\ud53c \uc120\ud0dd \ud6c4 \uc7ac\ub8cc\ub97c \ud655\uc778\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.";
+			}
+			if (detailView.materialCards != null)
+			{
+				for (int i = 0; i < detailView.materialCards.Length; i++)
+				{
+					if (detailView.materialCards[i] != null)
+					{
+						detailView.materialCards[i].gameObject.SetActive(false);
+					}
+				}
+			}
+		}
+
+		private static void ApplyPortrait(Image portrait, Text fallback, CharacterDefinition definition, Color accentColor, string fallbackValue)
+		{
+			Sprite sprite = RollRollUiResource.ResolveCharacterSprite(definition);
+			if (portrait != null)
+			{
+				portrait.sprite = sprite;
+				portrait.type = Image.Type.Simple;
+				portrait.preserveAspect = sprite != null;
+				portrait.color = (sprite != null) ? Color.white : Color.Lerp(accentColor, Color.white, 0.32f);
+			}
+			if (fallback != null)
+			{
+				fallback.gameObject.SetActive(sprite == null);
+				fallback.text = BuildPortraitLabel(fallbackValue);
+			}
+		}
+
+		private static string BuildPortraitLabel(string value)
+		{
+			if (string.IsNullOrWhiteSpace(value))
+			{
+				return "?";
+			}
+			string trimmed = value.Trim();
+			return (trimmed.Length <= 2) ? trimmed.ToUpperInvariant() : trimmed.Substring(0, 2).ToUpperInvariant();
 		}
 
 		private static string Compact(string value, int maxLength)
