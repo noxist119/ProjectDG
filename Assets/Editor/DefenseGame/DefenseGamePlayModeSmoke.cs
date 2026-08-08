@@ -486,6 +486,12 @@ namespace DefenseGame.Editor
                 notes.Add("Ultimate recipe UX data/layout validation failed. " + ultimateRecipeUxSummary);
             }
 
+            bool ultimateMergeInheritanceIsolationValid = ValidateUltimateMergeInheritanceSeparation(out string ultimateMergeInheritanceSummary);
+            if (!ultimateMergeInheritanceIsolationValid)
+            {
+                notes.Add("Ultimate and normal merge inheritance isolation validation failed. " + ultimateMergeInheritanceSummary);
+            }
+
             GamePresentationConfig presentation = AssetDatabase.LoadAssetAtPath<GamePresentationConfig>("Assets/Data/DefenseGamePresentationConfig.asset");
             bool defaultVfxConfigured = presentation != null &&
                                         presentation.projectilePrefab != null &&
@@ -549,7 +555,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -584,6 +590,7 @@ namespace DefenseGame.Editor
                 earlyMiniShopSummary = earlyMiniShopSummary,
                 ultimateRecipeUxValid = ultimateRecipeUxValid,
                 ultimateRecipeUxSummary = ultimateRecipeUxSummary,
+                ultimateMergeInheritanceIsolationValid = ultimateMergeInheritanceIsolationValid,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
                 hero32SignatureValid = hero32SignatureValid,
                 gargoyleLoopDurationValid = gargoyleLoopDurationValid,
@@ -812,6 +819,45 @@ namespace DefenseGame.Editor
                    anchorMin.x < anchorMax.x && anchorMin.y < anchorMax.y &&
                    Approximately(anchorMin, new Vector2(safeArea.xMin / screenSize.x, safeArea.yMin / screenSize.y)) &&
                    Approximately(anchorMax, new Vector2(safeArea.xMax / screenSize.x, safeArea.yMax / screenSize.y));
+        }
+
+        private static bool ValidateUltimateMergeInheritanceSeparation(out string summary)
+        {
+            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            MethodInfo ultimateMerge = typeof(DefenseBoardManager).GetMethod("ExecuteUltimateMerge", Flags);
+            MethodInfo normalMerge = typeof(DefenseBoardManager).GetMethod(nameof(DefenseBoardManager.TryMergeUnitsOfGrade), Flags);
+            MethodInfo applyInheritance = typeof(DefenderUnit).GetMethod(nameof(DefenderUnit.ApplyMergeInheritance), Flags);
+            bool ultimateCallsInheritance = MethodContainsDirectCall(ultimateMerge, applyInheritance);
+            bool normalCallsInheritance = MethodContainsDirectCall(normalMerge, applyInheritance);
+            summary = "ultimateCall=" + ultimateCallsInheritance + ", normalCall=" + normalCallsInheritance;
+            return ultimateMerge != null && normalMerge != null && applyInheritance != null && !ultimateCallsInheritance && normalCallsInheritance;
+        }
+
+        private static bool MethodContainsDirectCall(MethodInfo method, MethodInfo target)
+        {
+            MethodBody body = method != null ? method.GetMethodBody() : null;
+            byte[] il = body != null ? body.GetILAsByteArray() : null;
+            if (il == null || target == null)
+            {
+                return false;
+            }
+
+            for (int index = 0; index <= il.Length - 5; index++)
+            {
+                byte opcode = il[index];
+                if (opcode != 0x28 && opcode != 0x6F)
+                {
+                    continue;
+                }
+
+                int metadataToken = BitConverter.ToInt32(il, index + 1);
+                if (metadataToken == target.MetadataToken)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool ValidateUltimateRecipeUx(DefenseGameController controller, out string summary)
@@ -1087,6 +1133,7 @@ namespace DefenseGame.Editor
             public string earlyMiniShopSummary;
             public bool ultimateRecipeUxValid;
             public string ultimateRecipeUxSummary;
+            public bool ultimateMergeInheritanceIsolationValid;
             public bool simultaneousDeathPolicyValid;
             public bool hero32SignatureValid;
             public bool gargoyleLoopDurationValid;

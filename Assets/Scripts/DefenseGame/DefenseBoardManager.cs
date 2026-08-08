@@ -623,8 +623,6 @@ namespace DefenseGame
 			{
 				return false;
 			}
-			float inheritedAttackPower = selectedUnits.Sum((DefenderUnit defenderUnit) => (defenderUnit != null) ? defenderUnit.EffectiveAttackPower : 0f) * 0.9f;
-			float inheritedMaxHealth = selectedUnits.Sum((DefenderUnit defenderUnit) => (defenderUnit != null) ? defenderUnit.MaxHealth : 0f) * 0.86f;
 			for (int i = 0; i < selectedUnits.Count; i++)
 			{
 				selectedUnits[i].RemoveFromBoard();
@@ -646,7 +644,6 @@ namespace DefenseGame
 			unit.gameObject.SetActive(value: true);
 			spawnSlot.AssignUnit(unit);
 			unit.Initialize(mergedCharacter);
-			unit.ApplyMergeInheritance(inheritedAttackPower, inheritedMaxHealth);
 			SpawnMergeVfx(spawnSlot, mergedCharacter.accentColor, mergedCharacter.grade, ultimate: true);
 			mergeResult = new MergeResultInfo
 			{

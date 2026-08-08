@@ -65,6 +65,11 @@
 
 - 모든 초월 레시피는 하나의 고정된 초월 결과만 생성한다.
 - 레시피 결과 RNG, 복수 결과 배열, 등급 수량만으로 결과를 뽑는 Overflow 레시피는 사용하지 않는다.
+- Recipe materials only satisfy the summon condition; they are not stat inheritance inputs.
+- Material tile bonuses, synergy bonuses, temporary buffs, and combat stats are never copied to the result.
+- The same Transcendent character has the same base combat stats at the same outgame growth state.
+- Material count never raises result attack or health automatically; character power and recipe difficulty are tuned separately.
+- Stronger Transcendent characters are balanced through harder fixed recipes.
 - 같은 재료 조합은 모든 런에서 같은 초월 유닛을 생성한다.
 - 고급 초월 유닛은 이후 별도의 고정 레시피로만 추가한다.
 - 인게임에는 현재 보드 재료와 연결된 레시피만 표시한다.
