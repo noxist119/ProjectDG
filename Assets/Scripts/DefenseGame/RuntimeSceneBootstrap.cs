@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
@@ -119,6 +120,7 @@ namespace DefenseGame
 		[ContextMenu("Build Runtime Stage")]
 		public void BuildScene()
 		{
+			DOTween.SetTweensCapacity(400, 150);
 			CharacterDatabase characterDatabase = GetOrAdd<CharacterDatabase>(base.gameObject);
 			MonsterDatabase monsterDatabase = GetOrAdd<MonsterDatabase>(base.gameObject);
 			DefenseBoardManager boardManager = GetOrAdd<DefenseBoardManager>(base.gameObject);

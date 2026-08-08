@@ -380,6 +380,48 @@ namespace DefenseGame.Editor
                 notes.Add("시즌 랭킹의 상위 3명 포디움, 4~12위 리스트, 내 순위 강조 또는 전용 아트가 유효하지 않습니다.");
             }
 
+            Button yahtzeeButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "OutgameNavYahtzee");
+            bool yahtzeeModeUiValid = yahtzeeButton != null;
+            if (yahtzeeModeUiValid)
+            {
+                yahtzeeButton.onClick.Invoke();
+                RectTransform yahtzeeOverlay = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                    .FirstOrDefault(rect => rect != null && rect.name == "YahtzeeOverlay");
+                RectTransform yahtzeeModal = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                    .FirstOrDefault(rect => rect != null && rect.name == "YahtzeeModal");
+                int diceCount = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .Count(button => button != null && button.name.StartsWith("YahtzeeDie_", StringComparison.Ordinal));
+                int chestOpenButtons = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .Count(button => button != null && (button.name == "YahtzeeOpenOneButton" || button.name == "YahtzeeOpenTenButton" || button.name == "YahtzeeOpenAllButton"));
+                Button yahtzeeAdvance = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .FirstOrDefault(button => button != null && button.name == "YahtzeeAdvanceButton");
+                int diceFaceCount = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                    .Count(image => image != null && image.name == "Face" && image.transform.parent != null && image.transform.parent.name.StartsWith("YahtzeeDie_", StringComparison.Ordinal) && image.sprite != null);
+                Text yahtzeeStatus = UnityEngine.Object.FindObjectsOfType<Text>(true)
+                    .FirstOrDefault(textComponent => textComponent != null && textComponent.name == "YahtzeeStatusText");
+                YahtzeeProgressionSystem yahtzeeProgression = UnityEngine.Object.FindObjectOfType<YahtzeeProgressionSystem>();
+                yahtzeeModeUiValid = yahtzeeOverlay != null &&
+                                     yahtzeeOverlay.gameObject.activeSelf &&
+                                     yahtzeeModal != null &&
+                                     Approximately(yahtzeeModal.anchorMin, Vector2.zero) &&
+                                     Approximately(yahtzeeModal.anchorMax, Vector2.one) &&
+                                     diceCount == 3 &&
+                                     diceFaceCount == 3 &&
+                                     chestOpenButtons == 3 &&
+                                     yahtzeeAdvance != null &&
+                                     yahtzeeStatus != null &&
+                                     yahtzeeProgression != null;
+                if (!yahtzeeModeUiValid)
+                {
+                    notes.Add("YATZY DETAIL overlay=" + (yahtzeeOverlay != null && yahtzeeOverlay.gameObject.activeSelf) + ", modal=" + (yahtzeeModal != null) + ", dice=" + diceCount + ", faces=" + diceFaceCount + ", chest=" + chestOpenButtons + ", advance=" + (yahtzeeAdvance != null) + ", status=" + (yahtzeeStatus != null) + ", system=" + (yahtzeeProgression != null));
+                }
+            }
+            if (!yahtzeeModeUiValid)
+            {
+                notes.Add("얏찌 전체화면, 3개 주사위, 상자 1/10/전체 개봉 또는 진행 저장 시스템이 유효하지 않습니다.");
+            }
+
             bool earlyMiniShopChoicesValid = ValidateRoundTieredMiniShop(out string earlyMiniShopSummary);
             if (!earlyMiniShopChoicesValid)
             {
@@ -449,7 +491,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -475,6 +517,7 @@ namespace DefenseGame.Editor
                 bossForecastUiValid = bossForecastUiValid,
                 resultRewardIconsValid = resultRewardIconsValid,
                 rankingPageValid = rankingPageValid,
+                yahtzeeModeUiValid = yahtzeeModeUiValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
                 earlyMiniShopSummary = earlyMiniShopSummary,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
@@ -868,6 +911,7 @@ namespace DefenseGame.Editor
             public bool bossForecastUiValid;
             public bool resultRewardIconsValid;
             public bool rankingPageValid;
+            public bool yahtzeeModeUiValid;
             public bool earlyMiniShopChoicesValid;
             public string earlyMiniShopSummary;
             public bool simultaneousDeathPolicyValid;

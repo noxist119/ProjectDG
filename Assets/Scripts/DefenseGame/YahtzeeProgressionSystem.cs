@@ -25,6 +25,7 @@ namespace DefenseGame
         public List<int> chestMultipliers = new List<int>();
         public bool sessionActive;
         public int diceA, diceB, diceC;
+        public int currentDieIndex;
         public bool heldA, heldB, heldC;
         public bool pendingA, pendingB, pendingC;
         public int holdCount;
@@ -55,13 +56,14 @@ namespace DefenseGame
         public int HoldCount { get { EnsureMode(); return data.holdCount; } }
         public int RerollCount { get { EnsureMode(); return data.rerollCount; } }
         public int SessionGoldSpent { get { EnsureMode(); return data.sessionGoldSpent; } }
+        public int CurrentDieIndex { get { EnsureMode(); return Mathf.Clamp(data.currentDieIndex, 0, 3); } }
         public int NextHoldCost => HoldCount <= 0 ? FirstHoldDiamondCost : SecondHoldDiamondCost;
         public int CurrentMultiplier
         {
             get
             {
                 EnsureMode();
-                return data.sessionActive && dice[0] == dice[1] && dice[1] == dice[2] ? dice[0] : 1;
+                return data.sessionActive && data.currentDieIndex >= 3 && dice[0] > 0 && dice[0] == dice[1] && dice[1] == dice[2] ? dice[0] : 1;
             }
         }
 
@@ -72,7 +74,7 @@ namespace DefenseGame
             EnsureMode();
         }
 
-        public int GetDie(int index) { EnsureMode(); return index >= 0 && index < 3 ? dice[index] : 1; }
+        public int GetDie(int index) { EnsureMode(); return index >= 0 && index < 3 ? dice[index] : 0; }
         public bool IsHeld(int index) { EnsureMode(); return index >= 0 && index < 3 && held[index]; }
         public bool IsPendingHold(int index) { EnsureMode(); return index >= 0 && index < 3 && pending[index]; }
 
@@ -91,33 +93,34 @@ namespace DefenseGame
             {
                 held[i] = false;
                 pending[i] = false;
-                dice[i] = UnityEngine.Random.Range(1, 7);
+                dice[i] = 0;
             }
+            data.currentDieIndex = 0;
+            RollCurrentDie();
 
             SaveAndNotify();
-            message = "첫 굴림은 무료입니다. 원하는 주사위를 선택해 홀드하세요.";
+            message = "첫 번째 주사위의 무료 굴림입니다. 원하는 숫자가 나올 때까지 재굴림하거나 홀드하세요.";
             return true;
         }
 
         public bool TogglePendingHold(int index, out string message)
         {
             EnsureMode();
-            if (!data.sessionActive || index < 0 || index >= 3) { message = "먼저 얏찌를 시작하세요."; return false; }
-            if (held[index]) { message = "이미 홀드된 주사위입니다."; return false; }
-            if (data.holdCount >= 2) { message = "홀드는 한 판에 두 번까지 가능합니다."; return false; }
-            pending[index] = !pending[index];
-            SaveAndNotify();
-            message = pending[index] ? "홀드할 주사위를 선택했습니다." : "홀드 선택을 해제했습니다.";
-            return true;
+            if (!data.sessionActive || index != data.currentDieIndex || index < 0 || index >= 3)
+            {
+                message = "현재 굴리고 있는 주사위만 선택할 수 있습니다.";
+                return false;
+            }
+
+            return TryReroll(out message);
         }
 
         public bool TryCommitHold(out string message)
         {
             EnsureMode();
             if (!data.sessionActive) { message = "먼저 얏찌를 시작하세요."; return false; }
+            if (data.currentDieIndex >= 3) { message = "세 주사위가 모두 확정되었습니다. 결과를 확정하세요."; return false; }
             if (data.holdCount >= 2) { message = "홀드는 한 판에 두 번까지 가능합니다."; return false; }
-            bool hasPending = pending[0] || pending[1] || pending[2];
-            if (!hasPending) { message = "홀드할 주사위를 먼저 선택하세요."; return false; }
 
             int cost = data.holdCount == 0 ? FirstHoldDiamondCost : SecondHoldDiamondCost;
             if (progression == null || !progression.TrySpendDiamonds(cost))
@@ -126,14 +129,13 @@ namespace DefenseGame
                 return false;
             }
 
-            for (int i = 0; i < 3; i++)
-            {
-                if (pending[i]) held[i] = true;
-                pending[i] = false;
-            }
+            held[data.currentDieIndex] = true;
             data.holdCount++;
+            AdvanceCurrentDie();
             SaveAndNotify();
-            message = data.holdCount == 1 ? "1차 홀드 완료. 한 번 더 홀드할 수 있습니다." : "2차 홀드 완료.";
+            message = data.currentDieIndex < 3
+                ? (data.holdCount == 1 ? "1차 홀드 완료. 다음 주사위의 무료 굴림입니다." : "2차 홀드 완료. 다음 주사위의 무료 굴림입니다.")
+                : "2차 홀드 완료. 세 주사위가 확정되었습니다.";
             return true;
         }
 
@@ -141,24 +143,32 @@ namespace DefenseGame
         {
             EnsureMode();
             if (!data.sessionActive) { message = "먼저 얏찌를 시작하세요."; return false; }
-            if (held[0] && held[1] && held[2]) { message = "모든 주사위가 홀드되어 있습니다. 결과를 확정하세요."; return false; }
+            if (data.currentDieIndex >= 3) { message = "세 주사위가 모두 확정되었습니다. 결과를 확정하세요."; return false; }
             if (progression == null || !progression.TrySpendGold(RerollGoldCost))
             {
                 message = "골드가 부족합니다. 현재 주사위 상태는 유지됩니다.";
                 return false;
             }
 
-            for (int i = 0; i < 3; i++)
-            {
-                if (!held[i]) dice[i] = UnityEngine.Random.Range(1, 7);
-                pending[i] = false;
-            }
+            RollCurrentDie();
             data.rerollCount++;
             data.sessionGoldSpent += RerollGoldCost;
             SaveAndNotify();
-            message = CurrentMultiplier > 1
-                ? dice[0] + " 트리플! 지금 확정하면 보상 x" + CurrentMultiplier + "입니다."
-                : "재굴림 완료. 원하는 주사위를 홀드하거나 다시 굴리세요.";
+            message = "주사위 " + (data.currentDieIndex + 1) + " 재굴림 완료. 원하는 숫자가 나올 때까지 다시 굴릴 수 있습니다.";
+            return true;
+        }
+
+        public bool TryAdvanceDie(out string message)
+        {
+            EnsureMode();
+            if (!data.sessionActive) { message = "먼저 얏찌를 시작하세요."; return false; }
+            if (data.currentDieIndex >= 3) { message = "세 주사위가 모두 확정되었습니다. 결과를 확정하세요."; return false; }
+
+            AdvanceCurrentDie();
+            SaveAndNotify();
+            message = data.currentDieIndex < 3
+                ? "다음 주사위의 무료 굴림입니다."
+                : "세 주사위가 확정되었습니다. 결과를 확인하세요.";
             return true;
         }
 
@@ -167,6 +177,7 @@ namespace DefenseGame
             EnsureMode();
             multiplier = 1;
             if (!data.sessionActive) { message = "확정할 얏찌 결과가 없습니다."; return false; }
+            if (data.currentDieIndex < 3) { message = "세 번째 주사위까지 굴린 뒤 결과를 확정하세요."; return false; }
             multiplier = CurrentMultiplier;
             data.chestMultipliers.Add(multiplier);
             ResetSession();
@@ -257,7 +268,8 @@ namespace DefenseGame
             data.holdCount = 0;
             data.rerollCount = 0;
             data.sessionGoldSpent = 0;
-            for (int i = 0; i < 3; i++) { dice[i] = 1; held[i] = false; pending[i] = false; }
+            data.currentDieIndex = 0;
+            for (int i = 0; i < 3; i++) { dice[i] = 0; held[i] = false; pending[i] = false; }
         }
 
         private void SaveAndNotify() { Save(); OnChanged?.Invoke(); }
@@ -270,9 +282,9 @@ namespace DefenseGame
 
         private void ReadArrays()
         {
-            dice[0] = Mathf.Clamp(data.diceA <= 0 ? 1 : data.diceA, 1, 6);
-            dice[1] = Mathf.Clamp(data.diceB <= 0 ? 1 : data.diceB, 1, 6);
-            dice[2] = Mathf.Clamp(data.diceC <= 0 ? 1 : data.diceC, 1, 6);
+            dice[0] = Mathf.Clamp(data.diceA, 0, 6);
+            dice[1] = Mathf.Clamp(data.diceB, 0, 6);
+            dice[2] = Mathf.Clamp(data.diceC, 0, 6);
             held[0] = data.heldA; held[1] = data.heldB; held[2] = data.heldC;
             pending[0] = data.pendingA; pending[1] = data.pendingB; pending[2] = data.pendingC;
         }
@@ -282,6 +294,23 @@ namespace DefenseGame
             data.diceA = dice[0]; data.diceB = dice[1]; data.diceC = dice[2];
             data.heldA = held[0]; data.heldB = held[1]; data.heldC = held[2];
             data.pendingA = pending[0]; data.pendingB = pending[1]; data.pendingC = pending[2];
+        }
+
+        private void RollCurrentDie()
+        {
+            int index = Mathf.Clamp(data.currentDieIndex, 0, 2);
+            dice[index] = UnityEngine.Random.Range(1, 7);
+            pending[index] = false;
+        }
+
+        private void AdvanceCurrentDie()
+        {
+            data.currentDieIndex = Mathf.Min(3, data.currentDieIndex + 1);
+            for (int i = 0; i < 3; i++) pending[i] = false;
+            if (data.currentDieIndex < 3)
+            {
+                RollCurrentDie();
+            }
         }
 
         private static string ResolveSaveKey(OutgamePlayMode mode) { return mode == OutgamePlayMode.Test ? TestSaveKey : ServiceSaveKey; }
