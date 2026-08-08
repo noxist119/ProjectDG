@@ -28,8 +28,6 @@ namespace DefenseGame
         private readonly List<Text> lobbyFeaturedNameTexts = new List<Text>();
         private readonly List<Text> lobbyFeaturedGradeTexts = new List<Text>();
         private readonly List<Image> loadoutDeckAccentImages = new List<Image>();
-        private readonly List<Image> loadoutDeckCards = new List<Image>();
-        private readonly List<Button> loadoutDeckButtons = new List<Button>();
         private readonly List<Image> loadoutDeckPortraitImages = new List<Image>();
         private readonly List<Text> loadoutDeckNameTexts = new List<Text>();
         private readonly List<Text> loadoutDeckDetailTexts = new List<Text>();
@@ -37,7 +35,6 @@ namespace DefenseGame
         private readonly List<Image> loadoutRosterPortraitImages = new List<Image>();
         private readonly List<Text> loadoutRosterNameTexts = new List<Text>();
         private readonly List<Text> loadoutRosterDetailTexts = new List<Text>();
-        private readonly List<Button> loadoutRosterButtons = new List<Button>();
         private readonly Image[] rankingTopCardPanels = new Image[3];
         private readonly Text[] rankingTopNameTexts = new Text[3];
         private readonly Text[] rankingTopScoreTexts = new Text[3];
@@ -137,7 +134,6 @@ namespace DefenseGame
         private Sprite roundedSprite;
         private CharacterCollectionUI subscribedCollectionUI;
         private int selectedPresetIndex;
-        private int selectedDeckSlot;
         private bool subscribed;
         private bool defeatPresented;
         private bool resultRewardGranted;
@@ -915,11 +911,6 @@ namespace DefenseGame
                 Text detailText = CreateText(card.transform, "Detail", "일반 / 역할", new Color(0.82f, 0.92f, 1f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(132f, 36f), 15, TextAnchor.MiddleCenter, false);
                 AddReadableOutline(nameText);
                 AddReadableOutline(detailText);
-                int slotIndex = i;
-                Button button = card.gameObject.GetComponent<Button>() ?? card.gameObject.AddComponent<Button>();
-                AddButtonListener(button, () => SelectCombatDeckSlot(slotIndex));
-                loadoutDeckCards.Add(card);
-                loadoutDeckButtons.Add(button);
                 loadoutDeckAccentImages.Add(accent);
                 loadoutDeckPortraitImages.Add(portrait);
                 loadoutDeckNameTexts.Add(nameText);
@@ -940,10 +931,6 @@ namespace DefenseGame
                 Image portrait = CreatePanel(card.transform, "Portrait", new Vector2(18f, -16f), new Vector2(76f, 78f), new Color(0.86f, 0.91f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), true, false);
                 Text nameText = CreateText(card.transform, "Name", "Hero", Color.white, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(114f, -18f), new Vector2(-144f, 28f), 18, TextAnchor.MiddleLeft, true);
                 Text detailText = CreateText(card.transform, "Detail", "등급 / 역할 / 스킬", new Color(0.85f, 0.90f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(114f, -52f), new Vector2(-144f, 44f), 15, TextAnchor.MiddleLeft, false);
-                int rosterIndex = i;
-                Button button = card.gameObject.GetComponent<Button>() ?? card.gameObject.AddComponent<Button>();
-                AddButtonListener(button, () => TryAssignRosterCharacterToSelectedDeckSlot(rosterIndex));
-                loadoutRosterButtons.Add(button);
                 loadoutRosterAccentImages.Add(accent);
                 loadoutRosterPortraitImages.Add(portrait);
                 loadoutRosterNameTexts.Add(nameText);
@@ -1070,20 +1057,8 @@ namespace DefenseGame
                 loadoutSummaryText.text = preset.description;
             }
 
-            int combatDeckCount = outgameProgression != null ? outgameProgression.GetCombatDeckCharacters().Count : 0;
-            if (loadoutHeaderText != null)
-            {
-                loadoutHeaderText.text = "\uC2E4\uC81C \uC804\uD22C \uB371  " + combatDeckCount + "/" + OutgameProgressionSystem.CombatDeckSlotCount;
-            }
-            if (loadoutSummaryText != null)
-            {
-                loadoutSummaryText.text = "\uB371 \uC2AC\uB86F\uC744 \uB204\uB978 \uB4A4 \uBCF4\uC720 \uC720\uB2DB\uC744 \uB20C\uB7EC \uAD50\uCCB4\uD558\uC138\uC694. \uC120\uD0DD\uC740 \uC800\uC7A5\uB418\uBA70, \uC911\uBCF5 \uBC30\uCE58\uB294 \uBD88\uAC00\uD569\uB2C8\uB2E4.";
-            }
-            List<CharacterDefinition> combatDeck = outgameProgression != null
-                ? outgameProgression.GetCombatDeckCharacters()
-                : new List<CharacterDefinition>();
-            UpdateLobbyFeaturedCards(combatDeck);
-            UpdateLoadoutDeckCards(combatDeck);
+            UpdateLobbyFeaturedCards(preset);
+            UpdateLoadoutDeckCards(preset);
             UpdateLoadoutRosterCards(preset);
         }
 
@@ -1133,30 +1108,6 @@ namespace DefenseGame
             return Mathf.Clamp(recommendedIndex, 0, Mathf.Max(0, presets.Count - 1));
         }
 
-        private void UpdateLobbyFeaturedCards(List<CharacterDefinition> combatDeck)
-        {
-            for (int i = 0; i < lobbyFeaturedNameTexts.Count; i++)
-            {
-                CharacterDefinition definition = combatDeck != null && i < combatDeck.Count ? combatDeck[i] : null;
-                if (definition == null)
-                {
-                    lobbyFeaturedAccentImages[i].color = new Color(0.75f, 0.78f, 0.86f);
-                    ApplyCharacterPortrait(lobbyFeaturedPortraitImages, i, null);
-                    lobbyFeaturedNameTexts[i].text = "Empty";
-                    lobbyFeaturedGradeTexts[i].text = "Deck slot";
-                }
-                else
-                {
-                    lobbyFeaturedAccentImages[i].color = GetGradeColor(definition.grade, definition.accentColor);
-                    ApplyCharacterPortrait(lobbyFeaturedPortraitImages, i, definition);
-                    lobbyFeaturedNameTexts[i].text = definition.displayName;
-                    lobbyFeaturedGradeTexts[i].text = GetGradeName(definition.grade) + " / " + BuildCardLevelLabel(definition);
-                }
-
-                SetCardLabelColors(lobbyFeaturedNameTexts[i], lobbyFeaturedGradeTexts[i]);
-            }
-        }
-
         private void UpdateLobbyFeaturedCards(PresetDefinition preset)
         {
             for (int i = 0; i < lobbyFeaturedNameTexts.Count; i++)
@@ -1177,43 +1128,6 @@ namespace DefenseGame
                 lobbyFeaturedNameTexts[i].text = definition.displayName;
                 lobbyFeaturedGradeTexts[i].text = GetGradeName(definition.grade) + " / " + BuildCardLevelLabel(definition);
                 SetCardLabelColors(lobbyFeaturedNameTexts[i], lobbyFeaturedGradeTexts[i]);
-            }
-        }
-
-        private void UpdateLoadoutDeckCards(List<CharacterDefinition> combatDeck)
-        {
-            for (int i = 0; i < loadoutDeckNameTexts.Count; i++)
-            {
-                CharacterDefinition definition = combatDeck != null && i < combatDeck.Count ? combatDeck[i] : null;
-                bool selected = i == selectedDeckSlot;
-                if (loadoutDeckCards.Count > i)
-                {
-                    loadoutDeckCards[i].color = selected
-                        ? new Color(1f, 0.94f, 0.66f, 1f)
-                        : new Color(0.95f, 0.97f, 0.99f, 0.98f);
-                }
-                if (loadoutDeckButtons.Count > i)
-                {
-                    loadoutDeckButtons[i].interactable = definition != null;
-                }
-
-                if (definition == null)
-                {
-                    loadoutDeckAccentImages[i].color = new Color(0.78f, 0.82f, 0.88f);
-                    ApplyCharacterPortrait(loadoutDeckPortraitImages, i, null);
-                    loadoutDeckNameTexts[i].text = "Empty";
-                    loadoutDeckDetailTexts[i].text = "Deck slot " + (i + 1);
-                }
-                else
-                {
-                    loadoutDeckAccentImages[i].color = GetGradeColor(definition.grade, definition.accentColor);
-                    ApplyCharacterPortrait(loadoutDeckPortraitImages, i, definition);
-                    loadoutDeckNameTexts[i].text = definition.displayName;
-                    loadoutDeckDetailTexts[i].text = selected
-                        ? "Selected - choose a roster unit"
-                        : GetGradeName(definition.grade) + " / " + BuildCardLevelLabel(definition);
-                }
-                SetCardLabelColors(loadoutDeckNameTexts[i], loadoutDeckDetailTexts[i]);
             }
         }
 
@@ -1264,10 +1178,6 @@ namespace DefenseGame
                     ? definition.skills[0].displayName
                     : "기본 공격";
                 loadoutRosterDetailTexts[i].text = GetGradeName(definition.grade) + " / " + BuildCardLevelLabel(definition) + " / " + skillSummary;
-                if (loadoutRosterButtons.Count > i)
-                {
-                    loadoutRosterButtons[i].interactable = outgameProgression == null || outgameProgression.CanDeployCharacter(definition);
-                }
             }
         }
 
@@ -1306,31 +1216,6 @@ namespace DefenseGame
         private int GetDeployableCharacterCount()
         {
             return characterDatabase != null ? characterDatabase.GetDeployableCharacters().Count : 0;
-        }
-
-        private void SelectCombatDeckSlot(int slotIndex)
-        {
-            selectedDeckSlot = Mathf.Clamp(slotIndex, 0, OutgameProgressionSystem.CombatDeckSlotCount - 1);
-            ApplyRecommendedPreset();
-        }
-
-        private void TryAssignRosterCharacterToSelectedDeckSlot(int rosterIndex)
-        {
-            int characterCount = GetDeployableCharacterCount();
-            int startIndex = characterCount <= 0 ? 0 : (selectedPresetIndex * 7) % characterCount;
-            CharacterDefinition character = GetCharacter(startIndex + rosterIndex);
-            if (character == null || outgameProgression == null)
-            {
-                return;
-            }
-
-            if (!outgameProgression.TrySetCombatDeckSlot(selectedDeckSlot, character.id))
-            {
-                gameController?.RequestBanner("Duplicate units cannot be assigned to the combat deck.", new Color(1f, 0.58f, 0.28f), 1.8f);
-                return;
-            }
-
-            ApplyRecommendedPreset();
         }
 
         private void HandleEnterPreparationPressed()

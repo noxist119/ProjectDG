@@ -543,27 +543,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            OutgameProgressionSystem progression = UnityEngine.Object.FindObjectOfType<OutgameProgressionSystem>();
-            List<CharacterDefinition> combatDeck = progression != null ? progression.GetCombatDeckCharacters() : new List<CharacterDefinition>();
-            bool combatDeckValid = progression != null &&
-                                   combatDeck.Count > 0 &&
-                                   combatDeck.Count <= OutgameProgressionSystem.CombatDeckSlotCount &&
-                                   combatDeck.All(character => character != null && progression.CanDeployCharacter(character)) &&
-                                   combatDeck.Select(character => character.id).Distinct().Count() == combatDeck.Count;
-            CharacterDefinition deckSample = combatDeck.FirstOrDefault();
-            CharacterDefinition deckRoll = deckSample != null && database != null
-                ? database.GetRandomCombatDeckCharacterByGradeOrLower(deckSample.grade)
-                : null;
-            bool combatDeckSummonPoolValid = deckRoll != null && combatDeck.Any(character => character.id == deckRoll.id);
-            int loadoutDeckButtonCount = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                .Count(button => button != null && button.name.StartsWith("LoadoutDeckCard_", StringComparison.Ordinal));
-            bool loadoutDeckUiValid = loadoutDeckButtonCount == OutgameProgressionSystem.CombatDeckSlotCount;
-            if (!combatDeckValid || !combatDeckSummonPoolValid || !loadoutDeckUiValid)
-            {
-                notes.Add("Combat deck validation failed: deck=" + combatDeck.Count + ", pool=" + combatDeckSummonPoolValid + ", ui=" + loadoutDeckButtonCount);
-            }
-
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && combatDeckValid && combatDeckSummonPoolValid && loadoutDeckUiValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -603,9 +583,6 @@ namespace DefenseGame.Editor
                 defaultVfxConfigured = defaultVfxConfigured,
                 animationMaterialEventsValid = animationMaterialEventsValid,
                 animationMaterialEventsSummary = animationMaterialEventsSummary,
-                combatDeckValid = combatDeckValid,
-                combatDeckSummonPoolValid = combatDeckSummonPoolValid,
-                loadoutDeckUiValid = loadoutDeckUiValid,
                 runtimeErrors = runtimeErrors,
                 prefabs = prefabResults,
                 notes = notes.ToArray()
@@ -1004,9 +981,6 @@ namespace DefenseGame.Editor
             public bool defaultVfxConfigured;
             public bool animationMaterialEventsValid;
             public string animationMaterialEventsSummary;
-            public bool combatDeckValid;
-            public bool combatDeckSummonPoolValid;
-            public bool loadoutDeckUiValid;
             public int runtimeErrors;
             public PrefabSmokeResult[] prefabs = Array.Empty<PrefabSmokeResult>();
             public string[] notes = Array.Empty<string>();

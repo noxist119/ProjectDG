@@ -303,39 +303,6 @@ namespace DefenseGame
             return null;
         }
 
-        public CharacterDefinition GetRandomCombatDeckCharacterByGradeOrLower(CharacterGrade grade)
-        {
-            OutgameProgressionSystem progression = OutgameProgressionSystem.Active;
-            List<CharacterDefinition> deck = progression != null
-                ? progression.GetCombatDeckCharacters()
-                : GetDeployableCharacters();
-
-            for (int gradeIndex = (int)grade; gradeIndex >= (int)CharacterGrade.Normal; gradeIndex--)
-            {
-                List<CharacterDefinition> candidates = deck
-                    .Where(character => character != null && character.grade == (CharacterGrade)gradeIndex)
-                    .ToList();
-                if (candidates.Count > 0)
-                {
-                    return candidates[Random.Range(0, candidates.Count)];
-                }
-            }
-
-            return null;
-        }
-
-        public CharacterDefinition GetRandomCombatDeckCharacterByGrade(CharacterGrade grade)
-        {
-            OutgameProgressionSystem progression = OutgameProgressionSystem.Active;
-            List<CharacterDefinition> deck = progression != null
-                ? progression.GetCombatDeckCharacters()
-                : GetDeployableCharacters();
-            List<CharacterDefinition> candidates = deck
-                .Where(character => character != null && character.grade == grade)
-                .ToList();
-            return candidates.Count > 0 ? candidates[Random.Range(0, candidates.Count)] : null;
-        }
-
         public CharacterDefinition GetRandomSummonableCharacter(bool deployableOnly = false)
         {
             return GetRandomSummonableCharacter(1, deployableOnly);
@@ -352,11 +319,6 @@ namespace DefenseGame
 
             List<CharacterDefinition> fallback = GetDeployableCharacters();
             return fallback.Count > 0 ? fallback[Random.Range(0, fallback.Count)] : null;
-        }
-
-        public CharacterDefinition GetRandomCombatDeckSummonableCharacter(int currentRound)
-        {
-            return GetRandomCombatDeckCharacterByGradeOrLower(RollSummonGradeForRound(currentRound));
         }
 
         private CharacterGrade RollSummonGradeForRound(int currentRound)
@@ -1181,9 +1143,6 @@ namespace DefenseGame
         public int dailyFateCupBestScore;
         public int dailyFateCupBestRound;
         public string dailyFateCupBestReplay;
-        // Persisted service/test combat deck.  JsonUtility treats a missing field from
-        // older saves as null, which is repaired during the normal load migration.
-        public List<string> combatDeckCharacterIds = new List<string>();
     }
 
     public sealed class OutgameDrawResult
@@ -1256,8 +1215,6 @@ namespace DefenseGame
         public string LastSeasonRewardSummary => lastSeasonRewardSummary;
         public int DailyFateCupBestScore => EnsureSaveData().dailyFateCupBestScore;
         public int DailyFateCupAttempts => EnsureSaveData().dailyFateCupAttempts;
-        public const int CombatDeckSlotCount = 5;
-        public bool HasCombatDeckConfiguration => EnsureSaveData().combatDeckCharacterIds != null && EnsureSaveData().combatDeckCharacterIds.Count > 0;
 
         private void Awake()
         {
@@ -1279,7 +1236,6 @@ namespace DefenseGame
             currentPlayMode = (OutgamePlayMode)PlayerPrefs.GetInt(PlayModeKey, (int)Settings.defaultPlayMode);
             Load();
             EnsureInitialRoster();
-            EnsureCombatDeck();
             OnProgressChanged?.Invoke();
         }
 
@@ -1296,7 +1252,6 @@ namespace DefenseGame
             PlayerPrefs.Save();
             Load();
             EnsureInitialRoster();
-            EnsureCombatDeck();
             OnProgressChanged?.Invoke();
         }
 
@@ -1890,73 +1845,6 @@ namespace DefenseGame
             return character != null && (IsTestMode || IsOwned(character.id));
         }
 
-        public List<CharacterDefinition> GetCombatDeckCharacters()
-        {
-            EnsureCombatDeck();
-            if (characterDatabase == null)
-            {
-                return new List<CharacterDefinition>();
-            }
-
-            return EnsureSaveData().combatDeckCharacterIds
-                .Select(characterDatabase.GetCharacterById)
-                .Where(CanDeployCharacter)
-                .ToList();
-        }
-
-        public bool TrySetCombatDeckSlot(int slotIndex, string characterId)
-        {
-            if (slotIndex < 0 || slotIndex >= CombatDeckSlotCount || characterDatabase == null)
-            {
-                return false;
-            }
-
-            CharacterDefinition character = characterDatabase.GetCharacterById(characterId);
-            if (!CanDeployCharacter(character))
-            {
-                return false;
-            }
-
-            EnsureCombatDeck();
-            List<string> deck = EnsureSaveData().combatDeckCharacterIds;
-            int existingIndex = deck.IndexOf(character.id);
-            if (existingIndex >= 0 && existingIndex != slotIndex)
-            {
-                return false;
-            }
-
-            while (deck.Count <= slotIndex)
-            {
-                deck.Add(string.Empty);
-            }
-
-            deck[slotIndex] = character.id;
-            NormalizeCombatDeck(deck);
-            Save();
-            OnProgressChanged?.Invoke();
-            return true;
-        }
-
-        public bool ApplyCombatDeck(IEnumerable<string> characterIds)
-        {
-            if (characterDatabase == null)
-            {
-                return false;
-            }
-
-            List<string> next = characterIds == null ? new List<string>() : characterIds.ToList();
-            NormalizeCombatDeck(next);
-            if (next.Count == 0)
-            {
-                return false;
-            }
-
-            EnsureSaveData().combatDeckCharacterIds = next;
-            Save();
-            OnProgressChanged?.Invoke();
-            return true;
-        }
-
         public int GetCardLevel(string characterId)
         {
             OutgameCardRecord record = FindRecord(characterId);
@@ -2377,56 +2265,6 @@ namespace DefenseGame
             Save();
         }
 
-        private void EnsureCombatDeck()
-        {
-            OutgameSaveData data = EnsureSaveData();
-            List<string> deck = data.combatDeckCharacterIds ?? new List<string>();
-            List<string> before = new List<string>(deck);
-            NormalizeCombatDeck(deck);
-            bool changed = data.combatDeckCharacterIds == null || !before.SequenceEqual(deck);
-            data.combatDeckCharacterIds = deck;
-            if (changed)
-            {
-                Save();
-            }
-        }
-
-        private void NormalizeCombatDeck(List<string> deck)
-        {
-            if (deck == null)
-            {
-                return;
-            }
-
-            HashSet<string> used = new HashSet<string>();
-            for (int index = deck.Count - 1; index >= 0; index--)
-            {
-                CharacterDefinition character = characterDatabase != null ? characterDatabase.GetCharacterById(deck[index]) : null;
-                if (!CanDeployCharacter(character) || !used.Add(character.id))
-                {
-                    deck.RemoveAt(index);
-                }
-            }
-
-            if (characterDatabase == null)
-            {
-                return;
-            }
-
-            foreach (CharacterDefinition character in characterDatabase.GetDeployableCharacters())
-            {
-                if (deck.Count >= CombatDeckSlotCount)
-                {
-                    break;
-                }
-
-                if (used.Add(character.id))
-                {
-                    deck.Add(character.id);
-                }
-            }
-        }
-
         private void GrantInitialCard(CharacterDefinition character)
         {
             OutgameCardRecord record = GetOrCreateRecord(character.id);
@@ -2559,10 +2397,6 @@ namespace DefenseGame
             if (saveData.cards == null)
             {
                 saveData.cards = new List<OutgameCardRecord>();
-            }
-            if (saveData.combatDeckCharacterIds == null)
-            {
-                saveData.combatDeckCharacterIds = new List<string>();
             }
             int previousVersion = saveData.metaProgressionVersion;
             int targetVersion = Mathf.Max(3, Settings.progressionVersion);

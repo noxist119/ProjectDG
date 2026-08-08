@@ -305,11 +305,7 @@ namespace DefenseGame
 				return false;
 			}
 			CharacterGrade nextGrade = grade + 1;
-			// Normal merges prefer the configured combat deck.  A missing next-grade
-			// entry must still be recoverable, so only this growth path may fall back
-			// to the regular deployable pool.
-			CharacterDefinition mergedCharacter = database.GetRandomCombatDeckCharacterByGrade(nextGrade)
-				?? database.GetRandomCharacterByGradeOrLower(nextGrade, true);
+			CharacterDefinition mergedCharacter = database.GetRandomCharacterByGrade(nextGrade);
 			if (mergedCharacter == null)
 			{
 				LastMergeFailureReason = "상위 등급 결과 유닛 데이터가 없습니다.";
