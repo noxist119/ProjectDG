@@ -3078,6 +3078,10 @@ namespace DefenseGame
                 {
                     meta += "  |  " + outgameProgression.LastSeasonRewardSummary;
                 }
+                if (victory && gameController.LastYahtzeeTicketReward > 0)
+                {
+                    meta += "  |  \uC58F\uCC0C \uD2F0\uCF13 +" + gameController.LastYahtzeeTicketReward;
+                }
 
                 resultMetaText.text = meta;
             }

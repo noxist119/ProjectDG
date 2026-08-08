@@ -46,6 +46,7 @@ namespace DefenseGame
         private readonly bool[] held = new bool[3];
         private readonly bool[] pending = new bool[3];
         private OutgameProgressionSystem progression;
+        private DefenseGameController gameController;
         private YahtzeeSaveData data;
         private OutgamePlayMode loadedMode;
         private bool hasLoadedMode;
@@ -69,11 +70,30 @@ namespace DefenseGame
             }
         }
 
-        public void Configure(OutgameProgressionSystem outgameProgression)
+        public void Configure(OutgameProgressionSystem outgameProgression, DefenseGameController controller = null)
         {
+            if (gameController != null)
+            {
+                gameController.OnYahtzeeTicketMilestoneCleared -= HandleBossTicketMilestoneCleared;
+            }
+
             progression = outgameProgression;
+            gameController = controller != null ? controller : GetComponent<DefenseGameController>();
+            if (gameController != null)
+            {
+                gameController.OnYahtzeeTicketMilestoneCleared += HandleBossTicketMilestoneCleared;
+            }
+
             hasLoadedMode = false;
             EnsureMode();
+        }
+
+        private void OnDestroy()
+        {
+            if (gameController != null)
+            {
+                gameController.OnYahtzeeTicketMilestoneCleared -= HandleBossTicketMilestoneCleared;
+            }
         }
 
         public int GetDie(int index) { EnsureMode(); return index >= 0 && index < 3 ? dice[index] : 0; }
@@ -218,9 +238,27 @@ namespace DefenseGame
         {
             EnsureMode();
             if (progression == null || !progression.IsTestMode || amount <= 0) return false;
+            return GrantTickets(amount, "TestGrant");
+        }
+
+        // Gameplay rewards use the same mode-specific save data as normal Yahtzee play.
+        // Keep test grants separate so test UI cannot be mistaken for a service reward source.
+        public bool GrantTickets(int amount, string reason)
+        {
+            EnsureMode();
+            if (amount <= 0)
+            {
+                return false;
+            }
+
             data.tickets += amount;
             SaveAndNotify();
             return true;
+        }
+
+        private void HandleBossTicketMilestoneCleared(int round)
+        {
+            GrantTickets(1, "BossClear.R" + Mathf.Max(1, round));
         }
 
         private YahtzeeRewardResult GrantReward(int multiplier)

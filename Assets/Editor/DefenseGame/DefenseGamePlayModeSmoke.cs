@@ -445,6 +445,17 @@ namespace DefenseGame.Editor
                 notes.Add("얏찌 트리플 x1~x6 배수 계산이 올바르지 않습니다.");
             }
 
+            bool yahtzeeTicketMilestoneLogicValid =
+                DefenseGameController.IsYahtzeeTicketMilestoneRound(10, true) &&
+                DefenseGameController.IsYahtzeeTicketMilestoneRound(20, true) &&
+                DefenseGameController.IsYahtzeeTicketMilestoneRound(30, true) &&
+                !DefenseGameController.IsYahtzeeTicketMilestoneRound(10, false) &&
+                !DefenseGameController.IsYahtzeeTicketMilestoneRound(9, true);
+            if (!yahtzeeTicketMilestoneLogicValid)
+            {
+                notes.Add("Yahtzee ticket boss milestone validation failed.");
+            }
+
             bool earlyMiniShopChoicesValid = ValidateRoundTieredMiniShop(out string earlyMiniShopSummary);
             if (!earlyMiniShopChoicesValid)
             {
@@ -514,7 +525,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -542,6 +553,7 @@ namespace DefenseGame.Editor
                 rankingPageValid = rankingPageValid,
                 yahtzeeModeUiValid = yahtzeeModeUiValid,
                 yahtzeeMultiplierLogicValid = yahtzeeMultiplierLogicValid,
+                yahtzeeTicketMilestoneLogicValid = yahtzeeTicketMilestoneLogicValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
                 earlyMiniShopSummary = earlyMiniShopSummary,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
@@ -937,6 +949,7 @@ namespace DefenseGame.Editor
             public bool rankingPageValid;
             public bool yahtzeeModeUiValid;
             public bool yahtzeeMultiplierLogicValid;
+            public bool yahtzeeTicketMilestoneLogicValid;
             public bool earlyMiniShopChoicesValid;
             public string earlyMiniShopSummary;
             public bool simultaneousDeathPolicyValid;

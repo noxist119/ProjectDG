@@ -518,6 +518,7 @@ namespace DefenseGame
         private bool runDefeatMomentRecorded;
         private readonly List<string> runClipEvents = new List<string>();
         private readonly HashSet<string> rewardedUltimateRecipeNames = new HashSet<string>();
+        private readonly HashSet<int> awardedYahtzeeTicketMilestoneRounds = new HashSet<int>();
 
         private sealed class EarlyRoundTelemetrySnapshot
         {
@@ -580,6 +581,7 @@ namespace DefenseGame
         public event System.Action<int> OnRoundShopPhase;
         public event System.Action<int> OnRoundAugmentChoicePhase;
         public event System.Action<int> OnRoundCompleted;
+        public event System.Action<int> OnYahtzeeTicketMilestoneCleared;
         public event System.Action OnGameOver;
         public event System.Action OnLuckySummonChoiceRequested;
         public event System.Action<string, Color, float> OnBannerRequested;
@@ -629,7 +631,18 @@ namespace DefenseGame
         public bool WasRoundShopOpened(int round) => round > 0 && lastRoundShopOpenRound == round;
         public string CurrentStateSummary => CombatModeDisplayName + " | Gold " + Gold + " | Life " + Life + " | Round " + CurrentRound + (IsBossRound ? " Boss" : string.Empty);
         public int LastRoundClearGoldReward { get; private set; }
+        public int LastYahtzeeTicketReward { get; private set; }
         public MergeResultInfo? LastMergeResult { get; private set; }
+
+        public static bool IsYahtzeeTicketMilestoneRound(int round, bool bossRound)
+        {
+            return bossRound && round > 0 && round % 10 == 0;
+        }
+
+        public bool HasAwardedYahtzeeTicketForRound(int round)
+        {
+            return awardedYahtzeeTicketMilestoneRounds.Contains(round);
+        }
         public string BestSynergySummary => bestSynergyCount > 0 ? bestSynergyTitle + " (" + bestSynergyCount + "개 활성)" : "활성 시너지 없음";
         public string CurrentSynergySummary => currentSynergyCount > 0 ? currentSynergyTitle + " x" + currentSynergyCount : "시너지 없음";
         public string TopDamageSummary => topDamageHeroDamage > 0f ? topDamageHeroName + "  " + Mathf.RoundToInt(topDamageHeroDamage).ToString("N0") : "기록 없음";
@@ -3944,6 +3957,7 @@ namespace DefenseGame
                 }
 
                 OnBannerRequested?.Invoke("ROUND CLEAR  +" + clearReward + "G", new Color(0.48f, 1f, 0.72f), 2.5f);
+                TryAwardYahtzeeTicketForBossClear(round, bossRound);
                 ReportCombatModeRoundTelemetry(round);
                 ReportRoundCombatRecap(bossRound);
                 if (unlockedFrontSlots > 0)
@@ -3979,6 +3993,28 @@ namespace DefenseGame
                     defenders[i].ClearRoundTemporaryEffects();
                 }
             }
+        }
+
+        private void TryAwardYahtzeeTicketForBossClear(int round, bool bossRound)
+        {
+            if (!IsYahtzeeTicketMilestoneRound(round, bossRound))
+            {
+                LastYahtzeeTicketReward = 0;
+                return;
+            }
+
+            if (!awardedYahtzeeTicketMilestoneRounds.Add(round))
+            {
+                return;
+            }
+
+            LastYahtzeeTicketReward = 1;
+            OnYahtzeeTicketMilestoneCleared?.Invoke(round);
+            AddRunHighlightCard("\uC58F\uCC0C \uD2F0\uCF13", "R" + round + " \uBCF4\uC2A4 \uD074\uB9AC\uC5B4 +1");
+            OnBannerRequested?.Invoke(
+                "R" + round + " \uBCF4\uC2A4 \uD074\uB9AC\uC5B4!  \uC58F\uCC0C \uD2F0\uCF13 +1",
+                new Color(1f, 0.78f, 0.26f),
+                2.6f);
         }
 
         private void DismissTemporarySummons()
@@ -4240,6 +4276,8 @@ namespace DefenseGame
         private void ResetRunStats()
         {
             RestoreFateChoiceSlowMotion();
+            awardedYahtzeeTicketMilestoneRounds.Clear();
+            LastYahtzeeTicketReward = 0;
             fateCardChoicePanelOpen = false;
             damageByHero.Clear();
             currentRoundDamageByHero.Clear();
