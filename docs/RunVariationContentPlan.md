@@ -206,3 +206,20 @@
 - 중반 6~15라운드: 미션 실패/성공 선택이 덱 운영을 바꾸게 한다.
 - 보스 전후: 레시피, 보스 대응, 럭키 이벤트가 겹쳐 강한 판단 지점을 만든다.
 - 고정 보상보다 랜덤 보상은 평균값을 낮추고 최고점을 높인다.
+
+## Transcendent Combat Identity — Balance Patch 1
+
+| Hero | Combat identity | Balance tier within the current seven results |
+| --- | --- | --- |
+| hero_51 | High Control / Damage | High control damage |
+| hero_52 | High AoE Damage | High area damage |
+| hero_53 | Apex Sustained Single-Target DPS | Apex sustained DPS |
+| hero_54 | Entry Tank | Entry tank |
+| hero_55 | Mid Tank | Mid tank |
+| hero_56 | Apex High-Risk Burst / AoE DPS | Apex high-risk burst / area DPS |
+| hero_57 | High Variance DPS | High variance DPS |
+
+- These labels are combat-role power budgets among the seven current Transcendent results, not a separate character-grade tier.
+- Tanks are evaluated through durability, damage reduction, frontline control, and survival time—not direct DPS alone.
+- Hard attack recipes must receive suitably strong attack rewards; special-condition units may have higher peaks only in their intended condition.
+- Recipe difficulty and total combat value are reviewed together. Fixed recipe results and material inheritance rules remain unchanged.

@@ -143,7 +143,7 @@ namespace DefenseGame
                     definition.attackBehavior.customAttackRange = 9.5f;
                     definition.skills = new List<SkillDefinition>
                     {
-                        CreatePresetSkill(definition.id, "격라운드 폭격", "소환된 다음 라운드부터 한 라운드씩 번갈아 기동합니다. 기동 라운드에 공격력 420%의 폭발 피해를 4.5m 범위에 한 번 가합니다.", SkillEffectType.AreaDamage, 4.2f, 0f, 0f, 4.5f, 1, 100f, 0f, true, 9.5f, SkillDeliveryType.Instant, SkillGrowthTarget.Power)
+                        CreatePresetSkill(definition.id, "격라운드 폭격", "기동 라운드에 50% 마나로 시작합니다. 평타로 마나를 충전해 마나가 가득 찰 때마다 공격력 420%의 폭발 피해를 4.5m 범위에 가합니다.", SkillEffectType.AreaDamage, 4.2f, 0f, 0f, 4.5f, 1, 100f, 0f, true, 9.5f, SkillDeliveryType.Instant, SkillGrowthTarget.Power)
                     };
                     return true;
                 case "hero_57":
@@ -350,7 +350,7 @@ namespace DefenseGame
                     skill = CreatePresetSkill(characterId, "용암 구체", "구체로 공격력 300%의 피해를 주고 3m 반경에 5초 동안 용암지역을 생성합니다. 지역 안 몬스터는 초당 30 피해를 받습니다.", SkillEffectType.DamageGroundField, 3f, 30f, 5f, 3f, 1, 100f, 10f, true, 6f, SkillDeliveryType.Projectile, SkillGrowthTarget.SecondaryPower);
                     return true;
                 case "hero_53":
-                    skill = CreatePresetSkill(characterId, "전투 가속", "8초 동안 공격속도를 50% 올립니다.", SkillEffectType.AttackSpeedBoost, 0.5f, 0f, 8f, 2.5f, 1, 100f, 11f, growthTargets: SkillGrowthTarget.Duration);
+                    skill = CreatePresetSkill(characterId, "전투 가속", "8초 동안 공격속도를 100% 올립니다.", SkillEffectType.AttackSpeedBoost, 1f, 0f, 8f, 2.5f, 1, 100f, 11f, growthTargets: SkillGrowthTarget.Duration);
                     return true;
                 case "hero_04":
                     skill = CreatePresetSkill(characterId, "독화살", "독화살을 발사해 7초 동안 적에게 초당 50 피해를 줍니다.", SkillEffectType.FixedPoison, 50f, 1f, 7f, 2.5f, 1, 100f, 9f, true, 6f, SkillDeliveryType.Projectile, SkillGrowthTarget.Power);

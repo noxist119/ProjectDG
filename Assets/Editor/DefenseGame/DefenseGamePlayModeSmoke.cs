@@ -526,6 +526,28 @@ namespace DefenseGame.Editor
             {
                 notes.Add("Dice Auto rest/active mana cycle validation failed.");
             }
+            CharacterDefinition hero53 = hero56Database != null ? hero56Database.GetCharacterById("hero_53") : null;
+            SkillDefinition hero53Skill = hero53 != null && hero53.skills != null && hero53.skills.Count > 0 ? hero53.skills[0] : null;
+            bool feverEngineApexDpsValid = hero53Skill != null &&
+                                           hero53.grade == CharacterGrade.Transcendent &&
+                                           Mathf.Approximately(hero53.stats.maxHealth, 380f) &&
+                                           Mathf.Approximately(hero53.stats.attackPower, 52f) &&
+                                           Mathf.Approximately(hero53.stats.criticalChance, 0.25f) &&
+                                           Mathf.Approximately(hero53.stats.criticalDamageMultiplier, 2.1f) &&
+                                           Mathf.Approximately(hero53.stats.attackSpeed, 1.7f) &&
+                                           Mathf.Approximately(hero53.stats.maxMana, 190f) &&
+                                           Mathf.Approximately(hero53.stats.manaRegenPerSecondRate, 0.05f) &&
+                                           Mathf.Approximately(hero53.stats.manaGainWhenHitRate, 0.10f) &&
+                                           Mathf.Approximately(hero53.stats.manaGainPerAttackRate, 0.17f) &&
+                                           hero53Skill.effectType == SkillEffectType.AttackSpeedBoost &&
+                                           Mathf.Approximately(hero53Skill.power, 1f) &&
+                                           Mathf.Approximately(hero53Skill.duration, 8f) &&
+                                           Mathf.Approximately(hero53Skill.cooldown, 11f) &&
+                                           Mathf.Approximately(hero53Skill.manaThreshold, 100f);
+            if (!feverEngineApexDpsValid)
+            {
+                notes.Add("Fever Engine apex sustained DPS validation failed.");
+            }
 
             CharacterDatabase database = UnityEngine.Object.FindObjectOfType<CharacterDatabase>();
             CharacterDefinition hero32 = database != null ? database.GetCharacterById("hero_32") : null;
@@ -574,7 +596,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -611,6 +633,7 @@ namespace DefenseGame.Editor
                 ultimateRecipeUxSummary = ultimateRecipeUxSummary,
                 ultimateMergeInheritanceIsolationValid = ultimateMergeInheritanceIsolationValid,
                 diceAutoCycleValid = diceAutoCycleValid,
+                feverEngineApexDpsValid = feverEngineApexDpsValid,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
                 hero32SignatureValid = hero32SignatureValid,
                 gargoyleLoopDurationValid = gargoyleLoopDurationValid,
@@ -1154,6 +1177,7 @@ namespace DefenseGame.Editor
             public bool ultimateRecipeUxValid;
             public string ultimateRecipeUxSummary;
             public bool diceAutoCycleValid;
+            public bool feverEngineApexDpsValid;
             public bool ultimateMergeInheritanceIsolationValid;
             public bool simultaneousDeathPolicyValid;
             public bool hero32SignatureValid;

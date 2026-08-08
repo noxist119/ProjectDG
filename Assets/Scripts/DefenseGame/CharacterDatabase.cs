@@ -480,6 +480,20 @@ namespace DefenseGame
                     definition.displayName = "Dire Wolf";
                     definition.description = "원거리 야성형 신화. 야성의 추적탄으로 공격력 220% 피해, 4초간 35% 둔화·공격력 30%/초 중독을 주고 5초간 공격속도가 25% 증가합니다.";
                     break;
+                case "hero_53":
+                    definition.description = "원거리 지속 화력형 초월. 높은 기본 공격 성능과 전투 가속으로 단일 대상에게 끊임없이 강한 피해를 줍니다.";
+                    definition.stats.maxHealth = 380f;
+                    definition.stats.attackPower = 52f;
+                    definition.stats.criticalChance = 0.25f;
+                    definition.stats.criticalDamageMultiplier = 2.1f;
+                    definition.stats.attackSpeed = 1.7f;
+                    definition.stats.maxMana = 190f;
+                    definition.stats.manaRegenPerSecondRate = 0.05f;
+                    definition.stats.manaGainWhenHitRate = 0.10f;
+                    definition.stats.manaGainPerAttackRate = 0.17f;
+                    definition.stats.attackRange = 9.5f;
+                    definition.stats.projectileSpeed = 22f;
+                    break;
                 case "hero_55":
                     definition.displayName = "Dice Armor";
                     definition.description = "근거리 방어형 초월. 철벽 돌진으로 적을 밀어내며 스킬을 쓸수록 최대 40%까지 단단해집니다.";
@@ -497,7 +511,7 @@ namespace DefenseGame
                     break;
                 case "hero_56":
                     definition.displayName = "Dice Auto";
-                    definition.description = "원거리 교대 폭격형 초월. 소환 다음 라운드부터 기동과 휴식을 번갈아 반복하며 기동 시 420% 광역 폭격을 가합니다.";
+                    definition.description = "원거리 교대 폭격형 초월. 기동과 휴식 라운드를 번갈아 반복하며, 기동 라운드에는 평타로 마나를 충전해 마나가 가득 찰 때마다 강력한 광역 폭격을 가합니다.";
                     definition.stats.maxHealth = 390f;
                     definition.stats.attackPower = 82f;
                     definition.stats.criticalChance = 0.20f;
