@@ -817,7 +817,8 @@ namespace DefenseGame.Editor
         private static bool ValidateUltimateRecipeUx(DefenseGameController controller, out string summary)
         {
             UltimateRecipeOption[] options = controller != null ? controller.GetAllUltimateRecipeOptions() : Array.Empty<UltimateRecipeOption>();
-            bool structuredDataValid = options.Length == 11;
+            UltimateRecipeOption[] relatedOptions = controller != null ? controller.GetRelatedUltimateRecipeOptions() : Array.Empty<UltimateRecipeOption>();
+            bool structuredDataValid = options.Length > 0;
             for (int i = 0; i < options.Length; i++)
             {
                 UltimateRecipeOption option = options[i];
@@ -856,17 +857,32 @@ namespace DefenseGame.Editor
                 structuredDataValid &= orderValid;
             }
 
+            bool relatedFilterValid = relatedOptions.All(option =>
+                option.isReady ||
+                option.progress > 0 ||
+                (option.materials != null && option.materials.Sum(material => material.ownedCount) > 0));
+            bool hiddenZeroProgressValid = options
+                .Where(option => !option.isReady && option.progress <= 0 && (option.materials == null || option.materials.Sum(material => material.ownedCount) <= 0))
+                .All(option => relatedOptions.All(related => related.recipeName != option.recipeName));
+
             RectTransform detailPanel = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
                 .FirstOrDefault(rect => rect != null && rect.name == "UltimateRecipeDetailPanel");
-            int materialCardCount = UnityEngine.Object.FindObjectsOfType<Image>(true)
-                .Count(image => image != null && image.name.StartsWith("MaterialCard_", StringComparison.Ordinal));
+            RectTransform optionContent = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                .FirstOrDefault(rect => rect != null && rect.name == "UltimateRecipeOptionContent");
+            Button optionTemplate = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "UltimateRecipeOptionTemplate");
+            RectTransform materialContent = UnityEngine.Object.FindObjectsOfType<RectTransform>(true)
+                .FirstOrDefault(rect => rect != null && rect.name == "UltimateRecipeMaterialContent");
+            Image materialTemplate = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                .FirstOrDefault(image => image != null && image.name == "UltimateRecipeMaterialTemplate");
             Image resultPortrait = UnityEngine.Object.FindObjectsOfType<Image>(true)
                 .FirstOrDefault(image => image != null && image.name == "ResultPortrait" && image.transform.parent != null && image.transform.parent.name == "ResultCard");
             Button confirmButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
                 .FirstOrDefault(button => button != null && button.name == "UltimateRecipeConfirmButton");
-            bool layoutValid = detailPanel != null && materialCardCount == 5 && resultPortrait != null && confirmButton != null;
-            summary = "options=" + options.Length + ", detail=" + (detailPanel != null) + ", materialCards=" + materialCardCount + ", resultPortrait=" + (resultPortrait != null) + ", confirm=" + (confirmButton != null);
-            return structuredDataValid && layoutValid;
+            UltimateRecipeSelectionUI selection = UnityEngine.Object.FindObjectOfType<UltimateRecipeSelectionUI>(true);
+            bool layoutValid = detailPanel != null && optionContent != null && optionTemplate != null && materialContent != null && materialTemplate != null && resultPortrait != null && confirmButton != null && selection != null;
+            summary = "all=" + options.Length + ", related=" + relatedOptions.Length + ", relatedFilter=" + relatedFilterValid + ", zeroHidden=" + hiddenZeroProgressValid + ", dynamicOptionContent=" + (optionContent != null) + ", dynamicMaterialContent=" + (materialContent != null) + ", selection=" + (selection != null) + ", confirm=" + (confirmButton != null);
+            return structuredDataValid && relatedFilterValid && hiddenZeroProgressValid && layoutValid;
         }
 
         private static bool ValidateRoundTieredMiniShop(out string summary)

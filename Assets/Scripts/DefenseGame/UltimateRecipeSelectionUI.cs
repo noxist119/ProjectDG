@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -13,53 +14,46 @@ namespace DefenseGame
 		public Text resultState;
 		public Text materialHeader;
 		public Text missingText;
-		public Image[] materialCards;
-		public Image[] materialPortraits;
-		public Text[] materialFallbacks;
-		public Text[] materialLabels;
+		public RectTransform materialContent;
+		public Image materialTemplate;
+		public ScrollRect materialScroll;
 	}
 
 	public sealed class UltimateRecipeSelectionUI : MonoBehaviour
 	{
 		private const float SlideDuration = 0.24f;
+		private const float RefreshInterval = 0.15f;
 
 		private DefenseGameController gameController;
-
 		private RectTransform drawer;
-
 		private CanvasGroup canvasGroup;
-
 		private Button blockerButton;
-
 		private Text headerText;
-
 		private Text instructionText;
-
-		private Button[] optionButtons;
-
-		private Text[] optionLabels;
-
+		private RectTransform optionContent;
+		private Button optionTemplate;
+		private ScrollRect optionScroll;
+		private readonly List<Button> optionButtons = new List<Button>();
+		private readonly List<Text> optionLabels = new List<Text>();
 		private Button closeButton;
-
 		private Button confirmButton;
-
 		private Text confirmLabel;
-
 		private UltimateRecipeDetailView detailView;
-
+		private readonly List<Image> materialCards = new List<Image>();
+		private readonly List<Image> materialPortraits = new List<Image>();
+		private readonly List<Text> materialFallbacks = new List<Text>();
+		private readonly List<Text> materialLabels = new List<Text>();
 		private UltimateRecipeOption[] options = new UltimateRecipeOption[0];
-
 		private Vector2 drawerOpenPosition;
-
 		private Vector2 drawerClosedPosition;
-
 		private float slideProgress;
-
+		private float nextStateRefreshTime;
 		private bool targetOpen;
-
 		private int selectedIndex = -1;
+		private string selectedRecipeName;
+		private int optionStateSignature = int.MinValue;
 
-		public void Configure(DefenseGameController controller, RectTransform drawerRect, CanvasGroup group, Button blocker, Text header, Text instruction, Button[] buttons, Text[] labels, Button close, Button confirm, Text confirmText, UltimateRecipeDetailView detail)
+		public void Configure(DefenseGameController controller, RectTransform drawerRect, CanvasGroup group, Button blocker, Text header, Text instruction, RectTransform optionsRect, Button template, ScrollRect scroll, Button close, Button confirm, Text confirmText, UltimateRecipeDetailView detail)
 		{
 			gameController = controller;
 			drawer = drawerRect;
@@ -67,40 +61,37 @@ namespace DefenseGame
 			blockerButton = blocker;
 			headerText = header;
 			instructionText = instruction;
-			optionButtons = (Button[])(((object)buttons) ?? ((object)new Button[0]));
-			optionLabels = (Text[])(((object)labels) ?? ((object)new Text[0]));
+			optionContent = optionsRect;
+			optionTemplate = template;
+			optionScroll = scroll;
 			closeButton = close;
 			confirmButton = confirm;
 			confirmLabel = confirmText;
 			detailView = detail;
-			drawerOpenPosition = ((drawer != null) ? drawer.anchoredPosition : Vector2.zero);
+			drawerOpenPosition = drawer != null ? drawer.anchoredPosition : Vector2.zero;
 			drawerClosedPosition = drawerOpenPosition + Vector2.down * 860f;
-			if ((Object)(object)blockerButton != null)
+			if (optionTemplate != null)
 			{
-				((UnityEventBase)(object)blockerButton.onClick).RemoveAllListeners();
-				((UnityEvent)(object)blockerButton.onClick).AddListener((UnityAction)Close);
+				optionTemplate.gameObject.SetActive(false);
 			}
-			if ((Object)(object)closeButton != null)
+			if (detailView != null && detailView.materialTemplate != null)
 			{
-				((UnityEventBase)(object)closeButton.onClick).RemoveAllListeners();
-				((UnityEvent)(object)closeButton.onClick).AddListener((UnityAction)Close);
+				detailView.materialTemplate.gameObject.SetActive(false);
 			}
-			if ((Object)(object)confirmButton != null)
+			if (blockerButton != null)
 			{
-				((UnityEventBase)(object)confirmButton.onClick).RemoveAllListeners();
-				((UnityEvent)(object)confirmButton.onClick).AddListener((UnityAction)ConfirmSelection);
+				blockerButton.onClick.RemoveAllListeners();
+				blockerButton.onClick.AddListener(Close);
 			}
-			for (int i = 0; i < optionButtons.Length; i++)
+			if (closeButton != null)
 			{
-				int optionIndex = i;
-				if (!((Object)(object)optionButtons[i] == null))
-				{
-					((UnityEventBase)(object)optionButtons[i].onClick).RemoveAllListeners();
-					((UnityEvent)(object)optionButtons[i].onClick).AddListener((UnityAction)delegate
-					{
-						SelectOption(optionIndex);
-					});
-				}
+				closeButton.onClick.RemoveAllListeners();
+				closeButton.onClick.AddListener(Close);
+			}
+			if (confirmButton != null)
+			{
+				confirmButton.onClick.RemoveAllListeners();
+				confirmButton.onClick.AddListener(ConfirmSelection);
 			}
 			if (canvasGroup != null)
 			{
@@ -120,17 +111,14 @@ namespace DefenseGame
 			{
 				return;
 			}
-			options = gameController.GetAllUltimateRecipeOptions();
-			if (options == null || options.Length == 0)
-			{
-				gameController.RequestBanner("초월 레시피 정보를 불러오지 못했습니다", new Color(0.72f, 0.82f, 1f), 1.8f);
-				return;
-			}
 			selectedIndex = -1;
-			base.gameObject.SetActive(value: true);
-			base.transform.SetAsLastSibling();
+			selectedRecipeName = null;
+			optionStateSignature = int.MinValue;
+			gameObject.SetActive(true);
+			transform.SetAsLastSibling();
 			slideProgress = 0f;
 			targetOpen = true;
+			nextStateRefreshTime = 0f;
 			if (drawer != null)
 			{
 				drawer.anchoredPosition = drawerClosedPosition;
@@ -141,30 +129,31 @@ namespace DefenseGame
 				canvasGroup.interactable = true;
 				canvasGroup.blocksRaycasts = true;
 			}
-			RefreshOptionVisuals();
+			RefreshOptionsFromBoard(true);
 			PreviewSelectedRecipe();
 		}
 
 		public void Close()
 		{
-			if (base.gameObject.activeSelf)
+			if (!gameObject.activeSelf)
 			{
-				targetOpen = false;
-				if (canvasGroup != null)
-				{
-					canvasGroup.interactable = false;
-				}
-				if (gameController != null)
-				{
-					gameController.SetUltimateRecipePreview(null);
-				}
+				return;
+			}
+			targetOpen = false;
+			if (canvasGroup != null)
+			{
+				canvasGroup.interactable = false;
+			}
+			if (gameController != null)
+			{
+				gameController.SetUltimateRecipePreview(null);
 			}
 		}
 
 		private void Update()
 		{
-			float direction = (targetOpen ? 1f : (-1f));
-			slideProgress = Mathf.Clamp01(slideProgress + direction * Time.unscaledDeltaTime / 0.24f);
+			float direction = targetOpen ? 1f : -1f;
+			slideProgress = Mathf.Clamp01(slideProgress + direction * Time.unscaledDeltaTime / SlideDuration);
 			float eased = 1f - Mathf.Pow(1f - slideProgress, 3f);
 			if (drawer != null)
 			{
@@ -174,148 +163,249 @@ namespace DefenseGame
 			{
 				canvasGroup.alpha = eased;
 			}
+			if (targetOpen && Time.unscaledTime >= nextStateRefreshTime)
+			{
+				nextStateRefreshTime = Time.unscaledTime + RefreshInterval;
+				RefreshOptionsFromBoard(false);
+			}
 			RefreshReadyOutlinePulse();
 			if (!targetOpen && slideProgress <= 0f)
 			{
-				base.gameObject.SetActive(value: false);
+				gameObject.SetActive(false);
+			}
+		}
+
+		private void RefreshOptionsFromBoard(bool force)
+		{
+			UltimateRecipeOption[] refreshed = gameController != null ? gameController.GetRelatedUltimateRecipeOptions() : new UltimateRecipeOption[0];
+			int signature = BuildOptionsSignature(refreshed);
+			if (!force && signature == optionStateSignature)
+			{
+				return;
+			}
+
+			string previousRecipeName = selectedRecipeName;
+			options = refreshed ?? new UltimateRecipeOption[0];
+			optionStateSignature = signature;
+			selectedIndex = FindOptionIndex(previousRecipeName);
+			if (!string.IsNullOrEmpty(previousRecipeName) && selectedIndex < 0)
+			{
+				selectedRecipeName = null;
+				if (gameController != null)
+				{
+					gameController.SetUltimateRecipePreview(null);
+				}
+			}
+			EnsureOptionPool(options.Length);
+			RefreshOptionVisuals();
+		}
+
+		private int FindOptionIndex(string recipeName)
+		{
+			if (string.IsNullOrEmpty(recipeName) || options == null)
+			{
+				return -1;
+			}
+			for (int i = 0; i < options.Length; i++)
+			{
+				if (options[i].recipeName == recipeName)
+				{
+					return i;
+				}
+			}
+			return -1;
+		}
+
+		private void EnsureOptionPool(int requiredCount)
+		{
+			if (optionTemplate == null || optionContent == null)
+			{
+				return;
+			}
+			while (optionButtons.Count < requiredCount)
+			{
+				int poolIndex = optionButtons.Count;
+				Button button = Instantiate(optionTemplate, optionContent);
+				button.name = "UltimateRecipeOptionRuntime_" + poolIndex;
+				button.gameObject.SetActive(true);
+				Text label = button.GetComponentInChildren<Text>(true);
+				button.onClick.RemoveAllListeners();
+				button.onClick.AddListener(delegate { SelectOption(poolIndex); });
+				optionButtons.Add(button);
+				optionLabels.Add(label);
+			}
+			int rows = Mathf.Max(1, Mathf.CeilToInt(requiredCount / 2f));
+			optionContent.sizeDelta = new Vector2(880f, Mathf.Max(330f, rows * 66f + 8f));
+			for (int i = 0; i < optionButtons.Count; i++)
+			{
+				RectTransform rect = optionButtons[i].GetComponent<RectTransform>();
+				if (rect == null)
+				{
+					continue;
+				}
+				rect.anchorMin = new Vector2(0f, 1f);
+				rect.anchorMax = new Vector2(0f, 1f);
+				rect.pivot = new Vector2(0f, 1f);
+				rect.anchoredPosition = new Vector2((i % 2) * 440f, -(i / 2) * 66f);
+				rect.sizeDelta = new Vector2(430f, 60f);
+			}
+		}
+
+		private void EnsureMaterialPool(int requiredCount)
+		{
+			if (detailView == null || detailView.materialTemplate == null || detailView.materialContent == null)
+			{
+				return;
+			}
+			while (materialCards.Count < requiredCount)
+			{
+				int poolIndex = materialCards.Count;
+				Image card = Instantiate(detailView.materialTemplate, detailView.materialContent);
+				card.name = "UltimateRecipeMaterialRuntime_" + poolIndex;
+				card.gameObject.SetActive(true);
+				materialCards.Add(card);
+				materialPortraits.Add(card.transform.Find("Portrait") != null ? card.transform.Find("Portrait").GetComponent<Image>() : null);
+				materialFallbacks.Add(card.transform.Find("Portrait/Fallback") != null ? card.transform.Find("Portrait/Fallback").GetComponent<Text>() : null);
+				materialLabels.Add(card.transform.Find("Label") != null ? card.transform.Find("Label").GetComponent<Text>() : null);
+			}
+			int rows = Mathf.Max(1, Mathf.CeilToInt(requiredCount / 3f));
+			detailView.materialContent.sizeDelta = new Vector2(636f, Mathf.Max(142f, rows * 74f + 8f));
+			for (int i = 0; i < materialCards.Count; i++)
+			{
+				RectTransform rect = materialCards[i].rectTransform;
+				rect.anchorMin = new Vector2(0f, 1f);
+				rect.anchorMax = new Vector2(0f, 1f);
+				rect.pivot = new Vector2(0f, 1f);
+				rect.anchoredPosition = new Vector2((i % 3) * 210f, -(i / 3) * 74f);
+				rect.sizeDelta = new Vector2(196f, 66f);
 			}
 		}
 
 		private void RefreshReadyOutlinePulse()
 		{
-			if (optionButtons == null)
-			{
-				return;
-			}
-			int optionCount = ((options != null) ? options.Length : 0);
 			float pulse = (Mathf.Sin(Time.unscaledTime * 5.2f) + 1f) * 0.5f;
 			Color lowGlow = new Color(0.7f, 0.24f, 1f, 0.72f);
 			Color highGlow = new Color(1f, 0.86f, 0.24f, 1f);
-			for (int i = 0; i < optionButtons.Length; i++)
+			for (int i = 0; i < optionButtons.Count; i++)
 			{
 				Button button = optionButtons[i];
-				if ((Object)(object)button == null)
+				Outline outline = button != null ? button.GetComponent<Outline>() : null;
+				if (outline == null)
 				{
 					continue;
 				}
-				Outline outline = ((Component)(object)button).GetComponent<Outline>();
-				if (!((Object)(object)outline == null))
+				if (i >= options.Length || !options[i].isReady || !button.gameObject.activeSelf)
 				{
-					if (i >= optionCount || !options[i].isReady || !((Component)(object)button).gameObject.activeSelf)
-					{
-						((Shadow)outline).effectColor = Color.clear;
-						continue;
-					}
-					float selectedBoost = ((i == selectedIndex) ? 0.18f : 0f);
-					((Shadow)outline).effectColor = Color.Lerp(lowGlow, highGlow, Mathf.Clamp01(pulse + selectedBoost));
-					float width = 2.5f + pulse * 2.5f + selectedBoost * 3f;
-					((Shadow)outline).effectDistance = new Vector2(width, 0f - width);
+					outline.effectColor = Color.clear;
+					continue;
 				}
+				float selectedBoost = i == selectedIndex ? 0.18f : 0f;
+				outline.effectColor = Color.Lerp(lowGlow, highGlow, Mathf.Clamp01(pulse + selectedBoost));
+				float width = 2.5f + pulse * 2.5f + selectedBoost * 3f;
+				outline.effectDistance = new Vector2(width, -width);
 			}
 		}
 
 		private void SelectOption(int index)
 		{
-			if (index >= 0 && index < options.Length)
+			if (index < 0 || index >= options.Length)
 			{
-				selectedIndex = index;
-				RefreshOptionVisuals();
-				PreviewSelectedRecipe();
+				return;
 			}
+			selectedIndex = index;
+			selectedRecipeName = options[index].recipeName;
+			RefreshOptionVisuals();
+			PreviewSelectedRecipe();
 		}
 
 		private void PreviewSelectedRecipe()
 		{
-			string recipeName = ((selectedIndex >= 0 && selectedIndex < options.Length) ? options[selectedIndex].recipeName : null);
+			string recipeName = selectedIndex >= 0 && selectedIndex < options.Length ? options[selectedIndex].recipeName : null;
 			if (gameController != null)
 			{
-				gameController.SetUltimateRecipePreview(recipeName, previewActive: true);
+				gameController.SetUltimateRecipePreview(recipeName, previewActive: !string.IsNullOrEmpty(recipeName));
 			}
 		}
 
 		private void ConfirmSelection()
 		{
-			if (!(gameController == null) && selectedIndex >= 0 && selectedIndex < options.Length && options[selectedIndex].isReady)
+			if (gameController == null || selectedIndex < 0 || selectedIndex >= options.Length || !options[selectedIndex].isReady)
 			{
-				string recipeName = options[selectedIndex].recipeName;
-				if (gameController.TryMergeUltimateRecipe(recipeName))
-				{
-					Close();
-					return;
-				}
-				gameController.RequestBanner("초월 재료 상태가 변경되었습니다. 다시 선택하세요", new Color(1f, 0.58f, 0.24f), 2f);
-				options = gameController.GetAllUltimateRecipeOptions();
-				selectedIndex = ((options == null || options.Length != 1) ? (-1) : 0);
-				RefreshOptionVisuals();
-				PreviewSelectedRecipe();
+				return;
 			}
+			string recipeName = options[selectedIndex].recipeName;
+			if (gameController.TryMergeUltimateRecipe(recipeName))
+			{
+				Close();
+				return;
+			}
+			gameController.RequestBanner("\ucd08\uc6d4 \uc7ac\ub8cc \uc0c1\ud0dc\uac00 \ubcc0\uacbd\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \ub2e4\uc2dc \uc120\ud0dd\ud558\uc138\uc694", new Color(1f, 0.58f, 0.24f), 2f);
+			RefreshOptionsFromBoard(true);
+			PreviewSelectedRecipe();
 		}
 
 		private void RefreshOptionVisuals()
 		{
-			//IL_01e2: Unknown result type (might be due to invalid IL or missing references)
-			//IL_01e7: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0227: Unknown result type (might be due to invalid IL or missing references)
-			int optionCount = ((options != null) ? options.Length : 0);
 			int readyCount = 0;
-			for (int i = 0; i < optionCount; i++)
+			for (int i = 0; i < options.Length; i++)
 			{
 				if (options[i].isReady)
 				{
 					readyCount++;
 				}
 			}
-			if ((Object)(object)headerText != null)
+			if (headerText != null)
 			{
-				headerText.text = "초월 레시피  READY " + readyCount + " / " + optionCount;
+				headerText.text = "\ucd08\uc6d4 \ub808\uc2dc\ud53c  READY " + readyCount + " / " + options.Length;
 			}
-			if ((Object)(object)instructionText != null)
+			if (instructionText != null)
 			{
-				instructionText.text = ((selectedIndex < 0) ? "레시피를 누르면 보유 재료와 부족한 유닛을 확인할 수 있습니다." : (options[selectedIndex].isReady ? "재료가 모두 준비됐습니다. 보드의 빛나는 재료를 확인하고 실행하세요." : ("부족 재료: " + options[selectedIndex].missingSummary)));
+				instructionText.text = selectedIndex < 0
+					? (options.Length == 0 ? "\ubcf4\ub4dc \uc7ac\ub8cc\uac00 \uc788\ub294 \ucd08\uc6d4 \ub808\uc2dc\ud53c\ub9cc \ubcf4\uc5ec\uc90d\ub2c8\ub2e4." : "\ub808\uc2dc\ud53c\ub97c \ub204\ub974\uba74 \ubcf4\uc720 \uc7ac\ub8cc\uc640 \ubd80\uc871\ud55c \uc720\ub2db\uc744 \ud655\uc778\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.")
+					: (options[selectedIndex].isReady ? "\uc7ac\ub8cc\uac00 \ubaa8\ub450 \uc900\ube44\ub410\uc2b5\ub2c8\ub2e4. \ubcf4\ub4dc\uc758 \ube5b\ub098\ub294 \uc7ac\ub8cc\ub97c \ud655\uc778\ud558\uace0 \uc2e4\ud589\ud558\uc138\uc694." : ("\ubd80\uc871 \uc7ac\ub8cc: " + options[selectedIndex].missingSummary));
 			}
-			RefreshDetailVisual();
-			for (int j = 0; j < optionButtons.Length; j++)
+			for (int i = 0; i < optionButtons.Count; i++)
 			{
-				Button button = optionButtons[j];
-				bool visible = j < optionCount;
-				if ((Object)(object)button == null)
+				bool visible = i < options.Length;
+				Button button = optionButtons[i];
+				button.gameObject.SetActive(visible);
+				if (!visible)
 				{
 					continue;
 				}
-				((Component)(object)button).gameObject.SetActive(visible);
-				if (visible)
+				UltimateRecipeOption option = options[i];
+				bool selected = i == selectedIndex;
+				Color readinessColor = option.isReady ? option.accentColor : new Color(0.36f, 0.4f, 0.58f, 1f);
+				Color baseColor = Color.Lerp(readinessColor, new Color(0.08f, 0.07f, 0.24f, 1f), selected ? 0.36f : 0.76f);
+				Graphic graphic = button.targetGraphic;
+				if (graphic != null)
 				{
-					UltimateRecipeOption option = options[j];
-					bool selected = j == selectedIndex;
-					Color readinessColor = (option.isReady ? option.accentColor : new Color(0.36f, 0.4f, 0.58f, 1f));
-					Color baseColor = Color.Lerp(readinessColor, new Color(0.08f, 0.07f, 0.24f, 1f), selected ? 0.36f : 0.76f);
-					Graphic graphic = ((Selectable)button).targetGraphic;
-					if ((Object)(object)graphic != null)
-					{
-						graphic.color = baseColor;
-					}
-					ColorBlock colors = ((Selectable)button).colors;
-					colors.normalColor = baseColor;
-					colors.highlightedColor = Color.Lerp(baseColor, Color.white, 0.16f);
-					colors.selectedColor = Color.Lerp(baseColor, Color.white, 0.22f);
-					((Selectable)button).colors = colors;
-					if (j < optionLabels.Length && (Object)(object)optionLabels[j] != null)
-					{
-						string state = (option.isReady ? "READY" : (option.progress + "/" + option.required));
-						optionLabels[j].text = (selected ? "▶ " : string.Empty) + "[" + state + "] " + option.displayName + "\n결과  " + Compact(option.resultSummary, 32) + "\n" + (option.isReady ? ("소모  " + Compact(option.materialSummary, 46)) : ("부족  " + Compact(option.missingSummary, 46)));
-						((Graphic)optionLabels[j]).color = (selected ? new Color(1f, 0.94f, 0.58f) : Color.white);
-					}
+					graphic.color = baseColor;
+				}
+				ColorBlock colors = button.colors;
+				colors.normalColor = baseColor;
+				colors.highlightedColor = Color.Lerp(baseColor, Color.white, 0.16f);
+				colors.selectedColor = Color.Lerp(baseColor, Color.white, 0.22f);
+				button.colors = colors;
+				Text label = optionLabels[i];
+				if (label != null)
+				{
+					label.text = option.isReady
+						? "[READY] " + option.displayName + "\n" + option.progress + "/" + option.required
+						: option.displayName + "\n" + option.progress + "/" + option.required + " \u00b7 " + option.missingMaterialCount + "\uac1c \ubd80\uc871";
+					label.color = selected ? new Color(1f, 0.94f, 0.58f) : Color.white;
 				}
 			}
-			bool canConfirm = selectedIndex >= 0 && selectedIndex < optionCount && options[selectedIndex].isReady;
-			if ((Object)(object)confirmButton != null)
+			bool canConfirm = selectedIndex >= 0 && selectedIndex < options.Length && options[selectedIndex].isReady;
+			if (confirmButton != null)
 			{
-				((Selectable)confirmButton).interactable = canConfirm;
+				confirmButton.interactable = canConfirm;
 			}
-			if ((Object)(object)confirmLabel != null)
+			if (confirmLabel != null)
 			{
-				confirmLabel.text = (canConfirm ? "선택한 초월 실행" : "레시피를 선택하세요");
+				confirmLabel.text = canConfirm ? "\uc120\ud0dd\ud55c \ucd08\uc6d4 \uc2e4\ud589" : "\ub808\uc2dc\ud53c\ub97c \uc120\ud0dd\ud558\uc138\uc694";
 			}
+			RefreshDetailVisual();
 		}
 
 		private void RefreshDetailVisual()
@@ -324,12 +414,11 @@ namespace DefenseGame
 			{
 				return;
 			}
-			bool hasSelection = selectedIndex >= 0 && selectedIndex < ((options != null) ? options.Length : 0);
 			if (detailView.panel != null)
 			{
 				detailView.panel.gameObject.SetActive(true);
 			}
-			if (!hasSelection)
+			if (selectedIndex < 0 || selectedIndex >= options.Length)
 			{
 				SetDetailEmptyState();
 				return;
@@ -342,7 +431,8 @@ namespace DefenseGame
 			}
 			if (detailView.resultState != null)
 			{
-				detailView.resultState.text = option.isReady ? "READY - \ucd08\uc6d4 \uc18c\ud658 \uac00\ub2a5" : ("\uc9c4\ud589 " + option.progress + "/" + option.required);
+				bool randomResult = !string.IsNullOrEmpty(option.resultSummary) && option.resultSummary.Contains("/");
+				detailView.resultState.text = randomResult ? "\ub79c\ub364 \uacb0\uacfc: " + option.resultSummary : (option.isReady ? "READY - \ucd08\uc6d4 \uc18c\ud658 \uac00\ub2a5" : ("\uc9c4\ud589 " + option.progress + "/" + option.required));
 				detailView.resultState.color = option.isReady ? new Color(1f, 0.86f, 0.24f) : new Color(0.74f, 0.84f, 1f);
 			}
 			if (detailView.materialHeader != null)
@@ -354,32 +444,29 @@ namespace DefenseGame
 				detailView.missingText.text = option.isReady ? "\ubaa8\ub4e0 \uc7ac\ub8cc \uc900\ube44 \uc644\ub8cc" : ("\ubd80\uc871 \uc7ac\ub8cc: " + option.missingSummary);
 				detailView.missingText.color = option.isReady ? new Color(0.38f, 1f, 0.72f) : new Color(1f, 0.56f, 0.36f);
 			}
-			int materialCount = (option.materials != null) ? option.materials.Length : 0;
-			for (int i = 0; detailView.materialCards != null && i < detailView.materialCards.Length; i++)
+			int materialCount = option.materials != null ? option.materials.Length : 0;
+			EnsureMaterialPool(materialCount);
+			for (int i = 0; i < materialCards.Count; i++)
 			{
 				bool visible = i < materialCount;
-				Image card = detailView.materialCards[i];
-				if (card != null)
-				{
-					card.gameObject.SetActive(visible);
-				}
+				Image card = materialCards[i];
+				card.gameObject.SetActive(visible);
 				if (!visible)
 				{
 					continue;
 				}
 				UltimateRecipeMaterialView material = option.materials[i];
-				if (card != null)
+				card.color = Color.Lerp(material.isReady ? new Color(0.10f, 0.35f, 0.24f) : new Color(0.38f, 0.13f, 0.20f), material.accentColor, 0.20f);
+				ApplyPortrait(materialPortraits[i], materialFallbacks[i], material.definition, material.accentColor, material.displayName);
+				if (materialLabels[i] != null)
 				{
-					card.color = Color.Lerp(material.isReady ? new Color(0.10f, 0.35f, 0.24f) : new Color(0.38f, 0.13f, 0.20f), material.accentColor, 0.20f);
+					materialLabels[i].text = (material.isReady ? "\u2713 " : "\u2715 ") + material.displayName + "\n" + material.ownedCount + " / " + material.requiredCount;
+					materialLabels[i].color = material.isReady ? Color.white : new Color(1f, 0.78f, 0.72f);
 				}
-				Text fallback = (detailView.materialFallbacks != null && i < detailView.materialFallbacks.Length) ? detailView.materialFallbacks[i] : null;
-				Image portrait = (detailView.materialPortraits != null && i < detailView.materialPortraits.Length) ? detailView.materialPortraits[i] : null;
-				ApplyPortrait(portrait, fallback, material.definition, material.accentColor, material.displayName);
-				if (detailView.materialLabels != null && i < detailView.materialLabels.Length && detailView.materialLabels[i] != null)
-				{
-					detailView.materialLabels[i].text = (material.isReady ? "\u2713 " : "\u2715 ") + material.displayName + "\n" + material.ownedCount + " / " + material.requiredCount;
-					detailView.materialLabels[i].color = material.isReady ? Color.white : new Color(1f, 0.78f, 0.72f);
-				}
+			}
+			if (detailView.materialScroll != null)
+			{
+				detailView.materialScroll.verticalNormalizedPosition = 1f;
 			}
 		}
 
@@ -401,15 +488,36 @@ namespace DefenseGame
 			{
 				detailView.missingText.text = "\ub808\uc2dc\ud53c \uc120\ud0dd \ud6c4 \uc7ac\ub8cc\ub97c \ud655\uc778\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.";
 			}
-			if (detailView.materialCards != null)
+			for (int i = 0; i < materialCards.Count; i++)
 			{
-				for (int i = 0; i < detailView.materialCards.Length; i++)
+				materialCards[i].gameObject.SetActive(false);
+			}
+		}
+
+		private static int BuildOptionsSignature(UltimateRecipeOption[] recipeOptions)
+		{
+			unchecked
+			{
+				int hash = 17;
+				int count = recipeOptions != null ? recipeOptions.Length : 0;
+				for (int i = 0; i < count; i++)
 				{
-					if (detailView.materialCards[i] != null)
+					UltimateRecipeOption option = recipeOptions[i];
+					hash = hash * 31 + (option.recipeName != null ? option.recipeName.GetHashCode() : 0);
+					hash = hash * 31 + option.progress;
+					hash = hash * 31 + option.required;
+					hash = hash * 31 + option.missingMaterialCount;
+					hash = hash * 31 + (option.isReady ? 1 : 0);
+					if (option.materials != null)
 					{
-						detailView.materialCards[i].gameObject.SetActive(false);
+						for (int j = 0; j < option.materials.Length; j++)
+						{
+							hash = hash * 31 + option.materials[j].ownedCount;
+							hash = hash * 31 + option.materials[j].requiredCount;
+						}
 					}
 				}
+				return hash;
 			}
 		}
 
@@ -421,7 +529,7 @@ namespace DefenseGame
 				portrait.sprite = sprite;
 				portrait.type = Image.Type.Simple;
 				portrait.preserveAspect = sprite != null;
-				portrait.color = (sprite != null) ? Color.white : Color.Lerp(accentColor, Color.white, 0.32f);
+				portrait.color = sprite != null ? Color.white : Color.Lerp(accentColor, Color.white, 0.32f);
 			}
 			if (fallback != null)
 			{
@@ -437,16 +545,7 @@ namespace DefenseGame
 				return "?";
 			}
 			string trimmed = value.Trim();
-			return (trimmed.Length <= 2) ? trimmed.ToUpperInvariant() : trimmed.Substring(0, 2).ToUpperInvariant();
-		}
-
-		private static string Compact(string value, int maxLength)
-		{
-			if (string.IsNullOrWhiteSpace(value) || value.Length <= maxLength)
-			{
-				return string.IsNullOrWhiteSpace(value) ? "-" : value;
-			}
-			return value.Substring(0, Mathf.Max(1, maxLength - 3)) + "...";
+			return trimmed.Length <= 2 ? trimmed.ToUpperInvariant() : trimmed.Substring(0, 2).ToUpperInvariant();
 		}
 
 		private void OnDisable()

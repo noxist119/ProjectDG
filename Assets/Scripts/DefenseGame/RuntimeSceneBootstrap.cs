@@ -1113,27 +1113,34 @@ namespace DefenseGame
 			Text instruction = CreateText(((Component)(object)drawer).transform, font, new Color(0.9f, 0.9f, 1f), "UltimateRecipeSelectionInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -94f), new Vector2(760f, 30f), "전체 레시피와 부족한 재료를 언제든 확인할 수 있습니다.", 20, TextAnchor.MiddleCenter, bold: false);
 			Text labelText;
 			Button closeButton = CreateButton(((Component)(object)drawer).transform, font, "UltimateRecipeSelectionClose", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-28f, -40f), new Vector2(58f, 58f), new Color(0.9f, 0.26f, 0.34f, 0.98f), Color.white, null, out labelText);
-			Button[] optionButtons = (Button[])(object)new Button[11];
-			Text[] optionLabels = (Text[])(object)new Text[11];
-			for (int i = 0; i < 11; i++)
-			{
-				int column = i % 2;
-				int row = i / 2;
-				float x = ((column == 0) ? (-226f) : 226f);
-				float y = -136f - (float)row * 57f;
-				optionButtons[i] = CreateButton(((Component)(object)drawer).transform, font, "UltimateRecipeOption_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(x, y), new Vector2(430f, 52f), new Color(0.12f, 0.12f, 0.34f, 0.98f), Color.white, null, out var optionLabel);
-				Outline readyOutline = ((Component)(object)optionButtons[i]).gameObject.AddComponent<Outline>();
-				((Shadow)readyOutline).effectColor = Color.clear;
-				((Shadow)readyOutline).effectDistance = new Vector2(3f, -3f);
-				((Shadow)readyOutline).useGraphicAlpha = false;
-				optionLabel.alignment = TextAnchor.MiddleLeft;
-				optionLabel.resizeTextForBestFit = true;
-				optionLabel.resizeTextMinSize = 12;
-				optionLabel.resizeTextMaxSize = 15;
-				((Graphic)optionLabel).rectTransform.offsetMin = new Vector2(16f, 6f);
-				((Graphic)optionLabel).rectTransform.offsetMax = new Vector2(-12f, -6f);
-				optionLabels[i] = optionLabel;
-			}
+			Image optionViewport = CreatePanel(((Component)(object)drawer).transform, "UltimateRecipeOptionViewport", new Vector2(0f, -126f), new Vector2(900f, 316f), new Color(0.02f, 0.03f, 0.12f, 0.36f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: false);
+			((Component)(object)optionViewport).gameObject.AddComponent<RectMask2D>();
+			ScrollRect optionScroll = ((Component)(object)optionViewport).gameObject.AddComponent<ScrollRect>();
+			optionScroll.horizontal = false;
+			optionScroll.vertical = true;
+			optionScroll.movementType = ScrollRect.MovementType.Clamped;
+			GameObject optionContentObject = new GameObject("UltimateRecipeOptionContent", typeof(RectTransform));
+			optionContentObject.transform.SetParent(((Component)(object)optionViewport).transform, worldPositionStays: false);
+			RectTransform optionContent = optionContentObject.GetComponent<RectTransform>();
+			optionContent.anchorMin = new Vector2(0.5f, 1f);
+			optionContent.anchorMax = new Vector2(0.5f, 1f);
+			optionContent.pivot = new Vector2(0.5f, 1f);
+			optionContent.sizeDelta = new Vector2(880f, 316f);
+			optionContent.anchoredPosition = Vector2.zero;
+			optionScroll.viewport = ((Graphic)optionViewport).rectTransform;
+			optionScroll.content = optionContent;
+			Text optionLabel;
+			Button optionTemplate = CreateButton(optionContent, font, "UltimateRecipeOptionTemplate", string.Empty, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, new Vector2(430f, 60f), new Color(0.12f, 0.12f, 0.34f, 0.98f), Color.white, null, out optionLabel);
+			Outline readyOutline = ((Component)(object)optionTemplate).gameObject.AddComponent<Outline>();
+			((Shadow)readyOutline).effectColor = Color.clear;
+			((Shadow)readyOutline).effectDistance = new Vector2(3f, -3f);
+			((Shadow)readyOutline).useGraphicAlpha = false;
+			optionLabel.alignment = TextAnchor.MiddleLeft;
+			optionLabel.resizeTextForBestFit = true;
+			optionLabel.resizeTextMinSize = 13;
+			optionLabel.resizeTextMaxSize = 17;
+			((Graphic)optionLabel).rectTransform.offsetMin = new Vector2(16f, 6f);
+			((Graphic)optionLabel).rectTransform.offsetMax = new Vector2(-12f, -6f);
 			Image detailPanel = CreatePanel(((Component)(object)drawer).transform, "UltimateRecipeDetailPanel", new Vector2(0f, 112f), new Vector2(900f, 226f), new Color(0.075f, 0.10f, 0.28f, 0.99f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), rounded: true, shadow: true);
 			CreatePanel(((Component)(object)detailPanel).transform, "DetailTopLine", new Vector2(0f, -4f), new Vector2(846f, 5f), new Color(0.94f, 0.70f, 0.22f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: false);
 			Image resultCard = CreatePanel(((Component)(object)detailPanel).transform, "ResultCard", new Vector2(24f, -32f), new Vector2(188f, 172f), new Color(0.28f, 0.16f, 0.48f, 0.98f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: true, shadow: false);
@@ -1143,21 +1150,26 @@ namespace DefenseGame
 			Text resultState = CreateText(((Component)(object)resultCard).transform, font, new Color(1f, 0.86f, 0.24f), "ResultState", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 18f), new Vector2(172f, 38f), "READY", 14, TextAnchor.MiddleCenter, bold: true);
 			Text materialHeader = CreateText(((Component)(object)detailPanel).transform, font, new Color(0.72f, 0.92f, 1f), "MaterialHeader", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(230f, -21f), new Vector2(300f, 28f), "Materials", 18, TextAnchor.MiddleLeft, bold: true);
 			Text missingText = CreateText(((Component)(object)detailPanel).transform, font, new Color(0.38f, 1f, 0.72f), "MaterialMissingText", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-20f, 14f), new Vector2(630f, 26f), "Ready", 15, TextAnchor.MiddleRight, bold: true);
-			Image[] materialCards = new Image[5];
-			Image[] materialPortraits = new Image[5];
-			Text[] materialFallbacks = new Text[5];
-			Text[] materialLabels = new Text[5];
-			for (int i = 0; i < materialCards.Length; i++)
-			{
-				int column = i % 3;
-				int materialRow = i / 3;
-				float x = 230f + column * 210f;
-				float y = -52f - materialRow * 76f;
-				materialCards[i] = CreatePanel(((Component)(object)detailPanel).transform, "MaterialCard_" + i, new Vector2(x, y), new Vector2(196f, 66f), new Color(0.13f, 0.30f, 0.25f, 0.98f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: true, shadow: false);
-				materialPortraits[i] = CreatePanel(((Component)(object)materialCards[i]).transform, "Portrait", new Vector2(8f, -8f), new Vector2(50f, 50f), new Color(0.75f, 0.90f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: true, shadow: false);
-				materialFallbacks[i] = CreateText(((Component)(object)materialPortraits[i]).transform, font, new Color(0.10f, 0.18f, 0.30f), "Fallback", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(46f, 40f), "?", 16, TextAnchor.MiddleCenter, bold: true);
-				materialLabels[i] = CreateText(((Component)(object)materialCards[i]).transform, font, Color.white, "Label", new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(0f, 0.5f), new Vector2(64f, 0f), new Vector2(-70f, 54f), "Material", 14, TextAnchor.MiddleLeft, bold: true);
-			}
+			Image materialViewport = CreatePanel(((Component)(object)detailPanel).transform, "UltimateRecipeMaterialViewport", new Vector2(230f, -48f), new Vector2(640f, 142f), new Color(0f, 0f, 0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: false, shadow: false);
+			((Component)(object)materialViewport).gameObject.AddComponent<RectMask2D>();
+			ScrollRect materialScroll = ((Component)(object)materialViewport).gameObject.AddComponent<ScrollRect>();
+			materialScroll.horizontal = false;
+			materialScroll.vertical = true;
+			materialScroll.movementType = ScrollRect.MovementType.Clamped;
+			GameObject materialContentObject = new GameObject("UltimateRecipeMaterialContent", typeof(RectTransform));
+			materialContentObject.transform.SetParent(((Component)(object)materialViewport).transform, worldPositionStays: false);
+			RectTransform materialContent = materialContentObject.GetComponent<RectTransform>();
+			materialContent.anchorMin = new Vector2(0f, 1f);
+			materialContent.anchorMax = new Vector2(0f, 1f);
+			materialContent.pivot = new Vector2(0f, 1f);
+			materialContent.sizeDelta = new Vector2(636f, 142f);
+			materialContent.anchoredPosition = Vector2.zero;
+			materialScroll.viewport = ((Graphic)materialViewport).rectTransform;
+			materialScroll.content = materialContent;
+			Image materialTemplate = CreatePanel(materialContent, "UltimateRecipeMaterialTemplate", Vector2.zero, new Vector2(196f, 66f), new Color(0.13f, 0.30f, 0.25f, 0.98f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: true, shadow: false);
+			Image materialPortrait = CreatePanel(((Component)(object)materialTemplate).transform, "Portrait", new Vector2(8f, -8f), new Vector2(50f, 50f), new Color(0.75f, 0.90f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: true, shadow: false);
+			CreateText(((Component)(object)materialPortrait).transform, font, new Color(0.10f, 0.18f, 0.30f), "Fallback", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(46f, 40f), "?", 16, TextAnchor.MiddleCenter, bold: true);
+			CreateText(((Component)(object)materialTemplate).transform, font, Color.white, "Label", new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(0f, 0.5f), new Vector2(64f, 0f), new Vector2(-70f, 54f), "Material", 14, TextAnchor.MiddleLeft, bold: true);
 			UltimateRecipeDetailView detailView = new UltimateRecipeDetailView
 			{
 				panel = detailPanel,
@@ -1167,16 +1179,15 @@ namespace DefenseGame
 				resultState = resultState,
 				materialHeader = materialHeader,
 				missingText = missingText,
-				materialCards = materialCards,
-				materialPortraits = materialPortraits,
-				materialFallbacks = materialFallbacks,
-				materialLabels = materialLabels
+				materialContent = materialContent,
+				materialTemplate = materialTemplate,
+				materialScroll = materialScroll
 			};
 			Text confirmLabel;
 			Button confirmButton = CreateButton(((Component)(object)drawer).transform, font, "UltimateRecipeConfirmButton", "레시피를 선택하세요", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 28f), new Vector2(500f, 68f), new Color(0.72f, 0.24f, 0.94f, 0.98f), Color.white, null, out confirmLabel);
 			confirmLabel.fontSize = 25;
 			UltimateRecipeSelectionUI selection = root.AddComponent<UltimateRecipeSelectionUI>();
-			selection.Configure(gameController, ((Graphic)drawer).rectTransform, group, blockerButton, header, instruction, optionButtons, optionLabels, closeButton, confirmButton, confirmLabel, detailView);
+			selection.Configure(gameController, ((Graphic)drawer).rectTransform, group, blockerButton, header, instruction, optionContent, optionTemplate, optionScroll, closeButton, confirmButton, confirmLabel, detailView);
 			root.SetActive(value: false);
 			return selection;
 		}

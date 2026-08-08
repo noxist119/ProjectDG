@@ -3468,6 +3468,13 @@ namespace DefenseGame
                 : new UltimateRecipeOption[0];
         }
 
+        public UltimateRecipeOption[] GetRelatedUltimateRecipeOptions()
+        {
+            return boardManager != null
+                ? boardManager.GetRelatedUltimateRecipeOptions(characterDatabase)
+                : new UltimateRecipeOption[0];
+        }
+
         public void SetUltimateRecipePreview(string recipeName, bool previewActive = false)
         {
             if (boardManager != null)

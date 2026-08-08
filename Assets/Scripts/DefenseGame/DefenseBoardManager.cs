@@ -506,6 +506,12 @@ namespace DefenseGame
 			return options.ToArray();
 		}
 
+		public UltimateRecipeOption[] GetRelatedUltimateRecipeOptions(CharacterDatabase database = null)
+		{
+			UltimateRecipeOption[] allOptions = GetAllUltimateRecipeOptions(database);
+			return allOptions.Where((UltimateRecipeOption option) => option.isReady || option.progress > 0 || (option.materials != null && option.materials.Sum((UltimateRecipeMaterialView material) => material.ownedCount) > 0)).ToArray();
+		}
+
 		private UltimateRecipeMaterialView[] BuildUltimateRecipeMaterialViews(UltimateMergeRecipe recipe, CharacterDatabase database)
 		{
 			if (recipe == null)
