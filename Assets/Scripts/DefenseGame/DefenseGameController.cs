@@ -632,11 +632,19 @@ namespace DefenseGame
         public string CurrentStateSummary => CombatModeDisplayName + " | Gold " + Gold + " | Life " + Life + " | Round " + CurrentRound + (IsBossRound ? " Boss" : string.Empty);
         public int LastRoundClearGoldReward { get; private set; }
         public int LastYahtzeeTicketReward { get; private set; }
+        public int RunYahtzeeTicketsEarned { get; private set; }
         public MergeResultInfo? LastMergeResult { get; private set; }
 
         public static bool IsYahtzeeTicketMilestoneRound(int round, bool bossRound)
         {
             return bossRound && round > 0 && round % 10 == 0;
+        }
+
+        public static bool TryRegisterYahtzeeTicketMilestone(ISet<int> awardedRounds, int round, bool bossRound)
+        {
+            return awardedRounds != null &&
+                   IsYahtzeeTicketMilestoneRound(round, bossRound) &&
+                   awardedRounds.Add(round);
         }
 
         public bool HasAwardedYahtzeeTicketForRound(int round)
@@ -3997,18 +4005,13 @@ namespace DefenseGame
 
         private void TryAwardYahtzeeTicketForBossClear(int round, bool bossRound)
         {
-            if (!IsYahtzeeTicketMilestoneRound(round, bossRound))
-            {
-                LastYahtzeeTicketReward = 0;
-                return;
-            }
-
-            if (!awardedYahtzeeTicketMilestoneRounds.Add(round))
+            if (!TryRegisterYahtzeeTicketMilestone(awardedYahtzeeTicketMilestoneRounds, round, bossRound))
             {
                 return;
             }
 
             LastYahtzeeTicketReward = 1;
+            RunYahtzeeTicketsEarned++;
             OnYahtzeeTicketMilestoneCleared?.Invoke(round);
             AddRunHighlightCard("\uC58F\uCC0C \uD2F0\uCF13", "R" + round + " \uBCF4\uC2A4 \uD074\uB9AC\uC5B4 +1");
             OnBannerRequested?.Invoke(
@@ -4278,6 +4281,7 @@ namespace DefenseGame
             RestoreFateChoiceSlowMotion();
             awardedYahtzeeTicketMilestoneRounds.Clear();
             LastYahtzeeTicketReward = 0;
+            RunYahtzeeTicketsEarned = 0;
             fateCardChoicePanelOpen = false;
             damageByHero.Clear();
             currentRoundDamageByHero.Clear();

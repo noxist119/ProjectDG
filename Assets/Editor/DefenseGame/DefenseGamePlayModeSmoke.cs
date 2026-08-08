@@ -456,6 +456,24 @@ namespace DefenseGame.Editor
                 notes.Add("Yahtzee ticket boss milestone validation failed.");
             }
 
+            HashSet<int> ticketMilestones = new HashSet<int>();
+            int runYahtzeeTicketsEarned = 0;
+            if (DefenseGameController.TryRegisterYahtzeeTicketMilestone(ticketMilestones, 10, true)) runYahtzeeTicketsEarned++;
+            bool yahtzeeTicketDuplicateBlocked = !DefenseGameController.TryRegisterYahtzeeTicketMilestone(ticketMilestones, 10, true);
+            bool yahtzeeTicketRegularRoundBlocked = !DefenseGameController.TryRegisterYahtzeeTicketMilestone(ticketMilestones, 11, false);
+            if (DefenseGameController.TryRegisterYahtzeeTicketMilestone(ticketMilestones, 20, true)) runYahtzeeTicketsEarned++;
+            if (DefenseGameController.TryRegisterYahtzeeTicketMilestone(ticketMilestones, 30, true)) runYahtzeeTicketsEarned++;
+            bool yahtzeeTicketRunAccumulationValid = runYahtzeeTicketsEarned == 3 &&
+                                                     ticketMilestones.Count == 3 &&
+                                                     yahtzeeTicketDuplicateBlocked &&
+                                                     yahtzeeTicketRegularRoundBlocked;
+            ticketMilestones.Clear();
+            bool yahtzeeTicketNewRunResetValid = DefenseGameController.TryRegisterYahtzeeTicketMilestone(ticketMilestones, 10, true);
+            if (!yahtzeeTicketRunAccumulationValid || !yahtzeeTicketNewRunResetValid)
+            {
+                notes.Add("Yahtzee ticket duplicate, run accumulation, or new-run reset validation failed.");
+            }
+
             bool earlyMiniShopChoicesValid = ValidateRoundTieredMiniShop(out string earlyMiniShopSummary);
             if (!earlyMiniShopChoicesValid)
             {
@@ -525,7 +543,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -554,6 +572,8 @@ namespace DefenseGame.Editor
                 yahtzeeModeUiValid = yahtzeeModeUiValid,
                 yahtzeeMultiplierLogicValid = yahtzeeMultiplierLogicValid,
                 yahtzeeTicketMilestoneLogicValid = yahtzeeTicketMilestoneLogicValid,
+                yahtzeeTicketRunAccumulationValid = yahtzeeTicketRunAccumulationValid,
+                yahtzeeTicketNewRunResetValid = yahtzeeTicketNewRunResetValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
                 earlyMiniShopSummary = earlyMiniShopSummary,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
@@ -950,6 +970,8 @@ namespace DefenseGame.Editor
             public bool yahtzeeModeUiValid;
             public bool yahtzeeMultiplierLogicValid;
             public bool yahtzeeTicketMilestoneLogicValid;
+            public bool yahtzeeTicketRunAccumulationValid;
+            public bool yahtzeeTicketNewRunResetValid;
             public bool earlyMiniShopChoicesValid;
             public string earlyMiniShopSummary;
             public bool simultaneousDeathPolicyValid;
