@@ -437,7 +437,9 @@ namespace DefenseGame.Editor
                                                YahtzeeProgressionSystem.ResolveMultiplier(4, 4, 4) == 4 &&
                                                YahtzeeProgressionSystem.ResolveMultiplier(5, 5, 5) == 5 &&
                                                YahtzeeProgressionSystem.ResolveMultiplier(6, 6, 6) == 6 &&
-                                               YahtzeeProgressionSystem.ResolveMultiplier(6, 6, 5) == 1;
+                                               YahtzeeProgressionSystem.ResolveMultiplier(6, 6, 5) == 1 &&
+                                               YahtzeeProgressionSystem.AreAllDiceHeld(true, true, true) &&
+                                               !YahtzeeProgressionSystem.AreAllDiceHeld(true, true, false);
             if (!yahtzeeMultiplierLogicValid)
             {
                 notes.Add("얏찌 트리플 x1~x6 배수 계산이 올바르지 않습니다.");

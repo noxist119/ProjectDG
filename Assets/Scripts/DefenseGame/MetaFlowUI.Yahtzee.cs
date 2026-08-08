@@ -160,10 +160,10 @@ namespace DefenseGame
             if (yahtzeeStartButton != null) yahtzeeStartButton.interactable = yahtzeeProgression.TicketCount > 0;
             if (yahtzeeHoldButton != null)
             {
-                yahtzeeHoldButton.interactable = active && yahtzeeProgression.HoldCount < 2;
+                yahtzeeHoldButton.interactable = active && yahtzeeProgression.HoldCount < 2 && yahtzeeProgression.HasPendingHold;
                 SetButtonLabel(yahtzeeHoldButton, "선택 주사위 홀드 · " + yahtzeeProgression.NextHoldCost + " DIA");
             }
-            if (yahtzeeRerollButton != null) yahtzeeRerollButton.interactable = active && outgameProgression != null && outgameProgression.Gold >= YahtzeeProgressionSystem.RerollGoldCost;
+            if (yahtzeeRerollButton != null) yahtzeeRerollButton.interactable = active && !yahtzeeProgression.AllDiceHeld && outgameProgression != null && outgameProgression.Gold >= YahtzeeProgressionSystem.RerollGoldCost;
             if (yahtzeeConfirmButton != null)
             {
                 yahtzeeConfirmButton.interactable = active;

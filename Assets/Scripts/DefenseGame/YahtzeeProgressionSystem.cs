@@ -57,6 +57,8 @@ namespace DefenseGame
         public int HoldCount { get { EnsureMode(); return data.holdCount; } }
         public int RerollCount { get { EnsureMode(); return data.rerollCount; } }
         public int SessionGoldSpent { get { EnsureMode(); return data.sessionGoldSpent; } }
+        public bool AllDiceHeld { get { EnsureMode(); return AreAllDiceHeld(held[0], held[1], held[2]); } }
+        public bool HasPendingHold { get { EnsureMode(); return pending[0] || pending[1] || pending[2]; } }
         public int NextHoldCost => HoldCount <= 0 ? FirstHoldDiamondCost : SecondHoldDiamondCost;
         public int CurrentMultiplier
         {
@@ -81,6 +83,11 @@ namespace DefenseGame
         public static int ResolveMultiplier(int first, int second, int third)
         {
             return first >= 1 && first <= 6 && first == second && second == third ? first : 1;
+        }
+
+        public static bool AreAllDiceHeld(bool first, bool second, bool third)
+        {
+            return first && second && third;
         }
 
         public bool TryStartSession(out string message)
@@ -151,6 +158,11 @@ namespace DefenseGame
         {
             EnsureMode();
             if (!data.sessionActive) { message = "먼저 얏찌를 시작하세요."; return false; }
+            if (AllDiceHeld)
+            {
+                message = "모든 주사위가 HOLD되어 있습니다. 결과를 확정하세요.";
+                return false;
+            }
             if (progression == null || !progression.TrySpendGold(RerollGoldCost))
             {
                 message = "골드가 부족합니다. 현재 주사위 상태는 유지됩니다.";
