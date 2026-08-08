@@ -12,7 +12,7 @@ namespace DefenseGame
         private Text yahtzeeTicketText, yahtzeeGoldText, yahtzeeDiamondText;
         private Text yahtzeeMultiplierText, yahtzeeSessionText, yahtzeeStatusText;
         private Text yahtzeeChestCountText, yahtzeeRewardSummaryText;
-        private Button yahtzeeStartButton, yahtzeeHoldButton, yahtzeeRerollButton, yahtzeeAdvanceButton, yahtzeeConfirmButton;
+        private Button yahtzeeStartButton, yahtzeeHoldButton, yahtzeeRerollButton, yahtzeeConfirmButton;
         private Button yahtzeeOpenOneButton, yahtzeeOpenTenButton, yahtzeeOpenAllButton;
         private Image yahtzeeRewardPanel;
         private readonly Button[] yahtzeeDiceButtons = new Button[3];
@@ -78,7 +78,6 @@ namespace DefenseGame
             yahtzeeRerollButton = CreateButton(panel.transform, "YahtzeeRerollButton", "재굴림 · 100 GOLD", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 0f), new Vector2(18f, 108f), new Vector2(380f, 76f), new Color(0.16f, 0.70f, 0.88f, 1f), HandleYahtzeeRerollPressed, 23);
             yahtzeeStartButton = CreateButton(panel.transform, "YahtzeeStartButton", "티켓 1장으로 시작", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 18f), new Vector2(500f, 82f), new Color(0.20f, 0.76f, 0.42f, 1f), HandleYahtzeeStartPressed, 28);
             yahtzeeConfirmButton = CreateButton(panel.transform, "YahtzeeConfirmButton", "현재 결과 확정", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 18f), new Vector2(500f, 82f), new Color(0.96f, 0.48f, 0.16f, 1f), HandleYahtzeeConfirmPressed, 28);
-            yahtzeeAdvanceButton = CreateButton(panel.transform, "YahtzeeAdvanceButton", "NEXT DIE", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 18f), new Vector2(500f, 82f), new Color(0.20f, 0.76f, 0.42f, 1f), HandleYahtzeeAdvancePressed, 28);
         }
 
         private void BuildYahtzeeChestPanel(Transform parent)
@@ -174,75 +173,6 @@ namespace DefenseGame
             if (yahtzeeOpenOneButton != null) yahtzeeOpenOneButton.interactable = hasChest;
             if (yahtzeeOpenTenButton != null) yahtzeeOpenTenButton.interactable = yahtzeeProgression.ChestCount >= 10;
             if (yahtzeeOpenAllButton != null) yahtzeeOpenAllButton.interactable = hasChest;
-            RefreshYahtzeeSequentialState(active);
-        }
-
-        // The run is intentionally sequential: roll one die, then decide whether to pay for a hold.
-        // Keeping this as a final visual pass also guarantees the action buttons cannot expose invalid states.
-        private void RefreshYahtzeeSequentialState(bool active)
-        {
-            int currentDie = yahtzeeProgression.CurrentDieIndex;
-            bool rolling = active && currentDie < 3;
-
-            if (yahtzeeSessionText != null)
-            {
-                yahtzeeSessionText.text = active
-                    ? (rolling
-                        ? "주사위 " + (currentDie + 1) + "/3  ·  재굴림 " + yahtzeeProgression.RerollCount + "회  ·  홀드 " + yahtzeeProgression.HoldCount + "/2"
-                        : "세 주사위 확정 완료 · 결과를 확인하세요")
-                    : "티켓 1장 · 첫 굴림 무료";
-            }
-
-            for (int i = 0; i < 3; i++)
-            {
-                int value = yahtzeeProgression.GetDie(i);
-                bool isCurrent = rolling && i == currentDie;
-                bool isHeld = active && yahtzeeProgression.IsHeld(i);
-                bool isPast = active && i < currentDie;
-                if (yahtzeeDiceFaces[i] != null)
-                {
-                    yahtzeeDiceFaces[i].sprite = RollRollUiResource.LoadSprite(value > 0
-                        ? "Roll/icon-roll-synergy-dice-" + value
-                        : "Roll/icon-roll-synergy-dice-1-disabled");
-                    yahtzeeDiceFaces[i].color = value > 0 ? Color.white : new Color(0.65f, 0.72f, 0.88f, 0.52f);
-                }
-                if (yahtzeeDiceStateTexts[i] != null)
-                {
-                    yahtzeeDiceStateTexts[i].text = isHeld ? "HOLD" : isCurrent ? "현재 주사위" : isPast ? "확정" : "대기";
-                    yahtzeeDiceStateTexts[i].color = isHeld ? new Color(1f, 0.86f, 0.30f) : isCurrent ? new Color(0.48f, 1f, 0.88f) : Color.white;
-                }
-                if (yahtzeeDiceButtons[i] != null)
-                {
-                    yahtzeeDiceButtons[i].interactable = isCurrent;
-                    Image background = yahtzeeDiceButtons[i].GetComponent<Image>();
-                    if (background != null) background.color = isHeld ? new Color(0.92f, 0.60f, 0.18f) : isCurrent ? new Color(0.18f, 0.72f, 0.62f) : new Color(0.24f, 0.42f, 0.78f);
-                    RectTransform rect = yahtzeeDiceButtons[i].transform as RectTransform;
-                    if (rect != null)
-                    {
-                        rect.DOKill();
-                        rect.DOAnchorPos(yahtzeeDiceBasePositions[i] + (isHeld || isCurrent ? new Vector2(0f, 20f) : Vector2.zero), 0.16f).SetEase(Ease.OutCubic).SetUpdate(true);
-                    }
-                }
-            }
-
-            yahtzeeStartButton?.gameObject.SetActive(!active);
-            yahtzeeHoldButton?.gameObject.SetActive(rolling);
-            yahtzeeRerollButton?.gameObject.SetActive(rolling);
-            yahtzeeAdvanceButton?.gameObject.SetActive(rolling);
-            yahtzeeConfirmButton?.gameObject.SetActive(active && !rolling);
-            if (yahtzeeStartButton != null) yahtzeeStartButton.interactable = yahtzeeProgression.TicketCount > 0;
-            if (yahtzeeHoldButton != null)
-            {
-                yahtzeeHoldButton.interactable = rolling && yahtzeeProgression.HoldCount < 2;
-                SetButtonLabel(yahtzeeHoldButton, "현재 주사위 홀드 · " + yahtzeeProgression.NextHoldCost + " DIA");
-            }
-            if (yahtzeeRerollButton != null)
-            {
-                yahtzeeRerollButton.interactable = rolling && outgameProgression != null && outgameProgression.Gold >= YahtzeeProgressionSystem.RerollGoldCost;
-                SetButtonLabel(yahtzeeRerollButton, "다시 굴리기 · " + YahtzeeProgressionSystem.RerollGoldCost + " GOLD");
-            }
-            if (yahtzeeAdvanceButton != null) SetButtonLabel(yahtzeeAdvanceButton, currentDie == 2 ? "마지막 주사위 확정" : "다음 주사위로");
-            if (yahtzeeConfirmButton != null) SetButtonLabel(yahtzeeConfirmButton, "x" + yahtzeeProgression.CurrentMultiplier + " 결과 확정");
         }
 
         private void RefreshYahtzeeDie(int index, bool active)
@@ -252,7 +182,7 @@ namespace DefenseGame
             int value = yahtzeeProgression.GetDie(index);
             if (yahtzeeDiceFaces[index] != null)
             {
-                yahtzeeDiceFaces[index].sprite = RollRollUiResource.LoadSprite("Roll/icon-roll-synergy-dice-" + value);
+                yahtzeeDiceFaces[index].sprite = RollRollUiResource.LoadSprite(value > 0 ? "Roll/icon-roll-synergy-dice-" + value : "Roll/icon-roll-synergy-dice-1-disabled");
                 yahtzeeDiceFaces[index].color = active ? Color.white : new Color(0.65f, 0.72f, 0.88f, 0.52f);
             }
             if (yahtzeeDiceStateTexts[index] != null)
@@ -295,22 +225,12 @@ namespace DefenseGame
             bool success = yahtzeeProgression.TryCommitHold(out string message);
             SetYahtzeeStatus(message, success);
             RefreshYahtzee();
-            if (success) AnimateYahtzeeDiceRoll();
         }
 
         private void HandleYahtzeeRerollPressed()
         {
             if (yahtzeeProgression == null) return;
             bool success = yahtzeeProgression.TryReroll(out string message);
-            SetYahtzeeStatus(message, success);
-            RefreshYahtzee();
-            if (success) AnimateYahtzeeDiceRoll();
-        }
-
-        private void HandleYahtzeeAdvancePressed()
-        {
-            if (yahtzeeProgression == null) return;
-            bool success = yahtzeeProgression.TryAdvanceDie(out string message);
             SetYahtzeeStatus(message, success);
             RefreshYahtzee();
             if (success) AnimateYahtzeeDiceRoll();
@@ -389,10 +309,9 @@ namespace DefenseGame
 
         private void AnimateYahtzeeDiceRoll()
         {
-            int currentDie = yahtzeeProgression != null ? yahtzeeProgression.CurrentDieIndex : -1;
             for (int i = 0; i < yahtzeeDiceButtons.Length; i++)
             {
-                if (yahtzeeDiceButtons[i] == null || i != currentDie) continue;
+                if (yahtzeeDiceButtons[i] == null || yahtzeeProgression.IsHeld(i)) continue;
                 Transform target = yahtzeeDiceButtons[i].transform;
                 target.DOKill();
                 target.localScale = Vector3.one * 0.82f;

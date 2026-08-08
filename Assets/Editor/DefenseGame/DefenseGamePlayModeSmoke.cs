@@ -394,8 +394,14 @@ namespace DefenseGame.Editor
                     .Count(button => button != null && button.name.StartsWith("YahtzeeDie_", StringComparison.Ordinal));
                 int chestOpenButtons = UnityEngine.Object.FindObjectsOfType<Button>(true)
                     .Count(button => button != null && (button.name == "YahtzeeOpenOneButton" || button.name == "YahtzeeOpenTenButton" || button.name == "YahtzeeOpenAllButton"));
-                Button yahtzeeAdvance = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                    .FirstOrDefault(button => button != null && button.name == "YahtzeeAdvanceButton");
+                Button yahtzeeHold = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .FirstOrDefault(button => button != null && button.name == "YahtzeeHoldButton");
+                Button yahtzeeReroll = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .FirstOrDefault(button => button != null && button.name == "YahtzeeRerollButton");
+                Button yahtzeeConfirm = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .FirstOrDefault(button => button != null && button.name == "YahtzeeConfirmButton");
+                bool yahtzeeAdvanceRemoved = !UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .Any(button => button != null && button.name == "YahtzeeAdvanceButton");
                 int diceFaceCount = UnityEngine.Object.FindObjectsOfType<Image>(true)
                     .Count(image => image != null && image.name == "Face" && image.transform.parent != null && image.transform.parent.name.StartsWith("YahtzeeDie_", StringComparison.Ordinal) && image.sprite != null);
                 Text yahtzeeStatus = UnityEngine.Object.FindObjectsOfType<Text>(true)
@@ -409,17 +415,32 @@ namespace DefenseGame.Editor
                                      diceCount == 3 &&
                                      diceFaceCount == 3 &&
                                      chestOpenButtons == 3 &&
-                                     yahtzeeAdvance != null &&
+                                     yahtzeeHold != null &&
+                                     yahtzeeReroll != null &&
+                                     yahtzeeConfirm != null &&
+                                     yahtzeeAdvanceRemoved &&
                                      yahtzeeStatus != null &&
                                      yahtzeeProgression != null;
                 if (!yahtzeeModeUiValid)
                 {
-                    notes.Add("YATZY DETAIL overlay=" + (yahtzeeOverlay != null && yahtzeeOverlay.gameObject.activeSelf) + ", modal=" + (yahtzeeModal != null) + ", dice=" + diceCount + ", faces=" + diceFaceCount + ", chest=" + chestOpenButtons + ", advance=" + (yahtzeeAdvance != null) + ", status=" + (yahtzeeStatus != null) + ", system=" + (yahtzeeProgression != null));
+                    notes.Add("YATZY DETAIL overlay=" + (yahtzeeOverlay != null && yahtzeeOverlay.gameObject.activeSelf) + ", modal=" + (yahtzeeModal != null) + ", dice=" + diceCount + ", faces=" + diceFaceCount + ", chest=" + chestOpenButtons + ", hold=" + (yahtzeeHold != null) + ", reroll=" + (yahtzeeReroll != null) + ", confirm=" + (yahtzeeConfirm != null) + ", advanceRemoved=" + yahtzeeAdvanceRemoved + ", status=" + (yahtzeeStatus != null) + ", system=" + (yahtzeeProgression != null));
                 }
             }
             if (!yahtzeeModeUiValid)
             {
                 notes.Add("얏찌 전체화면, 3개 주사위, 상자 1/10/전체 개봉 또는 진행 저장 시스템이 유효하지 않습니다.");
+            }
+
+            bool yahtzeeMultiplierLogicValid = YahtzeeProgressionSystem.ResolveMultiplier(1, 1, 1) == 1 &&
+                                               YahtzeeProgressionSystem.ResolveMultiplier(2, 2, 2) == 2 &&
+                                               YahtzeeProgressionSystem.ResolveMultiplier(3, 3, 3) == 3 &&
+                                               YahtzeeProgressionSystem.ResolveMultiplier(4, 4, 4) == 4 &&
+                                               YahtzeeProgressionSystem.ResolveMultiplier(5, 5, 5) == 5 &&
+                                               YahtzeeProgressionSystem.ResolveMultiplier(6, 6, 6) == 6 &&
+                                               YahtzeeProgressionSystem.ResolveMultiplier(6, 6, 5) == 1;
+            if (!yahtzeeMultiplierLogicValid)
+            {
+                notes.Add("얏찌 트리플 x1~x6 배수 계산이 올바르지 않습니다.");
             }
 
             bool earlyMiniShopChoicesValid = ValidateRoundTieredMiniShop(out string earlyMiniShopSummary);
@@ -491,7 +512,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && earlyMiniShopChoicesValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -518,6 +539,7 @@ namespace DefenseGame.Editor
                 resultRewardIconsValid = resultRewardIconsValid,
                 rankingPageValid = rankingPageValid,
                 yahtzeeModeUiValid = yahtzeeModeUiValid,
+                yahtzeeMultiplierLogicValid = yahtzeeMultiplierLogicValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
                 earlyMiniShopSummary = earlyMiniShopSummary,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
@@ -912,6 +934,7 @@ namespace DefenseGame.Editor
             public bool resultRewardIconsValid;
             public bool rankingPageValid;
             public bool yahtzeeModeUiValid;
+            public bool yahtzeeMultiplierLogicValid;
             public bool earlyMiniShopChoicesValid;
             public string earlyMiniShopSummary;
             public bool simultaneousDeathPolicyValid;
