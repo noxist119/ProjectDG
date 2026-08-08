@@ -4562,7 +4562,7 @@ namespace DefenseGame
             earlyPitySummon = false;
             int summonRateRound = GetSummonRateRound();
             CharacterDefinition selected;
-            selected = characterDatabase.GetRandomSummonableCharacter(summonRateRound, true);
+            selected = characterDatabase.GetRandomCombatDeckSummonableCharacter(summonRateRound);
             return ApplyFateSummonIntervention(selected);
         }
 
