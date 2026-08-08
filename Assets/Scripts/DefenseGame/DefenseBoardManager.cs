@@ -22,9 +22,9 @@ namespace DefenseGame
 
 			public readonly string[] requiredCharacterIds;
 
-			public readonly string[] resultCharacterIds;
+			public readonly string resultCharacterId;
 
-			public UltimateMergeRecipe(string name, string displayText, int mythicCount, int legendaryCount, int epicCount, string[] requiredCharacterIds, string[] resultCharacterIds = null)
+			public UltimateMergeRecipe(string name, string displayText, int mythicCount, int legendaryCount, int epicCount, string[] requiredCharacterIds, string resultCharacterId)
 			{
 				this.name = name;
 				this.displayText = displayText;
@@ -32,23 +32,19 @@ namespace DefenseGame
 				this.legendaryCount = legendaryCount;
 				this.epicCount = epicCount;
 				this.requiredCharacterIds = requiredCharacterIds ?? new string[0];
-				this.resultCharacterIds = resultCharacterIds ?? new string[0];
+				this.resultCharacterId = resultCharacterId ?? string.Empty;
 			}
 		}
 
-		private static readonly UltimateMergeRecipe[] UltimateRecipes = new UltimateMergeRecipe[11]
+		private static readonly UltimateMergeRecipe[] UltimateRecipes =
 		{
-			new UltimateMergeRecipe("Fever Engine Rite", "Mythic Fighter + Mana Link + Focus Dealer", 0, 0, 0, new string[3] { "hero_31", "hero_13", "hero_10" }, new string[2] { "hero_51", "hero_53" }),
-			new UltimateMergeRecipe("Volcanic Core Rite", "Mythic Core + Area Damage + Shield Break", 0, 0, 0, new string[3] { "hero_32", "hero_01", "hero_09" }, new string[1] { "hero_52" }),
-			new UltimateMergeRecipe("Soul Battery Rite", "Drain + Mana + Heal + Guard + Speed", 0, 0, 0, new string[5] { "hero_11", "hero_13", "hero_02", "hero_05", "hero_14" }, new string[1] { "hero_54" }),
-			new UltimateMergeRecipe("Venom Bulwark Rite", "Mythic Venom + Poison + Freeze Zone", 0, 0, 0, new string[3] { "hero_33", "hero_04", "hero_22" }, new string[2] { "hero_52", "hero_54" }),
-			new UltimateMergeRecipe("Thunder Control Rite", "Mythic Fighter + Life Chain + Petrify", 0, 0, 0, new string[3] { "hero_31", "hero_07", "hero_08" }, new string[1] { "hero_51" }),
-			new UltimateMergeRecipe("Iron Bastion Rite", "Mythic Combat + Shield (완화 조합)", 0, 0, 0, new string[2] { "hero_31", "hero_05" }, new string[1] { "hero_55" }),
-			new UltimateMergeRecipe("Clockwork Barrage Rite", "Mythic Wolf + Battery (완화 조합)", 0, 0, 0, new string[2] { "hero_32", "hero_13" }, new string[1] { "hero_56" }),
-			new UltimateMergeRecipe("Fractured Arsenal Rite", "Mythic Infection + Assassin (완화 조합)", 0, 0, 0, new string[2] { "hero_33", "hero_12" }, new string[1] { "hero_57" }),
-			new UltimateMergeRecipe("Crown Overflow Rite", "Mythic 2 + Legendary 1", 2, 1, 0, null, new string[3] { "hero_51", "hero_52", "hero_53" }),
-			new UltimateMergeRecipe("Eclipse Overflow Rite", "Mythic 1 + Legendary 1 + Epic 1", 1, 1, 1, null, new string[7] { "hero_51", "hero_52", "hero_53", "hero_54", "hero_55", "hero_56", "hero_57" }),
-			new UltimateMergeRecipe("Dragon Overflow Rite", "Mythic 2 + Epic 2", 2, 0, 2, null, new string[2] { "hero_53", "hero_54" })
+			new UltimateMergeRecipe("Thunder Control Rite", "Mythic Fighter + Life Chain + Petrify", 0, 0, 0, new string[3] { "hero_31", "hero_07", "hero_08" }, "hero_51"),
+			new UltimateMergeRecipe("Volcanic Core Rite", "Mythic Core + Area Damage + Shield Break", 0, 0, 0, new string[3] { "hero_32", "hero_01", "hero_09" }, "hero_52"),
+			new UltimateMergeRecipe("Fever Engine Rite", "Mythic Fighter + Mana Link + Focus Dealer", 0, 0, 0, new string[3] { "hero_31", "hero_13", "hero_10" }, "hero_53"),
+			new UltimateMergeRecipe("Soul Battery Rite", "Drain + Mana + Heal + Guard + Speed", 0, 0, 0, new string[5] { "hero_11", "hero_13", "hero_02", "hero_05", "hero_14" }, "hero_54"),
+			new UltimateMergeRecipe("Iron Bastion Rite", "Mythic Combat + Shield (완화 조합)", 0, 0, 0, new string[2] { "hero_31", "hero_05" }, "hero_55"),
+			new UltimateMergeRecipe("Clockwork Barrage Rite", "Mythic Wolf + Battery (완화 조합)", 0, 0, 0, new string[2] { "hero_32", "hero_13" }, "hero_56"),
+			new UltimateMergeRecipe("Fractured Arsenal Rite", "Mythic Infection + Assassin (완화 조합)", 0, 0, 0, new string[2] { "hero_33", "hero_12" }, "hero_57")
 		};
 
 		[SerializeField]
@@ -454,14 +450,12 @@ namespace DefenseGame
 				UltimateMergeRecipe recipe = UltimateRecipes[i];
 				if (recipe != null && CanSatisfyUltimateRecipe(recipe) && HasAvailableUltimateResult(database, recipe))
 				{
-					List<CharacterDefinition> results = (from character in ResolveUltimateMergeResultCandidates(database, recipe)
-						where !IsBlockedTranscendentResult(character)
-						select character).ToList();
-					string resultSummary = ((results.Count > 0) ? string.Join(" / ", results.Select((CharacterDefinition character) => character.displayName).Distinct().ToArray()) : "결과 확인 필요");
-					Color accentColor = ((results.Count > 0) ? results[0].accentColor : CharacterGradeUtility.GetColor(CharacterGrade.Transcendent, new Color(0.92f, 0.42f, 1f)));
+					CharacterDefinition result = GetUltimateResultDefinition(database, recipe);
+					string resultSummary = (result != null) ? result.displayName : "결과 유닛 확인 필요";
+					Color accentColor = (result != null) ? result.accentColor : CharacterGradeUtility.GetColor(CharacterGrade.Transcendent, new Color(0.92f, 0.42f, 1f));
 					string materialSummary = ((recipe.requiredCharacterIds != null && recipe.requiredCharacterIds.Length != 0) ? string.Join(" + ", recipe.requiredCharacterIds.Select((string id) => ResolveCharacterName(database, id)).ToArray()) : BuildGradeRecipeStatus(recipe));
 					UltimateRecipeMaterialView[] materials = BuildUltimateRecipeMaterialViews(recipe, database);
-					options.Add(new UltimateRecipeOption(recipe.name, CompactRecipeName(recipe.name), materialSummary, resultSummary, accentColor, isReady: true, GetUltimateRecipeRequiredCount(recipe), GetUltimateRecipeRequiredCount(recipe), string.Empty, (results.Count > 0) ? results[0] : null, materials, 0, i));
+					options.Add(new UltimateRecipeOption(recipe.name, CompactRecipeName(recipe.name), materialSummary, resultSummary, accentColor, isReady: true, GetUltimateRecipeRequiredCount(recipe), GetUltimateRecipeRequiredCount(recipe), string.Empty, recipe.resultCharacterId, result, materials, 0, i));
 				}
 			}
 			return options.ToArray();
@@ -475,18 +469,16 @@ namespace DefenseGame
 				UltimateMergeRecipe recipe = UltimateRecipes[i];
 				if (recipe != null)
 				{
-					List<CharacterDefinition> results = (from character in ResolveUltimateMergeResultCandidates(database, recipe)
-						where !IsBlockedTranscendentResult(character)
-						select character).ToList();
-					string resultSummary = ((results.Count > 0) ? string.Join(" / ", results.Select((CharacterDefinition character) => character.displayName).Distinct().ToArray()) : "결과 유닛 확인 필요");
-					Color accentColor = ((results.Count > 0) ? results[0].accentColor : CharacterGradeUtility.GetColor(CharacterGrade.Transcendent, new Color(0.92f, 0.42f, 1f)));
+					CharacterDefinition result = GetUltimateResultDefinition(database, recipe);
+					string resultSummary = (result != null) ? result.displayName : "결과 유닛 확인 필요";
+					Color accentColor = (result != null) ? result.accentColor : CharacterGradeUtility.GetColor(CharacterGrade.Transcendent, new Color(0.92f, 0.42f, 1f));
 					string materialSummary = ((recipe.requiredCharacterIds != null && recipe.requiredCharacterIds.Length != 0) ? string.Join(" + ", recipe.requiredCharacterIds.Select((string id) => ResolveCharacterName(database, id)).ToArray()) : BuildGradeRecipeStatus(recipe));
 					int progress = GetUltimateRecipeProgress(recipe);
 					int required = Mathf.Max(1, GetUltimateRecipeRequiredCount(recipe));
 					bool ready = progress >= required && HasAvailableUltimateResult(database, recipe);
 					UltimateRecipeMaterialView[] materials = BuildUltimateRecipeMaterialViews(recipe, database);
 					int missingMaterialCount = materials.Sum((UltimateRecipeMaterialView material) => Mathf.Max(0, material.requiredCount - material.ownedCount));
-					options.Add(new UltimateRecipeOption(recipe.name, CompactRecipeName(recipe.name), materialSummary, resultSummary, accentColor, ready, progress, required, BuildMissingRecipeMaterialSummary(recipe, database), (results.Count > 0) ? results[0] : null, materials, missingMaterialCount, i));
+					options.Add(new UltimateRecipeOption(recipe.name, CompactRecipeName(recipe.name), materialSummary, resultSummary, accentColor, ready, progress, required, BuildMissingRecipeMaterialSummary(recipe, database), recipe.resultCharacterId, result, materials, missingMaterialCount, i));
 				}
 			}
 			options.Sort(delegate(UltimateRecipeOption left, UltimateRecipeOption right)
@@ -691,45 +683,23 @@ namespace DefenseGame
 
 		private CharacterDefinition ResolveUltimateMergeResult(CharacterDatabase database, UltimateMergeRecipe recipe)
 		{
-			List<CharacterDefinition> candidates = (from character in ResolveUltimateMergeResultCandidates(database, recipe)
-				where !IsBlockedTranscendentResult(character)
-				select character).ToList();
-			if (candidates.Count > 0)
-			{
-				return candidates[UnityEngine.Random.Range(0, candidates.Count)];
-			}
-			CharacterDefinition mythicFallback = database.GetRandomCharacterByGrade(CharacterGrade.Mythic);
-			return (mythicFallback != null && !IsBlockedTranscendentResult(mythicFallback)) ? mythicFallback : null;
+			CharacterDefinition result = GetUltimateResultDefinition(database, recipe);
+			return IsDeployableUltimateResult(result) && !IsBlockedTranscendentResult(result) ? result : null;
 		}
 
-		private List<CharacterDefinition> ResolveUltimateMergeResultCandidates(CharacterDatabase database, UltimateMergeRecipe recipe)
+		private static CharacterDefinition GetUltimateResultDefinition(CharacterDatabase database, UltimateMergeRecipe recipe)
 		{
-			List<CharacterDefinition> candidates = new List<CharacterDefinition>();
-			if (database == null)
+			if (database == null || recipe == null || string.IsNullOrWhiteSpace(recipe.resultCharacterId))
 			{
-				return candidates;
+				return null;
 			}
-			if (recipe != null && recipe.resultCharacterIds != null && recipe.resultCharacterIds.Length != 0)
-			{
-				for (int i = 0; i < recipe.resultCharacterIds.Length; i++)
-				{
-					CharacterDefinition candidate = database.GetCharacterById(recipe.resultCharacterIds[i]);
-					if (IsDeployableUltimateResult(candidate) && !candidates.Contains(candidate))
-					{
-						candidates.Add(candidate);
-					}
-				}
-			}
-			if (candidates.Count == 0)
-			{
-				candidates.AddRange(database.GetCharactersByGrade(CharacterGrade.Transcendent));
-			}
-			return candidates;
+			CharacterDefinition result = database.GetCharacterById(recipe.resultCharacterId);
+			return IsDeployableUltimateResult(result) ? result : null;
 		}
 
 		private static bool IsDeployableUltimateResult(CharacterDefinition character)
 		{
-			return character != null;
+			return character != null && character.grade == CharacterGrade.Transcendent;
 		}
 
 		private bool IsBlockedTranscendentResult(CharacterDefinition character)
@@ -747,7 +717,7 @@ namespace DefenseGame
 			{
 				return true;
 			}
-			return ResolveUltimateMergeResultCandidates(database, recipe).Any((CharacterDefinition character) => !IsBlockedTranscendentResult(character));
+			return ResolveUltimateMergeResult(database, recipe) != null;
 		}
 
 		private bool HasBlockedReadyUltimateRecipe(CharacterDatabase database)

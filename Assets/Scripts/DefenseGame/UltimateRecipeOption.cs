@@ -52,7 +52,9 @@ namespace DefenseGame
 
 		public readonly string missingSummary;
 
-		public readonly CharacterDefinition primaryResultDefinition;
+		public readonly string resultCharacterId;
+
+		public readonly CharacterDefinition resultDefinition;
 
 		public readonly UltimateRecipeMaterialView[] materials;
 
@@ -60,7 +62,7 @@ namespace DefenseGame
 
 		public readonly int definitionOrder;
 
-		public UltimateRecipeOption(string recipeName, string displayName, string materialSummary, string resultSummary, Color accentColor, bool isReady = true, int progress = 0, int required = 0, string missingSummary = "", CharacterDefinition primaryResultDefinition = null, UltimateRecipeMaterialView[] materials = null, int missingMaterialCount = 0, int definitionOrder = 0)
+		public UltimateRecipeOption(string recipeName, string displayName, string materialSummary, string resultSummary, Color accentColor, bool isReady = true, int progress = 0, int required = 0, string missingSummary = "", string resultCharacterId = "", CharacterDefinition resultDefinition = null, UltimateRecipeMaterialView[] materials = null, int missingMaterialCount = 0, int definitionOrder = 0)
 		{
 			this.recipeName = recipeName;
 			this.displayName = displayName;
@@ -71,7 +73,8 @@ namespace DefenseGame
 			this.progress = progress;
 			this.required = required;
 			this.missingSummary = missingSummary ?? string.Empty;
-			this.primaryResultDefinition = primaryResultDefinition;
+			this.resultCharacterId = resultCharacterId ?? string.Empty;
+			this.resultDefinition = resultDefinition;
 			this.materials = materials ?? new UltimateRecipeMaterialView[0];
 			this.missingMaterialCount = Mathf.Max(0, missingMaterialCount);
 			this.definitionOrder = Mathf.Max(0, definitionOrder);

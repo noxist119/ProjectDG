@@ -61,18 +61,25 @@
 
 적용 위치: `Assets/Scripts/DefenseGame/DefenseBoardManager.cs`
 
+### Transcendent Recipe Rule
+
+- 모든 초월 레시피는 하나의 고정된 초월 결과만 생성한다.
+- 레시피 결과 RNG, 복수 결과 배열, 등급 수량만으로 결과를 뽑는 Overflow 레시피는 사용하지 않는다.
+- 같은 재료 조합은 모든 런에서 같은 초월 유닛을 생성한다.
+- 고급 초월 유닛은 이후 별도의 고정 레시피로만 추가한다.
+- 인게임에는 현재 보드 재료와 연결된 레시피만 표시한다.
+
 현재 구현된 영웅 ID 기준으로 레시피를 재정리했다. 영웅 번호는 오른쪽 기획표의 `프리팹이름 -> 변경된영웅번호` 기준으로 재배치했으며, 빈 예약 슬롯은 레시피 재료로 쓰지 않는다. 현재 초월 결과군은 `hero_51~hero_57`이며 이후 `hero_58~hero_100` 구간으로 확장한다.
 
 | 레시피 | 필요 영웅 | 결과 | 컨셉 |
 | --- | --- | --- | --- |
-| Fever Engine Rite | hero_31 + hero_13 + hero_10 | hero_51 또는 hero_53 | 전투/마나/공격속도 빌드 |
+| Fever Engine Rite | hero_31 + hero_13 + hero_10 | hero_53 | 전투/마나/공격속도 빌드 |
 | Volcanic Core Rite | hero_32 + hero_01 + hero_09 | hero_52 | 늑대/광역/전방 관통 빌드 |
 | Soul Battery Rite | hero_11 + hero_13 + hero_02 + hero_05 + hero_14 | hero_54 | 흡혈/마나/힐/방어막/속도 빌드 |
-| Venom Bulwark Rite | hero_33 + hero_04 + hero_22 | hero_52 또는 hero_54 | 감염/독/반사 탱커 빌드 |
 | Thunder Control Rite | hero_31 + hero_07 + hero_08 | hero_51 | 전투/사신/석화 제어 빌드 |
-| Iron Bastion Rite | hero_31 + hero_05 + hero_22 | hero_55 Dice Armor | 전투/방패/가시방패 방어 빌드 |
-| Clockwork Barrage Rite | hero_32 + hero_13 + hero_10 | hero_56 Dice Auto | 늑대/배터리/바람 자동 폭격 빌드 |
-| Fractured Arsenal Rite | hero_33 + hero_12 + hero_06 | hero_57 Dice Broken | 감염/암살/돌격 변칙 사격 빌드 |
+| Iron Bastion Rite | hero_31 + hero_05 | hero_55 Dice Armor | 전투/방패 방어 빌드 |
+| Clockwork Barrage Rite | hero_32 + hero_13 | hero_56 Dice Auto | 늑대/배터리 자동 폭격 빌드 |
+| Fractured Arsenal Rite | hero_33 + hero_12 | hero_57 Dice Broken | 감염/암살 변칙 사격 빌드 |
 
 다음 개선:
 

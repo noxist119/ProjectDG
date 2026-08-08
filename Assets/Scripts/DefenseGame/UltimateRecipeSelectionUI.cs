@@ -424,15 +424,14 @@ namespace DefenseGame
 				return;
 			}
 			UltimateRecipeOption option = options[selectedIndex];
-			ApplyPortrait(detailView.resultPortrait, detailView.resultFallback, option.primaryResultDefinition, option.accentColor, option.resultSummary);
+			ApplyPortrait(detailView.resultPortrait, detailView.resultFallback, option.resultDefinition, option.accentColor, option.resultSummary);
 			if (detailView.resultName != null)
 			{
 				detailView.resultName.text = option.resultSummary;
 			}
 			if (detailView.resultState != null)
 			{
-				bool randomResult = !string.IsNullOrEmpty(option.resultSummary) && option.resultSummary.Contains("/");
-				detailView.resultState.text = randomResult ? "\ub79c\ub364 \uacb0\uacfc: " + option.resultSummary : (option.isReady ? "READY - \ucd08\uc6d4 \uc18c\ud658 \uac00\ub2a5" : ("\uc9c4\ud589 " + option.progress + "/" + option.required));
+				detailView.resultState.text = option.isReady ? "READY - \ucd08\uc6d4 \uc18c\ud658 \uac00\ub2a5" : ("\uc9c4\ud589 " + option.progress + "/" + option.required);
 				detailView.resultState.color = option.isReady ? new Color(1f, 0.86f, 0.24f) : new Color(0.74f, 0.84f, 1f);
 			}
 			if (detailView.materialHeader != null)

@@ -818,7 +818,33 @@ namespace DefenseGame.Editor
         {
             UltimateRecipeOption[] options = controller != null ? controller.GetAllUltimateRecipeOptions() : Array.Empty<UltimateRecipeOption>();
             UltimateRecipeOption[] relatedOptions = controller != null ? controller.GetRelatedUltimateRecipeOptions() : Array.Empty<UltimateRecipeOption>();
-            bool structuredDataValid = options.Length > 0;
+            Dictionary<string, string> expectedResults = new Dictionary<string, string>
+            {
+                { "Thunder Control Rite", "hero_51" },
+                { "Volcanic Core Rite", "hero_52" },
+                { "Fever Engine Rite", "hero_53" },
+                { "Soul Battery Rite", "hero_54" },
+                { "Iron Bastion Rite", "hero_55" },
+                { "Clockwork Barrage Rite", "hero_56" },
+                { "Fractured Arsenal Rite", "hero_57" }
+            };
+            string[] removedRecipeNames =
+            {
+                "Venom Bulwark Rite",
+                "Crown Overflow Rite",
+                "Eclipse Overflow Rite",
+                "Dragon Overflow Rite"
+            };
+            bool fixedResultDataValid = options.All(option =>
+                expectedResults.TryGetValue(option.recipeName, out string expectedResultId) &&
+                option.resultCharacterId == expectedResultId &&
+                option.resultDefinition != null &&
+                option.resultDefinition.id == expectedResultId &&
+                option.resultDefinition.grade == CharacterGrade.Transcendent &&
+                option.resultSummary == option.resultDefinition.displayName) &&
+                expectedResults.All(pair => options.Any(option => option.recipeName == pair.Key && option.resultCharacterId == pair.Value)) &&
+                removedRecipeNames.All(recipeName => options.All(option => option.recipeName != recipeName));
+            bool structuredDataValid = options.Length > 0 && fixedResultDataValid;
             for (int i = 0; i < options.Length; i++)
             {
                 UltimateRecipeOption option = options[i];
@@ -881,7 +907,7 @@ namespace DefenseGame.Editor
                 .FirstOrDefault(button => button != null && button.name == "UltimateRecipeConfirmButton");
             UltimateRecipeSelectionUI selection = UnityEngine.Object.FindObjectOfType<UltimateRecipeSelectionUI>(true);
             bool layoutValid = detailPanel != null && optionContent != null && optionTemplate != null && materialContent != null && materialTemplate != null && resultPortrait != null && confirmButton != null && selection != null;
-            summary = "all=" + options.Length + ", related=" + relatedOptions.Length + ", relatedFilter=" + relatedFilterValid + ", zeroHidden=" + hiddenZeroProgressValid + ", dynamicOptionContent=" + (optionContent != null) + ", dynamicMaterialContent=" + (materialContent != null) + ", selection=" + (selection != null) + ", confirm=" + (confirmButton != null);
+            summary = "all=" + options.Length + ", fixedResults=" + fixedResultDataValid + ", related=" + relatedOptions.Length + ", relatedFilter=" + relatedFilterValid + ", zeroHidden=" + hiddenZeroProgressValid + ", dynamicOptionContent=" + (optionContent != null) + ", dynamicMaterialContent=" + (materialContent != null) + ", selection=" + (selection != null) + ", confirm=" + (confirmButton != null);
             return structuredDataValid && relatedFilterValid && hiddenZeroProgressValid && layoutValid;
         }
 
