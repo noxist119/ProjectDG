@@ -78,12 +78,25 @@
 | `hero_33` | 최후의 맹독 | 죽을 때 전방에 10초 독극물 지대 생성, 초당 80 피해 | 초당 피해 |
 | `hero_51` | 감전 일격 | 공격력 300% 피해 + 3초 스턴 | 스턴 시간 |
 | `hero_52` | 용암 구체 | 공격력 300% 피해 + 3m 반경 용암지역 5초 생성, 초당 30 피해 | 장판 초당 피해 |
-| `hero_53` | 전투 가속 | 8초 동안 공격속도 50% 증가 | 지속 시간 |
+| `hero_53` | 전투 가속 | 8초 동안 공격속도 100% 증가 | 지속 시간 |
 | `hero_54` | 수호 도발 | 3m 반경 적을 5초 도발, 받는 피해 50% 감소 | 피해 감소율 |
 | `hero_55` Dice Armor | 철벽 돌진 | 공격력 150% 피해 + 10m 밀치기, 시전마다 피해 감소 5% 누적(최대 40%) | 피해량 |
-| `hero_56` Dice Auto | 격라운드 폭격 | 소환 다음 라운드부터 기동/휴식 반복, 기동 시 공격력 420%·반경 4.5m 폭격 | 피해량 |
+| `hero_56` Dice Auto | 격라운드 폭격 | 소환 다음 라운드부터 REST/ACTIVE 교대. REST는 공격하지 않고 Mana 0, ACTIVE는 Mana 50%로 시작해 평타당 Max Mana 15%를 회복합니다. Mana가 가득 찰 때마다 공격력 420%·반경 4.5m 광역 폭격을 가하며 ACTIVE 중 추가 폭격할 수 있습니다. | 피해량 |
 | `hero_57` Dice Broken | 불규칙 난사 | 무작위 적에게 공격력 120% 탄환 5발, 같은 대상 중복 가능 | 피해량 |
 
+## Transcendent Balance Identity — Current Seven Results
+
+| Hero | Current balance identity |
+| --- | --- |
+| hero_51 | High Control / Damage |
+| hero_52 | High AoE Damage |
+| hero_53 | Apex Sustained DPS |
+| hero_54 | Entry Tank |
+| hero_55 | Mid Tank |
+| hero_56 | Apex High-Risk Burst / AoE |
+| hero_57 | High Variance DPS |
+
+이 구분은 현재 구현된 초월 7종 사이의 전투 역할 및 Balance 방향입니다. 영구적인 캐릭터 등급 체계가 아니며, 이후 초월 추가와 실제 플레이 테스트 결과에 따라 조정할 수 있습니다.
 ## 소환 스킬 결정
 
 `hero_21`의 소환체는 `Dice_Pawn`을 사용한다. 소환체는 스킬을 사용할 때마다 필드에 임시로 나오며, 라운드 종료 시 사라져야 한다.
