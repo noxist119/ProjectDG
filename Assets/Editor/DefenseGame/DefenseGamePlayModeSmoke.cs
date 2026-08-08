@@ -508,6 +508,25 @@ namespace DefenseGame.Editor
                 notes.Add("OverrideMaterial/ResetMaterial 애니메이션 이벤트의 적용·원본 복구 검증에 실패했습니다. " + animationMaterialEventsSummary);
             }
 
+            CharacterDatabase hero56Database = UnityEngine.Object.FindObjectOfType<CharacterDatabase>();
+            CharacterDefinition hero56 = hero56Database != null ? hero56Database.GetCharacterById("hero_56") : null;
+            SkillDefinition hero56Skill = hero56 != null && hero56.skills != null && hero56.skills.Count > 0 ? hero56.skills[0] : null;
+            bool diceAutoCycleValid = hero56Skill != null &&
+                                      hero56Skill.effectType == SkillEffectType.AreaDamage &&
+                                      Mathf.Approximately(hero56Skill.power, 4.2f) &&
+                                      Mathf.Approximately(hero56Skill.radius, 4.5f) &&
+                                      Mathf.Approximately(hero56Skill.cooldown, 0f) &&
+                                      Mathf.Approximately(hero56.stats.maxMana, 100f) &&
+                                      Mathf.Approximately(hero56.stats.manaRegenPerSecondRate, 0f) &&
+                                      Mathf.Approximately(hero56.stats.manaGainWhenHitRate, 0f) &&
+                                      Mathf.Approximately(hero56.stats.manaGainPerAttackRate, 0.15f) &&
+                                      Mathf.Approximately(DefenderUnit.ResolveAlternatingRoundStartMana(100f, true), 50f) &&
+                                      Mathf.Approximately(DefenderUnit.ResolveAlternatingRoundStartMana(100f, false), 0f);
+            if (!diceAutoCycleValid)
+            {
+                notes.Add("Dice Auto rest/active mana cycle validation failed.");
+            }
+
             CharacterDatabase database = UnityEngine.Object.FindObjectOfType<CharacterDatabase>();
             CharacterDefinition hero32 = database != null ? database.GetCharacterById("hero_32") : null;
             SkillDefinition hero32Skill = hero32 != null && hero32.skills != null && hero32.skills.Count > 0 ? hero32.skills[0] : null;
@@ -555,7 +574,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -591,6 +610,7 @@ namespace DefenseGame.Editor
                 ultimateRecipeUxValid = ultimateRecipeUxValid,
                 ultimateRecipeUxSummary = ultimateRecipeUxSummary,
                 ultimateMergeInheritanceIsolationValid = ultimateMergeInheritanceIsolationValid,
+                diceAutoCycleValid = diceAutoCycleValid,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
                 hero32SignatureValid = hero32SignatureValid,
                 gargoyleLoopDurationValid = gargoyleLoopDurationValid,
@@ -1133,6 +1153,7 @@ namespace DefenseGame.Editor
             public string earlyMiniShopSummary;
             public bool ultimateRecipeUxValid;
             public string ultimateRecipeUxSummary;
+            public bool diceAutoCycleValid;
             public bool ultimateMergeInheritanceIsolationValid;
             public bool simultaneousDeathPolicyValid;
             public bool hero32SignatureValid;

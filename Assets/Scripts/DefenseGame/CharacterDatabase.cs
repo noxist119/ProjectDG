@@ -506,7 +506,7 @@ namespace DefenseGame
                     definition.stats.maxMana = 100f;
                     definition.stats.manaRegenPerSecondRate = 0f;
                     definition.stats.manaGainWhenHitRate = 0f;
-                    definition.stats.manaGainPerAttackRate = 0f;
+                    definition.stats.manaGainPerAttackRate = 0.15f;
                     definition.stats.attackRange = 9.5f;
                     definition.stats.projectileSpeed = 22f;
                     break;

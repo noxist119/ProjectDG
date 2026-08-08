@@ -208,7 +208,6 @@ namespace DefenseGame
 
 		private bool alternatingNextRoundWillBurst;
 
-		private bool alternatingBurstPending;
 
 		private bool alternatingDormant;
 
@@ -366,6 +365,11 @@ namespace DefenseGame
 			return definition != null && string.Equals(definition.id, "hero_56", StringComparison.OrdinalIgnoreCase);
 		}
 
+		public static float ResolveAlternatingRoundStartMana(float maxMana, bool activeRound)
+		{
+			return activeRound ? Mathf.Max(0f, maxMana) * 0.5f : 0f;
+		}
+
 		private void BindAlternatingRoundController()
 		{
 			if (!IsAlternatingRoundBurstUnit())
@@ -401,18 +405,16 @@ namespace DefenseGame
 				alternatingLastRound = round;
 				if (alternatingNextRoundWillBurst)
 				{
-					alternatingBurstPending = true;
 					alternatingDormant = false;
 					alternatingNextRoundWillBurst = false;
-					currentMana = MaxMana;
+					currentMana = ResolveAlternatingRoundStartMana(MaxMana, activeRound: true);
 					ShowInstantSupportFeedback("기동 준비", AttackSpeedFeedbackColor, null, 0.8f);
 				}
 				else
 				{
-					alternatingBurstPending = false;
 					alternatingDormant = true;
 					alternatingNextRoundWillBurst = true;
-					currentMana = 0f;
+					currentMana = ResolveAlternatingRoundStartMana(MaxMana, activeRound: false);
 					animationDriver?.PlayDormantLoop();
 					ShowInstantSupportFeedback("휴식 모드", ShieldFeedbackColor, null, 0.8f);
 				}
@@ -480,17 +482,13 @@ namespace DefenseGame
 			floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
 			bool combatActive = IsCombatActive();
 			bool alternatingRoundBurstUnit = IsAlternatingRoundBurstUnit();
-			if (alternatingRoundBurstUnit && (!combatActive || alternatingDormant || !alternatingBurstPending))
+			if (alternatingRoundBurstUnit && (!combatActive || alternatingDormant))
 			{
 				animationDriver?.PlayDormantLoop();
 				return;
 			}
 			animationDriver?.PlayMoving(isMoving: false);
-			if (alternatingRoundBurstUnit)
-			{
-				currentMana = MaxMana;
-			}
-			else if (combatActive)
+			if (combatActive)
 			{
 				RegenerateCombatMana();
 			}
@@ -507,14 +505,6 @@ namespace DefenseGame
 				if (animationDriver == null || !animationDriver.IsLocked)
 				{
 					animationDriver?.ForceIdle();
-				}
-			}
-			else if (IsAlternatingRoundBurstUnit())
-			{
-				if (TryCastSkill())
-				{
-					alternatingBurstPending = false;
-					alternatingDormant = true;
 				}
 			}
 			else if (!TryCastSkill())
@@ -595,7 +585,6 @@ namespace DefenseGame
 			synergyBonus = default(UnitSynergyBonus);
 			isDying = false;
 			alternatingNextRoundWillBurst = IsAlternatingRoundBurstUnit();
-			alternatingBurstPending = false;
 			alternatingDormant = IsAlternatingRoundBurstUnit();
 			alternatingLastRound = -1;
 			BindAlternatingRoundController();
@@ -814,6 +803,11 @@ namespace DefenseGame
 
 		public void RestoreMana(float ratio, GameObject effectPrefab = null)
 		{
+			if (IsAlternatingRoundBurstUnit() && alternatingDormant)
+			{
+				return;
+			}
+
 			if (!(MaxMana <= 0f) && !(ratio <= 0f))
 			{
 				float previousMana = currentMana;
