@@ -835,15 +835,21 @@ namespace DefenseGame.Editor
                 "Eclipse Overflow Rite",
                 "Dragon Overflow Rite"
             };
-            bool fixedResultDataValid = options.All(option =>
-                expectedResults.TryGetValue(option.recipeName, out string expectedResultId) &&
-                option.resultCharacterId == expectedResultId &&
+            // Every active recipe is validated against the fixed-result contract so adding a
+            // future recipe (for example hero_58) does not require updating this smoke test.
+            bool allActiveFixedResultsValid = options.All(option =>
+                !string.IsNullOrWhiteSpace(option.resultCharacterId) &&
                 option.resultDefinition != null &&
-                option.resultDefinition.id == expectedResultId &&
+                option.resultDefinition.id == option.resultCharacterId &&
                 option.resultDefinition.grade == CharacterGrade.Transcendent &&
-                option.resultSummary == option.resultDefinition.displayName) &&
+                option.resultSummary == option.resultDefinition.displayName);
+
+            // Keep the current seven recipes as explicit regression coverage, without
+            // treating this dictionary as the complete list of recipes.
+            bool knownRecipeMappingsValid =
                 expectedResults.All(pair => options.Any(option => option.recipeName == pair.Key && option.resultCharacterId == pair.Value)) &&
                 removedRecipeNames.All(recipeName => options.All(option => option.recipeName != recipeName));
+            bool fixedResultDataValid = allActiveFixedResultsValid && knownRecipeMappingsValid;
             bool structuredDataValid = options.Length > 0 && fixedResultDataValid;
             for (int i = 0; i < options.Length; i++)
             {
