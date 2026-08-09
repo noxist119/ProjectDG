@@ -304,8 +304,8 @@ namespace DefenseGame
                 SetOpen(true);
                 gameController?.RecordRoundShopOpened(round);
                 int offerCount = Mathf.Clamp(earlyMiniShopOfferCount, 1, 3);
-                gameController?.RequestBanner("초반 선택지 입고!  소형 상점 " + offerCount + "개", new Color(0.48f, 1f, 0.74f), 2.4f);
-                gameController?.RecordR3BoosterOffer();
+                gameController?.RequestBanner("전투 선택지 입고!  소형 상점 " + offerCount + "개", new Color(0.48f, 1f, 0.74f), 2.4f);
+                gameController?.RecordFirstMiniShopOffer();
                 return;
             }
 
@@ -1606,7 +1606,7 @@ namespace DefenseGame
 
             if (currentShopIsMini && (offer.type == OfferType.MergeAssist || offer.type == OfferType.FateMergeContract))
             {
-                gameController.RecordR3BoosterPurchase();
+                gameController.RecordFirstMiniShopPurchase();
             }
 
             if (currentShopIsRecovery && !currentRecoveryShopPurchaseRecorded)

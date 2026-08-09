@@ -1425,7 +1425,7 @@ namespace DefenseGame
             bossForecastRequestRaised = true;
             bossForecastPreferredShopRoleIndex = choice == BossForecastBet.Supply ? 0 :
                 choice == BossForecastBet.Build ? 1 : 2;
-            string entryBonus = "첫 상점 방향 확정";
+            string entryBonus = "다음 전투상점 방향 예약";
             if (IsOverdriveMode && choice == BossForecastBet.Supply)
             {
                 const int sponsorGold = 10;
@@ -1473,7 +1473,7 @@ namespace DefenseGame
                 case BossForecastBet.Tactical:
                     return "전술 예측  ·  R10 클리어 후 HP 60% 이상";
                 default:
-                    return "첫 소환 후 R10 보스 공략 방향을 선택";
+                    return "R3 클리어 후 R4 준비에서 R10 보스 공략 방향을 선택";
             }
         }
 
@@ -3287,10 +3287,20 @@ namespace DefenseGame
             earlyRunR3BoosterOfferCount++;
             runR3BoosterOffered = true;
             UpdateEarlyRunLogCoverageSummary();
-            Debug.Log("[EarlyRunTelemetry] R3 부스터 노출 " + earlyRunR3BoosterPurchaseCount + "/" + earlyRunR3BoosterOfferCount + " / " + earlyRunLogCoverageSummary);
+            Debug.Log("[EarlyRunTelemetry] 첫 소형 전투상점 노출 " + earlyRunR3BoosterPurchaseCount + "/" + earlyRunR3BoosterOfferCount + " / " + earlyRunLogCoverageSummary);
             NotifyStateChanged();
         }
 
+        // Legacy R3 storage names remain intact for telemetry/save compatibility.
+        public void RecordFirstMiniShopOffer()
+        {
+            RecordR3BoosterOffer();
+        }
+
+        public void RecordFirstMiniShopPurchase()
+        {
+            RecordR3BoosterPurchase();
+        }
         public void RecordR3BoosterPurchase()
         {
             if (!enableEarlyRoundTelemetry)
@@ -3301,7 +3311,7 @@ namespace DefenseGame
             earlyRunR3BoosterPurchaseCount++;
             runR3BoosterPurchased = true;
             UpdateEarlyRunLogCoverageSummary();
-            Debug.Log("[EarlyRunTelemetry] R3 부스터 구매 " + earlyRunR3BoosterPurchaseCount + "/" + earlyRunR3BoosterOfferCount + " / " + earlyRunLogCoverageSummary);
+            Debug.Log("[EarlyRunTelemetry] 첫 소형 전투상점 구매 " + earlyRunR3BoosterPurchaseCount + "/" + earlyRunR3BoosterOfferCount + " / " + earlyRunLogCoverageSummary);
             NotifyStateChanged();
         }
 
@@ -5442,7 +5452,7 @@ namespace DefenseGame
                     + " / 첫R+ " + FormatEarlyMomentRound(firstRarePlusRound)
                     + " / 첫합 " + FormatEarlyMomentRound(firstMergeRound)
                     + " / 보험 0%"
-                    + " / R3부스터 " + earlyRunR3BoosterPurchaseCount + "/" + earlyRunR3BoosterOfferCount + " " + FormatRate(earlyRunR3BoosterPurchaseCount, earlyRunR3BoosterOfferCount)
+                    + " / 첫 소형 상점 " + earlyRunR3BoosterPurchaseCount + "/" + earlyRunR3BoosterOfferCount + " " + FormatRate(earlyRunR3BoosterPurchaseCount, earlyRunR3BoosterOfferCount)
                     + " / 긴급지원 " + earlyRunRecoveryShopPurchaseCount + "/" + earlyRunRecoveryShopOfferCount + " " + FormatRate(earlyRunRecoveryShopPurchaseCount, earlyRunRecoveryShopOfferCount)
                     + " / 운명개입 " + runFateInterventionCount + "회"
                     + " / R10보스HP " + r10BossHp;
@@ -5532,7 +5542,7 @@ namespace DefenseGame
                 + " / 첫R+ " + FormatAverageRound(firstRareSum, firstRareCount)
                 + " / 첫합 " + FormatAverageRound(firstMergeSum, firstMergeCount)
                 + " / 보험 " + insuranceOfferedCount + "/" + entryCount + " " + FormatRate(insuranceOfferedCount, entryCount)
-                + " / R3부스터 " + r3PurchaseCount + "/" + r3OfferCount + " " + FormatRate(r3PurchaseCount, r3OfferCount)
+                + " / 첫 소형 상점 " + r3PurchaseCount + "/" + r3OfferCount + " " + FormatRate(r3PurchaseCount, r3OfferCount)
                 + " / 긴급지원 " + recoveryPurchaseCount + "/" + recoveryOfferCount + " " + FormatRate(recoveryPurchaseCount, recoveryOfferCount)
                 + " / 운명계약 " + fateContractUseCount + "/" + entryCount + " " + FormatRate(fateContractUseCount, entryCount)
                 + " / 운명개입 " + fateInterventionUseCount + "/" + entryCount + " " + FormatRate(fateInterventionUseCount, entryCount)
@@ -5604,7 +5614,7 @@ namespace DefenseGame
 
             if (earlyRunR3BoosterOfferCount > 0 && earlyRunR3BoosterPurchaseCount <= 0)
             {
-                return "초반 검증: R3 선택지 매력 확인";
+                return "첫 소형 상점 선택지 매력 확인";
             }
 
             if (earlyRunRecoveryShopOfferCount > 0 && earlyRunRecoveryShopPurchaseCount <= 0)
@@ -5752,7 +5762,7 @@ namespace DefenseGame
 
             if (r3OfferCount > 0 && r3PurchaseRate < 0.35f)
             {
-                actions.Add("R3 상점 매력 부족");
+                actions.Add("첫 소형 상점 매력 부족");
             }
 
             if (recoveryOfferCount > 0 && recoveryPurchaseRate < 0.25f)
