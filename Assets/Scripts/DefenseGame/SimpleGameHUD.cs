@@ -83,10 +83,14 @@ namespace DefenseGame
         [SerializeField] private float mergeCelebrationTimer;
         [SerializeField] private float roundBannerTimer;
         [SerializeField] private float bossWarningTimer;
+        private readonly Queue<QueuedRoundBanner> postRoundBannerQueue = new Queue<QueuedRoundBanner>();
+        private float postRoundBannerBurstStartedAt = -999f;
 
         private const float MergeBannerDuration = 2.0f;
         private const float MergeCelebrationDuration = 0.8f;
         private const float BossWarningDuration = 3.4f;
+        private const int MaxPostRoundBannerQueue = 4;
+        private const float PostRoundBannerBurstWindow = 0.2f;
         private const float OpeningTutorialDuration = 10f;
         private const float OpeningTutorialStageDuration = OpeningTutorialDuration / 4f;
         private const float DefeatCinematicDuration = DefenseGameController.DefeatSlowMotionDurationRealtime;
@@ -99,6 +103,9 @@ namespace DefenseGame
         private static readonly Color FateEntryTextColor = new Color(1.00f, 0.98f, 0.94f, 1f);
         private static readonly Color FateEntryOutlineColor = new Color(1.00f, 0.78f, 0.34f, 0.94f);
         private static readonly Color FateEntryCrisisOutlineColor = new Color(1.00f, 0.88f, 0.54f, 1f);
+
+        public int PendingPostRoundBannerCount => postRoundBannerQueue.Count;
+        public string CurrentRoundBannerMessage => roundBannerText != null ? roundBannerText.text : string.Empty;
 
         [Header("Opening Tutorial")]
         [SerializeField] private bool enableOpeningTutorial = true;
@@ -1352,8 +1359,16 @@ namespace DefenseGame
                 Color color = roundBannerText.color;
                 color.a = Mathf.Lerp(0.15f, 1f, Mathf.Clamp01(roundBannerTimer / 2.5f));
                 roundBannerText.color = color;
+                return;
             }
-            else if (!string.IsNullOrEmpty(roundBannerText.text))
+
+            if (postRoundBannerQueue.Count > 0)
+            {
+                ShowRoundBanner(postRoundBannerQueue.Dequeue());
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(roundBannerText.text))
             {
                 SetText(roundBannerText, string.Empty);
             }
@@ -1629,6 +1644,7 @@ namespace DefenseGame
 
         private void HandleGameOver()
         {
+            ClearPostRoundBannerQueue();
             CompleteOpeningTutorial();
             if (unitSellPanel != null)
             {
@@ -1854,6 +1870,7 @@ namespace DefenseGame
 
         private void HandleRoundStarted(int round)
         {
+            ClearPostRoundBannerQueue();
             if (round <= 0 || round % 10 != 0)
             {
                 return;
@@ -1864,14 +1881,75 @@ namespace DefenseGame
 
         private void HandleBannerRequested(string message, Color color, float duration)
         {
-            if (roundBannerText == null)
+            if (roundBannerText == null || string.IsNullOrEmpty(message))
             {
                 return;
             }
 
-            SetText(roundBannerText, message);
-            roundBannerText.color = color;
-            roundBannerTimer = duration;
+            bool combatRunning = gameController != null && gameController.IsRoundRunning;
+            bool isPostRoundBurst = !combatRunning && roundBannerTimer > 0f &&
+                                   Time.unscaledTime - postRoundBannerBurstStartedAt <= PostRoundBannerBurstWindow;
+            if (isPostRoundBurst)
+            {
+                EnqueuePostRoundBanner(message, color, duration);
+                return;
+            }
+
+            if (combatRunning)
+            {
+                ClearPostRoundBannerQueue();
+            }
+
+            ShowRoundBanner(new QueuedRoundBanner(message, color, duration));
+            postRoundBannerBurstStartedAt = combatRunning ? -999f : Time.unscaledTime;
+        }
+
+        private void EnqueuePostRoundBanner(string message, Color color, float duration)
+        {
+            if (string.Equals(CurrentRoundBannerMessage, message, System.StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            foreach (QueuedRoundBanner queuedBanner in postRoundBannerQueue)
+            {
+                if (string.Equals(queuedBanner.message, message, System.StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            if (postRoundBannerQueue.Count < MaxPostRoundBannerQueue)
+            {
+                postRoundBannerQueue.Enqueue(new QueuedRoundBanner(message, color, duration));
+            }
+        }
+
+        private void ShowRoundBanner(QueuedRoundBanner banner)
+        {
+            SetText(roundBannerText, banner.message);
+            roundBannerText.color = banner.color;
+            roundBannerTimer = Mathf.Max(0.1f, banner.duration);
+        }
+
+        private void ClearPostRoundBannerQueue()
+        {
+            postRoundBannerQueue.Clear();
+            postRoundBannerBurstStartedAt = -999f;
+        }
+
+        private readonly struct QueuedRoundBanner
+        {
+            public readonly string message;
+            public readonly Color color;
+            public readonly float duration;
+
+            public QueuedRoundBanner(string message, Color color, float duration)
+            {
+                this.message = message;
+                this.color = color;
+                this.duration = duration;
+            }
         }
 
         private void ShowBossWarning(int round)

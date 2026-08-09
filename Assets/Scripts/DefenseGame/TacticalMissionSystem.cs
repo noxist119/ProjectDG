@@ -254,7 +254,7 @@ namespace DefenseGame
             gameController.OnRoundMissionSettlement += HandleRoundMissionSettlement;
             gameController.OnRoundBoardPreparation += HandleRoundBoardPreparation;
             gameController.OnGameOver += HandleGameOver;
-            gameController.OnUnitSummoned += HandleUnitSummoned;
+            gameController.OnPlayerSummoned += HandleUnitSummoned;
             MonsterUnit.OnMonsterKilled += HandleMonsterKilled;
             MonsterUnit.OnMonsterEscaped += HandleMonsterEscaped;
             subscribed = true;
@@ -273,7 +273,7 @@ namespace DefenseGame
             gameController.OnRoundMissionSettlement -= HandleRoundMissionSettlement;
             gameController.OnRoundBoardPreparation -= HandleRoundBoardPreparation;
             gameController.OnGameOver -= HandleGameOver;
-            gameController.OnUnitSummoned -= HandleUnitSummoned;
+            gameController.OnPlayerSummoned -= HandleUnitSummoned;
             MonsterUnit.OnMonsterKilled -= HandleMonsterKilled;
             MonsterUnit.OnMonsterEscaped -= HandleMonsterEscaped;
             subscribed = false;

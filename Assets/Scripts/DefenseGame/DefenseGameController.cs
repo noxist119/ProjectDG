@@ -573,6 +573,8 @@ namespace DefenseGame
         public event System.Action OnStateChanged;
         public event System.Action<MergeResultInfo> OnMergeCompleted;
         public event System.Action<CharacterDefinition> OnUnitSummoned;
+        // Only paid player summon actions raise this event; free grants keep using OnUnitSummoned only.
+        public event System.Action<CharacterDefinition> OnPlayerSummoned;
         public event System.Action<int> OnRoundCountdownChanged;
         public event System.Action<int> OnRoundStarted;
         public event System.Action<int> OnRoundMissionSettlement;
@@ -986,6 +988,7 @@ namespace DefenseGame
             RecordEarlyRoundSummon(summon);
             ResolveUltimateRecipeBingoReward();
             OnUnitSummoned?.Invoke(summon);
+            OnPlayerSummoned?.Invoke(summon);
             RequestBossForecastBetIfNeeded();
             NotifyStateChanged();
             return true;
@@ -1056,6 +1059,7 @@ namespace DefenseGame
             RecordEarlyRoundSummon(summon);
             ResolveUltimateRecipeBingoReward();
             OnUnitSummoned?.Invoke(summon);
+            OnPlayerSummoned?.Invoke(summon);
 
             string resultMessage;
             Color resultColor;
