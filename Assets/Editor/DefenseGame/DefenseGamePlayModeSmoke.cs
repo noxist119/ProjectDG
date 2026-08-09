@@ -526,6 +526,16 @@ namespace DefenseGame.Editor
             {
                 notes.Add("Dice Auto rest/active mana cycle validation failed.");
             }
+            CharacterDefinition hero51 = hero56Database != null ? hero56Database.GetCharacterById("hero_51") : null;
+            bool thunderControlDamageConversionValid = hero51 != null &&
+                                                       hero51.stats != null &&
+                                                       hero51.grade == CharacterGrade.Transcendent &&
+                                                       Mathf.Approximately(hero51.stats.attackPower, 48f);
+            if (!thunderControlDamageConversionValid)
+            {
+                notes.Add("Thunder Control runtime Attack Power validation failed.");
+            }
+
             CharacterDefinition hero53 = hero56Database != null ? hero56Database.GetCharacterById("hero_53") : null;
             SkillDefinition hero53Skill = hero53 != null && hero53.skills != null && hero53.skills.Count > 0 ? hero53.skills[0] : null;
             bool feverEngineApexDpsValid = hero53Skill != null &&
@@ -596,7 +606,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -633,6 +643,7 @@ namespace DefenseGame.Editor
                 ultimateRecipeUxSummary = ultimateRecipeUxSummary,
                 ultimateMergeInheritanceIsolationValid = ultimateMergeInheritanceIsolationValid,
                 diceAutoCycleValid = diceAutoCycleValid,
+                thunderControlDamageConversionValid = thunderControlDamageConversionValid,
                 feverEngineApexDpsValid = feverEngineApexDpsValid,
                 simultaneousDeathPolicyValid = simultaneousDeathPolicyValid,
                 hero32SignatureValid = hero32SignatureValid,
@@ -1177,6 +1188,7 @@ namespace DefenseGame.Editor
             public bool ultimateRecipeUxValid;
             public string ultimateRecipeUxSummary;
             public bool diceAutoCycleValid;
+            public bool thunderControlDamageConversionValid;
             public bool feverEngineApexDpsValid;
             public bool ultimateMergeInheritanceIsolationValid;
             public bool simultaneousDeathPolicyValid;

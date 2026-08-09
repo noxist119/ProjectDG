@@ -480,6 +480,11 @@ namespace DefenseGame
                     definition.displayName = "Dire Wolf";
                     definition.description = "원거리 야성형 신화. 야성의 추적탄으로 공격력 220% 피해, 4초간 35% 둔화·공격력 30%/초 중독을 주고 5초간 공격속도가 25% 증가합니다.";
                     break;
+                case "hero_51":
+                    // High Control / Damage: boss targets are status-immune, so this keeps
+                    // Thunder Control's conversion value viable without changing its control cycle.
+                    definition.stats.attackPower = 48f;
+                    break;
                 case "hero_53":
                     definition.description = "원거리 지속 화력형 초월. 높은 기본 공격 성능과 전투 가속으로 단일 대상에게 끊임없이 강한 피해를 줍니다.";
                     definition.stats.maxHealth = 380f;
