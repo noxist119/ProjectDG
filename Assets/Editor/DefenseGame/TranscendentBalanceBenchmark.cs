@@ -113,15 +113,23 @@ namespace DefenseGame.Editor
 
     internal sealed class TranscendentBalanceBenchmarkRunner : MonoBehaviour
     {
+        private const float Hero51Duration = 18f;
+        private const float Hero52Duration = 18f;
         private const float Hero53Duration = 25f;
+        private const float Hero54Duration = 20f;
+        private const float Hero55Duration = 28f;
+        private const float Hero57Duration = 12f;
         private const float Hero56RestDuration = 3f;
         private const float Hero56ActiveDuration = 15f;
         private const float DummyHealth = 1000000f;
         private const int Hero56ClusterCount = 4;
+        private static readonly int[] Hero57Seeds = { 314159, 271828, 161803 };
 
         private enum Segment
         {
             None,
+            GenericOffense,
+            TankPressure,
             Hero53,
             Hero56Rest,
             Hero56Active
@@ -131,9 +139,14 @@ namespace DefenseGame.Editor
             "HandleAlternatingRoundStarted",
             BindingFlags.Instance | BindingFlags.NonPublic);
 
+        private static readonly MethodInfo MonsterPerformAttackMethod = typeof(MonsterUnit).GetMethod(
+            "PerformAttack",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
         private readonly List<GameObject> scenarioObjects = new List<GameObject>();
         private readonly List<float> hero53BuffCastTimes = new List<float>();
         private readonly List<Hero56ActiveRoundResult> hero56ActiveRounds = new List<Hero56ActiveRoundResult>();
+        private readonly List<Hero57SeedResult> hero57SeedResults = new List<Hero57SeedResult>();
 
         private Action<BenchmarkReport> completion;
         private CharacterDatabase database;
@@ -141,6 +154,14 @@ namespace DefenseGame.Editor
         private Segment currentSegment;
         private Hero53BenchmarkResult hero53;
         private Hero56BenchmarkResult hero56;
+        private HeroCombatBenchmarkResult hero51;
+        private HeroCombatBenchmarkResult hero52;
+        private OffenseRunResult activeOffense;
+        private OffenseRunResult hero57Single;
+        private TankBenchmarkResult activeTank;
+        private float activeTankSkillUntil;
+        private float activeTankStartTime;
+        private float activeTankRawDamagePerHit;
         private Hero56ActiveRoundResult activeRound;
         private float segmentStartTime;
         private float previousTimeScale;
@@ -156,6 +177,7 @@ namespace DefenseGame.Editor
             UnityEngine.Random.InitState(seed);
             DefenderUnit.OnDamageDealt += HandleDamageDealt;
             DefenderUnit.OnSkillCast += HandleSkillCast;
+            DefenderUnit.OnDamageTaken += HandleDamageTaken;
             eventSubscribed = true;
             StartCoroutine(Run(seed));
         }
@@ -166,7 +188,7 @@ namespace DefenseGame.Editor
             {
                 seed = seed,
                 scenePath = "Assets/Scenes/DG.unity",
-                baseline = "CharacterDatabase runtime definitions; InitializeSummon prevents outgame growth; no synergy, tile, augment, mana support, or dummy attacks. hero_56 probeWindowAverageDps includes the short 3s REST probes and is diagnostic only; normalizedDutyCycleDps = activeOnlyDps * 0.5 assumes equal REST/ACTIVE round weight as a 50% duty-cycle balance reference, not literal round duration.",
+                baseline = "CharacterDatabase runtime definitions; InitializeSummon prevents outgame growth; no synergy, tile, augment, or mana support; offense dummies do not attack and the dedicated tank scenarios use real melee MonsterUnit attacks. hero_56 probeWindowAverageDps includes the short 3s REST probes and is diagnostic only; normalizedDutyCycleDps = activeOnlyDps * 0.5 assumes equal REST/ACTIVE round weight as a 50% duty-cycle balance reference, not literal round duration.",
                 notes = new List<string>()
             };
 
@@ -183,21 +205,81 @@ namespace DefenseGame.Editor
             }
             else
             {
+                report.runtimeDefinitions = CaptureRuntimeDefinitions();
+                yield return RunHero51();
+                report.hero51 = hero51;
+                yield return ClearScenario();
+                yield return RunHero52();
+                report.hero52 = hero52;
+                yield return ClearScenario();
                 yield return RunHero53();
                 report.hero53 = hero53;
                 yield return ClearScenario();
+                yield return RunHero54();
+                report.hero54 = activeTank;
+                yield return ClearScenario();
+                yield return RunHero55();
+                report.hero55 = activeTank;
+                yield return ClearScenario();
                 yield return RunHero56();
                 report.hero56 = hero56;
+                yield return ClearScenario();
+                yield return RunHero57();
+                report.hero57 = new Hero57BenchmarkResult
+                {
+                    heroId = "hero_57",
+                    single = hero57Single,
+                    seedResults = hero57SeedResults,
+                    averageDps = CalculateAverageHero57Dps(),
+                    minDps = CalculateMinHero57Dps(),
+                    maxDps = CalculateMaxHero57Dps(),
+                    dpsSpread = CalculateMaxHero57Dps() - CalculateMinHero57Dps()
+                };
 
-                report.passed = hero53 != null && hero53.usesRuntimeDefinition && hero53.totalDamage > 0f &&
+                report.offenseComparison = new OffenseComparisonResult
+                {
+                    hero51SingleDps = hero51.regular.averageDps,
+                    hero51ControlUptimeRatio = hero51.regular.statusUptimeRatio,
+                    hero51BossDps = hero51.boss.averageDps,
+                    hero52SingleDps = hero52.single.averageDps,
+                    hero52ClusterDps = hero52.cluster.averageDps,
+                    hero53SingleDps = hero53.averageDps,
+                    hero56ClusterTargetCount = Hero56ClusterCount,
+                    hero56ActiveOnlyDps = hero56.activeOnlyDps,
+                    hero56NormalizedDutyCycleDps = hero56.normalizedDutyCycleDps,
+                    hero57SingleDps = report.hero57.single.averageDps,
+                    hero57ClusterAverageDps = report.hero57.averageDps,
+                    hero57ClusterDpsSpread = report.hero57.dpsSpread
+                };
+                report.tankComparison = new TankComparisonResult
+                {
+                    hero54StartingHealth = report.hero54.startingHealth,
+                    hero54DamageTaken = report.hero54.totalDamageTaken,
+                    hero54DamageDuringTaunt = report.hero54.damageDuringSkill,
+                    hero54DamageOutsideTaunt = report.hero54.damageOutsideSkill,
+                    hero54EstimatedLateDamageReduction = report.hero54.estimatedLateDamageReduction,
+                    hero55StartingHealth = report.hero55.startingHealth,
+                    hero55DamageTaken = report.hero55.totalDamageTaken,
+                    hero55EarlyDamagePerHit = report.hero55.earlyDamagePerHit,
+                    hero55LateDamagePerHit = report.hero55.lateDamagePerHit,
+                    hero55EstimatedLateDamageReduction = report.hero55.estimatedLateDamageReduction,
+                    hero55KnockbackDistance = report.hero55.knockbackDistance
+                };                report.passed = hero51 != null && hero51.regular.totalDamage > 0f && hero51.regular.skillCastCount > 0 &&
+                                hero51.regular.statusUptime > 0f && hero51.boss.statusUptime <= 0.01f && hero51.boss.totalDamage > 0f &&
+                                hero52 != null && hero52.single.totalDamage > 0f && hero52.single.skillDamage > 0f &&
+                                hero52.cluster.totalDamage > hero52.single.totalDamage &&
+                                hero53 != null && hero53.usesRuntimeDefinition && hero53.totalDamage > 0f &&
                                 hero53.skillCastCount > 0 && hero56 != null && hero56.restRoundCount == 2 &&
                                 hero56.activeRoundCount == 2 && Mathf.Approximately(hero56.restRoundDamage, 0f) &&
                                 hero56.restBasicAttackCount == 0 && hero56.restSkillCastCount == 0 && hero56.restManaStayedZero &&
                                 hero56.activeRoundDamage > 0f && hero56.burstCastCount > 0 && hero56.basicAttackAfterBurstCount > 0 &&
-                                hero56.additionalBurstObserved;
+                                hero56.additionalBurstObserved && report.hero54 != null && report.hero54.damageEventCount > 0 &&
+                                report.hero54.skillCastCount > 0 && report.hero55 != null && report.hero55.damageEventCount > 0 &&
+                                report.hero55.skillCastCount > 0 && report.hero55.knockbackDistance > 0.1f &&
+                                report.hero57 != null && report.hero57.seedResults.Count == Hero57Seeds.Length;
                 if (!report.passed)
                 {
-                    report.notes.Add("Functional benchmark condition failed; inspect hero53/hero56 metrics rather than treating this as a balance score.");
+                    report.notes.Add("Functional benchmark condition failed; inspect the hero_51~hero_57 functional metrics rather than treating this as a balance score.");
                 }
             }
 
@@ -206,6 +288,7 @@ namespace DefenseGame.Editor
             {
                 DefenderUnit.OnDamageDealt -= HandleDamageDealt;
                 DefenderUnit.OnSkillCast -= HandleSkillCast;
+                DefenderUnit.OnDamageTaken -= HandleDamageTaken;
                 eventSubscribed = false;
             }
             Time.timeScale = previousTimeScale;
@@ -214,6 +297,222 @@ namespace DefenseGame.Editor
             Destroy(gameObject);
         }
 
+        private IEnumerator RunHero51()
+        {
+            CharacterDefinition definition = GetTranscendentDefinition("hero_51");
+            hero51 = new HeroCombatBenchmarkResult { heroId = definition.id, role = "High Control / Damage" };
+            yield return RunOffenseScenario(definition, Hero51Duration, 1, false, true);
+            hero51.regular = activeOffense;
+            yield return ClearScenario();
+            yield return RunOffenseScenario(definition, Hero51Duration, 1, true, true);
+            hero51.boss = activeOffense;
+        }
+
+        private IEnumerator RunHero52()
+        {
+            CharacterDefinition definition = GetTranscendentDefinition("hero_52");
+            hero52 = new HeroCombatBenchmarkResult { heroId = definition.id, role = "High AoE Damage" };
+            yield return RunOffenseScenario(definition, Hero52Duration, 1, false, false);
+            hero52.single = activeOffense;
+            yield return ClearScenario();
+            yield return RunOffenseScenario(definition, Hero52Duration, 4, false, false);
+            hero52.cluster = activeOffense;
+        }
+
+        private IEnumerator RunHero54()
+        {
+            yield return RunTankScenario(GetTranscendentDefinition("hero_54"), Hero54Duration, false);
+        }
+
+        private IEnumerator RunHero55()
+        {
+            yield return RunTankScenario(GetTranscendentDefinition("hero_55"), Hero55Duration, true);
+        }
+
+        private IEnumerator RunHero57()
+        {
+            CharacterDefinition definition = GetTranscendentDefinition("hero_57");
+            hero57SeedResults.Clear();
+            UnityEngine.Random.InitState(Hero57Seeds[0]);
+            yield return RunOffenseScenario(definition, Hero57Duration, 1, false, false);
+            hero57Single = activeOffense;
+            yield return ClearScenario();
+            for (int i = 0; i < Hero57Seeds.Length; i++)
+            {
+                UnityEngine.Random.InitState(Hero57Seeds[i]);
+                yield return RunOffenseScenario(definition, Hero57Duration, 4, false, false);
+                hero57SeedResults.Add(new Hero57SeedResult
+                {
+                    seed = Hero57Seeds[i],
+                    totalDamage = activeOffense.totalDamage,
+                    averageDps = activeOffense.averageDps,
+                    basicDamage = activeOffense.basicDamage,
+                    skillDamage = activeOffense.skillDamage,
+                    skillCastCount = activeOffense.skillCastCount,
+                    targetDamage = activeOffense.targetDamage
+                });
+                yield return ClearScenario();
+            }
+        }
+
+        private IEnumerator RunOffenseScenario(CharacterDefinition definition, float duration, int targetCount, bool bossTarget, bool sampleStun)
+        {
+            activeOffense = new OffenseRunResult
+            {
+                heroId = definition.id,
+                targetCount = targetCount,
+                targetIsBoss = bossTarget,
+                testDuration = duration,
+                usesRuntimeDefinition = definition.grade == CharacterGrade.Transcendent
+            };
+            List<MonsterUnit> targets = new List<MonsterUnit>();
+            for (int i = 0; i < targetCount; i++)
+            {
+                float x = targetCount == 1 ? 0f : ((i % 2 == 0) ? -0.8f : 0.8f);
+                float z = 5f + (targetCount == 1 ? 0f : (i < 2 ? -0.65f : 0.65f));
+                MonsterUnit target = CreateDummy(definition.id + "_BenchmarkTarget_" + i, new Vector3(x, 0f, z), bossTarget);
+                targets.Add(target);
+                activeOffense.startingTargetHealth += target.CurrentHealth;
+            }
+            trackedUnit = CreateRuntimeUnit(definition.id + "_BenchmarkUnit", definition, Vector3.zero);
+            currentSegment = Segment.GenericOffense;
+            segmentStartTime = Time.time;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                if (sampleStun && targets.Count > 0 && targets[0] != null && targets[0].IsStunned)
+                {
+                    activeOffense.statusUptime += Time.deltaTime;
+                }
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            activeOffense.testDuration = Mathf.Max(0f, Time.time - segmentStartTime);
+            for (int i = 0; i < targets.Count; i++)
+            {
+                MonsterUnit target = targets[i];
+                float damage = target == null ? 0f : Mathf.Max(0f, target.MaxHealth - target.CurrentHealth);
+                activeOffense.targetDamage.Add(damage);
+                activeOffense.totalDamage += damage;
+            }
+            activeOffense.averageDps = activeOffense.testDuration > 0f ? activeOffense.totalDamage / activeOffense.testDuration : 0f;
+            activeOffense.statusUptimeRatio = activeOffense.testDuration > 0f ? activeOffense.statusUptime / activeOffense.testDuration : 0f;
+            currentSegment = Segment.None;
+        }
+
+        private IEnumerator RunTankScenario(CharacterDefinition definition, float duration, bool observeKnockback)
+        {
+            activeTank = new TankBenchmarkResult
+            {
+                heroId = definition.id,
+                role = string.Equals(definition.id, "hero_54", StringComparison.Ordinal) ? "Entry Tank" : "Mid Tank",
+                note = string.Equals(definition.id, "hero_55", StringComparison.Ordinal) ? "Knockback is measured on a regular target because boss-like targets are status-immune." : "Taunt pressure uses real MonsterUnit target selection and DefenderUnit damage events.",
+                testDuration = duration,
+                startingHealth = definition.stats.maxHealth,
+                usesRuntimeDefinition = definition.grade == CharacterGrade.Transcendent
+            };
+            trackedUnit = CreateRuntimeUnit(definition.id + "_Tank", definition, Vector3.zero);
+            // The ally remains in the live DefenderUnit registry, allowing the Taunt path to use real target selection.
+            CreateRuntimeUnit(definition.id + "_Ally", GetTranscendentDefinition("hero_53"), new Vector3(1.3f, 0f, -0.5f));
+            activeTankRawDamagePerHit = 12f;
+            activeTankStartTime = Time.time;
+            activeTankSkillUntil = -1f;
+            MonsterUnit pressure = CreateDummy(definition.id + "_Pressure", new Vector3(0f, 0f, 1.05f), false, activeTankRawDamagePerHit, 1.15f);
+            activeTank.knockbackTargetStart = pressure.transform.position;
+            currentSegment = Segment.TankPressure;
+            // Invoke MonsterUnit's own private basic-attack path. The ordinary Update loop can
+            // defer attacks in this headless isolated scene, while this still exercises the real
+            // queue, cooldown, hit, DefenderUnit.TakeDamage, and OnDamageTaken production path.
+            float nextAttackTime = Time.time;
+            float attackInterval = 1f / Mathf.Max(0.2f, activeTankRawDamagePerHit > 0f ? 1.15f : 1f);
+            float endTime = Time.time + duration;
+            while (Time.time < endTime)
+            {
+                if (MonsterPerformAttackMethod != null && pressure != null && trackedUnit != null && trackedUnit.CurrentHealth > 0f && Time.time >= nextAttackTime)
+                {
+                    MonsterPerformAttackMethod.Invoke(pressure, new object[] { trackedUnit });
+                    nextAttackTime += attackInterval;
+                }
+                yield return null;
+            }
+            activeTank.endingHealth = trackedUnit != null ? trackedUnit.CurrentHealth : 0f;
+            activeTank.survived = trackedUnit != null && trackedUnit.CurrentHealth > 0f;
+            activeTank.knockbackDistance = observeKnockback && pressure != null
+                ? Vector3.Distance(activeTank.knockbackTargetStart, pressure.transform.position)
+                : 0f;
+            activeTank.earlyDamagePerHit = activeTank.earlyDamageEvents > 0 ? activeTank.earlyDamage / activeTank.earlyDamageEvents : 0f;
+            activeTank.lateDamagePerHit = activeTank.lateDamageEvents > 0 ? activeTank.lateDamage / activeTank.lateDamageEvents : 0f;
+            activeTank.estimatedLateDamageReduction = activeTankRawDamagePerHit > 0f && activeTank.lateDamageEvents > 0
+                ? Mathf.Clamp01(1f - activeTank.lateDamagePerHit / activeTankRawDamagePerHit)
+                : 0f;
+            currentSegment = Segment.None;
+        }
+
+        private CharacterDefinition GetTranscendentDefinition(string heroId)
+        {
+            CharacterDefinition definition = database.GetCharacterById(heroId);
+            if (definition == null)
+            {
+                throw new InvalidOperationException(heroId + " runtime definition was not found.");
+            }
+            return definition;
+        }
+
+        private List<RuntimeDefinitionSnapshot> CaptureRuntimeDefinitions()
+        {
+            List<RuntimeDefinitionSnapshot> snapshots = new List<RuntimeDefinitionSnapshot>();
+            for (int heroNumber = 51; heroNumber <= 57; heroNumber++)
+            {
+                CharacterDefinition definition = GetTranscendentDefinition("hero_" + heroNumber);
+                SkillDefinition skill = definition.skills != null && definition.skills.Count > 0 ? definition.skills[0] : null;
+                snapshots.Add(new RuntimeDefinitionSnapshot
+                {
+                    heroId = definition.id,
+                    displayName = definition.displayName,
+                    role = definition.role.ToString(),
+                    maxHealth = definition.stats.maxHealth,
+                    attackPower = definition.stats.attackPower,
+                    attackSpeed = definition.stats.attackSpeed,
+                    criticalChance = definition.stats.criticalChance,
+                    criticalDamageMultiplier = definition.stats.criticalDamageMultiplier,
+                    maxMana = definition.stats.maxMana,
+                    manaRegenPerSecondRate = definition.stats.manaRegenPerSecondRate,
+                    manaGainWhenHitRate = definition.stats.manaGainWhenHitRate,
+                    manaGainPerAttackRate = definition.stats.manaGainPerAttackRate,
+                    attackRange = definition.stats.attackRange,
+                    skillEffect = skill != null ? skill.effectType.ToString() : string.Empty,
+                    skillPower = skill != null ? skill.power : 0f,
+                    skillSecondaryPower = skill != null ? skill.secondaryPower : 0f,
+                    skillDuration = skill != null ? skill.duration : 0f,
+                    skillRadius = skill != null ? skill.radius : 0f,
+                    skillManaThreshold = skill != null ? skill.manaThreshold : 0f,
+                    skillCooldown = skill != null ? skill.cooldown : 0f
+                });
+            }
+            return snapshots;
+        }
+
+        private float CalculateAverageHero57Dps()
+        {
+            if (hero57SeedResults.Count == 0) return 0f;
+            float total = 0f;
+            for (int i = 0; i < hero57SeedResults.Count; i++) total += hero57SeedResults[i].averageDps;
+            return total / hero57SeedResults.Count;
+        }
+
+        private float CalculateMinHero57Dps()
+        {
+            float result = float.MaxValue;
+            for (int i = 0; i < hero57SeedResults.Count; i++) result = Mathf.Min(result, hero57SeedResults[i].averageDps);
+            return result == float.MaxValue ? 0f : result;
+        }
+
+        private float CalculateMaxHero57Dps()
+        {
+            float result = 0f;
+            for (int i = 0; i < hero57SeedResults.Count; i++) result = Mathf.Max(result, hero57SeedResults[i].averageDps);
+            return result;
+        }
         private IEnumerator RunHero53()
         {
             CharacterDefinition definition = database.GetCharacterById("hero_53");
@@ -350,6 +649,18 @@ namespace DefenseGame.Editor
             }
 
             bool fromSkill = target != null && target.LastDamageSkill != null;
+            if (currentSegment == Segment.GenericOffense && activeOffense != null)
+            {
+                activeOffense.eventDamage += damage;
+                if (fromSkill) activeOffense.skillDamage += damage;
+                else
+                {
+                    activeOffense.basicDamage += damage;
+                    activeOffense.basicAttackCount++;
+                }
+                return;
+            }
+
             if (currentSegment == Segment.Hero53 && hero53 != null)
             {
                 hero53.eventDamage += damage;
@@ -399,6 +710,19 @@ namespace DefenseGame.Editor
                 return;
             }
 
+            if (currentSegment == Segment.GenericOffense && activeOffense != null)
+            {
+                activeOffense.skillCastCount++;
+                return;
+            }
+
+            if (currentSegment == Segment.TankPressure && activeTank != null)
+            {
+                activeTank.skillCastCount++;
+                activeTankSkillUntil = Mathf.Max(activeTankSkillUntil, Time.time + Mathf.Max(0f, skill.duration));
+                return;
+            }
+
             if (currentSegment == Segment.Hero53 && hero53 != null && skill.effectType == SkillEffectType.AttackSpeedBoost)
             {
                 hero53.skillCastCount++;
@@ -431,6 +755,37 @@ namespace DefenseGame.Editor
             }
         }
 
+        private void HandleDamageTaken(DefenderUnit target, MonsterUnit source, float damage)
+        {
+            if (currentSegment != Segment.TankPressure || activeTank == null || target != trackedUnit || damage <= 0f)
+            {
+                return;
+            }
+
+            activeTank.totalDamageTaken += damage;
+            activeTank.damageEventCount++;
+            float elapsed = Time.time - activeTankStartTime;
+            if (elapsed <= activeTank.testDuration * 0.33f)
+            {
+                activeTank.earlyDamage += damage;
+                activeTank.earlyDamageEvents++;
+            }
+            else if (elapsed >= activeTank.testDuration * 0.66f)
+            {
+                activeTank.lateDamage += damage;
+                activeTank.lateDamageEvents++;
+            }
+            if (Time.time <= activeTankSkillUntil)
+            {
+                activeTank.damageDuringSkill += damage;
+                activeTank.damageEventsDuringSkill++;
+            }
+            else
+            {
+                activeTank.damageOutsideSkill += damage;
+                activeTank.damageEventsOutsideSkill++;
+            }
+        }
         private DefenderUnit CreateRuntimeUnit(string name, CharacterDefinition definition, Vector3 position)
         {
             GameObject actor = new GameObject(name);
@@ -443,7 +798,7 @@ namespace DefenseGame.Editor
             return unit;
         }
 
-        private MonsterUnit CreateDummy(string name, Vector3 position)
+        private MonsterUnit CreateDummy(string name, Vector3 position, bool isBoss = false, float attackPower = 0f, float attackSpeed = 0f)
         {
             GameObject dummyObject = new GameObject(name);
             dummyObject.transform.position = position;
@@ -457,24 +812,24 @@ namespace DefenseGame.Editor
                 grade = CharacterGrade.Normal,
                 role = MonsterRole.Grunt,
                 threatLevel = MonsterThreatLevel.Regular,
-                isBoss = false,
+                isBoss = isBoss,
                 rewardGold = 0,
                 stats = new CombatStats
                 {
                     maxHealth = DummyHealth,
-                    attackPower = 0f,
-                    attackSpeed = 0f,
+                    attackPower = attackPower,
+                    attackSpeed = attackSpeed,
                     criticalChance = 0f,
                     criticalDamageMultiplier = 1f,
                     maxMana = 0f,
                     manaRegenPerSecondRate = 0f,
                     manaGainWhenHitRate = 0f,
                     manaGainPerAttackRate = 0f,
-                    attackRange = 0.5f,
+                    attackRange = 1.5f,
                     moveSpeed = 0f,
                     projectileSpeed = 0f
                 },
-                attackBehavior = new AttackBehavior(),
+                attackBehavior = new AttackBehavior { basicAttackType = BasicAttackType.Melee, useCustomAttackRange = true, customAttackRange = 1.5f },
                 skills = new List<SkillDefinition>()
             }, null, spawnRound: 0, runtimeHealthMultiplier: 1f, runtimeAttackMultiplier: 1f);
             return dummy;
@@ -546,6 +901,14 @@ namespace DefenseGame.Editor
         public int seed;
         public string scenePath;
         public string baseline;
+        public List<RuntimeDefinitionSnapshot> runtimeDefinitions;
+        public HeroCombatBenchmarkResult hero51;
+        public HeroCombatBenchmarkResult hero52;
+        public TankBenchmarkResult hero54;
+        public TankBenchmarkResult hero55;
+        public Hero57BenchmarkResult hero57;
+        public OffenseComparisonResult offenseComparison;
+        public TankComparisonResult tankComparison;
         public Hero53BenchmarkResult hero53;
         public Hero56BenchmarkResult hero56;
         public int runtimeErrors;
@@ -564,6 +927,146 @@ namespace DefenseGame.Editor
         }
     }
 
+    [Serializable]
+    internal sealed class OffenseComparisonResult
+    {
+        public float hero51SingleDps;
+        public float hero51ControlUptimeRatio;
+        public float hero51BossDps;
+        public float hero52SingleDps;
+        public float hero52ClusterDps;
+        public float hero53SingleDps;
+        public int hero56ClusterTargetCount;
+        public float hero56ActiveOnlyDps;
+        public float hero56NormalizedDutyCycleDps;
+        public float hero57SingleDps;
+        public float hero57ClusterAverageDps;
+        public float hero57ClusterDpsSpread;
+    }
+
+    [Serializable]
+    internal sealed class TankComparisonResult
+    {
+        public float hero54StartingHealth;
+        public float hero54DamageTaken;
+        public float hero54DamageDuringTaunt;
+        public float hero54DamageOutsideTaunt;
+        public float hero54EstimatedLateDamageReduction;
+        public float hero55StartingHealth;
+        public float hero55DamageTaken;
+        public float hero55EarlyDamagePerHit;
+        public float hero55LateDamagePerHit;
+        public float hero55EstimatedLateDamageReduction;
+        public float hero55KnockbackDistance;
+    }    [Serializable]
+    internal sealed class RuntimeDefinitionSnapshot
+    {
+        public string heroId;
+        public string displayName;
+        public string role;
+        public float maxHealth;
+        public float attackPower;
+        public float attackSpeed;
+        public float criticalChance;
+        public float criticalDamageMultiplier;
+        public float maxMana;
+        public float manaRegenPerSecondRate;
+        public float manaGainWhenHitRate;
+        public float manaGainPerAttackRate;
+        public float attackRange;
+        public string skillEffect;
+        public float skillPower;
+        public float skillSecondaryPower;
+        public float skillDuration;
+        public float skillRadius;
+        public float skillManaThreshold;
+        public float skillCooldown;
+    }
+
+    [Serializable]
+    internal sealed class HeroCombatBenchmarkResult
+    {
+        public string heroId;
+        public string role;
+        public OffenseRunResult regular;
+        public OffenseRunResult boss;
+        public OffenseRunResult single;
+        public OffenseRunResult cluster;
+    }
+
+    [Serializable]
+    internal sealed class OffenseRunResult
+    {
+        public string heroId;
+        public bool usesRuntimeDefinition;
+        public bool targetIsBoss;
+        public int targetCount;
+        public float testDuration;
+        public float startingTargetHealth;
+        public float totalDamage;
+        public float eventDamage;
+        public float averageDps;
+        public float basicDamage;
+        public float skillDamage;
+        public int basicAttackCount;
+        public int skillCastCount;
+        public float statusUptime;
+        public float statusUptimeRatio;
+        public List<float> targetDamage = new List<float>();
+    }
+
+    [Serializable]
+    internal sealed class TankBenchmarkResult
+    {
+        public string heroId;
+        public string role;
+        public string note;
+        public bool usesRuntimeDefinition;
+        public float testDuration;
+        public float startingHealth;
+        public float endingHealth;
+        public bool survived;
+        public int skillCastCount;
+        public float totalDamageTaken;
+        public int damageEventCount;
+        public float earlyDamage;
+        public int earlyDamageEvents;
+        public float earlyDamagePerHit;
+        public float lateDamage;
+        public int lateDamageEvents;
+        public float lateDamagePerHit;
+        public float estimatedLateDamageReduction;
+        public float damageDuringSkill;
+        public int damageEventsDuringSkill;
+        public float damageOutsideSkill;
+        public int damageEventsOutsideSkill;
+        public Vector3 knockbackTargetStart;
+        public float knockbackDistance;
+    }
+
+    [Serializable]
+    internal sealed class Hero57BenchmarkResult
+    {
+        public string heroId;
+        public OffenseRunResult single;
+        public List<Hero57SeedResult> seedResults;
+        public float averageDps;
+        public float minDps;
+        public float maxDps;
+        public float dpsSpread;
+    }
+
+    [Serializable]
+    internal sealed class Hero57SeedResult
+    {
+        public int seed;
+        public float totalDamage;
+        public float averageDps;
+        public float basicDamage;
+        public float skillDamage;
+        public int skillCastCount;
+        public List<float> targetDamage;
+    }
     [Serializable]
     internal sealed class Hero53BenchmarkResult
     {
