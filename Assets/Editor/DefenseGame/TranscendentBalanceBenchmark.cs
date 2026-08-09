@@ -117,7 +117,8 @@ namespace DefenseGame.Editor
         private const float Hero52Duration = 18f;
         private const float Hero53Duration = 25f;
         private const float Hero54Duration = 20f;
-        private const float Hero55Duration = 28f;
+        private const float Hero55Duration = 36f;
+        private const float Hero55KnockbackProbeDuration = 15f;
         private const float Hero57Duration = 12f;
         private const float Hero56RestDuration = 3f;
         private const float Hero56ActiveDuration = 15f;
@@ -130,6 +131,7 @@ namespace DefenseGame.Editor
             None,
             GenericOffense,
             TankPressure,
+            Hero55KnockbackProbe,
             Hero53,
             Hero56Rest,
             Hero56Active
@@ -159,6 +161,7 @@ namespace DefenseGame.Editor
         private OffenseRunResult activeOffense;
         private OffenseRunResult hero57Single;
         private TankBenchmarkResult activeTank;
+        private KnockbackProbeResult activeKnockbackProbe;
         private float activeTankSkillUntil;
         private float activeTankStartTime;
         private float activeTankRawDamagePerHit;
@@ -188,7 +191,7 @@ namespace DefenseGame.Editor
             {
                 seed = seed,
                 scenePath = "Assets/Scenes/DG.unity",
-                baseline = "CharacterDatabase runtime definitions; InitializeSummon prevents outgame growth; no synergy, tile, augment, or mana support; offense dummies do not attack and the dedicated tank scenarios use real melee MonsterUnit attacks. hero_56 probeWindowAverageDps includes the short 3s REST probes and is diagnostic only; normalizedDutyCycleDps = activeOnlyDps * 0.5 assumes equal REST/ACTIVE round weight as a 50% duty-cycle balance reference, not literal round duration.",
+                baseline = "CharacterDatabase runtime definitions; InitializeSummon prevents outgame growth; no synergy, tile, augment, or mana support; offense dummies do not attack and the dedicated tank scenarios use real melee MonsterUnit attacks. hero_54 measures Taunt casts and damage reduction, not AI target-redirection. hero_55 uses a status-immune boss-like pressure target for guard-stack measurement plus a separate regular-target knockback probe. hero_56 probeWindowAverageDps includes the short 3s REST probes and is diagnostic only; normalizedDutyCycleDps = activeOnlyDps * 0.5 assumes equal REST/ACTIVE round weight as a 50% duty-cycle balance reference, not literal round duration.",
                 notes = new List<string>()
             };
 
@@ -263,7 +266,8 @@ namespace DefenseGame.Editor
                     hero55EarlyDamagePerHit = report.hero55.earlyDamagePerHit,
                     hero55LateDamagePerHit = report.hero55.lateDamagePerHit,
                     hero55EstimatedLateDamageReduction = report.hero55.estimatedLateDamageReduction,
-                    hero55KnockbackDistance = report.hero55.knockbackDistance
+                    hero55ExpectedDrFromSkillCastCount = report.hero55.expectedDrFromSkillCastCount,
+                    hero55KnockbackDistance = report.hero55.knockbackProbe != null ? report.hero55.knockbackProbe.knockbackDistance : 0f
                 };                report.passed = hero51 != null && hero51.regular.totalDamage > 0f && hero51.regular.skillCastCount > 0 &&
                                 hero51.regular.statusUptime > 0f && hero51.boss.statusUptime <= 0.01f && hero51.boss.totalDamage > 0f &&
                                 hero52 != null && hero52.single.totalDamage > 0f && hero52.single.skillDamage > 0f &&
@@ -275,7 +279,8 @@ namespace DefenseGame.Editor
                                 hero56.activeRoundDamage > 0f && hero56.burstCastCount > 0 && hero56.basicAttackAfterBurstCount > 0 &&
                                 hero56.additionalBurstObserved && report.hero54 != null && report.hero54.damageEventCount > 0 &&
                                 report.hero54.skillCastCount > 0 && report.hero55 != null && report.hero55.damageEventCount > 0 &&
-                                report.hero55.skillCastCount > 0 && report.hero55.knockbackDistance > 0.1f &&
+                                report.hero55.skillCastCount > 1 && report.hero55.expectedDrFromSkillCastCount > 0.05f &&
+                                report.hero55.knockbackProbe != null && report.hero55.knockbackProbe.knockbackObserved &&
                                 report.hero57 != null && report.hero57.seedResults.Count == Hero57Seeds.Length;
                 if (!report.passed)
                 {
@@ -326,7 +331,13 @@ namespace DefenseGame.Editor
 
         private IEnumerator RunHero55()
         {
-            yield return RunTankScenario(GetTranscendentDefinition("hero_55"), Hero55Duration, true);
+            CharacterDefinition definition = GetTranscendentDefinition("hero_55");
+            yield return RunTankScenario(definition, Hero55Duration, true);
+            TankBenchmarkResult sustainedPressure = activeTank;
+            yield return ClearScenario();
+            yield return RunHero55KnockbackProbe(definition);
+            sustainedPressure.knockbackProbe = activeKnockbackProbe;
+            activeTank = sustainedPressure;
         }
 
         private IEnumerator RunHero57()
@@ -400,31 +411,31 @@ namespace DefenseGame.Editor
             currentSegment = Segment.None;
         }
 
-        private IEnumerator RunTankScenario(CharacterDefinition definition, float duration, bool observeKnockback)
+        private IEnumerator RunTankScenario(CharacterDefinition definition, float duration, bool useBossLikePressureTarget)
         {
+            bool isHero55 = string.Equals(definition.id, "hero_55", StringComparison.Ordinal);
             activeTank = new TankBenchmarkResult
             {
                 heroId = definition.id,
                 role = string.Equals(definition.id, "hero_54", StringComparison.Ordinal) ? "Entry Tank" : "Mid Tank",
-                note = string.Equals(definition.id, "hero_55", StringComparison.Ordinal) ? "Knockback is measured on a regular target because boss-like targets are status-immune." : "Taunt pressure uses real MonsterUnit target selection and DefenderUnit damage events.",
+                note = isHero55
+                    ? "Sustained pressure uses a boss-like status-immune monster, so FrontKnockbackGuard can build damage-reduction stacks without displacement. Knockback is measured separately on a regular target."
+                    : "Taunt casts and damage reduction are measured; target-redirection behavior is not measured by this benchmark.",
                 testDuration = duration,
                 startingHealth = definition.stats.maxHealth,
                 usesRuntimeDefinition = definition.grade == CharacterGrade.Transcendent
             };
             trackedUnit = CreateRuntimeUnit(definition.id + "_Tank", definition, Vector3.zero);
-            // The ally remains in the live DefenderUnit registry, allowing the Taunt path to use real target selection.
-            CreateRuntimeUnit(definition.id + "_Ally", GetTranscendentDefinition("hero_53"), new Vector3(1.3f, 0f, -0.5f));
             activeTankRawDamagePerHit = 12f;
             activeTankStartTime = Time.time;
             activeTankSkillUntil = -1f;
-            MonsterUnit pressure = CreateDummy(definition.id + "_Pressure", new Vector3(0f, 0f, 1.05f), false, activeTankRawDamagePerHit, 1.15f);
-            activeTank.knockbackTargetStart = pressure.transform.position;
+            MonsterUnit pressure = CreateDummy(definition.id + "_Pressure", new Vector3(0f, 0f, 1.05f), useBossLikePressureTarget, activeTankRawDamagePerHit, 1.15f);
             currentSegment = Segment.TankPressure;
             // Invoke MonsterUnit's own private basic-attack path. The ordinary Update loop can
             // defer attacks in this headless isolated scene, while this still exercises the real
             // queue, cooldown, hit, DefenderUnit.TakeDamage, and OnDamageTaken production path.
             float nextAttackTime = Time.time;
-            float attackInterval = 1f / Mathf.Max(0.2f, activeTankRawDamagePerHit > 0f ? 1.15f : 1f);
+            float attackInterval = 1f / 1.15f;
             float endTime = Time.time + duration;
             while (Time.time < endTime)
             {
@@ -437,17 +448,44 @@ namespace DefenseGame.Editor
             }
             activeTank.endingHealth = trackedUnit != null ? trackedUnit.CurrentHealth : 0f;
             activeTank.survived = trackedUnit != null && trackedUnit.CurrentHealth > 0f;
-            activeTank.knockbackDistance = observeKnockback && pressure != null
-                ? Vector3.Distance(activeTank.knockbackTargetStart, pressure.transform.position)
-                : 0f;
             activeTank.earlyDamagePerHit = activeTank.earlyDamageEvents > 0 ? activeTank.earlyDamage / activeTank.earlyDamageEvents : 0f;
             activeTank.lateDamagePerHit = activeTank.lateDamageEvents > 0 ? activeTank.lateDamage / activeTank.lateDamageEvents : 0f;
             activeTank.estimatedLateDamageReduction = activeTankRawDamagePerHit > 0f && activeTank.lateDamageEvents > 0
                 ? Mathf.Clamp01(1f - activeTank.lateDamagePerHit / activeTankRawDamagePerHit)
                 : 0f;
+            activeTank.expectedDrFromSkillCastCount = isHero55
+                ? Mathf.Min(activeTank.skillCastCount * 0.05f, 0.40f)
+                : 0f;
             currentSegment = Segment.None;
         }
 
+        private IEnumerator RunHero55KnockbackProbe(CharacterDefinition definition)
+        {
+            activeKnockbackProbe = new KnockbackProbeResult
+            {
+                note = "Regular-target functional probe; it is separate from hero_55 sustained boss-like pressure measurement.",
+                testDuration = Hero55KnockbackProbeDuration
+            };
+            trackedUnit = CreateRuntimeUnit(definition.id + "_KnockbackProbeTank", definition, Vector3.zero);
+            MonsterUnit target = CreateDummy(definition.id + "_KnockbackProbeTarget", new Vector3(0f, 0f, 1.05f));
+            activeKnockbackProbe.positionBefore = target.transform.position;
+            currentSegment = Segment.Hero55KnockbackProbe;
+            float startTime = Time.time;
+            float endTime = startTime + Hero55KnockbackProbeDuration;
+            while (Time.time < endTime && target != null)
+            {
+                if (activeKnockbackProbe.skillCastCount > 0 && Vector3.Distance(activeKnockbackProbe.positionBefore, target.transform.position) > 0.1f)
+                {
+                    break;
+                }
+                yield return null;
+            }
+            activeKnockbackProbe.testDuration = Mathf.Max(0f, Time.time - startTime);
+            activeKnockbackProbe.positionAfter = target != null ? target.transform.position : activeKnockbackProbe.positionBefore;
+            activeKnockbackProbe.knockbackDistance = Vector3.Distance(activeKnockbackProbe.positionBefore, activeKnockbackProbe.positionAfter);
+            activeKnockbackProbe.knockbackObserved = activeKnockbackProbe.skillCastCount > 0 && activeKnockbackProbe.knockbackDistance > 0.1f;
+            currentSegment = Segment.None;
+        }
         private CharacterDefinition GetTranscendentDefinition(string heroId)
         {
             CharacterDefinition definition = database.GetCharacterById(heroId);
@@ -481,6 +519,7 @@ namespace DefenseGame.Editor
                     manaGainPerAttackRate = definition.stats.manaGainPerAttackRate,
                     attackRange = definition.stats.attackRange,
                     skillEffect = skill != null ? skill.effectType.ToString() : string.Empty,
+                    skillHitCount = skill != null ? skill.hitCount : 0,
                     skillPower = skill != null ? skill.power : 0f,
                     skillSecondaryPower = skill != null ? skill.secondaryPower : 0f,
                     skillDuration = skill != null ? skill.duration : 0f,
@@ -723,6 +762,12 @@ namespace DefenseGame.Editor
                 return;
             }
 
+            if (currentSegment == Segment.Hero55KnockbackProbe && activeKnockbackProbe != null)
+            {
+                activeKnockbackProbe.skillCastCount++;
+                return;
+            }
+
             if (currentSegment == Segment.Hero53 && hero53 != null && skill.effectType == SkillEffectType.AttackSpeedBoost)
             {
                 hero53.skillCastCount++;
@@ -840,6 +885,7 @@ namespace DefenseGame.Editor
             trackedUnit = null;
             currentSegment = Segment.None;
             activeRound = null;
+            activeKnockbackProbe = null;
             hero53BuffCastTimes.Clear();
             for (int i = 0; i < scenarioObjects.Count; i++)
             {
@@ -957,6 +1003,7 @@ namespace DefenseGame.Editor
         public float hero55EarlyDamagePerHit;
         public float hero55LateDamagePerHit;
         public float hero55EstimatedLateDamageReduction;
+        public float hero55ExpectedDrFromSkillCastCount;
         public float hero55KnockbackDistance;
     }    [Serializable]
     internal sealed class RuntimeDefinitionSnapshot
@@ -975,6 +1022,7 @@ namespace DefenseGame.Editor
         public float manaGainPerAttackRate;
         public float attackRange;
         public string skillEffect;
+        public int skillHitCount;
         public float skillPower;
         public float skillSecondaryPower;
         public float skillDuration;
@@ -1036,12 +1084,24 @@ namespace DefenseGame.Editor
         public int lateDamageEvents;
         public float lateDamagePerHit;
         public float estimatedLateDamageReduction;
+        public float expectedDrFromSkillCastCount;
         public float damageDuringSkill;
         public int damageEventsDuringSkill;
         public float damageOutsideSkill;
         public int damageEventsOutsideSkill;
-        public Vector3 knockbackTargetStart;
+        public KnockbackProbeResult knockbackProbe;
+    }
+
+    [Serializable]
+    internal sealed class KnockbackProbeResult
+    {
+        public string note;
+        public float testDuration;
+        public int skillCastCount;
+        public Vector3 positionBefore;
+        public Vector3 positionAfter;
         public float knockbackDistance;
+        public bool knockbackObserved;
     }
 
     [Serializable]
