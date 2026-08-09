@@ -3369,7 +3369,7 @@ namespace DefenseGame
         // This intentionally does not invoke OnUnitSummoned: it is not a player-initiated summon.
         public bool TryGrantMissionSupportUnit()
         {
-            if (characterDatabase == null || boardManager == null || EmptySlotCount <= 0)
+            if (IsRoundRunning || characterDatabase == null || boardManager == null || EmptySlotCount <= 0)
             {
                 return false;
             }

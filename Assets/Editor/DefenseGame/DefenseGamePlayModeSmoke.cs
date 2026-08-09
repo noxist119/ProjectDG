@@ -257,11 +257,12 @@ namespace DefenseGame.Editor
                                                   !TacticalMissionSystem.IsLastStandGambitConditionMet(7, 2, 2, 4);
             if (!tacticalMissionRiskRewardValid)
             {
-                notes.Add("전술 미션 초기 전략 분기 또는 배수의 굴림 조건(HP 7 포함/HP 0·3회 소환 실패) 검증에 실패했습니다.");
+                notes.Add("전술 미션 초기 전략 분기 또는 배수의 진 조건(HP 7 포함/HP 0·3회 소환 실패) 검증에 실패했습니다.");
             }
 
             DefenseBoardManager missionBoard = UnityEngine.Object.FindObjectOfType<DefenseBoardManager>();
             DefenderUnit[] unitsBeforeSupport = missionBoard != null ? missionBoard.GetAliveDefenders() : Array.Empty<DefenderUnit>();
+            int supportBoardUnitCountBefore = controller != null ? controller.BoardUnitCount : -1;
             int supportGoldBefore = controller != null ? controller.Gold : -1;
             int supportSummonCostBefore = controller != null ? controller.SummonCost : -1;
             int supportSummonEvents = 0;
@@ -279,6 +280,7 @@ namespace DefenseGame.Editor
             DefenderUnit supportUnit = unitsAfterSupport.FirstOrDefault(unit => unit != null && !unitsBeforeSupport.Contains(unit));
             bool missionSupportUnitIsolationValid = supportGranted &&
                                                     controller != null &&
+                                                    controller.BoardUnitCount == supportBoardUnitCountBefore + 1 &&
                                                     controller.Gold == supportGoldBefore &&
                                                     controller.SummonCost == supportSummonCostBefore &&
                                                     supportSummonEvents == 0 &&
@@ -289,6 +291,25 @@ namespace DefenseGame.Editor
                 notes.Add("미션 지원 유닛이 일반 확률 풀/비용·소환 추적 분리 규칙을 지키지 않습니다.");
             }
 
+            bool missionSupportCombatBlockValid = false;
+            if (controller != null && supportGranted)
+            {
+                controller.StartRound();
+                int combatBoardUnitCountBefore = controller.BoardUnitCount;
+                int combatGoldBefore = controller.Gold;
+                int combatSummonCostBefore = controller.SummonCost;
+                bool combatSupportGranted = controller.TryGrantMissionSupportUnit();
+                missionSupportCombatBlockValid = controller.IsRoundRunning &&
+                                                  !combatSupportGranted &&
+                                                  controller.BoardUnitCount == combatBoardUnitCountBefore &&
+                                                  controller.Gold == combatGoldBefore &&
+                                                  controller.SummonCost == combatSummonCostBefore;
+                controller.ResetRunForRetry();
+            }
+            if (!missionSupportCombatBlockValid)
+            {
+                notes.Add("전투 중 미션 지원 유닛 생성 차단 또는 재화·보드 불변 검증에 실패했습니다.");
+            }
             Button returnToLobbyButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
                 .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
             returnToLobbyButton?.onClick.Invoke();
@@ -688,7 +709,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -723,6 +744,7 @@ namespace DefenseGame.Editor
                 yahtzeeTicketNewRunResetValid = yahtzeeTicketNewRunResetValid,
                 tacticalMissionRiskRewardValid = tacticalMissionRiskRewardValid,
                 missionSupportUnitIsolationValid = missionSupportUnitIsolationValid,
+                missionSupportCombatBlockValid = missionSupportCombatBlockValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
                 earlyMiniShopSummary = earlyMiniShopSummary,
                 ultimateRecipeUxValid = ultimateRecipeUxValid,
@@ -1273,6 +1295,7 @@ namespace DefenseGame.Editor
             public bool yahtzeeTicketNewRunResetValid;
             public bool tacticalMissionRiskRewardValid;
             public bool missionSupportUnitIsolationValid;
+            public bool missionSupportCombatBlockValid;
             public bool earlyMiniShopChoicesValid;
             public string earlyMiniShopSummary;
             public bool ultimateRecipeUxValid;

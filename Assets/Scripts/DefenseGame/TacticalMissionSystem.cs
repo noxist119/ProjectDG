@@ -505,7 +505,7 @@ namespace DefenseGame
                     mission.earliestCompleteRound = 0;
                     mission.goldReward = 0;
                     mission.supportSummonReward = 1;
-                    mission.title = "배수의 굴림";
+                    mission.title = "배수의 진";
                     mission.description = "R3까지 HP 7 이하를 감수하고 소환 2회·유닛 2기 이하를 유지하세요. 성공 시 다음 준비 단계에 무료 지원 유닛이 옵니다.";
                     mission.rewardText = "다음 준비 단계 지원 유닛 1개 예약";
                     mission.color = new Color(1f, 0.38f, 0.28f);
@@ -964,7 +964,7 @@ namespace DefenseGame
             AddCompletionFeed("미션 완료! " + mission.title + "  " + rewardSummary);
             ShowCompletionToast(mission, rewardSummary);
             string banner = mission.kind == MissionKind.LastStandGambit
-                ? "배수의 굴림 성공! 다음 준비 단계 지원 유닛 예약"
+                ? "배수의 진 성공! 다음 준비 단계 지원 유닛 예약"
                 : "미션 완료! " + rewardSummary;
             gameController.RequestBanner(banner, mission.color, 2.8f);
             RuntimeCameraShake.Request(0.055f, 0.18f);
