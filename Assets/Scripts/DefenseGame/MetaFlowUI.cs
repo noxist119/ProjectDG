@@ -23,6 +23,10 @@ namespace DefenseGame
         private readonly List<PresetDefinition> presets = new List<PresetDefinition>();
         private readonly Dictionary<Button, Vector2> outgameNavBasePositions = new Dictionary<Button, Vector2>();
         private readonly Dictionary<Button, Coroutine> outgameNavAnimationRoutines = new Dictionary<Button, Coroutine>();
+        // Overlay enter motion must always return to the authored transform. Reusing the
+        // current animated scale would compound the 0.97 intro scale on tab switches.
+        private readonly Dictionary<RectTransform, Vector2> overlayModalBasePositions = new Dictionary<RectTransform, Vector2>();
+        private readonly Dictionary<RectTransform, Vector3> overlayModalBaseScales = new Dictionary<RectTransform, Vector3>();
         private readonly List<Image> lobbyFeaturedAccentImages = new List<Image>();
         private readonly List<Image> lobbyFeaturedPortraitImages = new List<Image>();
         private readonly List<Text> lobbyFeaturedNameTexts = new List<Text>();
@@ -142,6 +146,8 @@ namespace DefenseGame
         private Scene gameplayScene;
         private Scene shopScene;
 
+        private RuntimeSceneBootstrap runtimeSceneBootstrap;
+
         private sealed class RankingEntry
         {
             public RankingEntry(string name, int score, bool isPlayer = false)
@@ -180,6 +186,7 @@ namespace DefenseGame
             UiSkinResources skin = null)
         {
             gameController = controller;
+            runtimeSceneBootstrap = GetComponent<RuntimeSceneBootstrap>();
             buttonBinder = binder;
             augmentManager = augments;
             characterDatabase = database;
@@ -325,6 +332,8 @@ namespace DefenseGame
 
         private void Build(Transform parent)
         {
+            overlayModalBasePositions.Clear();
+            overlayModalBaseScales.Clear();
             root = new GameObject("MetaFlowOverlayRoot", typeof(RectTransform));
             root.transform.SetParent(parent, false);
 
@@ -577,8 +586,9 @@ namespace DefenseGame
             modal.color = Color.white;
 
             CreatePanel(modal.transform, "ShopHeader", new Vector2(0f, -95f), new Vector2(850f, 104f), new Color(0.98f, 0.78f, 0.18f, 0.98f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreatePanel(modal.transform, "ShopGoldCurrencyChip", new Vector2(-128f, -129f), new Vector2(260f, 58f), new Color(0.08f, 0.12f, 0.30f, 0.82f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
-            CreatePanel(modal.transform, "ShopDiamondCurrencyChip", new Vector2(140f, -129f), new Vector2(250f, 58f), new Color(0.12f, 0.10f, 0.34f, 0.82f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            // Shared with Yahtzee: one restrained, rounded currency-chip treatment.
+            CreatePanel(modal.transform, "ShopGoldCurrencyChip", new Vector2(-128f, -129f), new Vector2(260f, 58f), new Color(0.25f, 0.21f, 0.27f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
+            CreatePanel(modal.transform, "ShopDiamondCurrencyChip", new Vector2(140f, -129f), new Vector2(250f, 58f), new Color(0.25f, 0.21f, 0.27f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), true, false);
             CreateShopArtwork(modal.transform, "HeaderGoldIcon", "Icons/goods_icon_gold", new Vector2(-222f, -137f), new Vector2(42f, 42f), new Color(1f, 1f, 1f, 0.98f), new Vector2(0.5f, 1f));
             CreateShopArtwork(modal.transform, "HeaderDiamondIcon", "Icons/goods_icon_ruby", new Vector2(48f, -137f), new Vector2(42f, 42f), new Color(1f, 1f, 1f, 0.98f), new Vector2(0.5f, 1f));
             CreateText(modal.transform, "ShopTitle", "상점", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-338f, -120f), new Vector2(140f, 48f), 38, TextAnchor.MiddleCenter, true);
@@ -1217,6 +1227,15 @@ namespace DefenseGame
         {
             return characterDatabase != null ? characterDatabase.GetDeployableCharacters().Count : 0;
         }
+        private void SetGameplayStageVisible(bool visible)
+        {
+            if (runtimeSceneBootstrap == null)
+            {
+                runtimeSceneBootstrap = GetComponent<RuntimeSceneBootstrap>();
+            }
+
+            runtimeSceneBootstrap?.SetGameplayStageVisible(visible);
+        }
 
         private void HandleEnterPreparationPressed()
         {
@@ -1242,6 +1261,9 @@ namespace DefenseGame
             {
                 characterCollectionUI.Close();
             }
+
+            SetGameplayStageVisible(true);
+
 
             SetGameplayHudVisible(true);
             gameController.RequestBanner("준비 단계  유닛을 소환한 뒤 다음 라운드를 누르세요", new Color(0.72f, 0.86f, 0.58f), 3.0f);
@@ -1283,7 +1305,8 @@ namespace DefenseGame
             HideLoadout();
             HideShop();
             HideLobby();
-            HideMatchmaking();
+            HideMatchmaking();            SetGameplayStageVisible(true);
+
             buttonBinder.OnClickStartRound();
         }
 
@@ -1436,6 +1459,9 @@ namespace DefenseGame
                 return;
             }
 
+            SetGameplayStageVisible(false);
+
+
             HideYahtzee();
 
             HideSeasonRanking();
@@ -1448,13 +1474,7 @@ namespace DefenseGame
                 PlayOverlayEnter(lobbyOverlay, "LobbyModal");
             }
 
-            if (outgameNavigationRoot != null)
-            {
-                outgameNavigationRoot.SetActive(true);
-                outgameNavigationRoot.transform.SetAsLastSibling();
-            }
-
-            HighlightOutgameNav(hubLobbyButton);
+            ShowOutgameNavigation(hubLobbyButton);
         }
 
         private void HideLobby()
@@ -1553,6 +1573,8 @@ namespace DefenseGame
             bool willOpen = !characterCollectionUI.IsOpen;
             if (willOpen)
             {
+                SetGameplayStageVisible(false);
+
                 SetGameplayHudVisible(false);
                 HideResult();
                 HideLoadout();
@@ -1560,9 +1582,11 @@ namespace DefenseGame
                 HideOutgamePlaceholder();
                 HideExitConfirm();
 
-                ShowLobby();
-
-                HighlightOutgameNav(hubInventoryButton);
+                // The collection is a complete outgame page. Do not leave the lobby
+                // active below it: apart from needless rendering, that allowed the
+                // lobby's controls to be reached through transparent page space.
+                HideLobby();
+                ShowOutgameNavigation(hubInventoryButton);
             }
 
             characterCollectionUI.Toggle();
@@ -1622,6 +1646,8 @@ namespace DefenseGame
             }
             else
             {
+                SetGameplayStageVisible(false);
+
                 SetGameplayHudVisible(false);
                 HideLoadout();
                 HideResult();
@@ -1632,6 +1658,7 @@ namespace DefenseGame
                 {
                     characterCollectionUI.Close();
                 }
+                HideLobby();
                 ShowShop();
                 HighlightOutgameNav(hubShopButton);
             }
@@ -2610,6 +2637,17 @@ namespace DefenseGame
             }
         }
 
+        private void ShowOutgameNavigation(Button activeButton)
+        {
+            if (outgameNavigationRoot != null)
+            {
+                outgameNavigationRoot.SetActive(true);
+                outgameNavigationRoot.transform.SetAsLastSibling();
+            }
+
+            HighlightOutgameNav(activeButton);
+        }
+
         private void HighlightOutgameNav(Button activeButton)
         {
             SetOutgameNavButtonState(hubShopButton, activeButton == hubShopButton);
@@ -2750,8 +2788,12 @@ namespace DefenseGame
         }
 
         private void ShowLoadout()
-        {
+        {            SetGameplayStageVisible(false);
+
+            HideYahtzee();
             HideSeasonRanking();
+            HideLobby();
+            ShowOutgameNavigation(hubInventoryButton);
             ApplyRecommendedPreset();
             if (loadoutOverlay != null)
             {
@@ -2773,7 +2815,8 @@ namespace DefenseGame
         }
 
         private void ShowOutgamePlaceholder(string title, string body)
-        {
+        {            SetGameplayStageVisible(false);
+
             HideSeasonRanking();
             SetGameplayHudVisible(false);
             HideLoadout();
@@ -2784,7 +2827,9 @@ namespace DefenseGame
             {
                 characterCollectionUI.Close();
             }
-            ShowLobby();
+            HideYahtzee();
+            HideLobby();
+            ShowOutgameNavigation(title.Contains("랭킹") ? hubRankingButton : hubYahtzeeButton);
 
             if (outgamePlaceholderOverlay != null)
             {
@@ -2803,11 +2848,11 @@ namespace DefenseGame
                 PlayOverlayEnter(outgamePlaceholderOverlay, "PlaceholderModal");
             }
 
-            HighlightOutgameNav(title.Contains("랭킹") ? hubRankingButton : hubYahtzeeButton);
         }
 
         private void ShowSeasonRanking()
-        {
+        {            SetGameplayStageVisible(false);
+
             SetGameplayHudVisible(false);
             HideLoadout();
             HideShop();
@@ -2818,7 +2863,9 @@ namespace DefenseGame
             {
                 characterCollectionUI.Close();
             }
-            ShowLobby();
+            HideYahtzee();
+            HideLobby();
+            ShowOutgameNavigation(hubRankingButton);
             RefreshSeasonRanking();
             if (seasonRankingOverlay != null)
             {
@@ -3183,8 +3230,18 @@ namespace DefenseGame
             }
 
             modal.DOKill();
-            Vector2 destination = modal.anchoredPosition;
-            Vector3 targetScale = modal.localScale.sqrMagnitude > 0.001f ? modal.localScale : Vector3.one;
+            if (!overlayModalBasePositions.TryGetValue(modal, out Vector2 destination))
+            {
+                destination = modal.anchoredPosition;
+                overlayModalBasePositions[modal] = destination;
+            }
+
+            if (!overlayModalBaseScales.TryGetValue(modal, out Vector3 targetScale))
+            {
+                targetScale = modal.localScale.sqrMagnitude > 0.001f ? modal.localScale : Vector3.one;
+                overlayModalBaseScales[modal] = targetScale;
+            }
+
             modal.anchoredPosition = destination + new Vector2(0f, -28f);
             modal.localScale = targetScale * 0.97f;
 

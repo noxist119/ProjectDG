@@ -104,8 +104,15 @@ namespace DefenseGame
 		};
 
 		private static Sprite roundedPanelSprite;
-
 		private static Sprite circleSprite;
+
+		private Transform runtimeStageRoot;
+		private Transform runtimeCombatCameraRoot;
+		private Camera runtimeCombatCamera;
+		private int runtimeSceneBuildCount;
+
+		public int RuntimeSceneBuildCount => runtimeSceneBuildCount;
+		public bool IsGameplayStageVisible => runtimeStageRoot != null && runtimeStageRoot.gameObject.activeSelf && runtimeCombatCameraRoot != null && runtimeCombatCameraRoot.gameObject.activeSelf;
 
 		private void Start()
 		{
@@ -149,6 +156,8 @@ namespace DefenseGame
 			monsterDatabase.ApplyPresentationConfig(presentationConfig);
 			monsterDatabase.ApplyCombatTuningConfig(monsterCombatTuningConfig);
 			Transform root = EnsureRoot("RuntimeStageRoot");
+			runtimeStageRoot = root;
+			root.gameObject.SetActive(true);
 			Transform boardRoot = EnsureChild(root, "BoardSlots");
 			Transform spawnRoot = EnsureChild(root, "SpawnPoints");
 			Transform templateRoot = EnsureChild(root, "Templates");
@@ -181,9 +190,38 @@ namespace DefenseGame
 			tileModifierSystem.Configure(gameController, boardManager);
 			demoInput.Configure(gameController);
 			buttonBinder.Configure(gameController);
-			BuildCanvas(root, hud, gameController, boardManager, buttonBinder, augmentManager, collectionUI, metaFlowUI, synergySystem, missionSystem, tileModifierSystem, runShopSystem, characterDatabase, outgameProgression);
-			EnsureRuntimeBgm(gameController);
-		}
+            BuildCanvas(root, hud, gameController, boardManager, buttonBinder, augmentManager, collectionUI, metaFlowUI, synergySystem, missionSystem, tileModifierSystem, runShopSystem, characterDatabase, outgameProgression);
+            EnsureRuntimeBgm(gameController);
+            runtimeSceneBuildCount++;
+            SetGameplayStageVisible(false);
+        }
+
+        /// <summary>
+        /// Keeps meta systems and the screen-space outgame UI alive while disabling the
+        /// world board, spawn/template hierarchy, and combat camera outside battle.
+        /// </summary>
+        public void SetGameplayStageVisible(bool visible)
+        {
+            if (visible && runtimeStageRoot == null)
+            {
+                BuildScene();
+                return;
+            }
+
+            if (runtimeStageRoot != null)
+            {
+                runtimeStageRoot.gameObject.SetActive(visible);
+            }
+
+            if (runtimeCombatCameraRoot != null)
+            {
+                runtimeCombatCameraRoot.gameObject.SetActive(visible);
+            }
+            else if (runtimeCombatCamera != null)
+            {
+                runtimeCombatCamera.enabled = visible;
+            }
+        }
 
 		private void EnsureRuntimeBgm(DefenseGameController gameController)
 		{
@@ -292,35 +330,43 @@ namespace DefenseGame
 			ReplaceNamedPrimitive(root, "RightCliff", PrimitiveType.Cube, new Vector3(11.2f, 1.5f, 0f), new Vector3(1.2f, 3f, 21f), GetConfigColor((GamePresentationConfig config) => config.sideWallColor, new Color(0.12f, 0.14f, 0.18f)));
 			ReplaceNamedPrimitive(root, "LeftBanner", PrimitiveType.Cube, new Vector3(-9.5f, 3.5f, -5.7f), new Vector3(1.2f, 2.8f, 0.2f), GetLaneColor(0));
 			ReplaceNamedPrimitive(root, "RightBanner", PrimitiveType.Cube, new Vector3(9.5f, 3.5f, -5.7f), new Vector3(1.2f, 2.8f, 0.2f), GetLaneColor(3));
-		}
+		}        private void EnsureCamera()
+        {
+            if (runtimeCombatCameraRoot == null)
+            {
+                runtimeCombatCameraRoot = EnsureRoot("RuntimeCombatCameraRoot");
+            }
 
-		private void EnsureCamera()
-		{
-			Camera camera = Camera.main;
-			if (camera == null)
-			{
-				GameObject cameraObject = new GameObject("Main Camera");
-				camera = cameraObject.AddComponent<Camera>();
-				cameraObject.tag = "MainCamera";
-			}
-			Vector3 widePosition = new Vector3(0f, 15f, -12.4f);
-			Vector3 portraitPosition = new Vector3(0f, 17.6f, -16.1f);
-			Vector3 cameraEuler = new Vector3(53f, 0f, 0f);
-			camera.transform.position = widePosition;
-			camera.transform.rotation = Quaternion.Euler(cameraEuler);
-			camera.backgroundColor = new Color(0.05f, 0.07f, 0.11f);
-			camera.clearFlags = CameraClearFlags.Color;
-			camera.orthographic = false;
-			camera.fieldOfView = 50f;
-			RuntimeBattleCameraFitter fitter = camera.GetComponent<RuntimeBattleCameraFitter>();
-			if (fitter == null)
-			{
-				fitter = camera.gameObject.AddComponent<RuntimeBattleCameraFitter>();
-			}
-			fitter.Configure(widePosition, portraitPosition, cameraEuler, 50f, 60f);
-		}
+            // Reactivate only while rebuilding so Camera.main resolves the existing
+            // runtime camera instead of allocating a duplicate after an outgame page.
+            runtimeCombatCameraRoot.gameObject.SetActive(true);
+            Camera camera = runtimeCombatCamera != null ? runtimeCombatCamera : Camera.main;
+            if (camera == null)
+            {
+                GameObject cameraObject = new GameObject("Main Camera");
+                camera = cameraObject.AddComponent<Camera>();
+                cameraObject.tag = "MainCamera";
+            }
 
-		private void EnsureLight()
+            camera.transform.SetParent(runtimeCombatCameraRoot, true);
+            runtimeCombatCamera = camera;
+            Vector3 widePosition = new Vector3(0f, 15f, -12.4f);
+            Vector3 portraitPosition = new Vector3(0f, 17.6f, -16.1f);
+            Vector3 cameraEuler = new Vector3(53f, 0f, 0f);
+            camera.transform.position = widePosition;
+            camera.transform.rotation = Quaternion.Euler(cameraEuler);
+            camera.backgroundColor = new Color(0.05f, 0.07f, 0.11f);
+            camera.clearFlags = CameraClearFlags.Color;
+            camera.orthographic = false;
+            camera.fieldOfView = 50f;
+            RuntimeBattleCameraFitter fitter = camera.GetComponent<RuntimeBattleCameraFitter>();
+            if (fitter == null)
+            {
+                fitter = camera.gameObject.AddComponent<RuntimeBattleCameraFitter>();
+            }
+            fitter.Configure(widePosition, portraitPosition, cameraEuler, 50f, 60f);
+        }
+private void EnsureLight()
 		{
 			Light light = UnityEngine.Object.FindObjectOfType<Light>();
 			if (light == null)
@@ -709,7 +755,7 @@ namespace DefenseGame
 
 		private void BuildCanvas(Transform root, SimpleGameHUD hud, DefenseGameController gameController, DefenseBoardManager boardManager, GameUIButtonBinder binder, AugmentManager augmentManager, CharacterCollectionUI collectionUI, MetaFlowUI metaFlowUI, BoardSynergySystem synergySystem, TacticalMissionSystem missionSystem, BoardTileModifierSystem tileModifierSystem, RunShopSystem runShopSystem, CharacterDatabase characterDatabase, OutgameProgressionSystem outgameProgression)
 		{
-			Transform existingCanvasTransform = root.Find("RuntimeCanvas");
+            Transform existingCanvasTransform = base.transform.Find("RuntimeCanvas");
 			if (existingCanvasTransform != null)
 			{
 				SafeDestroy(existingCanvasTransform.gameObject);
@@ -717,7 +763,9 @@ namespace DefenseGame
 			EnsureEventSystem();
 			GameObject canvasObject = new GameObject("RuntimeCanvas", typeof(RectTransform));
 			canvasObject.SetActive(value: false);
-			canvasObject.transform.SetParent(root, worldPositionStays: false);
+            // The canvas is meta/UI infrastructure. Keep it outside RuntimeStageRoot so
+            // outgame pages remain available while the 3D combat stage is inactive.
+            canvasObject.transform.SetParent(base.transform, worldPositionStays: false);
 			Canvas canvas = canvasObject.AddComponent<Canvas>();
 			canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 			CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();

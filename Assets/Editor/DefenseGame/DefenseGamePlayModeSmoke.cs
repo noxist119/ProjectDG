@@ -220,6 +220,17 @@ namespace DefenseGame.Editor
             {
                 notes.Add("소환 버튼의 행운 진행도 배지, GOLD 비용 표기 또는 Assets/Art/Ui 버튼 스프라이트 우선 적용이 유효하지 않습니다.");
             }
+            RuntimeSceneBootstrap runtimeBootstrap = UnityEngine.Object.FindObjectOfType<RuntimeSceneBootstrap>();
+            Transform runtimeStageRoot = runtimeBootstrap != null ? runtimeBootstrap.transform.Find("RuntimeStageRoot") : null;
+            Transform runtimeCameraRoot = runtimeBootstrap != null ? runtimeBootstrap.transform.Find("RuntimeCombatCameraRoot") : null;
+            int initialBuildCount = runtimeBootstrap != null ? runtimeBootstrap.RuntimeSceneBuildCount : -1;
+            int initialCameraCount = UnityEngine.Object.FindObjectsOfType<Camera>(true).Length;
+            bool stageHiddenInLobby = runtimeBootstrap != null &&
+                                      runtimeStageRoot != null && !runtimeStageRoot.gameObject.activeInHierarchy &&
+                                      runtimeCameraRoot != null && !runtimeCameraRoot.gameObject.activeInHierarchy &&
+                                      runtimeStageRoot.Find("BoardSlots") != null && !runtimeStageRoot.Find("BoardSlots").gameObject.activeInHierarchy &&
+                                      runtimeStageRoot.Find("SpawnPoints") != null && !runtimeStageRoot.Find("SpawnPoints").gameObject.activeInHierarchy &&
+                                      runtimeStageRoot.Find("Templates") != null && !runtimeStageRoot.Find("Templates").gameObject.activeInHierarchy;
 
             Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
                 .FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
@@ -235,6 +246,35 @@ namespace DefenseGame.Editor
             if (!initialPreparationFlowValid)
             {
                 notes.Add("전장 입장 후 다음 라운드를 누르기 전까지 R1 카운트다운이 대기하지 않습니다.");
+            }            bool stageVisibleInPreparation = runtimeBootstrap != null && runtimeBootstrap.IsGameplayStageVisible;
+            Button returnToLobbyButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
+            returnToLobbyButton?.onClick.Invoke();
+            bool stageHiddenAfterReturn = runtimeBootstrap != null &&
+                                          !runtimeBootstrap.IsGameplayStageVisible &&
+                                          runtimeStageRoot != null && !runtimeStageRoot.gameObject.activeInHierarchy &&
+                                          runtimeCameraRoot != null && !runtimeCameraRoot.gameObject.activeInHierarchy;
+            bool runtimeStageLifecycleValid = stageHiddenInLobby &&
+                                              stageVisibleInPreparation &&
+                                              stageHiddenAfterReturn &&
+                                              runtimeBootstrap != null && runtimeBootstrap.RuntimeSceneBuildCount == initialBuildCount &&
+                                              UnityEngine.Object.FindObjectsOfType<Camera>(true).Length == initialCameraCount;
+            if (!runtimeStageLifecycleValid)
+            {
+                notes.Add("Outgame stage gate failed: lobbyHidden=" + stageHiddenInLobby + ", preparationVisible=" + stageVisibleInPreparation + ", returnHidden=" + stageHiddenAfterReturn + ", build=" + (runtimeBootstrap != null ? runtimeBootstrap.RuntimeSceneBuildCount : -1) + "/" + initialBuildCount + ", cameras=" + UnityEngine.Object.FindObjectsOfType<Camera>(true).Length + "/" + initialCameraCount);
+            }
+            Button inventoryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "OutgameNavInventory");
+            bool inventoryStageHidden = inventoryButton != null;
+            if (inventoryStageHidden)
+            {
+                inventoryButton.onClick.Invoke();
+                inventoryStageHidden = runtimeBootstrap != null && !runtimeBootstrap.IsGameplayStageVisible;
+                returnToLobbyButton?.onClick.Invoke();
+            }
+            if (!inventoryStageHidden)
+            {
+                notes.Add("Inventory did not keep the combat stage disabled.");
             }
 
             Button dailyFateCupButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
@@ -315,7 +355,7 @@ namespace DefenseGame.Editor
                                    shopGold != null &&
                                    shopGold.text.Contains("GOLD") &&
                                    decorativeShopArtValid &&
-                                   purchaseConfirmationValid;
+                                   purchaseConfirmationValid && runtimeBootstrap != null && !runtimeBootstrap.IsGameplayStageVisible;
                 if (!outgameShopValid)
                 {
                     notes.Add("SHOP DETAIL modal=" + (shopModal != null) + ", size=" + (shopModal != null ? shopModal.sizeDelta.ToString() : "null") + ", daily=" + dailyCards + ", cash=" + cashCards + ", chest=" + chestCards + ", gold=" + (shopGold != null ? shopGold.text : "null") + ", productIcons=" + productIcons + ", sectionIcons=" + sectionIcons + ", confirm=" + purchaseConfirmationValid);
@@ -366,7 +406,7 @@ namespace DefenseGame.Editor
                                    topCards == 3 &&
                                    rankingRows == 9 &&
                                    rankingPlayerSummary != null &&
-                                   rankingPlayerSummary.text.Contains("내 순위");
+                                   rankingPlayerSummary.text.Contains("내 순위") && runtimeBootstrap != null && !runtimeBootstrap.IsGameplayStageVisible;
                 if (!rankingPageValid)
                 {
                     notes.Add("RANK DETAIL overlay=" + (rankingOverlay != null && rankingOverlay.gameObject.activeSelf) + ", modal=" + (rankingModal != null) + ", size=" + (rankingModal != null ? rankingModal.sizeDelta.ToString() : "null") + ", top=" + topCards + ", rows=" + rankingRows + ", player=" + (rankingPlayerSummary != null ? rankingPlayerSummary.text : "null"));
@@ -420,7 +460,7 @@ namespace DefenseGame.Editor
                                      yahtzeeConfirm != null &&
                                      yahtzeeAdvanceRemoved &&
                                      yahtzeeStatus != null &&
-                                     yahtzeeProgression != null;
+                                     yahtzeeProgression != null && runtimeBootstrap != null && !runtimeBootstrap.IsGameplayStageVisible;
                 if (!yahtzeeModeUiValid)
                 {
                     notes.Add("YATZY DETAIL overlay=" + (yahtzeeOverlay != null && yahtzeeOverlay.gameObject.activeSelf) + ", modal=" + (yahtzeeModal != null) + ", dice=" + diceCount + ", faces=" + diceFaceCount + ", chest=" + chestOpenButtons + ", hold=" + (yahtzeeHold != null) + ", reroll=" + (yahtzeeReroll != null) + ", confirm=" + (yahtzeeConfirm != null) + ", advanceRemoved=" + yahtzeeAdvanceRemoved + ", status=" + (yahtzeeStatus != null) + ", system=" + (yahtzeeProgression != null));
@@ -606,7 +646,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -628,6 +668,8 @@ namespace DefenseGame.Editor
                 fateEntryIdleAtFullHealth = fateEntryIdleAtFullHealth,
                 summonHudReadable = summonHudReadable,
                 initialPreparationFlowValid = initialPreparationFlowValid,
+                runtimeStageLifecycleValid = runtimeStageLifecycleValid,
+                inventoryStageHidden = inventoryStageHidden,
                 dailyFateCupUiValid = dailyFateCupUiValid,
                 bossForecastUiValid = bossForecastUiValid,
                 resultRewardIconsValid = resultRewardIconsValid,
@@ -1174,6 +1216,8 @@ namespace DefenseGame.Editor
             public bool fateEntryIdleAtFullHealth;
             public bool summonHudReadable;
             public bool initialPreparationFlowValid;
+            public bool runtimeStageLifecycleValid;
+            public bool inventoryStageHidden;
             public bool dailyFateCupUiValid;
             public bool bossForecastUiValid;
             public bool resultRewardIconsValid;

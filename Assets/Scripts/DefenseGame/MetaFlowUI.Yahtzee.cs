@@ -26,7 +26,12 @@ namespace DefenseGame
         private void BuildYahtzeeOverlay(Transform parent)
         {
             yahtzeeOverlay = CreateOverlayRoot(parent, "YahtzeeOverlay", Color.clear);
-            yahtzeeOverlay.GetComponent<Image>().raycastTarget = false;
+            // This is a full outgame page. Its root deliberately receives taps so
+            // empty page space cannot pass clicks to the lobby battle button below.
+            Image yahtzeeBlocker = yahtzeeOverlay.GetComponent<Image>();
+            yahtzeeBlocker.raycastTarget = true;
+            RollRollUiResource.TryApplySprite(yahtzeeBlocker, "Common/background", Image.Type.Simple, false);
+            yahtzeeBlocker.color = Color.white;
             Image modal = CreatePanel(yahtzeeOverlay.transform, "YahtzeeModal", new Vector2(0f, 76f), new Vector2(0f, -152f), Color.white, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), false, false);
             RollRollUiResource.TryApplySprite(modal, "Common/background", Image.Type.Simple, false);
             modal.color = Color.white;
@@ -51,9 +56,13 @@ namespace DefenseGame
 
         private void BuildYahtzeeCurrencyChip(Transform parent, string name, string iconPath, Vector2 position, out Text valueText, UnityEngine.Events.UnityAction plusAction)
         {
-            Image chip = CreatePanel(parent, name, position, new Vector2(184f, 60f), new Color(0.08f, 0.12f, 0.30f, 0.86f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, 1f), true, false);
+            // Keep the same dark rounded currency-chip treatment as the shop header.
+            Image chip = CreatePanel(parent, name, position, new Vector2(184f, 60f), new Color(0.25f, 0.21f, 0.27f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, 1f), true, false);
             CreateShopArtwork(chip.transform, "Icon", iconPath, new Vector2(14f, -9f), new Vector2(42f, 42f), Color.white, new Vector2(0f, 1f));
             valueText = CreateText(chip.transform, "Value", "0", Color.white, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(0f, 0.5f), new Vector2(62f, 0f), new Vector2(-92f, 0f), 18, TextAnchor.MiddleLeft, true);
+            valueText.resizeTextForBestFit = true;
+            valueText.resizeTextMinSize = 14;
+            valueText.resizeTextMaxSize = 18;
             CreateButton(chip.transform, "PlusButton", "+", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-8f, 0f), new Vector2(44f, 44f), new Color(0.18f, 0.72f, 0.88f, 1f), plusAction, 25);
         }
 
@@ -110,6 +119,7 @@ namespace DefenseGame
         private void ShowYahtzee()
         {
             if (gameController != null && gameController.IsRoundRunning) return;
+            SetGameplayStageVisible(false);
             SetGameplayHudVisible(false);
             HideLoadout();
             HideShop();
@@ -118,10 +128,10 @@ namespace DefenseGame
             HideOutgamePlaceholder();
             HideExitConfirm();
             if (characterCollectionUI != null && characterCollectionUI.IsOpen) characterCollectionUI.Close();
-            ShowLobby();
+            HideLobby();
+            ShowOutgameNavigation(hubYahtzeeButton);
             RefreshYahtzee();
             if (yahtzeeOverlay != null) PlayOverlayEnter(yahtzeeOverlay, "YahtzeeModal");
-            HighlightOutgameNav(hubYahtzeeButton);
         }
 
         private void HideYahtzee()
@@ -135,9 +145,9 @@ namespace DefenseGame
         {
             if (yahtzeeProgression == null || yahtzeeOverlay == null) return;
             bool active = yahtzeeProgression.SessionActive;
-            if (yahtzeeTicketText != null) yahtzeeTicketText.text = yahtzeeProgression.TicketCount.ToString("N0");
-            if (yahtzeeGoldText != null) yahtzeeGoldText.text = (outgameProgression != null ? outgameProgression.Gold : 0).ToString("N0");
-            if (yahtzeeDiamondText != null) yahtzeeDiamondText.text = (outgameProgression != null ? outgameProgression.Diamonds : 0).ToString("N0");
+            if (yahtzeeTicketText != null) yahtzeeTicketText.text = "TICKET " + yahtzeeProgression.TicketCount.ToString("N0");
+            if (yahtzeeGoldText != null) yahtzeeGoldText.text = "GOLD " + (outgameProgression != null ? outgameProgression.Gold : 0).ToString("N0");
+            if (yahtzeeDiamondText != null) yahtzeeDiamondText.text = "DIA " + (outgameProgression != null ? outgameProgression.Diamonds : 0).ToString("N0");
             if (yahtzeeChestCountText != null) yahtzeeChestCountText.text = "보관 " + yahtzeeProgression.ChestCount + "개";
             if (yahtzeeMultiplierText != null)
             {
