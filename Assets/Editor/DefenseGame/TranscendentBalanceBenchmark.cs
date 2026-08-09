@@ -166,7 +166,7 @@ namespace DefenseGame.Editor
             {
                 seed = seed,
                 scenePath = "Assets/Scenes/DG.unity",
-                baseline = "CharacterDatabase runtime definitions; InitializeSummon prevents outgame growth; no synergy, tile, augment, mana support, or dummy attacks.",
+                baseline = "CharacterDatabase runtime definitions; InitializeSummon prevents outgame growth; no synergy, tile, augment, mana support, or dummy attacks. hero_56 probeWindowAverageDps includes the short 3s REST probes and is diagnostic only; normalizedDutyCycleDps = activeOnlyDps * 0.5 assumes equal REST/ACTIVE round weight as a 50% duty-cycle balance reference, not literal round duration.",
                 notes = new List<string>()
             };
 
@@ -303,9 +303,10 @@ namespace DefenseGame.Editor
             yield return RunHero56ActiveSegment(2);
             hero56.totalElapsedTime = hero56.restRoundCount * Hero56RestDuration + hero56.activeRoundCount * Hero56ActiveDuration;
             hero56.totalDamage = hero56.restRoundDamage + hero56.activeRoundDamage;
-            hero56.cycleAverageDps = hero56.totalElapsedTime > 0f ? hero56.totalDamage / hero56.totalElapsedTime : 0f;
+            hero56.probeWindowAverageDps = hero56.totalElapsedTime > 0f ? hero56.totalDamage / hero56.totalElapsedTime : 0f;
             float totalActiveTime = hero56.activeRoundCount * Hero56ActiveDuration;
             hero56.activeOnlyDps = totalActiveTime > 0f ? hero56.activeRoundDamage / totalActiveTime : 0f;
+            hero56.normalizedDutyCycleDps = hero56.activeOnlyDps * 0.5f;
             currentSegment = Segment.None;
         }
 
@@ -599,8 +600,9 @@ namespace DefenseGame.Editor
         public float totalDamage;
         public float restRoundDamage;
         public float activeRoundDamage;
-        public float cycleAverageDps;
+        public float probeWindowAverageDps;
         public float activeOnlyDps;
+        public float normalizedDutyCycleDps;
         public int basicAttackCount;
         public int basicAttackAfterBurstCount;
         public int burstCastCount;
