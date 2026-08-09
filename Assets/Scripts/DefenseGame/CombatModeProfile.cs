@@ -178,7 +178,7 @@ namespace DefenseGame
                 bossHealthMultiplier = 0.72f,
                 bossAttackMultiplier = 0.70f,
                 roundLeakDamageCap = 2,
-                firstAugmentChoiceRound = 3,
+                firstAugmentChoiceRound = 6,
                 augmentChoiceInterval = 4,
                 rareHeroAugmentUnlockRound = 5,
                 mythicHeroAugmentUnlockRound = 8,

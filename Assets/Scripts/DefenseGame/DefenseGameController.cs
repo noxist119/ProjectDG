@@ -147,6 +147,7 @@ namespace DefenseGame
         private const int EarlyRunTuningLogMaxEntries = 60;
         private const int EarlyRunRequiredRoundCount = 10;
         private const int RunClipMaxEvents = 6;
+        private const int BossForecastPreparationCompletedRound = 3;
 
         public static DefenseGameController Active { get; private set; }
 
@@ -171,6 +172,7 @@ namespace DefenseGame
         private bool bossForecastBetResolved;
         private bool bossForecastRequestRaised;
         private int bossForecastBonusScore;
+        private int bossForecastPreferredShopRoleIndex = -1;
 
         [Header("Economy")]
         [SerializeField] private int startGold = 36;
@@ -435,6 +437,9 @@ namespace DefenseGame
         private bool pendingRoundHadMerge;
         private CharacterGrade pendingRoundHighestMergeGrade = CharacterGrade.Normal;
         private int runMergeCount;
+        private int runTotalMergeCount;
+        private string lastTranscendentRecipePacingSnapshot = string.Empty;
+        private int transcendentRecipePacingSnapshotCount;
         private bool firstBossSummonRushBonusGranted;
         private string earlyRunTelemetrySummary = "1~10R 계측 대기";
         private string earlyRunTuningHint = "초반 런 데이터 대기";
@@ -608,10 +613,17 @@ namespace DefenseGame
             ? DailyFateCupRules.TodayLabel + "  ·  시드 " + Mathf.Abs(DailyFateCupSeed % 100000).ToString("D5")
             : "데일리 운명컵 OFF  ·  일반 랜덤 시드";
         public BossForecastBet CurrentBossForecastBet => bossForecastBet;
+        public static bool IsBossForecastPreparationRound(int completedRound, bool isRoundRunning)
+        {
+            return completedRound == BossForecastPreparationCompletedRound && !isRoundRunning;
+        }
         public bool CanChooseBossForecastBet => bossForecastBet == BossForecastBet.None && !bossForecastBetResolved &&
-            CurrentRound <= 0 && !IsRoundRunning;
-        public int BossForecastPreferredShopRoleIndex => bossForecastBet == BossForecastBet.Supply ? 0 :
-            bossForecastBet == BossForecastBet.Build ? 1 : bossForecastBet == BossForecastBet.Tactical ? 2 : -1;
+            IsBossForecastPreparationRound(CurrentRound, IsRoundRunning);
+        public int BossForecastPreferredShopRoleIndex => bossForecastPreferredShopRoleIndex;
+        public int RunTotalPlayerSummons => Mathf.Max(0, earlySummonAttempts);
+        public int RunTotalMerges => Mathf.Max(0, runTotalMergeCount);
+        public string LastTranscendentRecipePacingSnapshot => lastTranscendentRecipePacingSnapshot;
+        public int TranscendentRecipePacingSnapshotCount => transcendentRecipePacingSnapshotCount;
         public string BossForecastSummary => BuildBossForecastSummary();
         public string LuckProtectionLedgerSummary => BuildLuckProtectionLedgerSummary();
         public int BossForecastBonusScore => Mathf.Max(0, bossForecastBonusScore);
@@ -989,7 +1001,6 @@ namespace DefenseGame
             ResolveUltimateRecipeBingoReward();
             OnUnitSummoned?.Invoke(summon);
             OnPlayerSummoned?.Invoke(summon);
-            RequestBossForecastBetIfNeeded();
             NotifyStateChanged();
             return true;
         }
@@ -1272,6 +1283,7 @@ namespace DefenseGame
             }
 
             RegisterMergeExcitement(mergeResult);
+            runTotalMergeCount++;
             RecordEarlyRoundMerge(mergeResult.resultGrade);
             ResolveUltimateRecipeBingoReward();
             OnMergeCompleted?.Invoke(mergeResult);
@@ -1378,9 +1390,12 @@ namespace DefenseGame
         }
 
 
-        private void RequestBossForecastBetIfNeeded()
+        private void RequestBossForecastBetIfNeeded(int completedRound)
         {
-            if (bossForecastRequestRaised || !CanChooseBossForecastBet)
+            if (completedRound != CurrentRound ||
+                !IsBossForecastPreparationRound(completedRound, IsRoundRunning) ||
+                bossForecastRequestRaised ||
+                !CanChooseBossForecastBet)
             {
                 return;
             }
@@ -1389,6 +1404,16 @@ namespace DefenseGame
             OnBossForecastBetRequested?.Invoke();
         }
 
+        public bool ConsumeBossForecastPreferredShopRole()
+        {
+            if (bossForecastPreferredShopRoleIndex < 0)
+            {
+                return false;
+            }
+
+            bossForecastPreferredShopRoleIndex = -1;
+            return true;
+        }
         public bool TryChooseBossForecastBet(BossForecastBet choice)
         {
             if (!CanChooseBossForecastBet || choice == BossForecastBet.None)
@@ -1398,6 +1423,8 @@ namespace DefenseGame
 
             bossForecastBet = choice;
             bossForecastRequestRaised = true;
+            bossForecastPreferredShopRoleIndex = choice == BossForecastBet.Supply ? 0 :
+                choice == BossForecastBet.Build ? 1 : 2;
             string entryBonus = "첫 상점 방향 확정";
             if (IsOverdriveMode && choice == BossForecastBet.Supply)
             {
@@ -4023,6 +4050,7 @@ namespace DefenseGame
                 OnBannerRequested?.Invoke("ROUND CLEAR  +" + clearReward + "G", new Color(0.48f, 1f, 0.72f), 2.5f);
                 TryAwardYahtzeeTicketForBossClear(round, bossRound);
                 ReportCombatModeRoundTelemetry(round);
+                ReportTranscendentRecipePacing(round);
                 ReportRoundCombatRecap(bossRound);
                 if (unlockedFrontSlots > 0)
                 {
@@ -4036,6 +4064,7 @@ namespace DefenseGame
                 ResolveEarlyBossPrepReward(round);
                 ResolveBossForecastBet(round, bossRound);
                 OnRoundBoardPreparation?.Invoke(round);
+                RequestBossForecastBetIfNeeded(round);
                 pendingPostRoundChoiceRound = round;
                 OnRoundCompleted?.Invoke(round);
             }
@@ -4323,6 +4352,75 @@ namespace DefenseGame
                 " roundBestCombo=" + currentRoundBestKillCombo);
         }
 
+        public static bool IsTranscendentRecipePacingSnapshotRound(int round)
+        {
+            return round == 10 || round == 15 || round == 20;
+        }
+
+        private void ReportTranscendentRecipePacing(int round)
+        {
+            if (!IsTranscendentRecipePacingSnapshotRound(round))
+            {
+                return;
+            }
+
+            int normal = 0;
+            int rare = 0;
+            int epic = 0;
+            int legendary = 0;
+            int mythic = 0;
+            int transcendent = 0;
+            CharacterGrade highestGrade = CharacterGrade.Normal;
+            DefenderUnit[] defenders = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
+            for (int i = 0; i < defenders.Length; i++)
+            {
+                DefenderUnit defender = defenders[i];
+                if (defender == null)
+                {
+                    continue;
+                }
+
+                CharacterGrade grade = defender.Grade;
+                if ((int)grade > (int)highestGrade)
+                {
+                    highestGrade = grade;
+                }
+
+                switch (grade)
+                {
+                    case CharacterGrade.Rare: rare++; break;
+                    case CharacterGrade.Epic: epic++; break;
+                    case CharacterGrade.Legendary: legendary++; break;
+                    case CharacterGrade.Mythic: mythic++; break;
+                    case CharacterGrade.Transcendent: transcendent++; break;
+                    default: normal++; break;
+                }
+            }
+
+            UltimateRecipeOption[] options = GetAllUltimateRecipeOptions();
+            UltimateRecipeOption[] readyOptions = GetReadyUltimateRecipeOptions();
+            string FormatRecipe(UltimateRecipeOption option)
+            {
+                string resultName = string.IsNullOrWhiteSpace(option.resultSummary) ? option.resultCharacterId : option.resultSummary;
+                return option.recipeName + " " + option.progress + "/" + Mathf.Max(1, option.required) +
+                    " Missing=" + option.missingMaterialCount + " -> " + option.resultCharacterId + " (" + resultName + ")";
+            }
+
+            string best = options != null && options.Length > 0 ? FormatRecipe(options[0]) : "None";
+            string next = options != null && options.Length > 1 ? "\nNext=" + FormatRecipe(options[1]) : string.Empty;
+            lastTranscendentRecipePacingSnapshot = "[DG_RECIPE_PACING]\n" +
+                "Mode=" + CurrentCombatMode + "\n" +
+                "Round=" + round + "\n" +
+                "Board=" + defenders.Length + "\n" +
+                "Grades=N" + normal + " R" + rare + " E" + epic + " L" + legendary + " M" + mythic + " T" + transcendent + "\n" +
+                "Highest=" + highestGrade + "\n" +
+                "Summons=" + RunTotalPlayerSummons + "\n" +
+                "Merges=" + RunTotalMerges + "\n" +
+                "Ready=" + (readyOptions != null ? readyOptions.Length : 0) + "\n" +
+                "Best=" + best + next;
+            transcendentRecipePacingSnapshotCount++;
+            Debug.Log(lastTranscendentRecipePacingSnapshot);
+        }
         private int CalculateGrowthCurrency()
         {
             int roundScore = Mathf.Max(0, CurrentRound) * 2;
@@ -4379,6 +4477,9 @@ namespace DefenseGame
             pendingRoundHadMerge = false;
             pendingRoundHighestMergeGrade = CharacterGrade.Normal;
             runMergeCount = 0;
+            runTotalMergeCount = 0;
+            lastTranscendentRecipePacingSnapshot = string.Empty;
+            transcendentRecipePacingSnapshotCount = 0;
             firstBossSummonRushBonusGranted = false;
             earlyRunTelemetrySummary = "1~10R 계측 대기";
             earlyRunTuningHint = "초반 런 데이터 대기";
@@ -4397,6 +4498,7 @@ namespace DefenseGame
             bossForecastBetResolved = false;
             bossForecastRequestRaised = false;
             bossForecastBonusScore = 0;
+            bossForecastPreferredShopRoleIndex = -1;
             earlyRunTuningLogRecorded = false;
             runR3BoosterOffered = false;
             runR3BoosterPurchased = false;

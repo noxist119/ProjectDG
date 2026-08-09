@@ -256,20 +256,25 @@ namespace DefenseGame.Editor
             }
             bool overdriveSelectedForPlayerSummonTest = controller != null && controller.TrySetCombatMode(CombatGameMode.Overdrive);
             bool paidPlayerSummonGranted = controller != null && controller.TrySummon();
-            bool supplyForecastGranted = controller != null && controller.TryChooseBossForecastBet(BossForecastBet.Supply);
             if (controller != null)
             {
                 controller.OnPlayerSummoned -= directPlayerSummonHandler;
             }
             bool playerDirectSummonIsolationValid = overdriveSelectedForPlayerSummonTest &&
                                                     paidPlayerSummonGranted &&
-                                                    supplyForecastGranted &&
                                                     directPlayerSummonEvents == 1 &&
                                                     controller != null &&
-                                                    controller.BoardUnitCount == 2;
+                                                    controller.BoardUnitCount == 1 &&
+                                                    !controller.CanChooseBossForecastBet;
             if (!playerDirectSummonIsolationValid)
             {
-                notes.Add("유료 직접 소환 1회 뒤 보스 예측 무료 레어가 직접 소환 횟수에 섞였습니다.");
+                notes.Add("Player direct summon must not request or grant the Boss Forecast reward.");
+            }
+
+            bool bossForecastTimingValid = ValidateBossForecastTimingAndShopBias(controller, out string bossForecastTimingSummary);
+            if (!bossForecastTimingValid)
+            {
+                notes.Add("Boss Forecast R4 preparation timing or one-shot shop bias validation failed. " + bossForecastTimingSummary);
             }
             controller?.TrySetCombatMode(CombatGameMode.Classic);
 
@@ -433,7 +438,6 @@ namespace DefenseGame.Editor
             int bossForecastChoices = UnityEngine.Object.FindObjectsOfType<Button>(true)
                 .Count(button => button != null && button.name.StartsWith("BossForecastChoice_", StringComparison.Ordinal));
             bool bossForecastUiValid = controller != null &&
-                                       controller.CanChooseBossForecastBet &&
                                        bossForecastOverlay != null &&
                                        bossForecastChoices == 3;
             if (!bossForecastUiValid)
@@ -651,9 +655,19 @@ namespace DefenseGame.Editor
             }
 
             bool earlyMiniShopChoicesValid = ValidateRoundTieredMiniShop(out string earlyMiniShopSummary);
+            bool choiceScheduleValid = ValidateChoiceSchedule(out string choiceScheduleSummary);
+            bool recipePacingTelemetryValid = ValidateRecipePacingTelemetry(controller, out string recipePacingTelemetrySummary);
             if (!earlyMiniShopChoicesValid)
             {
-                notes.Add("R3 소형 전투상점의 3개 선택지 분류/가격 검증에 실패했습니다. " + earlyMiniShopSummary);
+                notes.Add("R11 소형 전투상점의 3개 선택지 분류/가격 검증에 실패했습니다. " + earlyMiniShopSummary);
+            }
+            if (!choiceScheduleValid)
+            {
+                notes.Add("Choice schedule validation failed. " + choiceScheduleSummary);
+            }
+            if (!recipePacingTelemetryValid)
+            {
+                notes.Add("Recipe pacing telemetry validation failed. " + recipePacingTelemetrySummary);
             }
 
             bool ultimateRecipeUxValid = ValidateUltimateRecipeUx(controller, out string ultimateRecipeUxSummary);
@@ -782,7 +796,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -808,6 +822,8 @@ namespace DefenseGame.Editor
                 inventoryStageHidden = inventoryStageHidden,
                 dailyFateCupUiValid = dailyFateCupUiValid,
                 bossForecastUiValid = bossForecastUiValid,
+                bossForecastTimingValid = bossForecastTimingValid,
+                bossForecastTimingSummary = bossForecastTimingSummary,
                 resultRewardIconsValid = resultRewardIconsValid,
                 rankingPageValid = rankingPageValid,
                 yahtzeeModeUiValid = yahtzeeModeUiValid,
@@ -822,6 +838,10 @@ namespace DefenseGame.Editor
                 bannerBurstQueueValid = bannerBurstQueueValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
                 earlyMiniShopSummary = earlyMiniShopSummary,
+                choiceScheduleValid = choiceScheduleValid,
+                choiceScheduleSummary = choiceScheduleSummary,
+                recipePacingTelemetryValid = recipePacingTelemetryValid,
+                recipePacingTelemetrySummary = recipePacingTelemetrySummary,
                 ultimateRecipeUxValid = ultimateRecipeUxValid,
                 ultimateRecipeUxSummary = ultimateRecipeUxSummary,
                 ultimateMergeInheritanceIsolationValid = ultimateMergeInheritanceIsolationValid,
@@ -1225,6 +1245,101 @@ namespace DefenseGame.Editor
             return structuredDataValid && relatedFilterValid && hiddenZeroProgressValid && layoutValid;
         }
 
+        private static bool ValidateBossForecastTimingAndShopBias(DefenseGameController controller, out string summary)
+        {
+            RunShopSystem shop = UnityEngine.Object.FindObjectOfType<RunShopSystem>();
+            RoundManager roundManager = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            FieldInfo roundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
+            MethodInfo request = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
+            MethodInfo buildOffers = typeof(RunShopSystem).GetMethod("BuildOffers", flags);
+            FieldInfo dailyField = typeof(DefenseGameController).GetField("dailyFateCupEnabled", flags);
+            if (controller == null || shop == null || roundManager == null || roundField == null || request == null || buildOffers == null || dailyField == null)
+            {
+                summary = "reflection_target_missing";
+                return false;
+            }
+
+            int originalRound = (int)roundField.GetValue(roundManager);
+            bool originalDaily = (bool)dailyField.GetValue(controller);
+            int requests = 0;
+            Action requestHandler = () => requests++;
+            controller.OnBossForecastBetRequested += requestHandler;
+            try
+            {
+                roundField.SetValue(roundManager, 1);
+                request.Invoke(controller, new object[] { 1 });
+                bool noEarlyRequest = requests == 0 && !controller.CanChooseBossForecastBet &&
+                                      !DefenseGameController.IsBossForecastPreparationRound(1, false) &&
+                                      !DefenseGameController.IsBossForecastPreparationRound(3, true);
+
+                roundField.SetValue(roundManager, 3);
+                request.Invoke(controller, new object[] { 3 });
+                request.Invoke(controller, new object[] { 3 });
+                bool requestedOnceAtPreparation = requests == 1 && controller.CanChooseBossForecastBet;
+                bool choiceApplied = controller.TryChooseBossForecastBet(BossForecastBet.Supply) &&
+                                     controller.BossForecastPreferredShopRoleIndex == 0;
+
+                dailyField.SetValue(controller, true);
+                buildOffers.Invoke(shop, new object[] { 4, false, true, false, false });
+                bool recoveryPreserved = controller.BossForecastPreferredShopRoleIndex == 0;
+                buildOffers.Invoke(shop, new object[] { 11, true, false, false, true });
+                bool firstEligibleConsumed = controller.BossForecastPreferredShopRoleIndex < 0;
+                buildOffers.Invoke(shop, new object[] { 19, true, false, false, true });
+                bool laterShopUnbiased = controller.BossForecastPreferredShopRoleIndex < 0;
+
+                summary = "early=" + noEarlyRequest + ", r4=" + requestedOnceAtPreparation + ", choice=" + choiceApplied + ", recovery=" + recoveryPreserved + ", consumed=" + firstEligibleConsumed + ", later=" + laterShopUnbiased;
+                return noEarlyRequest && requestedOnceAtPreparation && choiceApplied && recoveryPreserved && firstEligibleConsumed && laterShopUnbiased;
+            }
+            finally
+            {
+                controller.OnBossForecastBetRequested -= requestHandler;
+                dailyField.SetValue(controller, originalDaily);
+                roundField.SetValue(roundManager, originalRound);
+                controller.ResetRunForRetry();
+            }
+        }
+
+        private static bool ValidateChoiceSchedule(out string summary)
+        {
+            RunShopSystem shop = UnityEngine.Object.FindObjectOfType<RunShopSystem>();
+            AugmentManager augments = UnityEngine.Object.FindObjectOfType<AugmentManager>();
+            CombatModeProfile overdrive = CombatModeProfile.CreateOverdrive();
+            bool miniSchedule = shop != null && !shop.IsScheduledMiniShopRound(3) && shop.IsScheduledMiniShopRound(11) && shop.IsScheduledMiniShopRound(19) && shop.IsScheduledMiniShopRound(27);
+            bool classicSchedule = augments != null && augments.GetNextScheduledChoiceRoundAfterSelection(6) == 11 && augments.GetNextScheduledChoiceRoundAfterSelection(11) == 16;
+            bool overdriveSchedule = overdrive.firstAugmentChoiceRound == 6 && overdrive.augmentChoiceInterval == 4;
+            summary = "mini=" + miniSchedule + ", classic=R6/R11/R16:" + classicSchedule + ", overdrive=R6/+4:" + overdriveSchedule;
+            return miniSchedule && classicSchedule && overdriveSchedule;
+        }
+
+        private static bool ValidateRecipePacingTelemetry(DefenseGameController controller, out string summary)
+        {
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            MethodInfo report = typeof(DefenseGameController).GetMethod("ReportTranscendentRecipePacing", flags);
+            if (controller == null || report == null)
+            {
+                summary = "telemetry_method_missing";
+                return false;
+            }
+
+            int gold = controller.Gold;
+            int life = controller.Life;
+            int board = controller.BoardUnitCount;
+            int summonCost = controller.SummonCost;
+            string randomBefore = JsonUtility.ToJson(UnityEngine.Random.state);
+            int snapshotCount = controller.TranscendentRecipePacingSnapshotCount;
+            report.Invoke(controller, new object[] { 10 });
+            report.Invoke(controller, new object[] { 15 });
+            report.Invoke(controller, new object[] { 20 });
+            string randomAfter = JsonUtility.ToJson(UnityEngine.Random.state);
+            bool stateUntouched = controller.Gold == gold && controller.Life == life && controller.BoardUnitCount == board && controller.SummonCost == summonCost && randomBefore == randomAfter;
+            bool snapshotsValid = controller.TranscendentRecipePacingSnapshotCount == snapshotCount + 3 &&
+                                  controller.LastTranscendentRecipePacingSnapshot.Contains("[DG_RECIPE_PACING]") &&
+                                  controller.LastTranscendentRecipePacingSnapshot.Contains("Round=20") &&
+                                  controller.LastTranscendentRecipePacingSnapshot.Contains("Best=");
+            summary = "state=" + stateUntouched + ", snapshots=" + snapshotsValid;
+            return stateUntouched && snapshotsValid && DefenseGameController.IsTranscendentRecipePacingSnapshotRound(10) && DefenseGameController.IsTranscendentRecipePacingSnapshotRound(15) && DefenseGameController.IsTranscendentRecipePacingSnapshotRound(20) && !DefenseGameController.IsTranscendentRecipePacingSnapshotRound(11);
+        }
         private static bool ValidateRoundTieredMiniShop(out string summary)
         {
             RunShopSystem shop = UnityEngine.Object.FindObjectOfType<RunShopSystem>();
@@ -1261,7 +1376,7 @@ namespace DefenseGame.Editor
                 UnityEngine.Random.InitState(731903);
                 goldField.SetValue(controller, 34);
                 summonCostField.SetValue(controller, 16);
-                buildOffers.Invoke(shop, new object[] { 3, true, false, false });
+                buildOffers.Invoke(shop, new object[] { 11, true, false, false, false });
                 offers = offersField.GetValue(shop) as IList;
                 if (offers == null || offers.Count != 3)
                 {
@@ -1280,7 +1395,7 @@ namespace DefenseGame.Editor
                     string title = offerType.GetField("title", instanceFlags)?.GetValue(offer) as string ?? string.Empty;
                     string description = offerType.GetField("description", instanceFlags)?.GetValue(offer) as string ?? string.Empty;
                     int cost = (int)(offerType.GetField("cost", instanceFlags)?.GetValue(offer) ?? int.MaxValue);
-                    fixedPricesValid &= !string.IsNullOrWhiteSpace(typeName) && !string.IsNullOrWhiteSpace(title) && cost >= 6 && cost <= 24;
+                    fixedPricesValid &= !string.IsNullOrWhiteSpace(typeName) && !string.IsNullOrWhiteSpace(title) && cost >= 6 && cost <= 120;
                     firstPrices[typeName] = cost;
                     if (typeName == "Coupon")
                     {
@@ -1293,7 +1408,7 @@ namespace DefenseGame.Editor
                 UnityEngine.Random.InitState(731903);
                 goldField.SetValue(controller, 1);
                 summonCostField.SetValue(controller, 60);
-                buildOffers.Invoke(shop, new object[] { 3, true, false, false });
+                buildOffers.Invoke(shop, new object[] { 11, true, false, false, false });
                 IList repricedOffers = offersField.GetValue(shop) as IList;
                 bool pricesInvariant = repricedOffers != null && repricedOffers.Count == 3;
                 if (repricedOffers != null)
@@ -1386,6 +1501,8 @@ namespace DefenseGame.Editor
             public bool inventoryStageHidden;
             public bool dailyFateCupUiValid;
             public bool bossForecastUiValid;
+            public bool bossForecastTimingValid;
+            public string bossForecastTimingSummary;
             public bool resultRewardIconsValid;
             public bool rankingPageValid;
             public bool yahtzeeModeUiValid;
@@ -1400,6 +1517,10 @@ namespace DefenseGame.Editor
             public bool bannerBurstQueueValid;
             public bool earlyMiniShopChoicesValid;
             public string earlyMiniShopSummary;
+            public bool choiceScheduleValid;
+            public string choiceScheduleSummary;
+            public bool recipePacingTelemetryValid;
+            public string recipePacingTelemetrySummary;
             public bool ultimateRecipeUxValid;
             public string ultimateRecipeUxSummary;
             public bool diceAutoCycleValid;

@@ -96,7 +96,7 @@ namespace DefenseGame
     public class AugmentManager : MonoBehaviour
     {
         [SerializeField] private DefenseGameController gameController;
-        [SerializeField] private int firstChoiceRound = 5;
+        [SerializeField] private int firstChoiceRound = 6;
         [SerializeField] private int minChoiceInterval = 5;
         [SerializeField] private int maxChoiceInterval = 5;
         [SerializeField] private int shopOverlapAllowedRound = 30;
@@ -143,8 +143,12 @@ namespace DefenseGame
         private float hoardIncomeTimer;
         private const int GoldJackpotMinimumReward = 8;
         private const float GoldJackpotRollThreshold01 = 0.80f;
+        private const int MinimumSecondScheduledChoiceRound = 11;
         private int nextChoiceRound = -1;
         private int pendingChoiceRound = -1;
+
+        public int NextScheduledChoiceRound => nextChoiceRound;
+        public int GetNextScheduledChoiceRoundAfterSelection(int completedRound) => ResolveNextFixedChoiceRound(completedRound);
 
         public event Action<int> OnChoiceShown;
         public event Action<AugmentDefinition> OnChoiceSelected;
@@ -3628,8 +3632,8 @@ namespace DefenseGame
                 return firstRound;
             }
 
-            int completedIntervals = Mathf.FloorToInt((baselineRound - firstRound) / (float)interval) + 1;
-            return firstRound + completedIntervals * interval;
+            int nextRound = baselineRound + interval;
+            return Mathf.Max(nextRound, MinimumSecondScheduledChoiceRound);
         }
 
         private int ResolveFixedChoiceInterval()

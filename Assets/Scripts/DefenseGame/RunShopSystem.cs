@@ -77,7 +77,7 @@ namespace DefenseGame
         [SerializeField] private int firstShopRound = 11;
         [SerializeField] private int shopInterval = 8;
         [SerializeField] private bool enableEarlyMiniShop = true;
-        [SerializeField] private int earlyMiniShopRound = 3;
+        [SerializeField] private int earlyMiniShopRound = 11;
         [SerializeField] private int earlyMiniShopOfferCount = 3;
         [SerializeField] private int miniShopInterval = 8;
         [Header("Opportunity Cost Pricing")]
@@ -299,7 +299,7 @@ namespace DefenseGame
                 currentShopIsInsurance = false;
                 currentRecoveryShopPurchaseRecorded = false;
                 earlyMiniShopMisses = 0;
-                BuildOffers(round, true, false, false);
+                BuildOffers(round, true, false, false, true);
                 RefreshUi(round);
                 SetOpen(true);
                 gameController?.RecordRoundShopOpened(round);
@@ -326,7 +326,7 @@ namespace DefenseGame
             currentShopIsInsurance = false;
             currentRecoveryShopPurchaseRecorded = false;
             regularShopMisses = 0;
-            BuildOffers(round, false, false, false);
+            BuildOffers(round, false, false, false, true);
             RefreshUi(round);
             SetOpen(true);
             gameController?.RecordRoundShopOpened(round);
@@ -344,11 +344,17 @@ namespace DefenseGame
             SetOpen(false);
         }
 
-        private bool ShouldOpenEarlyMiniShop(int round)
+        public bool IsScheduledMiniShopRound(int round)
         {
             int firstRound = Mathf.Max(1, earlyMiniShopRound);
             int interval = Mathf.Max(1, miniShopInterval);
-            bool scheduledRound = round >= firstRound && (round - firstRound) % interval == 0;
+            return enableEarlyMiniShop && round >= firstRound && (round - firstRound) % interval == 0;
+        }
+
+        private bool ShouldOpenEarlyMiniShop(int round)
+        {
+            int firstRound = Mathf.Max(1, earlyMiniShopRound);
+            bool scheduledRound = IsScheduledMiniShopRound(round);
             if (!enableEarlyMiniShop ||
                 lastMiniShopRound == round ||
                 round < firstRound ||
@@ -437,7 +443,7 @@ namespace DefenseGame
             recentOfferHistory.Clear();
         }
 
-        private void BuildOffers(int round, bool miniShop, bool recoveryShop, bool insuranceShop)
+        private void BuildOffers(int round, bool miniShop, bool recoveryShop, bool insuranceShop, bool consumeForecastPreference = false)
         {
             currentOffers.Clear();
             if (insuranceShop)
@@ -460,6 +466,7 @@ namespace DefenseGame
             }
 
             int preferredRole = gameController != null ? gameController.BossForecastPreferredShopRoleIndex : -1;
+            bool applyForecastPreference = consumeForecastPreference && preferredRole >= 0;
             int contentSeed = gameController != null ? gameController.ActiveRunContentSeed : DailyFateCupRules.TodaySeed;
             OfferRole[] miniRoles = miniShop
                 ? BuildMiniShopRoleSlots(round, offerCount, preferredRole, deterministicContent, contentSeed)
@@ -467,12 +474,19 @@ namespace DefenseGame
             while (currentOffers.Count < offerCount && pool.Count > 0)
             {
                 OfferRarity rarity = RollOfferRarity(round);
-                int index = miniShop
-                    ? FindOfferIndexForRoleAndRarity(pool, miniRoles[currentOffers.Count], rarity)
+                bool usePreferredRole = miniShop || (applyForecastPreference && currentOffers.Count == 0);
+                OfferRole preferredSlot = miniShop ? miniRoles[currentOffers.Count] : (OfferRole)preferredRole;
+                int index = usePreferredRole
+                    ? FindOfferIndexForRoleAndRarity(pool, preferredSlot, rarity)
                     : FindOfferIndexForRarity(pool, rarity);
                 OfferType type = pool[index];
                 pool.RemoveAt(index);
                 AddOffer(type, round, miniShop, recoveryShop);
+            }
+
+            if (applyForecastPreference && currentOffers.Count > 0)
+            {
+                gameController?.ConsumeBossForecastPreferredShopRole();
             }
 
             RememberCurrentOffers();
