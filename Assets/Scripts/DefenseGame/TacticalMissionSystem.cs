@@ -15,6 +15,7 @@ namespace DefenseGame
             LeanDefense,
             BossPreparation,
             SummonSprint,
+            LastStandGambit,
             EmptySlotDiscipline,
             RareUpgrade,
             LegendaryHunt,
@@ -45,6 +46,7 @@ namespace DefenseGame
             public int jackpotGold;
             public float jackpotChance;
             public float summonDiscount;
+            public int supportSummonReward;
             public bool expiresOnRoundStart;
             public int earliestCompleteRound;
             public int completedRound;
@@ -93,7 +95,6 @@ namespace DefenseGame
         private readonly HashSet<string> completedMissionKeys = new HashSet<string>();
         private readonly Dictionary<string, int> recentlyExpiredKeys = new Dictionary<string, int>();
         private readonly List<string> recentCompletionFeed = new List<string>();
-        private readonly List<MissionInstance> pendingRewardMissions = new List<MissionInstance>();
         private int totalSummons;
         private int totalMerges;
         private int totalRarePlusMerges;
@@ -107,6 +108,12 @@ namespace DefenseGame
         private float toastTimer;
         private bool subscribed;
         private bool resolvingMission;
+        private int pendingMissionSupportSummons;
+        private bool missionSupportWaitingForSlot;
+        private bool runStarted;
+
+        public int PendingMissionSupportSummons => pendingMissionSupportSummons;
+        public bool HasInitialStrategyFork => HasActiveMission(MissionKind.SummonSprint) && HasActiveMission(MissionKind.LastStandGambit);
 
         public void Configure(
             DefenseGameController controller,
@@ -180,7 +187,6 @@ namespace DefenseGame
         private void ResetRunState()
         {
             activeMissions.Clear();
-            pendingRewardMissions.Clear();
             completedFamilyLevels.Clear();
             completedMissionKeys.Clear();
             recentlyExpiredKeys.Clear();
@@ -197,6 +203,9 @@ namespace DefenseGame
             completedMissionCount = 0;
             toastTimer = 0f;
             resolvingMission = false;
+            pendingMissionSupportSummons = 0;
+            missionSupportWaitingForSlot = false;
+            runStarted = false;
         }
 
         private void WireUi()
@@ -243,6 +252,7 @@ namespace DefenseGame
             gameController.OnMergeCompleted += HandleMergeCompleted;
             gameController.OnRoundStarted += HandleRoundStarted;
             gameController.OnRoundMissionSettlement += HandleRoundMissionSettlement;
+            gameController.OnRoundBoardPreparation += HandleRoundBoardPreparation;
             gameController.OnGameOver += HandleGameOver;
             gameController.OnUnitSummoned += HandleUnitSummoned;
             MonsterUnit.OnMonsterKilled += HandleMonsterKilled;
@@ -261,6 +271,7 @@ namespace DefenseGame
             gameController.OnMergeCompleted -= HandleMergeCompleted;
             gameController.OnRoundStarted -= HandleRoundStarted;
             gameController.OnRoundMissionSettlement -= HandleRoundMissionSettlement;
+            gameController.OnRoundBoardPreparation -= HandleRoundBoardPreparation;
             gameController.OnGameOver -= HandleGameOver;
             gameController.OnUnitSummoned -= HandleUnitSummoned;
             MonsterUnit.OnMonsterKilled -= HandleMonsterKilled;
@@ -277,6 +288,12 @@ namespace DefenseGame
 
             ClearExpiredCooldowns();
 
+            if (activeMissions.Count == 0 && completedMissionCount == 0 && gameController.CurrentRound <= 0)
+            {
+                AddInitialStrategyMission(MissionKind.SummonSprint);
+                AddInitialStrategyMission(MissionKind.LastStandGambit);
+            }
+
             int guard = 0;
             while (activeMissions.Count < MaxActiveMissions && guard < 40)
             {
@@ -292,6 +309,15 @@ namespace DefenseGame
             }
         }
 
+        private void AddInitialStrategyMission(MissionKind kind)
+        {
+            MissionInstance mission = CreateMission(kind, GetNextTier(kind));
+            if (mission != null && !IsMissionActive(mission.Key) && !completedMissionKeys.Contains(mission.Key))
+            {
+                activeMissions.Add(mission);
+            }
+        }
+
         private MissionInstance CreateNextMissionCandidate(int attempt)
         {
             MissionKind[] candidateOrder = BuildCandidateOrder();
@@ -300,7 +326,7 @@ namespace DefenseGame
                 return null;
             }
 
-            int index = Mathf.Abs(missionCursor + attempt) % candidateOrder.Length;
+            int index = Mathf.Abs(missionCursor) % candidateOrder.Length;
             MissionKind kind = candidateOrder[index];
             int tier = GetNextTier(kind);
 
@@ -321,6 +347,7 @@ namespace DefenseGame
                 return new[]
                 {
                     MissionKind.SummonSprint,
+                    MissionKind.LastStandGambit,
                     MissionKind.PerfectDefense,
                     MissionKind.MonsterHunter,
                     MissionKind.MergeRush,
@@ -472,6 +499,17 @@ namespace DefenseGame
                     mission.description = "빠르게 전장을 채워 초반 화력을 확보하세요.";
                     mission.rewardText = "+" + mission.goldReward + "골드";
                     mission.color = new Color(0.30f, 0.76f, 1f);
+                    break;
+                case MissionKind.LastStandGambit:
+                    mission.targetRound = 4;
+                    mission.earliestCompleteRound = 0;
+                    mission.goldReward = 0;
+                    mission.supportSummonReward = 1;
+                    mission.title = "배수의 굴림";
+                    mission.description = "R3까지 HP 7 이하를 감수하고 소환 2회·유닛 2기 이하를 유지하세요. 성공 시 다음 준비 단계에 무료 지원 유닛이 옵니다.";
+                    mission.rewardText = "다음 준비 단계 지원 유닛 1개 예약";
+                    mission.color = new Color(1f, 0.38f, 0.28f);
+                    mission.expiresOnRoundStart = true;
                     break;
                 case MissionKind.EmptySlotDiscipline:
                     mission.target = Mathf.Clamp(2 + tier, 2, 4);
@@ -633,7 +671,10 @@ namespace DefenseGame
             }
 
             int rewardFloor = round <= 2 ? 5 : round <= 5 ? 7 : 10;
-            mission.goldReward = Mathf.Max(rewardFloor, Mathf.RoundToInt(mission.goldReward * goldMultiplier));
+            if (mission.goldReward > 0)
+            {
+                mission.goldReward = Mathf.Max(rewardFloor, Mathf.RoundToInt(mission.goldReward * goldMultiplier));
+            }
             if (mission.rouletteGoldMax > 0)
             {
                 mission.rouletteGoldMin = Mathf.Max(1, Mathf.RoundToInt(mission.rouletteGoldMin * goldMultiplier));
@@ -672,7 +713,7 @@ namespace DefenseGame
                 return string.Empty;
             }
 
-            string text = "+" + mission.goldReward + "골드";
+            string text = mission.goldReward > 0 ? "+" + mission.goldReward + "골드" : string.Empty;
             if (mission.roundGoldBonus > 0)
             {
                 text += ", 라운드 보너스 +" + mission.roundGoldBonus;
@@ -693,7 +734,12 @@ namespace DefenseGame
                 text += ", 잭팟 " + Mathf.RoundToInt(mission.jackpotChance * 100f) + "%";
             }
 
-            return text;
+            if (mission.supportSummonReward > 0)
+            {
+                text += (text.Length > 0 ? ", " : string.Empty) + "지원 유닛 " + mission.supportSummonReward + "개 예약";
+            }
+
+            return string.IsNullOrEmpty(text) ? "보상 없음" : text;
         }
 
         private string BuildRewardSummary(int goldReward, int roundGoldBonus, float summonDiscount)
@@ -719,25 +765,40 @@ namespace DefenseGame
                 return;
             }
 
-            for (int i = activeMissions.Count - 1; i >= 0; i--)
+            // Determine the eligible set before paying. AddGold may synchronously invoke OnStateChanged.
+            List<MissionInstance> completed = new List<MissionInstance>();
+            List<MissionInstance> expired = new List<MissionInstance>();
+            for (int i = 0; i < activeMissions.Count; i++)
             {
                 MissionInstance mission = activeMissions[i];
                 if (IsMissionComplete(mission, roundCompleted, completedRound))
                 {
-                    QueueMissionReward(i, roundCompleted ? completedRound : gameController.CurrentRound);
-                    continue;
+                    completed.Add(mission);
                 }
-
-                if (IsMissionExpired(mission, roundCompleted, completedRound))
+                else if (IsMissionExpired(mission, roundCompleted, completedRound))
                 {
-                    ExpireMission(i);
+                    expired.Add(mission);
+                }
+            }
+
+            int resolvedRound = roundCompleted ? completedRound : gameController.CurrentRound;
+            for (int i = 0; i < completed.Count; i++)
+            {
+                CompleteMission(completed[i], resolvedRound);
+            }
+
+            for (int i = 0; i < expired.Count; i++)
+            {
+                int index = activeMissions.IndexOf(expired[i]);
+                if (index >= 0)
+                {
+                    ExpireMission(index);
                 }
             }
 
             RefillMissions();
             RefreshUi();
         }
-
         private bool IsMissionComplete(MissionInstance mission, bool roundCompleted, int completedRound)
         {
             if (mission == null || gameController == null)
@@ -770,6 +831,8 @@ namespace DefenseGame
                     return CountUnitsAtLeast(CharacterGrade.Legendary) >= mission.target;
                 case MissionKind.SummonSprint:
                     return totalSummons - mission.startSummons >= mission.target;
+                case MissionKind.LastStandGambit:
+                    return IsLastStandGambitConditionMet(gameController.Life, totalSummons - mission.startSummons, gameController.BoardUnitCount, checkRound);
                 case MissionKind.EmptySlotDiscipline:
                     return roundCompleted && completedRound == mission.targetRound && gameController.EmptySlotCount >= mission.target;
                 case MissionKind.RareUpgrade:
@@ -818,120 +881,94 @@ namespace DefenseGame
             return roundCompleted && completedRound >= mission.targetRound;
         }
 
-        private void QueueMissionReward(int index, int completedRound)
+        private void CompleteMission(MissionInstance mission, int completedRound)
         {
-            if (index < 0 || index >= activeMissions.Count || gameController == null)
+            if (mission == null || gameController == null || resolvingMission || completedMissionKeys.Contains(mission.Key))
             {
                 return;
             }
 
-            MissionInstance mission = activeMissions[index];
+            int index = activeMissions.IndexOf(mission);
+            if (index < 0)
+            {
+                return;
+            }
+
+            // Record completion before payout. AddGold can synchronously publish OnStateChanged.
             activeMissions.RemoveAt(index);
             completedMissionKeys.Add(mission.Key);
             completedFamilyLevels[mission.kind] = GetCompletedFamilyLevel(mission.kind) + 1;
             completedMissionCount++;
             mission.completedRound = Mathf.Max(0, completedRound);
-            pendingRewardMissions.Add(mission);
-
-            AddCompletionFeed(mission.title + " 완료 대기  " + mission.rewardText);
-            ShowCompletionToast(mission);
-            gameController.RequestBanner("미션 완료 대기!  " + mission.title + "  라운드 클리어 시 지급", mission.color, 2.5f);
-            RuntimeCameraShake.Request(0.045f, 0.16f);
-        }
-
-        private void PayPendingRewards(int completedRound)
-        {
-            if (pendingRewardMissions.Count == 0 || gameController == null)
-            {
-                return;
-            }
-
-            int goldReward = 0;
-            int roundGoldBonus = 0;
-            float summonDiscount = 0f;
-            List<string> rewardHighlights = null;
-
-            for (int i = 0; i < pendingRewardMissions.Count; i++)
-            {
-                MissionInstance mission = pendingRewardMissions[i];
-                if (mission == null)
-                {
-                    continue;
-                }
-
-                goldReward += Mathf.Max(0, mission.goldReward);
-                roundGoldBonus += Mathf.Max(0, mission.roundGoldBonus);
-                summonDiscount += Mathf.Max(0f, mission.summonDiscount);
-
-                if (mission.rouletteGoldMax > 0)
-                {
-                    int min = Mathf.Max(0, mission.rouletteGoldMin);
-                    int max = Mathf.Max(min, mission.rouletteGoldMax);
-                    int roll = UnityEngine.Random.Range(min, max + 1);
-                    goldReward += roll;
-
-                    if (rewardHighlights == null)
-                    {
-                        rewardHighlights = new List<string>();
-                    }
-
-                    rewardHighlights.Add(mission.title + " 룰렛 +" + roll + "G");
-                }
-
-                if (mission.jackpotGold > 0 && mission.jackpotChance > 0f && UnityEngine.Random.value <= mission.jackpotChance)
-                {
-                    int jackpot = Mathf.Max(1, mission.jackpotGold);
-                    goldReward += jackpot;
-
-                    if (rewardHighlights == null)
-                    {
-                        rewardHighlights = new List<string>();
-                    }
-
-                    rewardHighlights.Add("JACKPOT! " + mission.title + " +" + jackpot + "G");
-                }
-            }
 
             resolvingMission = true;
             try
             {
-                if (goldReward > 0)
-                {
-                    gameController.AddGold(goldReward);
-                }
-
-                if (roundGoldBonus > 0)
-                {
-                    gameController.AddRoundGoldBonus(roundGoldBonus);
-                }
-
-                if (summonDiscount > 0f)
-                {
-                    gameController.AddSummonCostDiscount(summonDiscount);
-                }
+                PayMissionRewardImmediately(mission);
             }
             finally
             {
                 resolvingMission = false;
             }
-
-            string rewardSummary = BuildRewardSummary(goldReward, roundGoldBonus, summonDiscount);
-            pendingRewardMissions.Clear();
-            AddCompletionFeed("ROUND " + completedRound + " 미션 정산  " + rewardSummary);
-            if (rewardHighlights != null)
-            {
-                for (int i = 0; i < rewardHighlights.Count; i++)
-                {
-                    AddCompletionFeed(rewardHighlights[i]);
-                }
-            }
-
-            ShowSettlementToast(rewardSummary);
-            string bannerPrefix = rewardHighlights != null && rewardHighlights.Count > 0 ? "미션 룰렛 정산!  " : "미션 보상 정산!  ";
-            gameController.RequestBanner(bannerPrefix + rewardSummary, new Color(0.48f, 1f, 0.72f), 2.8f);
-            RuntimeCameraShake.Request(0.055f, 0.18f);
         }
 
+        private void PayMissionRewardImmediately(MissionInstance mission)
+        {
+            int goldReward = Mathf.Max(0, mission.goldReward);
+            int roundGoldBonus = Mathf.Max(0, mission.roundGoldBonus);
+            float summonDiscount = Mathf.Max(0f, mission.summonDiscount);
+            List<string> highlights = new List<string>();
+
+            if (mission.rouletteGoldMax > 0)
+            {
+                int min = Mathf.Max(0, mission.rouletteGoldMin);
+                int max = Mathf.Max(min, mission.rouletteGoldMax);
+                int roll = UnityEngine.Random.Range(min, max + 1);
+                goldReward += roll;
+                highlights.Add("룰렛 +" + roll + "G");
+            }
+
+            if (mission.jackpotGold > 0 && mission.jackpotChance > 0f && UnityEngine.Random.value <= mission.jackpotChance)
+            {
+                int jackpot = Mathf.Max(1, mission.jackpotGold);
+                goldReward += jackpot;
+                highlights.Add("JACKPOT! +" + jackpot + "G");
+            }
+
+            if (goldReward > 0)
+            {
+                gameController.AddGold(goldReward);
+            }
+            if (roundGoldBonus > 0)
+            {
+                gameController.AddRoundGoldBonus(roundGoldBonus);
+            }
+            if (summonDiscount > 0f)
+            {
+                gameController.AddSummonCostDiscount(summonDiscount);
+            }
+            if (mission.supportSummonReward > 0)
+            {
+                pendingMissionSupportSummons += mission.supportSummonReward;
+                missionSupportWaitingForSlot = false;
+            }
+
+            string rewardSummary = mission.supportSummonReward > 0
+                ? "다음 준비 단계 지원 유닛 " + mission.supportSummonReward + "개 예약"
+                : BuildRewardSummary(goldReward, roundGoldBonus, summonDiscount);
+            if (highlights.Count > 0 && mission.supportSummonReward <= 0)
+            {
+                rewardSummary += " · " + string.Join(" · ", highlights.ToArray());
+            }
+
+            AddCompletionFeed("미션 완료! " + mission.title + "  " + rewardSummary);
+            ShowCompletionToast(mission, rewardSummary);
+            string banner = mission.kind == MissionKind.LastStandGambit
+                ? "배수의 굴림 성공! 다음 준비 단계 지원 유닛 예약"
+                : "미션 완료! " + rewardSummary;
+            gameController.RequestBanner(banner, mission.color, 2.8f);
+            RuntimeCameraShake.Request(0.055f, 0.18f);
+        }
         private void ExpireMission(int index)
         {
             if (index < 0 || index >= activeMissions.Count)
@@ -951,6 +988,14 @@ namespace DefenseGame
 
         private void HandleStateChanged()
         {
+            if (runStarted && gameController != null && !gameController.IsRoundRunning && gameController.CurrentRound <= 0)
+            {
+                ResetRunState();
+                RefillMissions();
+                RefreshUi();
+                return;
+            }
+
             EvaluateMissions();
         }
 
@@ -988,6 +1033,7 @@ namespace DefenseGame
 
         private void HandleRoundStarted(int round)
         {
+            runStarted = true;
             for (int i = 0; i < activeMissions.Count; i++)
             {
                 MissionInstance mission = activeMissions[i];
@@ -1003,8 +1049,28 @@ namespace DefenseGame
         private void HandleRoundMissionSettlement(int round)
         {
             EvaluateMissions(true, round);
-            PayPendingRewards(round);
             RefillMissions();
+            RefreshUi();
+        }
+
+        private void HandleRoundBoardPreparation(int round)
+        {
+            if (pendingMissionSupportSummons <= 0 || gameController == null)
+            {
+                return;
+            }
+
+            if (gameController.EmptySlotCount <= 0 || !gameController.TryGrantMissionSupportUnit())
+            {
+                missionSupportWaitingForSlot = true;
+                gameController.RequestBanner("지원 유닛 대기: 빈 보드 슬롯 필요", new Color(1f, 0.78f, 0.30f), 2.4f);
+                RefreshUi();
+                return;
+            }
+
+            pendingMissionSupportSummons--;
+            missionSupportWaitingForSlot = false;
+            gameController.RequestBanner("미션 지원 유닛 도착!", new Color(0.48f, 1f, 0.72f), 2.2f);
             RefreshUi();
         }
 
@@ -1026,13 +1092,9 @@ namespace DefenseGame
 
         private void HandleGameOver()
         {
-            if (pendingRewardMissions.Count > 0 && gameController != null)
-            {
-                gameController.RequestBanner("방어 실패!  대기 중인 미션 보상은 사라졌어요", new Color(1f, 0.42f, 0.42f), 2.4f);
-            }
-
             activeMissions.Clear();
-            pendingRewardMissions.Clear();
+            pendingMissionSupportSummons = 0;
+            missionSupportWaitingForSlot = false;
             HideCompletionToast();
             RefreshUi();
         }
@@ -1068,14 +1130,11 @@ namespace DefenseGame
                 return;
             }
 
-            if (pendingRewardMissions.Count > 0)
-            {
-                summaryText.text = "정산 " + pendingRewardMissions.Count + "개";
-                summaryText.color = new Color(1f, 0.92f, 0.58f);
-                return;
-            }
-
             summaryText.text = "미션 " + activeMissions.Count + "/" + MaxActiveMissions + "  완료 " + completedMissionCount;
+            if (pendingMissionSupportSummons > 0)
+            {
+                summaryText.text += missionSupportWaitingForSlot ? "  |  지원 유닛 대기" : "  |  지원 유닛 예약";
+            }
             summaryText.color = activeMissions.Count > 0 ? activeMissions[0].accentColor : Color.white;
         }
 
@@ -1092,12 +1151,12 @@ namespace DefenseGame
                 activeCardRoot.SetActive(showActiveCard);
                 if (showActiveCard)
                 {
-                    SetText(activeTitleText, pendingRewardMissions.Count > 0 ? "라운드 정산 대기" : "최근 완료");
+                    SetText(activeTitleText, "최근 완료");
                     string feed = recentCompletionFeed.Count > 0
                         ? string.Join("\n", recentCompletionFeed.ToArray())
-                        : "전투 중 조건을 만족하면 완료 대기 상태가 되고, 라운드 클리어 시 보상이 정산됩니다.";
+                        : "조건을 만족하면 보상은 즉시 획득합니다.\n지원 유닛 보상은 다음 준비 단계에 도착합니다.";
                     SetText(activeDescriptionText, feed);
-                    SetText(activeProgressText, "대기 " + pendingRewardMissions.Count + "개  |  완료 " + completedMissionCount + "개  |  진행 " + activeMissions.Count + "개");
+                    SetText(activeProgressText, "완료 " + completedMissionCount + "개  |  진행 " + activeMissions.Count + "개" + (pendingMissionSupportSummons > 0 ? "  |  지원 " + pendingMissionSupportSummons + "개" : string.Empty));
                 }
             }
 
@@ -1120,7 +1179,7 @@ namespace DefenseGame
                 MissionInstance mission = activeMissions[i];
                 SetText(GetText(optionTitleTexts, i), mission.title);
                 SetText(GetText(optionDescriptionTexts, i), mission.description + "\n" + GetProgressText(mission));
-                SetText(GetText(optionRewardTexts, i), "클리어 정산: " + mission.rewardText);
+                SetText(GetText(optionRewardTexts, i), "클리어 즉시: " + mission.rewardText);
 
                 Image accent = GetImage(optionAccentImages, i);
                 if (accent != null)
@@ -1154,6 +1213,8 @@ namespace DefenseGame
                     return CountUnitsAtLeast(CharacterGrade.Legendary) + " / " + mission.target + " 전설+" + deadline;
                 case MissionKind.SummonSprint:
                     return Mathf.Min(totalSummons - mission.startSummons, mission.target) + " / " + mission.target + " 소환" + deadline;
+                case MissionKind.LastStandGambit:
+                    return "HP " + gameController.Life + " / 7 이하 | 소환 " + Mathf.Max(0, totalSummons - mission.startSummons) + " / 2 | 유닛 " + gameController.BoardUnitCount + " / 2 | R3까지";
                 case MissionKind.EmptySlotDiscipline:
                     return gameController.EmptySlotCount + " / " + mission.target + " 빈칸" + deadline;
                 case MissionKind.RareUpgrade:
@@ -1183,6 +1244,23 @@ namespace DefenseGame
             }
         }
 
+        public static bool IsLastStandGambitConditionMet(int life, int summonsSinceMissionStart, int boardUnitCount, int currentRound)
+        {
+            return life > 0 && life <= 7 && currentRound <= 3 && summonsSinceMissionStart <= 2 && boardUnitCount <= 2;
+        }
+
+        private bool HasActiveMission(MissionKind kind)
+        {
+            for (int i = 0; i < activeMissions.Count; i++)
+            {
+                if (activeMissions[i] != null && activeMissions[i].kind == kind)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
         private int CountDistinctRoles()
         {
             DefenderUnit[] defenders = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
@@ -1353,25 +1431,16 @@ namespace DefenseGame
             }
         }
 
-        private void ShowCompletionToast(MissionInstance mission)
+        private void ShowCompletionToast(MissionInstance mission, string rewardSummary)
         {
             if (completionToastRoot == null || mission == null)
             {
                 return;
             }
 
-            ShowToast("미션 완료 대기!", mission.title + "  라운드 종료 시 " + mission.rewardText);
+            ShowToast("미션 완료!", rewardSummary);
         }
 
-        private void ShowSettlementToast(string rewardSummary)
-        {
-            if (completionToastRoot == null)
-            {
-                return;
-            }
-
-            ShowToast("미션 보상 정산!", rewardSummary);
-        }
 
         private void ShowToast(string title, string reward)
         {

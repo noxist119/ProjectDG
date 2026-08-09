@@ -3365,6 +3365,51 @@ namespace DefenseGame
             return true;
         }
 
+        // Tactical missions use the regular current-round summon pool without consuming gold or summon-side effects.
+        // This intentionally does not invoke OnUnitSummoned: it is not a player-initiated summon.
+        public bool TryGrantMissionSupportUnit()
+        {
+            if (characterDatabase == null || boardManager == null || EmptySlotCount <= 0)
+            {
+                return false;
+            }
+
+            CharacterDefinition definition = SelectMissionSupportDefinition();
+            if (definition == null || definition.grade == CharacterGrade.Transcendent ||
+                !boardManager.TrySpawnUnit(definition, defaultUnitPrefab, out DefenderUnit spawnedUnit))
+            {
+                return false;
+            }
+
+            if (definition.grade != CharacterGrade.Transcendent)
+            {
+                RuntimeAudioUtility.PlayDiceAppear();
+            }
+
+            // Board spawn events refresh normal synergy, role, recipe-material and board-state consumers.
+            NotifyStateChanged();
+            return true;
+        }
+
+        private CharacterDefinition SelectMissionSupportDefinition()
+        {
+            CharacterDefinition definition = characterDatabase.GetRandomSummonableCharacter(GetSummonRateRound(), true);
+            if (definition != null && definition.grade != CharacterGrade.Transcendent)
+            {
+                return definition;
+            }
+
+            for (int grade = (int)CharacterGrade.Mythic; grade >= (int)CharacterGrade.Normal; grade--)
+            {
+                definition = characterDatabase.GetRandomCharacterByGrade((CharacterGrade)grade, true);
+                if (definition != null)
+                {
+                    return definition;
+                }
+            }
+
+            return null;
+        }
         public bool TryGrantRandomSummonableUnit()
         {
             if (characterDatabase == null || boardManager == null)
