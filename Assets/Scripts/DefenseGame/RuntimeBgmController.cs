@@ -142,11 +142,13 @@ namespace DefenseGame
 
         private void PlayMain(bool immediate)
         {
+            EnsurePlaybackResources();
             PlayClip(mainClip, mainVolume, MainTrackKey, immediate);
         }
 
         private void PlayBoss()
         {
+            EnsurePlaybackResources();
             if (bossClip == null)
             {
                 if (!warnedMissingBoss)
@@ -160,6 +162,15 @@ namespace DefenseGame
 
             PlayClip(bossClip, bossVolume, BossTrackKey, false);
         }
+        private void EnsurePlaybackResources()
+        {
+            EnsureAudioSource();
+            if (mainClip == null || bossClip == null)
+            {
+                LoadClips();
+            }
+        }
+
 
         private void PlayClip(AudioClip clip, float volume, string trackKey, bool immediate)
         {

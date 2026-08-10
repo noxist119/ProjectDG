@@ -276,7 +276,9 @@ namespace DefenseGame
 
 		public bool IsPetrified => petrifyTimer > 0f;
 
-		public bool CanBeCombatTargeted => !isDying && currentHealth > 0f && !IsPetrified;
+        // Petrify locks the monster's actions and animation, but it remains on the board
+        // as a valid combat target so defenders can keep damaging it.
+        public bool CanBeCombatTargeted => !isDying && currentHealth > 0f;
 
 		public DefenderUnit LastDamageSource { get; private set; }
 

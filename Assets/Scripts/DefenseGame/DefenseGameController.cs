@@ -635,6 +635,8 @@ namespace DefenseGame
         public int BoardUnitCount => boardManager != null ? boardManager.UnitCount : 0;
         public int BoardCapacity => boardManager != null ? boardManager.UnlockedSlotCount : 0;
         public int EmptySlotCount => boardManager != null ? boardManager.EmptySlotCount : 0;
+        public bool IsBoardFull => boardManager != null && boardManager.EmptySlotCount <= 0;
+        public string BoardFullSummonGuidance => BuildBoardFullSummonGuidance();
         public int CharacterCount => characterDatabase != null ? characterDatabase.Characters.Count : 0;
         public int MonsterCount => monsterDatabase != null ? monsterDatabase.Monsters.Count : 0;
         public int RoundTargetCount => roundManager != null ? roundManager.CurrentRoundTargetCount : 0;
@@ -952,6 +954,12 @@ namespace DefenseGame
             {
                 return false;
             }
+            if (IsBoardFull)
+            {
+                OnBannerRequested?.Invoke(BoardFullSummonGuidance, new Color(1f, 0.70f, 0.28f), 2.6f);
+                return false;
+            }
+
             if (!initialPreparationClosed && initialPreparationSummons >= 3)
             {
                 OnBannerRequested?.Invoke("초반 준비 소환은 3마리까지입니다. 전투 중 성장 선택을 시작하세요.", new Color(1f, 0.78f, 0.28f), 1.8f);
@@ -1445,6 +1453,11 @@ namespace DefenseGame
             {
                 IncreaseMaxLife(1);
                 entryBonus = "폭주 최대 HP +1";
+            }
+
+            if (IsOverdriveMode && choice == BossForecastBet.Build)
+            {
+                entryBonus = "\uD589\uC6B4 \uC18C\uD658\uAE4C\uC9C0 \uB0A8\uC740 \uC77C\uBC18 \uC18C\uD658 \uD69F\uC218 -3";
             }
 
             string title = choice == BossForecastBet.Supply ? "보급 예측" :
@@ -3524,6 +3537,20 @@ namespace DefenseGame
             return true;
         }
 
+
+        private string BuildBoardFullSummonGuidance()
+        {
+            CharacterGrade[] mergeGrades = { CharacterGrade.Normal, CharacterGrade.Rare, CharacterGrade.Epic, CharacterGrade.Legendary };
+            for (int index = 0; index < mergeGrades.Length; index++)
+            {
+                CharacterGrade grade = mergeGrades[index];
+                if (CountUnitsOfGrade(grade) >= 3)
+                {
+                    return CharacterGradeUtility.GetDisplayName(grade) + " \uC720\uB2DB \uD569\uC131\uC774 \uAC00\uB2A5\uD569\uB2C8\uB2E4.\n\uBCF4\uB4DC\uAC00 \uAC00\uB4DD \uCC3C\uC2B5\uB2C8\uB2E4. \uD569\uC131 \uAC00\uB2A5\uD55C \uC720\uB2DB\uC744 \uD655\uC778\uD558\uAC70\uB098 \uC720\uB2DB\uC744 \uB20C\uB7EC \uD310\uB9E4\uD574 \uBE48\uCE78\uC744 \uB9CC\uB4DC\uC138\uC694.";
+                }
+            }
+            return "\uBCF4\uB4DC\uAC00 \uAC00\uB4DD \uCC3C\uC2B5\uB2C8\uB2E4. \uD569\uC131 \uAC00\uB2A5\uD55C \uC720\uB2DB\uC744 \uD655\uC778\uD558\uAC70\uB098 \uC720\uB2DB\uC744 \uB20C\uB7EC \uD310\uB9E4\uD574 \uBE48\uCE78\uC744 \uB9CC\uB4DC\uC138\uC694.";
+        }
         public int CountUnitsOfGrade(CharacterGrade grade)
         {
             return boardManager != null ? boardManager.CountUnitsOfGrade(grade) : 0;

@@ -71,6 +71,9 @@ namespace DefenseGame
 		private GameObject defaultAreaEffectPrefab;
 
 		[SerializeField]
+		private GameObject diceAutoDormantEffectPrefab;
+
+		[SerializeField]
 		private GameObject deathEffectPrefab;
 
 		[SerializeField]
@@ -213,6 +216,7 @@ namespace DefenseGame
 
 		private int alternatingLastRound = -1;
 
+		private GameObject activeDormantRestEffect;
 		private readonly List<GameObject> ownedSupportEffects = new List<GameObject>();
 
 		private GameObject activeShieldEffect;
@@ -329,6 +333,7 @@ namespace DefenseGame
 			MonsterUnit.OnMonsterSpawned -= HandleMonsterSpawned;
 			MonsterUnit.OnMonsterKilled -= HandleMonsterRemoved;
 			MonsterUnit.OnMonsterEscaped -= HandleMonsterRemoved;
+			ClearDormantRestEffect();
 			UnbindAlternatingRoundController();
 			UnbindAnimationDriver();
 			ClearPendingImpacts();
@@ -403,6 +408,7 @@ namespace DefenseGame
 			if (IsAlternatingRoundBurstUnit() && round != alternatingLastRound)
 			{
 				alternatingLastRound = round;
+					ClearDormantRestEffect();
 				if (alternatingNextRoundWillBurst)
 				{
 					alternatingDormant = false;
@@ -416,14 +422,16 @@ namespace DefenseGame
 					alternatingNextRoundWillBurst = true;
 					currentMana = ResolveAlternatingRoundStartMana(MaxMana, activeRound: false);
 					animationDriver?.PlayDormantLoop();
+					EnsureDormantRestEffect();
 					ShowInstantSupportFeedback("휴식 모드", ShieldFeedbackColor, null, 0.8f);
 				}
 			}
 		}
 
-		public void ConfigureRuntimePieces(Projectile projectileTemplate, Transform launchPoint, Renderer[] renderers, GameObject summonedUnitTemplate = null, GameObject muzzleEffectTemplate = null, GameObject hitEffectTemplate = null, GameObject areaEffectTemplate = null, GameObject deathEffectTemplate = null)
+		public void ConfigureRuntimePieces(Projectile projectileTemplate, Transform launchPoint, Renderer[] renderers, GameObject summonedUnitTemplate = null, GameObject muzzleEffectTemplate = null, GameObject hitEffectTemplate = null, GameObject areaEffectTemplate = null, GameObject deathEffectTemplate = null, GameObject diceAutoDormantEffectTemplate = null)
 		{
 			projectilePrefab = projectileTemplate;
+			diceAutoDormantEffectPrefab = diceAutoDormantEffectTemplate;
 			firePoint = launchPoint;
 			tintRenderers = renderers;
 			defaultSummonedUnitPrefab = summonedUnitTemplate;
@@ -439,6 +447,7 @@ namespace DefenseGame
 			{
 				return;
 			}
+			diceAutoDormantEffectPrefab = template.diceAutoDormantEffectPrefab;
 			projectilePrefab = template.projectilePrefab;
 			defaultSummonedUnitPrefab = template.defaultSummonedUnitPrefab;
 			defaultMuzzleEffectPrefab = template.defaultMuzzleEffectPrefab;
@@ -484,9 +493,11 @@ namespace DefenseGame
 			bool alternatingRoundBurstUnit = IsAlternatingRoundBurstUnit();
 			if (alternatingRoundBurstUnit && (!combatActive || alternatingDormant))
 			{
+				EnsureDormantRestEffect();
 				animationDriver?.PlayDormantLoop();
 				return;
 			}
+			ClearDormantRestEffect();
 			animationDriver?.PlayMoving(isMoving: false);
 			if (combatActive)
 			{
@@ -587,6 +598,8 @@ namespace DefenseGame
 			alternatingNextRoundWillBurst = IsAlternatingRoundBurstUnit();
 			alternatingDormant = IsAlternatingRoundBurstUnit();
 			alternatingLastRound = -1;
+			ClearDormantRestEffect();
+			EnsureDormantRestEffect();
 			BindAlternatingRoundController();
 			ClearOwnedSupportEffects();
 			if (!isTemporarySummon && OutgameProgressionSystem.Active != null)
@@ -2672,6 +2685,28 @@ namespace DefenseGame
 				ownedSupportEffects.Remove(activeShieldEffect);
 				RuntimeEffectUtility.DestroyEffect(activeShieldEffect);
 				activeShieldEffect = null;
+			}
+		}
+		private void EnsureDormantRestEffect()
+		{
+			if (!IsAlternatingRoundBurstUnit() || !alternatingDormant || isDying || diceAutoDormantEffectPrefab == null || activeDormantRestEffect != null)
+			{
+				return;
+			}
+			activeDormantRestEffect = UnityEngine.Object.Instantiate(diceAutoDormantEffectPrefab, base.transform);
+			activeDormantRestEffect.name = "DiceAutoDormantRestEffect";
+			Transform effectTransform = activeDormantRestEffect.transform;
+			effectTransform.localPosition = Vector3.zero;
+			effectTransform.localRotation = Quaternion.identity;
+			effectTransform.localScale = Vector3.one;
+		}
+
+		private void ClearDormantRestEffect()
+		{
+			if (activeDormantRestEffect != null)
+			{
+				RuntimeEffectUtility.DestroyEffect(activeDormantRestEffect);
+				activeDormantRestEffect = null;
 			}
 		}
 

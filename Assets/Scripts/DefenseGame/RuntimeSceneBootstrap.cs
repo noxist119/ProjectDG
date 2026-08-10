@@ -711,7 +711,7 @@ private void EnsureLight()
 				firePointObject.transform.localPosition = new Vector3(0f, 0.8f, 0.6f);
 				firePoint = firePointObject.transform;
 			}
-			unit.ConfigureRuntimePieces(projectileTemplate, firePoint, unitObject.GetComponentsInChildren<Renderer>(includeInactive: true), (presentationConfig != null) ? presentationConfig.summonedDefenderPrefab : null, (presentationConfig != null) ? presentationConfig.defaultMuzzleEffectPrefab : null, (presentationConfig != null) ? presentationConfig.defaultHitEffectPrefab : null, (presentationConfig != null) ? presentationConfig.defaultAreaEffectPrefab : null, (presentationConfig != null) ? presentationConfig.defenderDeathEffectPrefab : null);
+			unit.ConfigureRuntimePieces(projectileTemplate, firePoint, unitObject.GetComponentsInChildren<Renderer>(includeInactive: true), (presentationConfig != null) ? presentationConfig.summonedDefenderPrefab : null, (presentationConfig != null) ? presentationConfig.defaultMuzzleEffectPrefab : null, (presentationConfig != null) ? presentationConfig.defaultHitEffectPrefab : null, (presentationConfig != null) ? presentationConfig.defaultAreaEffectPrefab : null, (presentationConfig != null) ? presentationConfig.defenderDeathEffectPrefab : null, (presentationConfig != null) ? presentationConfig.diceAutoDormantEffectPrefab : null);
 			unitObject.SetActive(value: false);
 			return unit;
 		}
@@ -1056,6 +1056,12 @@ private void EnsureLight()
 			CreatePanel(panel.transform, "ForecastTopLine", new Vector2(0f, -6f), new Vector2(870f, 8f), new Color(1f, 0.68f, 0.20f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: false);
 			CreateText(panel.transform, font, new Color(1f, 0.86f, 0.42f), "BossForecastTitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(760f, 50f), "R10 보스 예고 베팅", 35, TextAnchor.MiddleCenter, bold: true);
 			Text instruction = CreateText(panel.transform, font, new Color(0.82f, 0.91f, 1f), "BossForecastInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -118f), new Vector2(850f, 62f), "첫 소형 상점이 선택한 방향으로 기울어집니다.", 20, TextAnchor.MiddleCenter, bold: false);
+			Text forecastTitle = panel.transform.Find("BossForecastTitle")?.GetComponent<Text>();
+			if (forecastTitle != null)
+			{
+				forecastTitle.text = "R10 ?? ?? ??";
+			}
+			instruction.text = "R10?? ??? ??? ?? ????. ??? ??? ?? ?????? 1? ??? ???.";
 
 			Button[] buttons = new Button[3];
 			Text[] labels = new Text[3];

@@ -21,6 +21,16 @@ namespace DefenseGame
         private static readonly Dictionary<string, float> LastPlayedTimes = new Dictionary<string, float>();
         private static AudioSource sfxSource;
 
+        // Static Unity object references can survive editor play-session transitions
+        // when domain reload is disabled. Each session starts with fresh handles.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRuntimeState()
+        {
+            ClipCache.Clear();
+            LastPlayedTimes.Clear();
+            sfxSource = null;
+        }
+
         public static void PlayButton() => Play(ButtonClip, 0.72f, 0.035f);
         public static void PlayDiceAppear() => Play(DiceAppearClip, 0.82f, 0.06f);
         public static void PlayReroll() => Play(RerollClip, 0.78f, 0.08f);
@@ -117,7 +127,8 @@ namespace DefenseGame
         {
             if (ClipCache.TryGetValue(normalizedPath, out AudioClip cached))
             {
-                return cached;
+                if (cached != null) return cached;
+                ClipCache.Remove(normalizedPath);
             }
 
             AudioClip clip = Resources.Load<AudioClip>(normalizedPath);

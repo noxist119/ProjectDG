@@ -687,7 +687,8 @@ namespace DefenseGame.Editor
                                         presentation.projectilePrefab != null &&
                                         presentation.defaultMuzzleEffectPrefab != null &&
                                         presentation.defaultHitEffectPrefab != null &&
-                                        presentation.defaultAreaEffectPrefab != null;
+                                        presentation.defaultAreaEffectPrefab != null &&
+                                        presentation.diceAutoDormantEffectPrefab != null;
             if (!defaultVfxConfigured)
             {
                 notes.Add("DefenseGamePresentationConfig 기본 투사체/머즐/히트/범위 VFX 중 빈 참조가 있습니다.");
@@ -776,8 +777,12 @@ namespace DefenseGame.Editor
             }
 
             bool longCombatAccelerationValid =
+                Mathf.Approximately(RoundManager.ResolveCombatAccelerationStartSeconds(false), 30f) &&
+                Mathf.Approximately(RoundManager.ResolveCombatAccelerationStartSeconds(true), 40f) &&
                 RoundManager.ResolveCombatTimeScaleMultiplier(29.99f) == 1 &&
                 RoundManager.ResolveCombatTimeScaleMultiplier(30f) == 2 &&
+                RoundManager.ResolveCombatTimeScaleMultiplier(39.99f, 40f) == 1 &&
+                RoundManager.ResolveCombatTimeScaleMultiplier(40f, 40f) == 2 &&
                 RoundManager.ResolveCombatTimeScaleMultiplier(35f) == 3 &&
                 RoundManager.ResolveCombatTimeScaleMultiplier(45f) == 5 &&
                 RoundManager.ResolveCombatTimeScaleMultiplier(90f) == 10;

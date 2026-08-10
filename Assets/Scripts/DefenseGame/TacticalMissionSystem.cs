@@ -639,9 +639,62 @@ namespace DefenseGame
                     break;
             }
 
+            mission.description = BuildConditionDescription(mission);
             ApplyRewardPacing(mission);
             mission.accentColor = Color.Lerp(mission.color, Color.white, 0.24f);
             return mission;
+        }
+
+        private string BuildConditionDescription(MissionInstance mission)
+        {
+            if (mission == null)
+            {
+                return string.Empty;
+            }
+
+            switch (mission.kind)
+            {
+                case MissionKind.GoldReserve:
+                    return $"R{mission.targetRound} ?? ??? {mission.target}G ?? ?????.";
+                case MissionKind.PerfectDefense:
+                    return $"R{mission.targetRound}? HP ?? 0?? ??????.";
+                case MissionKind.MergeRush:
+                    return $"R{mission.targetRound} ?? ??? ?? {mission.target}? ?????.";
+                case MissionKind.RoleCollector:
+                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? ?? {mission.target}?? ?????.";
+                case MissionKind.LeanDefense:
+                    return $"R{mission.targetRound} ???? ?? {mission.target}? ??, HP ?? {mission.secondaryTarget} ??? ????.";
+                case MissionKind.BossPreparation:
+                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? {mission.target}? ?????.";
+                case MissionKind.SummonSprint:
+                    return $"R{mission.targetRound} ?? ??? ?? ?? {mission.target}? ?????.";
+                case MissionKind.LastStandGambit:
+                    return $"R{Mathf.Max(1, mission.targetRound - 1)} ?? ??? HP 1~7, ?? ?? 2? ??, ?? ?? 2? ??? ?????.";
+                case MissionKind.EmptySlotDiscipline:
+                    return $"R{mission.targetRound} ?? ? ? ??? {mission.target}? ?? ????.";
+                case MissionKind.RareUpgrade:
+                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? {mission.target}? ?????.";
+                case MissionKind.LegendaryHunt:
+                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? {mission.target}? ?????.";
+                case MissionKind.MonsterHunter:
+                    return $"R{mission.targetRound} ?? ??? ??? {mission.target}?? ?????.";
+                case MissionKind.BossSlayer:
+                    return $"R{mission.targetRound} ?? ??? ?? {mission.target}?? ?????.";
+                case MissionKind.NoSummonHold:
+                    return $"R{mission.targetRound}?? ?? ?? 0?, HP ?? {mission.secondaryTarget} ??? ??????.";
+                case MissionKind.KillStreak:
+                    return $"R{mission.targetRound} ?? ??? HP ?? 0?? ??? {mission.target}?? ?????.";
+                case MissionKind.HighGradeForge:
+                    return $"R{mission.targetRound} ?? ??? {CharacterGradeUtility.GetDisplayName((CharacterGrade)mission.secondaryTarget)} ?? ?? ??? {mission.target}? ????.";
+                case MissionKind.SpendDownGambit:
+                    return $"R{mission.targetRound} ?? ? ??? ?? ? ??? {mission.target}G ??? ????.";
+                case MissionKind.UltimateRecipeChase:
+                    return $"R{mission.targetRound} ?? ??? ?? ???? ????? ?? ??? {mission.target}? ?????.";
+                case MissionKind.GradeRainbow:
+                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? ?? {mission.target}?? ?????.";
+                default:
+                    return mission.description ?? string.Empty;
+            }
         }
 
         private void ApplyRewardPacing(MissionInstance mission)

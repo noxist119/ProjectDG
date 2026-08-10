@@ -9,6 +9,7 @@ namespace DefenseGame
 {
     public partial class MetaFlowUI : MonoBehaviour
     {
+        private const float RoundVictoryResultRevealDelay = 0.85f;
         [SerializeField] private DefenseGameController gameController;
         [SerializeField] private GameUIButtonBinder buttonBinder;
         [SerializeField] private AugmentManager augmentManager;
@@ -1418,7 +1419,7 @@ namespace DefenseGame
 
         private IEnumerator ShowRoundResultAfterFlow(int round)
         {
-            yield return new WaitForSeconds(0.35f);
+            yield return new WaitForSecondsRealtime(RoundVictoryResultRevealDelay);
 
             if (gameController != null && gameController.Life > 0 && !defeatPresented)
             {

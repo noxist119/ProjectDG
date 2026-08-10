@@ -578,12 +578,13 @@ namespace DefenseGame
             bool luckySummonReady = gameController.LuckySummonReady;
             bool luckyChoiceOpen = gameController.LuckySummonChoiceOpen;
             bool canSummon = !combatLocked && gameController.Gold >= gameController.SummonCost && gameController.EmptySlotCount > 0;
+			bool boardFull = gameController.IsBoardFull;
             string summonLabel = combatLocked
                 ? "\uC804\uD22C \uC911"
                 : luckyChoiceOpen ? "\uC120\uD0DD \uC911"
                 : luckySummonReady ? "\uD589\uC6B4 \uC18C\uD658"
                 : canSummon ? "\uC18C\uD658"
-                : gameController.EmptySlotCount <= 0 ? "\uC790\uB9AC \uC5C6\uC74C" : "\uACE8\uB4DC \uBD80\uC871";
+				: boardFull ? "\uBCF4\uB4DC \uAC00\uB4DD \uCC38" : "\uACE8\uB4DC \uBD80\uC871";
             SetText(summonButtonText, summonLabel);
             SetText(summonCostText, gameController.SummonCost + " GOLD");
             bool showLuckLedger = gameController.CurrentRound <= 10 ||
@@ -610,6 +611,7 @@ namespace DefenseGame
 
             SetText(deckSummaryText, "보유 유닛 " + gameController.BoardUnitCount + " / " + gameController.BoardCapacity);
             SetText(capacityText, gameController.EmptySlotCount + "칸 남음");
+			if (boardFull) SetText(capacityText, gameController.BoardFullSummonGuidance);
 
             SetMergeCount(normalMergeText, CharacterGrade.Normal);
             SetMergeCount(rareMergeText, CharacterGrade.Rare);

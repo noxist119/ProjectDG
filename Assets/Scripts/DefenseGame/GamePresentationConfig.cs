@@ -22,6 +22,8 @@ namespace DefenseGame
 
 		public GameObject projectilePrefab;
 
+		[Header("Dice Auto")]
+		public GameObject diceAutoDormantEffectPrefab;
 		public GameObject defaultMuzzleEffectPrefab;
 
 		public GameObject defaultHitEffectPrefab;

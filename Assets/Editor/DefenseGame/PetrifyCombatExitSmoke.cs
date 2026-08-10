@@ -20,7 +20,7 @@ namespace DefenseGame.Editor
         private static Animator animator;
         private static float initialHealth;
         private static bool immediatePetrified;
-        private static bool damageBlocked;
+        private static bool damageAppliedWhilePetrified;
         private static bool previousEnterPlayModeOptionsEnabled;
         private static EnterPlayModeOptions previousEnterPlayModeOptions;
 
@@ -109,10 +109,10 @@ namespace DefenseGame.Editor
             animator.speed = OriginalAnimatorSpeed;
             monster.ApplyPetrify(0.2f);
             immediatePetrified = monster.IsPetrified &&
-                                 !monster.CanBeCombatTargeted &&
+                                 monster.CanBeCombatTargeted &&
                                  Mathf.Approximately(animator.speed, 0f);
             monster.TakeDamage(25f, false, null);
-            damageBlocked = Mathf.Approximately(monster.CurrentHealth, initialHealth);
+            damageAppliedWhilePetrified = monster.CurrentHealth < initialHealth;
         }
 
         private static void Tick()
@@ -127,14 +127,14 @@ namespace DefenseGame.Editor
             float healthBeforeReleasedHit = monster != null ? monster.CurrentHealth : 0f;
             monster?.TakeDamage(25f, false, null);
             bool damageRestored = monster != null && monster.CurrentHealth < healthBeforeReleasedHit;
-            bool passed = immediatePetrified && damageBlocked && released && animationResumed && damageRestored && runtimeErrors == 0;
+            bool passed = immediatePetrified && damageAppliedWhilePetrified && released && animationResumed && damageRestored && runtimeErrors == 0;
 
             WriteAndFinish(new SmokeReport
             {
                 status = passed ? "pass" : "fail",
                 passed = passed,
                 immediatePetrified = immediatePetrified,
-                damageBlocked = damageBlocked,
+                damageAppliedWhilePetrified = damageAppliedWhilePetrified,
                 released = released,
                 animationResumed = animationResumed,
                 damageRestored = damageRestored,
@@ -173,7 +173,7 @@ namespace DefenseGame.Editor
             public string status;
             public bool passed;
             public bool immediatePetrified;
-            public bool damageBlocked;
+            public bool damageAppliedWhilePetrified;
             public bool released;
             public bool animationResumed;
             public bool damageRestored;

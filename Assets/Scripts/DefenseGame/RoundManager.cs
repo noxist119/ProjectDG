@@ -6,6 +6,7 @@ namespace DefenseGame
 {
     public class RoundManager : MonoBehaviour
     {
+        private const float BossCombatAccelerationStartSeconds = 40f;
         [SerializeField] private MonsterDatabase monsterDatabase;
         [SerializeField] private MonsterUnit fallbackMonsterPrefab;
         [SerializeField] private Transform[] spawnPoints;
@@ -168,6 +169,11 @@ namespace DefenseGame
             return Mathf.Clamp(multiplier, 2, Mathf.Max(2, maxMultiplier));
         }
 
+        public static float ResolveCombatAccelerationStartSeconds(bool isBossRound, float normalStartSeconds = 30f)
+        {
+            return isBossRound ? BossCombatAccelerationStartSeconds : Mathf.Max(0f, normalStartSeconds);
+        }
+
         private void BeginCombatTimeAcceleration()
         {
             CombatElapsedRealtime = 0f;
@@ -210,7 +216,8 @@ namespace DefenseGame
 
             CombatElapsedRealtime += Mathf.Max(0f, now - combatTimeLastRealtime);
             combatTimeLastRealtime = now;
-            int targetMultiplier = ResolveCombatTimeScaleMultiplier(CombatElapsedRealtime, longCombatAccelerationStartSeconds, longCombatAccelerationStepSeconds, longCombatAccelerationMaxMultiplier);
+            float accelerationStartSeconds = ResolveCombatAccelerationStartSeconds(IsBossRound, longCombatAccelerationStartSeconds);
+            int targetMultiplier = ResolveCombatTimeScaleMultiplier(CombatElapsedRealtime, accelerationStartSeconds, longCombatAccelerationStepSeconds, longCombatAccelerationMaxMultiplier);
             if (targetMultiplier == CombatTimeScaleMultiplier)
             {
                 return;
