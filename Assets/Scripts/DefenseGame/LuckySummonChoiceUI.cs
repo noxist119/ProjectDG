@@ -274,19 +274,6 @@ namespace DefenseGame
 
 			if (instructionText != null)
 			{
-				instructionText.text = gameController.DailyFateCupEnabled
-					? gameController.DailyFateCupSummary + "\n첫 소형 상점이 선택한 방향으로 기울어집니다."
-					: "첫 소형 상점이 선택한 방향으로 기울어집니다. R10 조건 성공 시 +45점, +18G";
-			}
-
-			string supplyBonus = gameController.IsOverdriveMode ? "폭주 시동 골드 +10\n" : string.Empty;
-            string buildBonus = gameController.IsOverdriveMode ? "폭주 운 보호 +2칸\n" : string.Empty;
-            string tacticalBonus = gameController.IsOverdriveMode ? "폭주 최대 HP +1\n" : string.Empty;
-            SetChoice(0, "보급 예측\n\n" + supplyBonus + "R10 유닛 8기 이상\n첫 상점 보급 편향");
-            SetChoice(1, "빌드 예측\n\n" + buildBonus + "R10 에픽+ 1기\n첫 상점 빌드 편향");
-            SetChoice(2, "전술 예측\n\n" + tacticalBonus + "R10 HP 60% 이상\n첫 상점 전술 편향");
-			if (instructionText != null)
-			{
 				instructionText.text = "\u0052\u0031\u0030\uae4c\uc9c0\u0020\ub2ec\uc131\ud560\u0020\ubaa9\ud45c\ub97c\u0020\ud558\ub098\u0020\uace0\ub974\uc138\uc694\u002e\u0020\uc120\ud0dd\ud55c\u0020\uacf5\ub7b5\uc740\u0020\ub2e4\uc74c\u0020\uc804\ud22c\uc0c1\uc810\uc5d0\ub3c4\u0020\u0031\ud68c\u0020\uc601\ud5a5\uc744\u0020\uc90d\ub2c8\ub2e4\u002e";
 			}
 			SetChoice(0, "\ubcf4\uae09\u0020\uacf5\ub7b5\n\n\uc989\uc2dc\u003a\u0020\ub808\uc5b4\u0020\uc720\ub2db\u0020\u0031\uae30\u0020\u002b\u0020\u0031\u0030\u0047\n\ubaa9\ud45c\u003a\u0020\u0052\u0031\u0030\u0020\uc720\ub2db\u0020\u0038\uae30\u0020\uc774\uc0c1\n\uc131\uacf5\u003a\u0020\u002b\u0034\u0035\uc810\u002c\u0020\u002b\u0031\u0038\u0047\n\ub2e4\uc74c\u0020\uc804\ud22c\uc0c1\uc810\u003a\u0020\ubcf4\uae09\u0020\uc120\ud0dd\uc9c0\u0020\u0031\ud68c\u0020\uc6b0\ub300");

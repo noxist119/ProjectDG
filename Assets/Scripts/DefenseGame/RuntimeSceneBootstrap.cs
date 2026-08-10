@@ -1054,14 +1054,8 @@ private void EnsureLight()
 
 			Image panel = CreatePanel(root.transform, "BossForecastBetPanel", new Vector2(0f, 72f), new Vector2(980f, 690f), new Color(0.04f, 0.08f, 0.19f, 0.99f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
 			CreatePanel(panel.transform, "ForecastTopLine", new Vector2(0f, -6f), new Vector2(870f, 8f), new Color(1f, 0.68f, 0.20f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: false);
-			CreateText(panel.transform, font, new Color(1f, 0.86f, 0.42f), "BossForecastTitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(760f, 50f), "R10 보스 예고 베팅", 35, TextAnchor.MiddleCenter, bold: true);
-			Text instruction = CreateText(panel.transform, font, new Color(0.82f, 0.91f, 1f), "BossForecastInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -118f), new Vector2(850f, 62f), "첫 소형 상점이 선택한 방향으로 기울어집니다.", 20, TextAnchor.MiddleCenter, bold: false);
-			Text forecastTitle = panel.transform.Find("BossForecastTitle")?.GetComponent<Text>();
-			if (forecastTitle != null)
-			{
-				forecastTitle.text = "R10 ?? ?? ??";
-			}
-			instruction.text = "R10?? ??? ??? ?? ????. ??? ??? ?? ?????? 1? ??? ???.";
+			CreateText(panel.transform, font, new Color(1f, 0.86f, 0.42f), "BossForecastTitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(760f, 50f), "R10 \ubcf4\uc2a4 \uc804\ub7b5 \uc120\ud0dd", 35, TextAnchor.MiddleCenter, bold: true);
+			Text instruction = CreateText(panel.transform, font, new Color(0.82f, 0.91f, 1f), "BossForecastInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -118f), new Vector2(850f, 62f), "R10\uae4c\uc9c0 \ub2ec\uc131\ud560 \ubaa9\ud45c\ub97c \ud558\ub098 \uace0\ub974\uc138\uc694. \uc120\ud0dd\ud55c \uacf5\ub7b5\uc740 \ub2e4\uc74c \uc804\ud22c\uc0c1\uc810\uc5d0\uc11c 1\ud68c \uc6b0\ub300\ub97c \ubc1b\uc2b5\ub2c8\ub2e4.", 20, TextAnchor.MiddleCenter, bold: false);
 
 			Button[] buttons = new Button[3];
 			Text[] labels = new Text[3];

@@ -655,48 +655,47 @@ namespace DefenseGame
             switch (mission.kind)
             {
                 case MissionKind.GoldReserve:
-                    return $"R{mission.targetRound} ?? ??? {mission.target}G ?? ?????.";
+                    return $"R{mission.targetRound} \uc2dc\uc791 \uc804\uae4c\uc9c0 {mission.target}G \uc774\uc0c1 \ubcf4\uc720\ud558\uc138\uc694.";
                 case MissionKind.PerfectDefense:
-                    return $"R{mission.targetRound}? HP ?? 0?? ??????.";
+                    return $"R{mission.targetRound}\uc744 HP \uc190\uc2e4 0\uc73c\ub85c \ud074\ub9ac\uc5b4\ud558\uc138\uc694.";
                 case MissionKind.MergeRush:
-                    return $"R{mission.targetRound} ?? ??? ?? {mission.target}? ?????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \ud569\uc131\uc744 {mission.target}\ud68c \uc644\ub8cc\ud558\uc138\uc694.";
                 case MissionKind.RoleCollector:
-                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? ?? {mission.target}?? ?????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \uc11c\ub85c \ub2e4\ub978 \uc5ed\ud560 \uc720\ub2db {mission.target}\uc885\uc744 \ubcf4\uc720\ud558\uc138\uc694.";
                 case MissionKind.LeanDefense:
-                    return $"R{mission.targetRound} ???? ?? {mission.target}? ??, HP ?? {mission.secondaryTarget} ??? ????.";
+                    return $"R{mission.targetRound} \uc885\ub8cc \uc2dc \uc720\ub2db {mission.target}\uae30 \uc774\ud558, HP \uc190\uc2e4 {mission.secondaryTarget} \uc774\ud558\ub85c \ubc84\ud2f0\uc138\uc694.";
                 case MissionKind.BossPreparation:
-                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? {mission.target}? ?????.";
+                    return $"R{mission.targetRound} \uc2dc\uc791 \uc804\uae4c\uc9c0 \uc804\uc124 \uc774\uc0c1 \uc720\ub2db {mission.target}\uae30\ub97c \ubcf4\uc720\ud558\uc138\uc694.";
                 case MissionKind.SummonSprint:
-                    return $"R{mission.targetRound} ?? ??? ?? ?? {mission.target}? ?????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \uc9c1\uc811 \uc18c\ud658\uc744 {mission.target}\ud68c \uc644\ub8cc\ud558\uc138\uc694.";
                 case MissionKind.LastStandGambit:
-                    return $"R{Mathf.Max(1, mission.targetRound - 1)} ?? ??? HP 1~7, ?? ?? 2? ??, ?? ?? 2? ??? ?????.";
+                    return $"R{Mathf.Max(1, mission.targetRound - 1)} \uc885\ub8cc \uc804\uae4c\uc9c0 HP 1~7, \uc9c1\uc811 \uc18c\ud658 2\ud68c \uc774\ud558, \ubcf4\ub4dc \uc720\ub2db 2\uae30 \uc774\ud558\ub97c \uc720\uc9c0\ud558\uc138\uc694.";
                 case MissionKind.EmptySlotDiscipline:
-                    return $"R{mission.targetRound} ?? ? ? ??? {mission.target}? ?? ????.";
+                    return $"R{mission.targetRound} \uc885\ub8cc \ud6c4 \ube48 \uc2ac\ub86f\uc744 {mission.target}\uce78 \uc774\uc0c1 \ub0a8\uae30\uc138\uc694.";
                 case MissionKind.RareUpgrade:
-                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? {mission.target}? ?????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \ub808\uc5b4 \uc774\uc0c1 \uc720\ub2db {mission.target}\uae30\ub97c \ubcf4\uc720\ud558\uc138\uc694.";
                 case MissionKind.LegendaryHunt:
-                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? {mission.target}? ?????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \uc804\uc124 \uc774\uc0c1 \uc720\ub2db {mission.target}\uae30\ub97c \ubcf4\uc720\ud558\uc138\uc694.";
                 case MissionKind.MonsterHunter:
-                    return $"R{mission.targetRound} ?? ??? ??? {mission.target}?? ?????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \ubaac\uc2a4\ud130 {mission.target}\ub9c8\ub9ac\ub97c \ucc98\uce58\ud558\uc138\uc694.";
                 case MissionKind.BossSlayer:
-                    return $"R{mission.targetRound} ?? ??? ?? {mission.target}?? ?????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \ubcf4\uc2a4 {mission.target}\ub9c8\ub9ac\ub97c \ucc98\uce58\ud558\uc138\uc694.";
                 case MissionKind.NoSummonHold:
-                    return $"R{mission.targetRound}?? ?? ?? 0?, HP ?? {mission.secondaryTarget} ??? ??????.";
+                    return $"R{mission.targetRound}\uc5d0\uc11c \uc9c1\uc811 \uc18c\ud658 0\ud68c, HP \uc190\uc2e4 {mission.secondaryTarget} \uc774\ud558\ub85c \ud074\ub9ac\uc5b4\ud558\uc138\uc694.";
                 case MissionKind.KillStreak:
-                    return $"R{mission.targetRound} ?? ??? HP ?? 0?? ??? {mission.target}?? ?????.";
+                    return $"R{mission.targetRound}\uc5d0\uc11c HP \uc190\uc2e4 0\uc73c\ub85c \ubaac\uc2a4\ud130 {mission.target}\ub9c8\ub9ac\ub97c \ucc98\uce58\ud558\uc138\uc694.";
                 case MissionKind.HighGradeForge:
-                    return $"R{mission.targetRound} ?? ??? {CharacterGradeUtility.GetDisplayName((CharacterGrade)mission.secondaryTarget)} ?? ?? ??? {mission.target}? ????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 {CharacterGradeUtility.GetDisplayName((CharacterGrade)mission.secondaryTarget)} \uc774\uc0c1 \ud569\uc131\uc744 {mission.target}\ud68c \uc644\ub8cc\ud558\uc138\uc694.";
                 case MissionKind.SpendDownGambit:
-                    return $"R{mission.targetRound} ?? ? ??? ?? ? ??? {mission.target}G ??? ????.";
+                    return $"R{mission.targetRound} \uc2dc\uc791 \uc804 \ubcf4\uc720 \uace8\ub4dc\ub97c {mission.target}G \uc774\ud558\ub85c \ub9cc\ub4dc\uc138\uc694.";
                 case MissionKind.UltimateRecipeChase:
-                    return $"R{mission.targetRound} ?? ??? ?? ???? ????? ?? ??? {mission.target}? ?????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \ucd08\uc6d4 \ub808\uc2dc\ud53c \uc900\ube44 \ub610\ub294 \ucd08\uc6d4 \ud569\uc131\uc744 {mission.target}\ud68c \uc644\ub8cc\ud558\uc138\uc694.";
                 case MissionKind.GradeRainbow:
-                    return $"R{mission.targetRound} ?? ??? ?? ?? ?? ?? {mission.target}?? ?????.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \uc11c\ub85c \ub2e4\ub978 \ub4f1\uae09 \uc720\ub2db {mission.target}\uc885\uc744 \ubcf4\uc720\ud558\uc138\uc694.";
                 default:
-                    return mission.description ?? string.Empty;
+                    return string.IsNullOrEmpty(mission.description) ? string.Empty : mission.description;
             }
         }
-
         private void ApplyRewardPacing(MissionInstance mission)
         {
             if (mission == null)

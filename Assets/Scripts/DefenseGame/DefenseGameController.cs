@@ -1447,7 +1447,7 @@ namespace DefenseGame
             {
                 luckySummonNormalStreak = Mathf.Min(LuckySummonThreshold, luckySummonNormalStreak + 3);
                 RefreshLuckySummonReadiness();
-                entryBonus = "폭주 운 보호 +3칸";
+                entryBonus = "\uD589\uC6B4 \uC18C\uD658\uAE4C\uC9C0 \uB0A8\uC740 \uC77C\uBC18 \uC18C\uD658 \uD69F\uC218 -3";
             }
             else if (IsOverdriveMode && choice == BossForecastBet.Tactical)
             {
@@ -1455,15 +1455,11 @@ namespace DefenseGame
                 entryBonus = "폭주 최대 HP +1";
             }
 
-            if (IsOverdriveMode && choice == BossForecastBet.Build)
-            {
-                entryBonus = "\uD589\uC6B4 \uC18C\uD658\uAE4C\uC9C0 \uB0A8\uC740 \uC77C\uBC18 \uC18C\uD658 \uD69F\uC218 -3";
-            }
 
             string title = choice == BossForecastBet.Supply ? "보급 예측" :
                 choice == BossForecastBet.Build ? "빌드 예측" : "전술 예측";
-            AddRunHighlightCard("보스 예고 베팅", title + " / " + entryBonus + " / R10 목표 등록");
-            RequestBanner("보스 예고 베팅 확정  " + BuildBossForecastSummary(), new Color(1f, 0.78f, 0.30f), 2.6f);
+            AddRunHighlightCard("R10 \ubcf4\uc2a4 \uc804\ub7b5", title + " / " + entryBonus + " / R10 \ubaa9\ud45c \ub4f1\ub85d");
+            RequestBanner("R10 \ubcf4\uc2a4 \uc804\ub7b5 \uc120\ud0dd \uc644\ub8cc  " + BuildBossForecastSummary(), new Color(1f, 0.78f, 0.30f), 2.6f);
             NotifyStateChanged();
             return true;
         }
