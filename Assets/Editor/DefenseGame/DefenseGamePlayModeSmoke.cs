@@ -258,9 +258,10 @@ namespace DefenseGame.Editor
             bool paidPlayerSummonGranted = controller != null && controller.TrySummon();
             bool screenSpaceCombatHudValid = ValidateScreenSpaceCombatHud();
             bool dragTransactionSafetyValid = ValidateDragTransactionSafety();
-            if (!screenSpaceCombatHudValid || !dragTransactionSafetyValid)
+            bool dragCombatSuspensionValid = ValidateDraggedUnitCombatSuspension();
+            if (!screenSpaceCombatHudValid || !dragTransactionSafetyValid || !dragCombatSuspensionValid)
             {
-                notes.Add("Screen-space combat HUD, anchor priority, or drag transaction validation failed.");
+                notes.Add("Screen-space combat HUD, anchor priority, drag transaction, or drag combat suspension validation failed.");
             }
             if (controller != null)
             {
@@ -807,7 +808,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -1183,6 +1184,31 @@ namespace DefenseGame.Editor
             UnityEngine.Object.DestroyImmediate(emptyObject);
             return beginPreservesLogicalOccupancy && emptyDropValid && swapValid &&
                    cancelRestoresTracking && disableClearsDrag && clearRemovesLogicalUnits;
+        }
+
+        private static bool ValidateDraggedUnitCombatSuspension()
+        {
+            GameObject probeObject = new GameObject("DragCombatSuspensionProbe");
+            DefenderUnit unit = probeObject.AddComponent<DefenderUnit>();
+            unit.Initialize(new CharacterDefinition
+            {
+                id = "drag_combat_suspension_probe",
+                displayName = "Drag Combat Suspension Probe",
+                stats = new CombatStats { maxHealth = 100f },
+                attackBehavior = new AttackBehavior()
+            });
+            try
+            {
+                unit.SetBoardDragCombatSuspended(true);
+                bool suspended = unit.IsBoardDragCombatSuspended && unit.CanBeCombatTargeted;
+                unit.SetBoardDragCombatSuspended(false);
+                bool resumed = !unit.IsBoardDragCombatSuspended && unit.CanBeCombatTargeted;
+                return suspended && resumed;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(probeObject);
+            }
         }
 
         private static bool ValidatePortraitSafeAreaProfiles()

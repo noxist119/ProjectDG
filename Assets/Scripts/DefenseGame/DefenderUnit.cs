@@ -205,6 +205,8 @@ namespace DefenseGame
 
 		private bool isTemporarySummon;
 
+		private bool boardDragCombatSuspended;
+
 		private bool isDying;
 
 		private DefenseGameController alternatingRoundController;
@@ -262,6 +264,8 @@ namespace DefenseGame
 
 		public bool CanBeCombatTargeted => !isDying && currentHealth > 0f;
 
+		public bool IsBoardDragCombatSuspended => boardDragCombatSuspended;
+
 		public bool IsStunned => stunTimer > 0f;
 
 		public float CurrentAttackRange => (definition != null) ? GetEffectiveAttackRange() : 0f;
@@ -277,6 +281,21 @@ namespace DefenseGame
 		public static event Action<DefenderUnit, float, bool, MonsterUnit> OnShieldResolved;
 
 		public static event Action<DefenderUnit, MonsterUnit, float> OnDamageTaken;
+
+		public void SetBoardDragCombatSuspended(bool suspended)
+		{
+			if (boardDragCombatSuspended == suspended)
+			{
+				return;
+			}
+			boardDragCombatSuspended = suspended;
+			InvalidateBasicTargetCache();
+			if (suspended)
+			{
+				ClearPendingImpacts();
+				animationDriver?.ForceIdle();
+			}
+		}
 
 		public void SetRecipeMaterialMarker(bool active, string label, Color color)
 		{
@@ -491,6 +510,11 @@ namespace DefenseGame
 			floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
 			bool combatActive = IsCombatActive();
 			bool alternatingRoundBurstUnit = IsAlternatingRoundBurstUnit();
+			if (boardDragCombatSuspended)
+			{
+				animationDriver?.ForceIdle();
+				return;
+			}
 			if (alternatingRoundBurstUnit && (!combatActive || alternatingDormant))
 			{
 				EnsureDormantRestEffect();
@@ -1058,7 +1082,7 @@ namespace DefenseGame
 
 		private void PerformAttack(MonsterUnit target)
 		{
-			if (!(target == null))
+			if (!boardDragCombatSuspended && !(target == null))
 			{
 				FaceTarget(target.transform.position);
 				float effectiveAttackSpeed = Mathf.Max(0.2f, definition.stats.attackSpeed * (1f + attackSpeedBonus + permanentAttackSpeedBonus + synergyBonus.attackSpeedBonus + temporaryAttackSpeedBonus + tileAttackSpeedBonus));
@@ -1092,7 +1116,7 @@ namespace DefenseGame
 
 		private void ResolvePendingBasicAttack()
 		{
-			if (!pendingBasicAttack.isValid)
+			if (boardDragCombatSuspended || !pendingBasicAttack.isValid)
 			{
 				return;
 			}
@@ -1204,7 +1228,7 @@ namespace DefenseGame
 
 		private void ResolvePendingSkillCast()
 		{
-			if (pendingSkillCast.isValid)
+			if (!boardDragCombatSuspended && pendingSkillCast.isValid)
 			{
 				PendingSkillCast pending = pendingSkillCast;
 				pendingSkillCast = default(PendingSkillCast);
@@ -1225,6 +1249,10 @@ namespace DefenseGame
 
 		private bool TryCastSkill()
 		{
+			if (boardDragCombatSuspended)
+			{
+				return false;
+			}
 			if (!CanStartActionAnimation())
 			{
 				return false;
@@ -1344,6 +1372,10 @@ namespace DefenseGame
 
 		private void CastSkill(SkillDefinition skill, MonsterUnit currentTarget)
 		{
+			if (boardDragCombatSuspended)
+			{
+				return;
+			}
 			float skillMultiplier = Mathf.Max(0.1f, 1f + permanentSkillPowerBonus + synergyBonus.skillPowerBonus + tileSkillPowerBonus);
 			QueueSkillImpact(skill, currentTarget, skillMultiplier);
 			int skillSlot = ((definition == null || definition.skills == null) ? 1 : Mathf.Max(1, definition.skills.IndexOf(skill) + 1));

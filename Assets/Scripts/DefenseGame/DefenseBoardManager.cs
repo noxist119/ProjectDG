@@ -1335,6 +1335,7 @@ namespace DefenseGame
 			RestoreDraggedColliders();
 			if (unit != null)
 			{
+				unit.SetBoardDragCombatSuspended(false);
 				BoardSlot currentSlot = unit.CurrentSlot;
 				if (currentSlot != null && currentSlot.OccupiedUnit == unit)
 				{
@@ -1381,6 +1382,7 @@ namespace DefenseGame
 			RestoreDraggedColliders();
 			if (unit != null)
 			{
+				unit.SetBoardDragCombatSuspended(false);
 				SharedFloatingCombatCanvas.SetPoseRefreshOverride(unit.transform, false);
 			}
 			draggedUnit = null;
@@ -1508,6 +1510,7 @@ namespace DefenseGame
 				}
 			}
 			draggedUnit.transform.SetParent(base.transform, worldPositionStays: true);
+			draggedUnit.SetBoardDragCombatSuspended(true);
 			SharedFloatingCombatCanvas.SetPoseRefreshOverride(draggedUnit.transform, true);
 			HideRangeIndicator();
 			Camera camera = GetGameplayCamera();
