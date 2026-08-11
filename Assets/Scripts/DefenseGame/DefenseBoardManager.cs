@@ -98,6 +98,8 @@ namespace DefenseGame
 
 		private Collider[] draggedColliders;
 
+		private bool[] draggedColliderEnabledStates;
+
 		private Plane dragPlane;
 
 		private Vector3 dragOffset;
@@ -158,9 +160,18 @@ namespace DefenseGame
 			cachedGameplayCamera = Camera.main;
 		}
 
+		private void OnDisable()
+		{
+			CancelActiveDrag();
+		}
+
 		private void Update()
 		{
 			HandleDragging();
+			if (Time.frameCount % 45 == 0)
+			{
+				ValidateBoardSlotInvariant();
+			}
 			UpdateRangeIndicator();
 			recipeMarkerRefreshTimer -= Time.deltaTime;
 			if (recipeMarkerRefreshTimer <= 0f)
@@ -172,6 +183,7 @@ namespace DefenseGame
 
 		public void Configure(List<BoardSlot> newSlots, DefenderUnit fallbackPrefab)
 		{
+			CancelActiveDrag();
 			slots = newSlots;
 			fallbackUnitPrefab = fallbackPrefab;
 			RefreshSlotLocks(0);
@@ -179,6 +191,7 @@ namespace DefenseGame
 
 		public int RefreshSlotLocks(int completedRound, bool playUnlockFeedback = false)
 		{
+			CancelActiveDrag();
 			int activeCount = ResolveActiveSlotCount(completedRound);
 			int newlyUnlocked = 0;
 			for (int i = 0; i < slots.Count; i++)
@@ -220,6 +233,7 @@ namespace DefenseGame
 
 		public void ClearAllDeployedUnits()
 		{
+			CancelActiveDrag();
 			for (int i = 0; i < slots.Count; i++)
 			{
 				BoardSlot slot = slots[i];
@@ -230,9 +244,6 @@ namespace DefenseGame
 					UnityEngine.Object.Destroy(unit.gameObject);
 				}
 			}
-			draggedUnit = null;
-			draggedOriginSlot = null;
-			draggedColliders = null;
 			pendingPointerUnit = null;
 			HideRangeIndicator();
 			previewUltimateRecipeName = null;
@@ -247,6 +258,7 @@ namespace DefenseGame
 
 		public bool TrySpawnUnit(CharacterDefinition definition, DefenderUnit prefabOverride, out DefenderUnit spawnedUnit)
 		{
+			CancelActiveDrag();
 			spawnedUnit = null;
 			BoardSlot emptySlot = slots.FirstOrDefault((BoardSlot slot) => slot != null && slot.IsAvailable && slot.IsEmpty);
 			if (emptySlot == null || definition == null)
@@ -277,6 +289,7 @@ namespace DefenseGame
 
 		public bool TryMergeUnitsOfGrade(CharacterGrade grade, CharacterDatabase database, out MergeResultInfo mergeResult, DefenderUnit prefabOverride = null)
 		{
+			CancelActiveDrag();
 			mergeResult = default(MergeResultInfo);
 			LastMergeFailureReason = string.Empty;
 			if (grade == CharacterGrade.Mythic)
@@ -615,6 +628,7 @@ namespace DefenseGame
 
 		private bool ExecuteUltimateMerge(CharacterDatabase database, UltimateMergeRecipe recipe, out MergeResultInfo mergeResult, DefenderUnit prefabOverride)
 		{
+			CancelActiveDrag();
 			mergeResult = default(MergeResultInfo);
 			CharacterDefinition mergedCharacter = ResolveUltimateMergeResult(database, recipe);
 			List<DefenderUnit> selectedUnits = SelectUnitsForUltimateRecipe(recipe);
@@ -1257,16 +1271,13 @@ namespace DefenseGame
 
 		public bool TryRemoveUnitFromBoard(DefenderUnit unit)
 		{
+			if (draggedUnit == unit)
+			{
+				CancelActiveDrag();
+			}
 			if (unit == null || unit.CurrentSlot == null || unit.IsTemporarySummon)
 			{
 				return false;
-			}
-			if (draggedUnit == unit)
-			{
-				draggedUnit = null;
-				draggedOriginSlot = null;
-				draggedColliders = null;
-				dragOffset = Vector3.zero;
 			}
 			if (selectedRangeUnit == unit)
 			{
@@ -1315,6 +1326,98 @@ namespace DefenseGame
 				sourceSlot.AssignUnit(targetUnit);
 			}
 			return true;
+		}
+
+		public void CancelActiveDrag()
+		{
+			DefenderUnit unit = draggedUnit;
+			BoardSlot originSlot = draggedOriginSlot;
+			RestoreDraggedColliders();
+			if (unit != null)
+			{
+				BoardSlot currentSlot = unit.CurrentSlot;
+				if (currentSlot != null && currentSlot.OccupiedUnit == unit)
+				{
+					currentSlot.AssignUnit(unit);
+				}
+				else if (originSlot != null && !originSlot.IsLocked && (originSlot.IsEmpty || originSlot.OccupiedUnit == unit))
+				{
+					originSlot.AssignUnit(unit);
+				}
+				SharedFloatingCombatCanvas.SetPoseRefreshOverride(unit.transform, false);
+			}
+			draggedUnit = null;
+			draggedOriginSlot = null;
+			draggedColliders = null;
+			draggedColliderEnabledStates = null;
+			dragOffset = Vector3.zero;
+			pendingPointerUnit = null;
+		}
+
+		public void RestoreDraggedUnitToOrigin()
+		{
+			CancelActiveDrag();
+		}
+
+		private void RestoreDraggedColliders()
+		{
+			if (draggedColliders == null)
+			{
+				return;
+			}
+			for (int i = 0; i < draggedColliders.Length; i++)
+			{
+				Collider collider = draggedColliders[i];
+				if (collider != null)
+				{
+					collider.enabled = draggedColliderEnabledStates != null && i < draggedColliderEnabledStates.Length ? draggedColliderEnabledStates[i] : true;
+				}
+			}
+		}
+
+		private void CompleteActiveDrag()
+		{
+			DefenderUnit unit = draggedUnit;
+			RestoreDraggedColliders();
+			if (unit != null)
+			{
+				SharedFloatingCombatCanvas.SetPoseRefreshOverride(unit.transform, false);
+			}
+			draggedUnit = null;
+			draggedOriginSlot = null;
+			draggedColliders = null;
+			draggedColliderEnabledStates = null;
+			dragOffset = Vector3.zero;
+			pendingPointerUnit = null;
+		}
+
+		[System.Diagnostics.Conditional("UNITY_EDITOR")]
+		[System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+		private void ValidateBoardSlotInvariant()
+		{
+			HashSet<DefenderUnit> slottedUnits = new HashSet<DefenderUnit>();
+			for (int i = 0; i < slots.Count; i++)
+			{
+				BoardSlot slot = slots[i];
+				DefenderUnit unit = slot != null ? slot.OccupiedUnit : null;
+				if (unit == null || unit.IsTemporarySummon)
+				{
+					continue;
+				}
+				if (unit.CurrentSlot != slot || !slottedUnits.Add(unit))
+				{
+					Debug.LogWarning("DefenseBoardManager slot invariant warning: occupied slot and defender CurrentSlot are inconsistent.", this);
+				}
+			}
+			DefenderUnit[] defenders = GetComponentsInChildren<DefenderUnit>(includeInactive: true);
+			for (int j = 0; j < defenders.Length; j++)
+			{
+				DefenderUnit defender = defenders[j];
+				if (defender != null && !defender.IsTemporarySummon && (defender.CurrentSlot == null || defender.CurrentSlot.OccupiedUnit != defender))
+				{
+					Debug.LogWarning("DefenseBoardManager slot invariant warning: defender has no matching BoardSlot.", defender);
+				}
+			}
 		}
 
 		private void HandleDragging()
@@ -1386,20 +1489,27 @@ namespace DefenseGame
 				return;
 			}
 			BoardSlot originSlot = unit.CurrentSlot;
-			if (originSlot == null)
+			if (originSlot == null || originSlot.OccupiedUnit != unit)
 			{
 				return;
 			}
+			CancelActiveDrag();
 			draggedUnit = unit;
 			draggedOriginSlot = originSlot;
 			draggedColliders = draggedUnit.GetComponentsInChildren<Collider>(includeInactive: true);
-			draggedOriginSlot.Clear();
-			draggedUnit.transform.SetParent(base.transform, worldPositionStays: true);
-			HideRangeIndicator();
+			draggedColliderEnabledStates = new bool[draggedColliders.Length];
 			for (int i = 0; i < draggedColliders.Length; i++)
 			{
-				draggedColliders[i].enabled = false;
+				Collider collider = draggedColliders[i];
+				if (collider != null)
+				{
+					draggedColliderEnabledStates[i] = collider.enabled;
+					collider.enabled = false;
+				}
 			}
+			draggedUnit.transform.SetParent(base.transform, worldPositionStays: true);
+			SharedFloatingCombatCanvas.SetPoseRefreshOverride(draggedUnit.transform, true);
+			HideRangeIndicator();
 			Camera camera = GetGameplayCamera();
 			if (!(camera == null))
 			{
@@ -1432,22 +1542,18 @@ namespace DefenseGame
 
 		private void EndDrag()
 		{
+			if (draggedUnit == null)
+			{
+				CancelActiveDrag();
+				return;
+			}
 			BoardSlot targetSlot = FindSlotUnderPointer();
-			for (int i = 0; i < draggedColliders.Length; i++)
+			if (targetSlot == null || !TryMoveUnit(draggedUnit, targetSlot))
 			{
-				if (draggedColliders[i] != null)
-				{
-					draggedColliders[i].enabled = true;
-				}
+				CancelActiveDrag();
+				return;
 			}
-			if ((!(targetSlot != null) || !TryMoveUnit(draggedUnit, targetSlot)) && draggedOriginSlot != null)
-			{
-				draggedOriginSlot.AssignUnit(draggedUnit);
-			}
-			draggedUnit = null;
-			draggedOriginSlot = null;
-			draggedColliders = null;
-			dragOffset = Vector3.zero;
+			CompleteActiveDrag();
 		}
 
 		private void ShowRangeIndicator(DefenderUnit unit)

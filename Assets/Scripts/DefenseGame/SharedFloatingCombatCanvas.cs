@@ -8,13 +8,15 @@ namespace DefenseGame
 	[DefaultExecutionOrder(-200)]
 	public sealed class SharedFloatingCombatCanvas : MonoBehaviour
 	{
-		public const float CanvasWorldScale = 0.01f;
-
-		private const int WorldUiSortingOrder = 85;
+		private const int CombatHudSortingOrder = -10;
 
 		private const float PoseTimeEpsilon = 0.0001f;
 
 		private static readonly Dictionary<int, FloatingCombatUI> UiByTargetId = new Dictionary<int, FloatingCombatUI>(96);
+
+		private static readonly HashSet<int> PoseRefreshOverrideTargetIds = new HashSet<int>();
+
+		private static readonly HashSet<int> PendingPoseRefreshTargetIds = new HashSet<int>();
 
 		private static SharedFloatingCombatCanvas instance;
 
@@ -37,10 +39,6 @@ namespace DefenseGame
 				if (cachedWorldCamera == null || !cachedWorldCamera.isActiveAndEnabled)
 				{
 					cachedWorldCamera = Camera.main;
-					if (sharedCanvas != null)
-					{
-						sharedCanvas.worldCamera = cachedWorldCamera;
-					}
 				}
 				return cachedWorldCamera;
 			}
@@ -50,6 +48,8 @@ namespace DefenseGame
 		private static void ResetStatics()
 		{
 			UiByTargetId.Clear();
+			PoseRefreshOverrideTargetIds.Clear();
+			PendingPoseRefreshTargetIds.Clear();
 			instance = null;
 			sharedCanvas = null;
 			cachedWorldCamera = null;
@@ -62,6 +62,7 @@ namespace DefenseGame
 		{
 			if (sharedCanvas != null)
 			{
+				ConfigureScreenSpaceCanvas(sharedCanvas);
 				return sharedCanvas;
 			}
 			SharedFloatingCombatCanvas existing = Object.FindObjectOfType<SharedFloatingCombatCanvas>();
@@ -69,6 +70,7 @@ namespace DefenseGame
 			{
 				instance = existing;
 				sharedCanvas = existing.GetComponent<Canvas>();
+				ConfigureScreenSpaceCanvas(sharedCanvas);
 				return sharedCanvas;
 			}
 			GameObject root = new GameObject("SharedFloatingCombatCanvas", typeof(RectTransform));
@@ -78,20 +80,37 @@ namespace DefenseGame
 				SceneManager.MoveGameObjectToScene(root, sceneOwner.gameObject.scene);
 			}
 			RectTransform rootRect = root.GetComponent<RectTransform>();
-			rootRect.sizeDelta = new Vector2(20000f, 20000f);
-			root.transform.position = Vector3.zero;
-			root.transform.rotation = Quaternion.identity;
-			root.transform.localScale = Vector3.one * 0.01f;
+			rootRect.anchorMin = Vector2.zero;
+			rootRect.anchorMax = Vector2.one;
+			rootRect.offsetMin = Vector2.zero;
+			rootRect.offsetMax = Vector2.zero;
+			root.transform.localScale = Vector3.one;
 			sharedCanvas = root.AddComponent<Canvas>();
-			sharedCanvas.renderMode = RenderMode.WorldSpace;
-			sharedCanvas.overrideSorting = true;
-			sharedCanvas.sortingOrder = 85;
-			sharedCanvas.worldCamera = Camera.main;
-			CanvasScaler scaler = root.AddComponent<CanvasScaler>();
-			scaler.dynamicPixelsPerUnit = 48f;
+			ConfigureScreenSpaceCanvas(sharedCanvas);
 			instance = root.AddComponent<SharedFloatingCombatCanvas>();
-			cachedWorldCamera = sharedCanvas.worldCamera;
+			cachedWorldCamera = null;
 			return sharedCanvas;
+		}
+
+		private static void ConfigureScreenSpaceCanvas(Canvas targetCanvas)
+		{
+			if (targetCanvas == null)
+			{
+				return;
+			}
+			targetCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+			targetCanvas.worldCamera = null;
+			targetCanvas.overrideSorting = true;
+			targetCanvas.sortingOrder = CombatHudSortingOrder;
+			CanvasScaler scaler = targetCanvas.GetComponent<CanvasScaler>();
+			if (scaler == null)
+			{
+				scaler = targetCanvas.gameObject.AddComponent<CanvasScaler>();
+			}
+			scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+			scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+			scaler.referenceResolution = new Vector2(1080f, 1920f);
+			scaler.matchWidthOrHeight = 0.84f;
 		}
 
 		public static bool TryGet(Transform target, out FloatingCombatUI ui)
@@ -129,6 +148,31 @@ namespace DefenseGame
 			{
 				UiByTargetId.Remove(targetId);
 			}
+			PoseRefreshOverrideTargetIds.Remove(targetId);
+			PendingPoseRefreshTargetIds.Remove(targetId);
+		}
+
+		public static void SetPoseRefreshOverride(Transform target, bool enabled)
+		{
+			if (target == null) return;
+			int targetId = target.GetInstanceID();
+			if (enabled) PoseRefreshOverrideTargetIds.Add(targetId); else PoseRefreshOverrideTargetIds.Remove(targetId);
+			PendingPoseRefreshTargetIds.Add(targetId);
+		}
+
+		public static bool IsPoseRefreshOverrideActive(Transform target)
+		{
+			return target != null && PoseRefreshOverrideTargetIds.Contains(target.GetInstanceID());
+		}
+
+		public static bool ShouldRefreshPoseThisFrame(Transform target)
+		{
+			if (target != null)
+			{
+				int targetId = target.GetInstanceID();
+				if (PoseRefreshOverrideTargetIds.Contains(targetId) || PendingPoseRefreshTargetIds.Remove(targetId)) return true;
+			}
+			return ShouldRefreshPoseThisFrame();
 		}
 
 		public static bool ShouldRefreshPoseThisFrame()
@@ -166,6 +210,8 @@ namespace DefenseGame
 			if (!(instance != this))
 			{
 				UiByTargetId.Clear();
+				PoseRefreshOverrideTargetIds.Clear();
+				PendingPoseRefreshTargetIds.Clear();
 				instance = null;
 				sharedCanvas = null;
 				cachedWorldCamera = null;

@@ -256,6 +256,12 @@ namespace DefenseGame.Editor
             }
             bool overdriveSelectedForPlayerSummonTest = controller != null && controller.TrySetCombatMode(CombatGameMode.Overdrive);
             bool paidPlayerSummonGranted = controller != null && controller.TrySummon();
+            bool screenSpaceCombatHudValid = ValidateScreenSpaceCombatHud();
+            bool dragTransactionSafetyValid = ValidateDragTransactionSafety();
+            if (!screenSpaceCombatHudValid || !dragTransactionSafetyValid)
+            {
+                notes.Add("Screen-space combat HUD, anchor priority, or drag transaction validation failed.");
+            }
             if (controller != null)
             {
                 controller.OnPlayerSummoned -= directPlayerSummonHandler;
@@ -801,7 +807,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -1080,6 +1086,105 @@ namespace DefenseGame.Editor
             timerField?.SetValue(hud, 0f);
             updateMethod?.Invoke(hud, null);
         }
+        private static bool ValidateScreenSpaceCombatHud()
+        {
+            SharedFloatingCombatCanvas sharedRoot = UnityEngine.Object.FindObjectOfType<SharedFloatingCombatCanvas>();
+            Canvas sharedCanvas = sharedRoot != null ? sharedRoot.GetComponent<Canvas>() : null;
+            CanvasScaler scaler = sharedRoot != null ? sharedRoot.GetComponent<CanvasScaler>() : null;
+            bool canvasValid = sharedCanvas != null &&
+                               sharedCanvas.renderMode == RenderMode.ScreenSpaceOverlay &&
+                               sharedCanvas.worldCamera == null &&
+                               sharedCanvas.overrideSorting &&
+                               sharedCanvas.sortingOrder == -10 &&
+                               scaler != null &&
+                               scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize;
+
+            GameObject anchorProbe = new GameObject("FloatingCombatUiAnchorProbe");
+            GameObject head = new GameObject("Head");
+            head.transform.SetParent(anchorProbe.transform, false);
+            GameObject explicitAnchor = new GameObject("FloatingUIAnchor");
+            explicitAnchor.transform.SetParent(anchorProbe.transform, false);
+            const BindingFlags Flags = BindingFlags.Static | BindingFlags.NonPublic;
+            MethodInfo resolveAnchor = typeof(FloatingCombatUI).GetMethod("ResolveAnchor", Flags);
+            object[] arguments = { anchorProbe.transform, 0f };
+            Transform resolvedAnchor = resolveAnchor != null ? resolveAnchor.Invoke(null, arguments) as Transform : null;
+            bool anchorPriorityValid = resolvedAnchor == explicitAnchor.transform;
+            UnityEngine.Object.Destroy(anchorProbe);
+
+            return canvasValid && anchorPriorityValid &&
+                   UnityEngine.Object.FindObjectsOfType<FloatingCombatUI>(true).Length > 0;
+        }
+
+        private static bool ValidateDragTransactionSafety()
+        {
+            GameObject boardRoot = new GameObject("DragTransactionSmokeBoard");
+            DefenseBoardManager board = boardRoot.AddComponent<DefenseBoardManager>();
+            GameObject sourceObject = new GameObject("DragTransactionSource");
+            BoardSlot sourceSlot = sourceObject.AddComponent<BoardSlot>();
+            GameObject occupiedObject = new GameObject("DragTransactionOccupied");
+            BoardSlot occupiedSlot = occupiedObject.AddComponent<BoardSlot>();
+            GameObject emptyObject = new GameObject("DragTransactionEmpty");
+            BoardSlot emptySlot = emptyObject.AddComponent<BoardSlot>();
+            board.Configure(new List<BoardSlot> { sourceSlot, occupiedSlot, emptySlot }, null);
+
+            GameObject firstObject = new GameObject("DragTransactionFirst");
+            firstObject.AddComponent<BoxCollider>();
+            DefenderUnit firstUnit = firstObject.AddComponent<DefenderUnit>();
+            GameObject secondObject = new GameObject("DragTransactionSecond");
+            secondObject.AddComponent<BoxCollider>();
+            DefenderUnit secondUnit = secondObject.AddComponent<DefenderUnit>();
+            sourceSlot.AssignUnit(firstUnit);
+            occupiedSlot.AssignUnit(secondUnit);
+
+            const BindingFlags InstancePrivate = BindingFlags.Instance | BindingFlags.NonPublic;
+            MethodInfo beginDrag = typeof(DefenseBoardManager).GetMethod("TryBeginDrag", InstancePrivate);
+            FieldInfo draggedField = typeof(DefenseBoardManager).GetField("draggedUnit", InstancePrivate);
+            beginDrag?.Invoke(board, new object[] { firstUnit });
+            bool beginPreservesLogicalOccupancy = board.UnitCount == 2 &&
+                                                  sourceSlot.OccupiedUnit == firstUnit &&
+                                                  firstUnit.CurrentSlot == sourceSlot &&
+                                                  SharedFloatingCombatCanvas.IsPoseRefreshOverrideActive(firstUnit.transform);
+
+            bool emptyDropValid = board.TryMoveUnit(firstUnit, emptySlot) &&
+                                  board.UnitCount == 2 &&
+                                  emptySlot.OccupiedUnit == firstUnit &&
+                                  sourceSlot.IsEmpty &&
+                                  occupiedSlot.OccupiedUnit == secondUnit;
+            bool swapValid = board.TryMoveUnit(firstUnit, occupiedSlot) &&
+                             board.UnitCount == 2 &&
+                             occupiedSlot.OccupiedUnit == firstUnit &&
+                             emptySlot.OccupiedUnit == secondUnit;
+            board.CancelActiveDrag();
+            bool cancelRestoresTracking = draggedField != null &&
+                                          draggedField.GetValue(board) == null &&
+                                          firstUnit.CurrentSlot != null &&
+                                          firstUnit.CurrentSlot.OccupiedUnit == firstUnit &&
+                                          !SharedFloatingCombatCanvas.IsPoseRefreshOverrideActive(firstUnit.transform);
+
+            beginDrag?.Invoke(board, new object[] { firstUnit });
+            boardRoot.SetActive(false);
+            bool disableClearsDrag = draggedField != null &&
+                                     draggedField.GetValue(board) == null &&
+                                     firstUnit.CurrentSlot != null &&
+                                     firstUnit.CurrentSlot.OccupiedUnit == firstUnit &&
+                                     !SharedFloatingCombatCanvas.IsPoseRefreshOverrideActive(firstUnit.transform);
+            boardRoot.SetActive(true);
+
+            beginDrag?.Invoke(board, new object[] { firstUnit });
+            board.ClearAllDeployedUnits();
+            bool clearRemovesLogicalUnits = board.UnitCount == 0 &&
+                                            draggedField != null &&
+                                            draggedField.GetValue(board) == null &&
+                                            !SharedFloatingCombatCanvas.IsPoseRefreshOverrideActive(firstUnit.transform);
+
+            UnityEngine.Object.DestroyImmediate(boardRoot);
+            UnityEngine.Object.DestroyImmediate(sourceObject);
+            UnityEngine.Object.DestroyImmediate(occupiedObject);
+            UnityEngine.Object.DestroyImmediate(emptyObject);
+            return beginPreservesLogicalOccupancy && emptyDropValid && swapValid &&
+                   cancelRestoresTracking && disableClearsDrag && clearRemovesLogicalUnits;
+        }
+
         private static bool ValidatePortraitSafeAreaProfiles()
         {
             return ValidatePortraitSafeAreaProfile(new Vector2Int(720, 1600), new Rect(0f, 48f, 720f, 1504f)) &&

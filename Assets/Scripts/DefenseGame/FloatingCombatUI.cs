@@ -8,6 +8,8 @@ namespace DefenseGame
 	{
 		private Canvas canvas;
 
+		private CanvasGroup canvasGroup;
+
 		private RectTransform rootRect;
 
 		private Image healthFill;
@@ -42,7 +44,9 @@ namespace DefenseGame
 
 		private float anchorLift;
 
-		private float crowdLift;
+		private Vector2 crowdLift;
+
+		private Camera cachedPoseCamera;
 
 		private Color accentColor;
 
@@ -66,13 +70,6 @@ namespace DefenseGame
 
 		private const float TransformEpsilonSqr = 1E-06f;
 
-		private const float BaseUiScale = 0.01f;
-
-		private const float MinUiScale = 0.009f;
-
-		private const float MaxUiScale = 0.0115f;
-
-		private const float DistanceScaleFactor = 0.00115f;
 
 		private static readonly Color HealthBarColor = new Color(0.1f, 0.86f, 0.22f, 0.98f);
 
@@ -278,20 +275,9 @@ namespace DefenseGame
 				return;
 			}
 			UpdateBars();
-			if (!SharedFloatingCombatCanvas.ShouldRefreshPoseThisFrame())
+			if (SharedFloatingCombatCanvas.ShouldRefreshPoseThisFrame(ownerTransform))
 			{
-				return;
-			}
-			ApplyAnchorPosition();
-			Camera worldCamera = SharedFloatingCombatCanvas.WorldCamera;
-			if (!(worldCamera == null))
-			{
-				Vector3 cameraForward = worldCamera.transform.forward;
-				if ((base.transform.forward - cameraForward).sqrMagnitude > 1E-06f)
-				{
-					base.transform.forward = cameraForward;
-				}
-				ApplyDistanceScale(worldCamera);
+				ApplyAnchorPosition();
 			}
 		}
 
@@ -301,37 +287,74 @@ namespace DefenseGame
 			ownerTargetId = ((target != null) ? target.GetInstanceID() : 0);
 			fallbackLocalPosition = new Vector3(0f, Mathf.Max(0.5f, fallbackHeight), 0f);
 			anchorTransform = ResolveAnchor(target, out anchorLift);
+			cachedPoseCamera = null;
 			ApplyAnchorPosition();
 		}
 
 		private void ApplyAnchorPosition()
 		{
-			if (anchorTransform != null)
+			if (rootRect == null || ownerTransform == null)
 			{
-				Vector3 basePosition = anchorTransform.position + Vector3.up * anchorLift;
-				crowdLift = ResolveCrowdLift(basePosition);
-				Vector3 targetPosition = basePosition + Vector3.up * crowdLift;
-				if ((base.transform.position - targetPosition).sqrMagnitude > 1E-06f)
-				{
-					base.transform.position = targetPosition;
-				}
+				return;
 			}
-			else
+			Camera worldCamera = ResolvePoseCamera();
+			if (worldCamera == null)
 			{
-				Vector3 fallbackWorldPosition = ((ownerTransform != null) ? ownerTransform.TransformPoint(fallbackLocalPosition) : base.transform.position);
-				crowdLift = ResolveCrowdLift(fallbackWorldPosition);
-				Vector3 targetPosition2 = fallbackWorldPosition + Vector3.up * crowdLift;
-				if ((base.transform.position - targetPosition2).sqrMagnitude > 1E-06f)
-				{
-					base.transform.position = targetPosition2;
-				}
+				SetPoseVisible(false);
+				return;
 			}
+			Vector3 worldPosition = anchorTransform != null ? anchorTransform.position + Vector3.up * anchorLift : ownerTransform.TransformPoint(fallbackLocalPosition);
+			Vector3 screenPoint = worldCamera.WorldToScreenPoint(worldPosition);
+			const float ScreenCullMargin = 32f;
+			if (screenPoint.z <= 0f || screenPoint.x < -ScreenCullMargin || screenPoint.x > Screen.width + ScreenCullMargin || screenPoint.y < -ScreenCullMargin || screenPoint.y > Screen.height + ScreenCullMargin)
+			{
+				SetPoseVisible(false);
+				return;
+			}
+			RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
+			Vector2 localPoint;
+			if (canvasRect == null || !RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, null, out localPoint))
+			{
+				SetPoseVisible(false);
+				return;
+			}
+			int column = Mathf.FloorToInt((worldPosition.x + 50f) / 1.1f);
+			crowdLift = (Mathf.Abs(column) % 2 == 0) ? Vector2.zero : new Vector2(0f, 18f);
+			Vector2 targetPosition = localPoint + crowdLift;
+			if ((rootRect.anchoredPosition - targetPosition).sqrMagnitude > TransformEpsilonSqr)
+			{
+				rootRect.anchoredPosition = targetPosition;
+			}
+			if ((rootRect.localScale - Vector3.one).sqrMagnitude > TransformEpsilonSqr)
+			{
+				rootRect.localScale = Vector3.one;
+			}
+			rootRect.localRotation = Quaternion.identity;
+			SetPoseVisible(true);
 		}
 
-		private float ResolveCrowdLift(Vector3 worldPosition)
+		private Camera ResolvePoseCamera()
 		{
-			int column = Mathf.FloorToInt((worldPosition.x + 50f) / 1.1f);
-			return (Mathf.Abs(column) % 2 == 0) ? 0f : 0.18f;
+			if (cachedPoseCamera == null || !cachedPoseCamera.isActiveAndEnabled)
+			{
+				cachedPoseCamera = SharedFloatingCombatCanvas.WorldCamera;
+			}
+			return cachedPoseCamera;
+		}
+
+		private void SetPoseVisible(bool visible)
+		{
+			if (canvasGroup == null)
+			{
+				return;
+			}
+			float alpha = visible ? 1f : 0f;
+			if (!Mathf.Approximately(canvasGroup.alpha, alpha))
+			{
+				canvasGroup.alpha = alpha;
+			}
+			canvasGroup.blocksRaycasts = false;
+			canvasGroup.interactable = false;
 		}
 
 		private static Transform ResolveAnchor(Transform target, out float lift)
@@ -341,94 +364,38 @@ namespace DefenseGame
 			{
 				return null;
 			}
-			Transform explicitAnchor = FindNamedAnchor(target);
-			if (explicitAnchor != null)
-			{
-				return explicitAnchor;
-			}
-			Animator animator = target.GetComponentInChildren<Animator>();
-			if (animator != null && animator.isHuman)
-			{
-				Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
-				if (head != null)
-				{
-					lift = 0.24f;
-					return head;
-				}
-				Transform chest = animator.GetBoneTransform(HumanBodyBones.Chest);
-				if (chest != null)
-				{
-					lift = 0.62f;
-					return chest;
-				}
-			}
-			Transform namedHead = FindChildContaining(target, "head", "neck");
-			if (namedHead != null)
-			{
-				lift = 0.24f;
-				return namedHead;
-			}
-			Transform namedChest = FindChildContaining(target, "chest", "spine", "body");
-			if (namedChest != null)
-			{
-				lift = 0.58f;
-				return namedChest;
-			}
-			return null;
-		}
-
-		private static Transform FindNamedAnchor(Transform target)
-		{
 			Transform[] children = target.GetComponentsInChildren<Transform>(includeInactive: true);
-			foreach (Transform child in children)
+			for (int i = 0; i < children.Length; i++)
 			{
-				if (child == null || child == target)
+				Transform child = children[i];
+				if (child != null && child != target && NormalizeAnchorName(child.name) == "floatinguianchor")
+				{
+					return child;
+				}
+			}
+			for (int j = 0; j < children.Length; j++)
+			{
+				Transform child2 = children[j];
+				if (child2 == null || child2 == target)
 				{
 					continue;
 				}
-				string childName = child.name.ToLowerInvariant().Replace(" ", string.Empty).Replace("_", string.Empty);
-				switch (childName)
+				switch (NormalizeAnchorName(child2.name))
 				{
-				default:
-					if (!(childName == "healthbaranchor"))
-					{
-						continue;
-					}
-					break;
-				case "floatinguianchor":
 				case "uianchor":
 				case "hudanchor":
 				case "nameanchor":
-					break;
+				case "healthbaranchor":
+				case "healthanchor":
+					return child2;
 				}
-				return child;
 			}
 			return null;
 		}
 
-		private static Transform FindChildContaining(Transform target, params string[] tokens)
+		private static string NormalizeAnchorName(string value)
 		{
-			Transform[] children = target.GetComponentsInChildren<Transform>(includeInactive: true);
-			foreach (Transform child in children)
-			{
-				if (child == null || child == target)
-				{
-					continue;
-				}
-				string childName = child.name.ToLowerInvariant();
-				if (childName.Contains("weapon") || childName.Contains("sword") || childName.Contains("prop") || childName.Contains("effect") || childName.Contains("muzzle") || childName.Contains("hand"))
-				{
-					continue;
-				}
-				for (int tokenIndex = 0; tokenIndex < tokens.Length; tokenIndex++)
-				{
-					if (childName.Contains(tokens[tokenIndex]))
-					{
-						return child;
-					}
-				}
-			}
-			return null;
+			return string.IsNullOrEmpty(value) ? string.Empty : value.ToLowerInvariant().Replace(" ", string.Empty).Replace("_", string.Empty);
 		}
 
 		private void UpdateBars()
@@ -468,9 +435,19 @@ namespace DefenseGame
 				canvas = SharedFloatingCombatCanvas.GetOrCreate(ownerTransform);
 			}
 			rootRect = base.gameObject.GetComponent<RectTransform>();
+			rootRect.anchorMin = new Vector2(0.5f, 0.5f);
+			rootRect.anchorMax = new Vector2(0.5f, 0.5f);
+			rootRect.pivot = new Vector2(0.5f, 0.5f);
 			rootRect.sizeDelta = new Vector2(128f, 74f);
-			base.transform.localScale = Vector3.one;
-			base.transform.localRotation = Quaternion.identity;
+			rootRect.localScale = Vector3.one;
+			rootRect.localRotation = Quaternion.identity;
+			canvasGroup = base.gameObject.GetComponent<CanvasGroup>();
+			if (canvasGroup == null)
+			{
+				canvasGroup = base.gameObject.AddComponent<CanvasGroup>();
+			}
+			canvasGroup.blocksRaycasts = false;
+			canvasGroup.interactable = false;
 			backplate = CreateBar("Backplate", new Vector2(0f, 6f), new Vector2(118f, 34f), new Color(0.02f, 0.035f, 0.1f, 0.72f));
 			TryApplySprite(backplate, "UI/RollRoll/InGame/minimi-ui-gauge-panel", preserveAspect: false);
 			gradeBadgeBorder = CreateBar("GradeBadgeBorder", new Vector2(-47f, 7f), new Vector2(36f, 36f), new Color(0.01f, 0.015f, 0.04f, 0.94f));
@@ -495,6 +472,7 @@ namespace DefenseGame
 			Configure(displayName, color, grade);
 			SetBarFill(healthFillRect, currentHealth01);
 			SetBarFill(manaFillRect, currentMana01);
+			ApplyAnchorPosition();
 		}
 
 		private Text CreateText(string name, Vector2 anchoredPosition, Vector2 size, int fontSize)
@@ -534,17 +512,6 @@ namespace DefenseGame
 			((Graphic)image).color = color;
 			((Graphic)image).raycastTarget = false;
 			return image;
-		}
-
-		private void ApplyDistanceScale(Camera camera)
-		{
-			float distance = Mathf.Sqrt((camera.transform.position - base.transform.position).sqrMagnitude);
-			float worldScale = Mathf.Max(0.01f, Mathf.Clamp(distance * 0.00115f, 0.009f, 0.0115f));
-			float localScale = worldScale / 0.01f;
-			if (Mathf.Abs(base.transform.localScale.x - localScale) > 0.0005f)
-			{
-				base.transform.localScale = Vector3.one * localScale;
-			}
 		}
 
 		private static Sprite LoadSprite(string resourcePath)

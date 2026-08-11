@@ -3834,6 +3834,7 @@ namespace DefenseGame
 
         private void BeginDefeatSequence()
         {
+            boardManager?.CancelActiveDrag();
             RestoreFateChoiceSlowMotion();
             NotifyStateChanged();
             if (roundManager != null && roundManager.IsRoundRunning)
@@ -4099,6 +4100,7 @@ namespace DefenseGame
                 OnRoundBoardPreparation?.Invoke(round);
                 RequestBossForecastBetIfNeeded(round);
                 pendingPostRoundChoiceRound = round;
+                boardManager?.CancelActiveDrag();
                 OnRoundCompleted?.Invoke(round);
             }
 
