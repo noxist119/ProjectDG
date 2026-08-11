@@ -8,6 +8,15 @@ namespace DefenseGame
 {
 	public class DefenseBoardManager : MonoBehaviour
 	{
+		private struct BoardDragBounds
+		{
+			public bool isValid;
+			public float minX;
+			public float maxX;
+			public float minZ;
+			public float maxZ;
+		}
+
 		private class UltimateMergeRecipe
 		{
 			public readonly string name;
@@ -56,6 +65,9 @@ namespace DefenseGame
 		[SerializeField]
 		private float dragHeight = 1.4f;
 
+		[SerializeField, Range(0.4f, 0.5f)]
+		private float boardDragPaddingRatio = 0.45f;
+
 		[SerializeField]
 		private float unitPickupRadius = 0.48f;
 
@@ -103,6 +115,10 @@ namespace DefenseGame
 		private Plane dragPlane;
 
 		private Vector3 dragOffset;
+
+		private BoardDragBounds cachedBoardDragBounds;
+
+		private Vector2 draggedUnitLocalExtent;
 
 		private DefenderUnit pendingPointerUnit;
 
@@ -158,6 +174,7 @@ namespace DefenseGame
 			}
 			dragPlane = new Plane(Vector3.up, new Vector3(0f, dragHeight, 0f));
 			cachedGameplayCamera = Camera.main;
+			RefreshCachedBoardDragBounds();
 		}
 
 		private void OnDisable()
@@ -187,6 +204,7 @@ namespace DefenseGame
 			slots = newSlots;
 			fallbackUnitPrefab = fallbackPrefab;
 			RefreshSlotLocks(0);
+			RefreshCachedBoardDragBounds();
 		}
 
 		public int RefreshSlotLocks(int completedRound, bool playUnlockFeedback = false)
@@ -1352,6 +1370,7 @@ namespace DefenseGame
 			draggedColliders = null;
 			draggedColliderEnabledStates = null;
 			dragOffset = Vector3.zero;
+			draggedUnitLocalExtent = Vector2.zero;
 			pendingPointerUnit = null;
 		}
 
@@ -1390,6 +1409,7 @@ namespace DefenseGame
 			draggedColliders = null;
 			draggedColliderEnabledStates = null;
 			dragOffset = Vector3.zero;
+			draggedUnitLocalExtent = Vector2.zero;
 			pendingPointerUnit = null;
 		}
 
@@ -1510,6 +1530,7 @@ namespace DefenseGame
 				}
 			}
 			draggedUnit.transform.SetParent(base.transform, worldPositionStays: true);
+			CacheDraggedUnitLocalExtent();
 			draggedUnit.SetBoardDragCombatSuspended(true);
 			SharedFloatingCombatCanvas.SetPoseRefreshOverride(draggedUnit.transform, true);
 			HideRangeIndicator();
@@ -1538,9 +1559,172 @@ namespace DefenseGame
 				{
 					Vector3 point = ray.GetPoint(enter) + dragOffset;
 					point.y = dragHeight;
-					draggedUnit.transform.position = point;
+					draggedUnit.transform.position = ClampDragPointToBoard(point);
 				}
 			}
+		}
+
+		private void RefreshCachedBoardDragBounds()
+		{
+			cachedBoardDragBounds = default(BoardDragBounds);
+			if (slots == null)
+			{
+				return;
+			}
+			int validSlotCount = 0;
+			float minX = float.PositiveInfinity;
+			float maxX = float.NegativeInfinity;
+			float minZ = float.PositiveInfinity;
+			float maxZ = float.NegativeInfinity;
+			for (int i = 0; i < slots.Count; i++)
+			{
+				BoardSlot slot = slots[i];
+				if (slot == null || slot.UnitAnchor == null)
+				{
+					continue;
+				}
+				Vector3 local = base.transform.InverseTransformPoint(slot.UnitAnchor.position);
+				if (!IsFinite(local))
+				{
+					continue;
+				}
+				validSlotCount++;
+				minX = Mathf.Min(minX, local.x);
+				maxX = Mathf.Max(maxX, local.x);
+				minZ = Mathf.Min(minZ, local.z);
+				maxZ = Mathf.Max(maxZ, local.z);
+			}
+			if (validSlotCount < 2)
+			{
+				return;
+			}
+
+			float spacingX = FindMinimumSlotSpacing(useXAxis: true);
+			float spacingZ = FindMinimumSlotSpacing(useXAxis: false);
+			float fallbackSpacing = Mathf.Max(spacingX, spacingZ);
+			if (fallbackSpacing <= 0.0001f)
+			{
+				return;
+			}
+			if (spacingX <= 0.0001f)
+			{
+				spacingX = fallbackSpacing;
+			}
+			if (spacingZ <= 0.0001f)
+			{
+				spacingZ = fallbackSpacing;
+			}
+			float paddingRatio = Mathf.Clamp(boardDragPaddingRatio, 0.4f, 0.5f);
+			cachedBoardDragBounds = new BoardDragBounds
+			{
+				isValid = true,
+				minX = minX - spacingX * paddingRatio,
+				maxX = maxX + spacingX * paddingRatio,
+				minZ = minZ - spacingZ * paddingRatio,
+				maxZ = maxZ + spacingZ * paddingRatio
+			};
+		}
+
+		private float FindMinimumSlotSpacing(bool useXAxis)
+		{
+			float spacing = float.PositiveInfinity;
+			for (int i = 0; i < slots.Count; i++)
+			{
+				BoardSlot first = slots[i];
+				if (first == null || first.UnitAnchor == null)
+				{
+					continue;
+				}
+				float firstAxis = useXAxis ? base.transform.InverseTransformPoint(first.UnitAnchor.position).x : base.transform.InverseTransformPoint(first.UnitAnchor.position).z;
+				for (int j = i + 1; j < slots.Count; j++)
+				{
+					BoardSlot second = slots[j];
+					if (second == null || second.UnitAnchor == null)
+					{
+						continue;
+					}
+					Vector3 secondLocal = base.transform.InverseTransformPoint(second.UnitAnchor.position);
+					float delta = Mathf.Abs(firstAxis - (useXAxis ? secondLocal.x : secondLocal.z));
+					if (delta > 0.0001f)
+					{
+						spacing = Mathf.Min(spacing, delta);
+					}
+				}
+			}
+			return float.IsPositiveInfinity(spacing) ? 0f : spacing;
+		}
+
+		private void CacheDraggedUnitLocalExtent()
+		{
+			draggedUnitLocalExtent = Vector2.zero;
+			if (draggedUnit == null || !cachedBoardDragBounds.isValid)
+			{
+				return;
+			}
+			Vector3 localRoot = base.transform.InverseTransformPoint(draggedUnit.transform.position);
+			float extentX = 0f;
+			float extentZ = 0f;
+			Renderer[] renderers = draggedUnit.GetComponentsInChildren<Renderer>(includeInactive: true);
+			for (int i = 0; i < renderers.Length; i++)
+			{
+				if (renderers[i] != null)
+				{
+					AccumulateLocalExtent(renderers[i].bounds, localRoot, ref extentX, ref extentZ);
+				}
+			}
+			Collider[] colliders = draggedUnit.GetComponentsInChildren<Collider>(includeInactive: true);
+			for (int j = 0; j < colliders.Length; j++)
+			{
+				if (colliders[j] != null)
+				{
+					AccumulateLocalExtent(colliders[j].bounds, localRoot, ref extentX, ref extentZ);
+				}
+			}
+			draggedUnitLocalExtent = new Vector2(extentX, extentZ);
+		}
+
+		private void AccumulateLocalExtent(Bounds bounds, Vector3 localRoot, ref float extentX, ref float extentZ)
+		{
+			Vector3 min = bounds.min;
+			Vector3 max = bounds.max;
+			for (int x = 0; x < 2; x++)
+			{
+				for (int y = 0; y < 2; y++)
+				{
+					for (int z = 0; z < 2; z++)
+					{
+						Vector3 corner = new Vector3(x == 0 ? min.x : max.x, y == 0 ? min.y : max.y, z == 0 ? min.z : max.z);
+						Vector3 localCorner = base.transform.InverseTransformPoint(corner);
+						extentX = Mathf.Max(extentX, Mathf.Abs(localCorner.x - localRoot.x));
+						extentZ = Mathf.Max(extentZ, Mathf.Abs(localCorner.z - localRoot.z));
+					}
+				}
+			}
+		}
+
+		private Vector3 ClampDragPointToBoard(Vector3 worldPoint)
+		{
+			if (!cachedBoardDragBounds.isValid)
+			{
+				return worldPoint;
+			}
+			Vector3 local = base.transform.InverseTransformPoint(worldPoint);
+			float minX = cachedBoardDragBounds.minX + draggedUnitLocalExtent.x;
+			float maxX = cachedBoardDragBounds.maxX - draggedUnitLocalExtent.x;
+			float minZ = cachedBoardDragBounds.minZ + draggedUnitLocalExtent.y;
+			float maxZ = cachedBoardDragBounds.maxZ - draggedUnitLocalExtent.y;
+			local.x = minX <= maxX ? Mathf.Clamp(local.x, minX, maxX) : (cachedBoardDragBounds.minX + cachedBoardDragBounds.maxX) * 0.5f;
+			local.z = minZ <= maxZ ? Mathf.Clamp(local.z, minZ, maxZ) : (cachedBoardDragBounds.minZ + cachedBoardDragBounds.maxZ) * 0.5f;
+			Vector3 clampedWorld = base.transform.TransformPoint(local);
+			clampedWorld.y = dragHeight;
+			return clampedWorld;
+		}
+
+		private static bool IsFinite(Vector3 value)
+		{
+			return !float.IsNaN(value.x) && !float.IsInfinity(value.x) &&
+				!float.IsNaN(value.y) && !float.IsInfinity(value.y) &&
+				!float.IsNaN(value.z) && !float.IsInfinity(value.z);
 		}
 
 		private void EndDrag()

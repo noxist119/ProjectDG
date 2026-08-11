@@ -1182,8 +1182,55 @@ namespace DefenseGame.Editor
             UnityEngine.Object.DestroyImmediate(sourceObject);
             UnityEngine.Object.DestroyImmediate(occupiedObject);
             UnityEngine.Object.DestroyImmediate(emptyObject);
+            bool boardBoundsValid = ValidateBoardDragBounds();
             return beginPreservesLogicalOccupancy && emptyDropValid && swapValid &&
-                   cancelRestoresTracking && disableClearsDrag && clearRemovesLogicalUnits;
+                   cancelRestoresTracking && disableClearsDrag && clearRemovesLogicalUnits && boardBoundsValid;
+        }
+
+        private static bool ValidateBoardDragBounds()
+        {
+            GameObject parent = new GameObject("DragBoundsParent");
+            GameObject boardRoot = new GameObject("DragBoundsBoard");
+            parent.transform.position = new Vector3(4f, 0f, -3f);
+            parent.transform.rotation = Quaternion.Euler(0f, 23f, 0f);
+            parent.transform.localScale = new Vector3(1.2f, 1f, 0.85f);
+            boardRoot.transform.SetParent(parent.transform, false);
+            DefenseBoardManager board = boardRoot.AddComponent<DefenseBoardManager>();
+            BoardSlot source = CreateDragBoundsSlot(boardRoot.transform, "DragBoundsSource", new Vector3(-2f, 0f, -1f));
+            BoardSlot occupied = CreateDragBoundsSlot(boardRoot.transform, "DragBoundsOccupied", new Vector3(0f, 0f, -1f));
+            BoardSlot empty = CreateDragBoundsSlot(boardRoot.transform, "DragBoundsEmpty", new Vector3(2f, 0f, -1f));
+            BoardSlot lockedOuter = CreateDragBoundsSlot(boardRoot.transform, "DragBoundsLockedOuter", new Vector3(4f, 0f, 1f));
+            try
+            {
+                const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                typeof(DefenseBoardManager).GetField("baseActiveSlotCount", Flags)?.SetValue(board, 3);
+                board.Configure(new List<BoardSlot> { source, occupied, empty, lockedOuter }, null);
+                FieldInfo boundsField = typeof(DefenseBoardManager).GetField("cachedBoardDragBounds", Flags);
+                MethodInfo clampMethod = typeof(DefenseBoardManager).GetMethod("ClampDragPointToBoard", Flags);
+                object bounds = boundsField != null ? boundsField.GetValue(board) : null;
+                Type boundsType = bounds != null ? bounds.GetType() : null;
+                bool valid = boundsType != null && (bool)boundsType.GetField("isValid").GetValue(bounds);
+                float maxX = valid ? (float)boundsType.GetField("maxX").GetValue(bounds) : 0f;
+                float maxZ = valid ? (float)boundsType.GetField("maxZ").GetValue(bounds) : 0f;
+                Vector3 rawWorld = board.transform.TransformPoint(new Vector3(100f, 0f, 100f));
+                rawWorld.y = 1.4f;
+                Vector3 clampedWorld = clampMethod != null ? (Vector3)clampMethod.Invoke(board, new object[] { rawWorld }) : rawWorld;
+                Vector3 clampedLocal = board.transform.InverseTransformPoint(clampedWorld);
+                return valid && lockedOuter.IsLocked && maxX > lockedOuter.transform.localPosition.x && maxZ > lockedOuter.transform.localPosition.z &&
+                       clampedLocal.x <= maxX + 0.001f && clampedLocal.z <= maxZ + 0.001f;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(parent);
+            }
+        }
+
+        private static BoardSlot CreateDragBoundsSlot(Transform parent, string name, Vector3 localPosition)
+        {
+            GameObject slotObject = new GameObject(name);
+            slotObject.transform.SetParent(parent, false);
+            slotObject.transform.localPosition = localPosition;
+            return slotObject.AddComponent<BoardSlot>();
         }
 
         private static bool ValidateDraggedUnitCombatSuspension()
