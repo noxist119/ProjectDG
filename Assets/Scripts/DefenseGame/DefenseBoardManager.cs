@@ -105,7 +105,7 @@ namespace DefenseGame
 		private int baseActiveSlotCount = 10;
 
 		[SerializeField]
-		private int frontSlotUnlockInterval = 15;
+		private int frontSlotUnlockInterval = 10;
 
 		[SerializeField]
 		private int maxFrontUnlockCount = 5;

@@ -259,9 +259,10 @@ namespace DefenseGame.Editor
             bool screenSpaceCombatHudValid = ValidateScreenSpaceCombatHud();
             bool dragTransactionSafetyValid = ValidateDragTransactionSafety();
             bool dragCombatSuspensionValid = ValidateDraggedUnitCombatSuspension();
-            if (!screenSpaceCombatHudValid || !dragTransactionSafetyValid || !dragCombatSuspensionValid)
+            bool boardCapacityPacingValid = ValidateBoardCapacityPacing(out string boardCapacityPacingSummary);
+            if (!screenSpaceCombatHudValid || !dragTransactionSafetyValid || !dragCombatSuspensionValid || !boardCapacityPacingValid)
             {
-                notes.Add("Screen-space combat HUD, anchor priority, drag transaction, or drag combat suspension validation failed.");
+                notes.Add("Screen-space combat HUD, anchor priority, drag transaction, drag combat suspension, or board capacity pacing validation failed. " + boardCapacityPacingSummary);
             }
             if (controller != null)
             {
@@ -808,7 +809,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -867,6 +868,8 @@ namespace DefenseGame.Editor
                 defaultVfxConfigured = defaultVfxConfigured,
                 animationMaterialEventsValid = animationMaterialEventsValid,
                 animationMaterialEventsSummary = animationMaterialEventsSummary,
+                boardCapacityPacingValid = boardCapacityPacingValid,
+                boardCapacityPacingSummary = boardCapacityPacingSummary,
                 runtimeErrors = runtimeErrors,
                 prefabs = prefabResults,
                 notes = notes.ToArray()
@@ -1185,6 +1188,41 @@ namespace DefenseGame.Editor
             bool boardBoundsValid = ValidateBoardDragBounds();
             return beginPreservesLogicalOccupancy && emptyDropValid && swapValid &&
                    cancelRestoresTracking && disableClearsDrag && clearRemovesLogicalUnits && boardBoundsValid;
+        }
+
+        private static bool ValidateBoardCapacityPacing(out string summary)
+        {
+            GameObject boardRoot = new GameObject("BoardCapacityPacingSmokeBoard");
+            DefenseBoardManager board = boardRoot.AddComponent<DefenseBoardManager>();
+            List<BoardSlot> slots = new List<BoardSlot>();
+            for (int i = 0; i < 15; i++)
+            {
+                slots.Add(CreateDragBoundsSlot(boardRoot.transform, "BoardCapacitySlot_" + i, new Vector3(i, 0f, 0f)));
+            }
+
+            try
+            {
+                board.Configure(slots, null);
+                int[] completedRounds = { 0, 8, 9, 19, 29, 39, 49, 50, 99 };
+                int[] expectedCounts = { 10, 10, 11, 12, 13, 14, 15, 15, 15 };
+                int[] actualCounts = new int[completedRounds.Length];
+                bool valid = true;
+                for (int i = 0; i < completedRounds.Length; i++)
+                {
+                    board.RefreshSlotLocks(completedRounds[i]);
+                    actualCounts[i] = board.UnlockedSlotCount;
+                    valid &= actualCounts[i] == expectedCounts[i] && actualCounts[i] <= 15;
+                }
+
+                summary = "R1=" + actualCounts[0] + ", R9=" + actualCounts[1] + ", R10=" + actualCounts[2] +
+                          ", R20=" + actualCounts[3] + ", R30=" + actualCounts[4] + ", R40=" + actualCounts[5] +
+                          ", R50=" + actualCounts[6] + ", R51=" + actualCounts[7] + ", R100=" + actualCounts[8];
+                return valid;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(boardRoot);
+            }
         }
 
         private static bool ValidateBoardDragBounds()
@@ -1750,6 +1788,8 @@ namespace DefenseGame.Editor
             public bool defaultVfxConfigured;
             public bool animationMaterialEventsValid;
             public string animationMaterialEventsSummary;
+            public bool boardCapacityPacingValid;
+            public string boardCapacityPacingSummary;
             public int runtimeErrors;
             public PrefabSmokeResult[] prefabs = Array.Empty<PrefabSmokeResult>();
             public string[] notes = Array.Empty<string>();
