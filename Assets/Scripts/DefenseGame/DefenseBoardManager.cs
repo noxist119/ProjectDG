@@ -15,6 +15,10 @@ namespace DefenseGame
 			public float maxX;
 			public float minZ;
 			public float maxZ;
+			public float paddingX;
+			public float paddingZ;
+			public float slotSpacingX;
+			public float slotSpacingZ;
 		}
 
 		private class UltimateMergeRecipe
@@ -44,6 +48,8 @@ namespace DefenseGame
 				this.resultCharacterId = resultCharacterId ?? string.Empty;
 			}
 		}
+
+		private const float BoardRowTolerance = 0.01f;
 
 		private static readonly UltimateMergeRecipe[] UltimateRecipes =
 		{
@@ -1599,8 +1605,8 @@ namespace DefenseGame
 				return;
 			}
 
-			float spacingX = FindMinimumSlotSpacing(useXAxis: true);
-			float spacingZ = FindMinimumSlotSpacing(useXAxis: false);
+			float spacingX = FindMinimumRowAwareXSpacing();
+			float spacingZ = FindMinimumRowSpacing();
 			float fallbackSpacing = Mathf.Max(spacingX, spacingZ);
 			if (fallbackSpacing <= 0.0001f)
 			{
@@ -1615,17 +1621,23 @@ namespace DefenseGame
 				spacingZ = fallbackSpacing;
 			}
 			float paddingRatio = Mathf.Clamp(boardDragPaddingRatio, 0.4f, 0.5f);
+			float paddingX = spacingX * paddingRatio;
+			float paddingZ = spacingZ * paddingRatio;
 			cachedBoardDragBounds = new BoardDragBounds
 			{
 				isValid = true,
-				minX = minX - spacingX * paddingRatio,
-				maxX = maxX + spacingX * paddingRatio,
-				minZ = minZ - spacingZ * paddingRatio,
-				maxZ = maxZ + spacingZ * paddingRatio
+				minX = minX - paddingX,
+				maxX = maxX + paddingX,
+				minZ = minZ - paddingZ,
+				maxZ = maxZ + paddingZ,
+				paddingX = paddingX,
+				paddingZ = paddingZ,
+				slotSpacingX = spacingX,
+				slotSpacingZ = spacingZ
 			};
 		}
 
-		private float FindMinimumSlotSpacing(bool useXAxis)
+		private float FindMinimumRowAwareXSpacing()
 		{
 			float spacing = float.PositiveInfinity;
 			for (int i = 0; i < slots.Count; i++)
@@ -1635,7 +1647,7 @@ namespace DefenseGame
 				{
 					continue;
 				}
-				float firstAxis = useXAxis ? base.transform.InverseTransformPoint(first.UnitAnchor.position).x : base.transform.InverseTransformPoint(first.UnitAnchor.position).z;
+				Vector3 firstLocal = base.transform.InverseTransformPoint(first.UnitAnchor.position);
 				for (int j = i + 1; j < slots.Count; j++)
 				{
 					BoardSlot second = slots[j];
@@ -1644,8 +1656,40 @@ namespace DefenseGame
 						continue;
 					}
 					Vector3 secondLocal = base.transform.InverseTransformPoint(second.UnitAnchor.position);
-					float delta = Mathf.Abs(firstAxis - (useXAxis ? secondLocal.x : secondLocal.z));
+					if (Mathf.Abs(firstLocal.z - secondLocal.z) > BoardRowTolerance)
+					{
+						continue;
+					}
+					float delta = Mathf.Abs(firstLocal.x - secondLocal.x);
 					if (delta > 0.0001f)
+					{
+						spacing = Mathf.Min(spacing, delta);
+					}
+				}
+			}
+			return float.IsPositiveInfinity(spacing) ? 0f : spacing;
+		}
+
+		private float FindMinimumRowSpacing()
+		{
+			float spacing = float.PositiveInfinity;
+			for (int i = 0; i < slots.Count; i++)
+			{
+				BoardSlot first = slots[i];
+				if (first == null || first.UnitAnchor == null)
+				{
+					continue;
+				}
+				float firstZ = base.transform.InverseTransformPoint(first.UnitAnchor.position).z;
+				for (int j = i + 1; j < slots.Count; j++)
+				{
+					BoardSlot second = slots[j];
+					if (second == null || second.UnitAnchor == null)
+					{
+						continue;
+					}
+					float delta = Mathf.Abs(firstZ - base.transform.InverseTransformPoint(second.UnitAnchor.position).z);
+					if (delta > BoardRowTolerance)
 					{
 						spacing = Mathf.Min(spacing, delta);
 					}
@@ -1709,10 +1753,12 @@ namespace DefenseGame
 				return worldPoint;
 			}
 			Vector3 local = base.transform.InverseTransformPoint(worldPoint);
-			float minX = cachedBoardDragBounds.minX + draggedUnitLocalExtent.x;
-			float maxX = cachedBoardDragBounds.maxX - draggedUnitLocalExtent.x;
-			float minZ = cachedBoardDragBounds.minZ + draggedUnitLocalExtent.y;
-			float maxZ = cachedBoardDragBounds.maxZ - draggedUnitLocalExtent.y;
+			float appliedInsetX = Mathf.Min(draggedUnitLocalExtent.x, cachedBoardDragBounds.paddingX);
+			float appliedInsetZ = Mathf.Min(draggedUnitLocalExtent.y, cachedBoardDragBounds.paddingZ);
+			float minX = cachedBoardDragBounds.minX + appliedInsetX;
+			float maxX = cachedBoardDragBounds.maxX - appliedInsetX;
+			float minZ = cachedBoardDragBounds.minZ + appliedInsetZ;
+			float maxZ = cachedBoardDragBounds.maxZ - appliedInsetZ;
 			local.x = minX <= maxX ? Mathf.Clamp(local.x, minX, maxX) : (cachedBoardDragBounds.minX + cachedBoardDragBounds.maxX) * 0.5f;
 			local.z = minZ <= maxZ ? Mathf.Clamp(local.z, minZ, maxZ) : (cachedBoardDragBounds.minZ + cachedBoardDragBounds.maxZ) * 0.5f;
 			Vector3 clampedWorld = base.transform.TransformPoint(local);

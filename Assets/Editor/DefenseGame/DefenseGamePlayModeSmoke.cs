@@ -1189,6 +1189,9 @@ namespace DefenseGame.Editor
 
         private static bool ValidateBoardDragBounds()
         {
+            const float BackSpacing = 1.2f;
+            const float FrontSpacing = BackSpacing * 1.42f;
+            const float RowSpacing = 1.28f;
             GameObject parent = new GameObject("DragBoundsParent");
             GameObject boardRoot = new GameObject("DragBoundsBoard");
             parent.transform.position = new Vector3(4f, 0f, -3f);
@@ -1196,28 +1199,58 @@ namespace DefenseGame.Editor
             parent.transform.localScale = new Vector3(1.2f, 1f, 0.85f);
             boardRoot.transform.SetParent(parent.transform, false);
             DefenseBoardManager board = boardRoot.AddComponent<DefenseBoardManager>();
-            BoardSlot source = CreateDragBoundsSlot(boardRoot.transform, "DragBoundsSource", new Vector3(-2f, 0f, -1f));
-            BoardSlot occupied = CreateDragBoundsSlot(boardRoot.transform, "DragBoundsOccupied", new Vector3(0f, 0f, -1f));
-            BoardSlot empty = CreateDragBoundsSlot(boardRoot.transform, "DragBoundsEmpty", new Vector3(2f, 0f, -1f));
-            BoardSlot lockedOuter = CreateDragBoundsSlot(boardRoot.transform, "DragBoundsLockedOuter", new Vector3(4f, 0f, 1f));
+            List<BoardSlot> slots = new List<BoardSlot>();
+            float backWidth = 9f * BackSpacing;
+            for (int i = 0; i < 10; i++)
+            {
+                slots.Add(CreateDragBoundsSlot(boardRoot.transform, "DragBoundsBack_" + i, new Vector3(-backWidth * 0.5f + i * BackSpacing, 0f, -RowSpacing)));
+            }
+            float frontWidth = 4f * FrontSpacing;
+            for (int j = 0; j < 5; j++)
+            {
+                slots.Add(CreateDragBoundsSlot(boardRoot.transform, "DragBoundsFront_" + j, new Vector3(-frontWidth * 0.5f + j * FrontSpacing, 0f, 0f)));
+            }
             try
             {
                 const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
-                typeof(DefenseBoardManager).GetField("baseActiveSlotCount", Flags)?.SetValue(board, 3);
-                board.Configure(new List<BoardSlot> { source, occupied, empty, lockedOuter }, null);
+                board.Configure(slots, null);
                 FieldInfo boundsField = typeof(DefenseBoardManager).GetField("cachedBoardDragBounds", Flags);
+                FieldInfo extentField = typeof(DefenseBoardManager).GetField("draggedUnitLocalExtent", Flags);
                 MethodInfo clampMethod = typeof(DefenseBoardManager).GetMethod("ClampDragPointToBoard", Flags);
                 object bounds = boundsField != null ? boundsField.GetValue(board) : null;
                 Type boundsType = bounds != null ? bounds.GetType() : null;
                 bool valid = boundsType != null && (bool)boundsType.GetField("isValid").GetValue(bounds);
-                float maxX = valid ? (float)boundsType.GetField("maxX").GetValue(bounds) : 0f;
                 float maxZ = valid ? (float)boundsType.GetField("maxZ").GetValue(bounds) : 0f;
-                Vector3 rawWorld = board.transform.TransformPoint(new Vector3(100f, 0f, 100f));
-                rawWorld.y = 1.4f;
-                Vector3 clampedWorld = clampMethod != null ? (Vector3)clampMethod.Invoke(board, new object[] { rawWorld }) : rawWorld;
-                Vector3 clampedLocal = board.transform.InverseTransformPoint(clampedWorld);
-                return valid && lockedOuter.IsLocked && maxX > lockedOuter.transform.localPosition.x && maxZ > lockedOuter.transform.localPosition.z &&
-                       clampedLocal.x <= maxX + 0.001f && clampedLocal.z <= maxZ + 0.001f;
+                float spacingX = valid ? (float)boundsType.GetField("slotSpacingX").GetValue(bounds) : 0f;
+                float spacingZ = valid ? (float)boundsType.GetField("slotSpacingZ").GetValue(bounds) : 0f;
+                bool actualLayoutSpacing = Mathf.Abs(spacingX - BackSpacing) <= 0.001f &&
+                                           Mathf.Abs(spacingZ - RowSpacing) <= 0.001f;
+                BoardSlot[] outerSlots = { slots[0], slots[9], slots[12], slots[14] };
+                bool centerReachable = true;
+                for (int i = 0; i < outerSlots.Length; i++)
+                {
+                    Vector3 rawWorld = outerSlots[i].UnitAnchor.position;
+                    rawWorld.y = 1.4f;
+                    Vector3 clampedWorld = clampMethod != null ? (Vector3)clampMethod.Invoke(board, new object[] { rawWorld }) : rawWorld;
+                    Vector3 expectedLocal = board.transform.InverseTransformPoint(rawWorld);
+                    Vector3 clampedLocal = board.transform.InverseTransformPoint(clampedWorld);
+                    centerReachable &= Mathf.Abs(expectedLocal.x - clampedLocal.x) <= 0.001f &&
+                                       Mathf.Abs(expectedLocal.z - clampedLocal.z) <= 0.001f;
+                }
+                extentField?.SetValue(board, new Vector2(9f, 9f));
+                bool largeUnitCenterReachable = true;
+                for (int j = 0; j < outerSlots.Length; j++)
+                {
+                    Vector3 rawWorld = outerSlots[j].UnitAnchor.position;
+                    rawWorld.y = 1.4f;
+                    Vector3 clampedWorld = clampMethod != null ? (Vector3)clampMethod.Invoke(board, new object[] { rawWorld }) : rawWorld;
+                    Vector3 expectedLocal = board.transform.InverseTransformPoint(rawWorld);
+                    Vector3 clampedLocal = board.transform.InverseTransformPoint(clampedWorld);
+                    largeUnitCenterReachable &= Mathf.Abs(expectedLocal.x - clampedLocal.x) <= 0.001f &&
+                                                Mathf.Abs(expectedLocal.z - clampedLocal.z) <= 0.001f;
+                }
+                return valid && slots[10].IsLocked && maxZ > slots[10].transform.localPosition.z &&
+                       actualLayoutSpacing && centerReachable && largeUnitCenterReachable;
             }
             finally
             {
