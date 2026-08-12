@@ -40,7 +40,10 @@ namespace DefenseGame
             { "hero_51", "Minimi/minimi_lightning" },
             { "hero_52", "Minimi/minimi_meteor" },
             { "hero_53", "Minimi/minimi_minigun" },
-            { "hero_54", "Minimi/minimi_gargoyle" }
+            { "hero_54", "Minimi/minimi_gargoyle" },
+            { "hero_55", "Minimi/minimi_amor" },
+            { "hero_56", "Minimi/minimi_auto" },
+            { "hero_57", "Minimi/minimi_broken" }
         };
 
         public static Sprite LoadSprite(string resourcePath, bool sliced = false)
