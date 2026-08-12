@@ -756,7 +756,7 @@ namespace DefenseGame.Editor
 
                 bool isBetterCandidate = count > bestCount ||
                     (count == bestCount && (cost < bestCost ||
-                        (cost == bestCost && (int)grade > (int)bestGrade)));
+                        (cost == bestCost && (int)grade < (int)bestGrade)));
                 if (isBetterCandidate)
                 {
                     bestGrade = grade;
@@ -1332,18 +1332,21 @@ namespace DefenseGame.Editor
                 current.activeBossStartTime = roundStartEditorTime;
                 current.bossKillCountAtRoundStart = controller.RunBossKillCount;
                 current.lastObservedBossHealth01 = -1f;
-                current.r10BossStartSnapshot = new MilestoneSnapshot
+                if (nextRound == 10)
                 {
-                    life = controller.Life,
-                    gold = controller.Gold,
-                    boardUnitCount = controller.BoardUnitCount,
-                    boardCapacity = controller.BoardCapacity,
-                    highestOwnedGrade = ResolveHighestOwnedGrade(),
-                    totalSummons = controller.RunTotalPlayerSummons,
-                    totalMerges = controller.RunTotalMerges,
-                    totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels(),
-                    summonCost = controller.SummonCost
-                };
+                    current.r10BossStartSnapshot = new MilestoneSnapshot
+                    {
+                        life = controller.Life,
+                        gold = controller.Gold,
+                        boardUnitCount = controller.BoardUnitCount,
+                        boardCapacity = controller.BoardCapacity,
+                        highestOwnedGrade = ResolveHighestOwnedGrade(),
+                        totalSummons = controller.RunTotalPlayerSummons,
+                        totalMerges = controller.RunTotalMerges,
+                        totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels(),
+                        summonCost = controller.SummonCost
+                    };
+                }
             }
             waitingRoundEnd = true;
             nextActionTime = EditorApplication.timeSinceStartup + 0.2d;
