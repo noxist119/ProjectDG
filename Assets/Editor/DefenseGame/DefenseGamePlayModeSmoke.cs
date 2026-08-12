@@ -248,6 +248,11 @@ namespace DefenseGame.Editor
                 notes.Add("전장 입장 후 다음 라운드를 누르기 전까지 R1 카운트다운이 대기하지 않습니다.");
             }
             bool stageVisibleInPreparation = runtimeBootstrap != null && runtimeBootstrap.IsGameplayStageVisible;
+            bool pass2BPreparationSkipValid = ValidatePass2BPreparationSkip(controller, out string pass2BPreparationSkipSummary);
+            if (!pass2BPreparationSkipValid)
+            {
+                notes.Add("Pass 2B preparation skip validation failed. " + pass2BPreparationSkipSummary);
+            }
             int directPlayerSummonEvents = 0;
             Action<CharacterDefinition> directPlayerSummonHandler = definition => directPlayerSummonEvents++;
             if (controller != null)
@@ -782,7 +787,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -846,6 +851,8 @@ namespace DefenseGame.Editor
                 gradeUpgradeBarUiValid = gradeUpgradeBarUiValid,
                 pass1EMilestoneValid = pass1EMilestoneValid,
                 pass1EMilestoneSummary = pass1EMilestoneSummary,
+                pass2BPreparationSkipValid = pass2BPreparationSkipValid,
+                pass2BPreparationSkipSummary = pass2BPreparationSkipSummary,
                 runtimeErrors = runtimeErrors,
                 prefabs = prefabResults,
                 notes = notes.ToArray()
@@ -1800,6 +1807,64 @@ namespace DefenseGame.Editor
             return structuredDataValid && relatedFilterValid && hiddenZeroProgressValid && layoutValid;
         }
 
+        private static bool ValidatePass2BPreparationSkip(DefenseGameController controller, out string summary)
+        {
+            RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
+            MethodInfo requestForecast = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
+            if (controller == null || rounds == null || currentRoundField == null || requestForecast == null)
+            {
+                summary = "reflection_target_missing";
+                return false;
+            }
+
+            try
+            {
+                controller.ResetRunForRetry();
+                bool zeroSummonStarts = controller.BoardUnitCount == 0 &&
+                                       controller.BlockingChoiceReason == "None";
+                controller.StartRound();
+                zeroSummonStarts &= controller.IsRoundRunning;
+
+                rounds.CompleteCurrentRoundForDebug();
+                bool laterNoActionStarts = !controller.IsRoundRunning && controller.BlockingChoiceReason == "None";
+                controller.StartRound();
+                laterNoActionStarts &= controller.IsRoundRunning;
+
+                controller.ResetRunForRetry();
+                bool initialSummon = controller.TrySummon();
+                controller.StartRound();
+                rounds.CompleteCurrentRoundForDebug();
+                CharacterGrade upgradedGrade = new[]
+                {
+                    CharacterGrade.Normal, CharacterGrade.Rare, CharacterGrade.Epic,
+                    CharacterGrade.Legendary, CharacterGrade.Mythic, CharacterGrade.Transcendent
+                }.FirstOrDefault(grade => controller.CountUnitsOfGrade(grade) > 0);
+                bool upgraded = initialSummon && controller.TryUpgradeGrade(upgradedGrade);
+                controller.StartRound();
+                bool upgradeOnlyStarts = upgraded && controller.IsRoundRunning;
+
+                controller.ResetRunForRetry();
+                currentRoundField.SetValue(rounds, 3);
+                requestForecast.Invoke(controller, new object[] { 3 });
+                controller.StartRound();
+                bool realChoiceBlocks = !controller.IsRoundRunning && controller.BlockingChoiceReason == "BossForecast";
+                bool choiceResolved = controller.TryChooseBossForecastBet(BossForecastBet.Supply);
+                controller.StartRound();
+                bool resolvedChoiceStarts = choiceResolved && controller.IsRoundRunning;
+
+                summary = "zero=" + zeroSummonStarts + ", later=" + laterNoActionStarts +
+                          ", upgrade=" + upgradeOnlyStarts + ", blocks=" + realChoiceBlocks +
+                          ", resolved=" + resolvedChoiceStarts;
+                return zeroSummonStarts && laterNoActionStarts && upgradeOnlyStarts &&
+                       realChoiceBlocks && resolvedChoiceStarts;
+            }
+            finally
+            {
+                controller.ResetRunForRetry();
+            }
+        }
         private static bool ValidateBossForecastTimingAndShopBias(DefenseGameController controller, out string summary)
         {
             RunShopSystem shop = UnityEngine.Object.FindObjectOfType<RunShopSystem>();
@@ -2099,6 +2164,8 @@ namespace DefenseGame.Editor
             public bool gradeUpgradeBarUiValid;
             public bool pass1EMilestoneValid;
             public string pass1EMilestoneSummary;
+            public bool pass2BPreparationSkipValid;
+            public string pass2BPreparationSkipSummary;
             public int runtimeErrors;
             public PrefabSmokeResult[] prefabs = Array.Empty<PrefabSmokeResult>();
             public string[] notes = Array.Empty<string>();

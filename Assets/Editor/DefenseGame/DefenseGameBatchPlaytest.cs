@@ -524,6 +524,12 @@ namespace DefenseGame.Editor
                 return false;
             }
 
+            string blockingChoiceReason = controller.BlockingChoiceReason;
+            if (blockingChoiceReason != "None")
+            {
+                current.lastBlockingChoiceReason = blockingChoiceReason;
+            }
+
             bool resolved = true;
             if (controller.CanChooseBossForecastBet)
             {
@@ -725,22 +731,74 @@ namespace DefenseGame.Editor
                 return;
             }
 
-            int reserve = ResolveGoldReserve();
+            if (current.strategy == "balanced" && controller.BoardUnitCount < MinimumBoardUnits())
+            {
+                return;
+            }
+
+            int reserve = ResolveUpgradeGoldReserve();
             CharacterGrade bestGrade = CharacterGrade.Normal;
-            int bestCount = -1;
+            int bestCount = 0;
+            int bestCost = int.MaxValue;
             foreach (CharacterGrade grade in new[] { CharacterGrade.Transcendent, CharacterGrade.Mythic, CharacterGrade.Legendary, CharacterGrade.Epic, CharacterGrade.Rare, CharacterGrade.Normal })
             {
                 int count = controller.CountUnitsOfGrade(grade);
-                if (count > bestCount && controller.CanUpgradeGrade(grade) && controller.Gold - controller.GetGradeUpgradeCost(grade) >= reserve)
+                if (count <= 0)
+                {
+                    continue;
+                }
+
+                int cost = controller.GetGradeUpgradeCost(grade);
+                if (!controller.CanUpgradeGrade(grade) || controller.Gold - cost < reserve)
+                {
+                    continue;
+                }
+
+                bool isBetterCandidate = count > bestCount ||
+                    (count == bestCount && (cost < bestCost ||
+                        (cost == bestCost && (int)grade > (int)bestGrade)));
+                if (isBetterCandidate)
                 {
                     bestGrade = grade;
                     bestCount = count;
+                    bestCost = cost;
                 }
             }
 
-            if (bestCount >= 0 && controller.TryUpgradeGrade(bestGrade))
+            if (bestCount > 0 && controller.TryUpgradeGrade(bestGrade))
             {
                 current.gradeUpgradePurchaseCount++;
+                current.firstGradeUpgradeRound = current.firstGradeUpgradeRound <= 0 ? Mathf.Max(1, controller.CurrentRound + 1) : current.firstGradeUpgradeRound;
+                IncrementGradeUpgradeCount(bestGrade);
+            }
+        }
+
+        private static int ResolveUpgradeGoldReserve()
+        {
+            if (controller == null || current == null)
+            {
+                return 0;
+            }
+
+            if (current.strategy == "summon-heavy")
+            {
+                int nextRound = controller.CurrentRound + 1;
+                return controller.SummonCost * (nextRound <= 5 ? 2 : 1);
+            }
+
+            return ResolveGoldReserve();
+        }
+
+        private static void IncrementGradeUpgradeCount(CharacterGrade grade)
+        {
+            switch (grade)
+            {
+                case CharacterGrade.Normal: current.gradeUpgradeNormalCount++; break;
+                case CharacterGrade.Rare: current.gradeUpgradeRareCount++; break;
+                case CharacterGrade.Epic: current.gradeUpgradeEpicCount++; break;
+                case CharacterGrade.Legendary: current.gradeUpgradeLegendaryCount++; break;
+                case CharacterGrade.Mythic: current.gradeUpgradeMythicCount++; break;
+                case CharacterGrade.Transcendent: current.gradeUpgradeTranscendentCount++; break;
             }
         }
 
@@ -772,7 +830,7 @@ namespace DefenseGame.Editor
             }
 
             int round = controller.CurrentRound;
-            if (round < 10 || round % 10 != 0 || current.milestones.ContainsKey(round))
+            if ((round != 3 && round != 5 && round != 8 && (round < 10 || round % 10 != 0)) || current.milestones.ContainsKey(round))
             {
                 return;
             }
@@ -787,6 +845,7 @@ namespace DefenseGame.Editor
                 totalSummons = controller.RunTotalPlayerSummons,
                 totalMerges = controller.RunTotalMerges,
                 totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels(),
+                summonCost = controller.SummonCost,
                 ultimateRecipeCount = controller.ReadyUltimateRecipeCount
             };
         }
@@ -1273,6 +1332,18 @@ namespace DefenseGame.Editor
                 current.activeBossStartTime = roundStartEditorTime;
                 current.bossKillCountAtRoundStart = controller.RunBossKillCount;
                 current.lastObservedBossHealth01 = -1f;
+                current.r10BossStartSnapshot = new MilestoneSnapshot
+                {
+                    life = controller.Life,
+                    gold = controller.Gold,
+                    boardUnitCount = controller.BoardUnitCount,
+                    boardCapacity = controller.BoardCapacity,
+                    highestOwnedGrade = ResolveHighestOwnedGrade(),
+                    totalSummons = controller.RunTotalPlayerSummons,
+                    totalMerges = controller.RunTotalMerges,
+                    totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels(),
+                    summonCost = controller.SummonCost
+                };
             }
             waitingRoundEnd = true;
             nextActionTime = EditorApplication.timeSinceStartup + 0.2d;
@@ -1932,6 +2003,15 @@ namespace DefenseGame.Editor
                 builder.Append("\"totalMerges\":").Append(result.totalMerges).Append(',');
                 builder.Append("\"highestMergeGrade\":").Append(result.highestMergeGrade).Append(',');
                 builder.Append("\"gradeUpgradePurchaseCount\":").Append(result.gradeUpgradePurchaseCount).Append(',');
+                builder.Append("\"firstGradeUpgradeRound\":").Append(result.firstGradeUpgradeRound).Append(',');
+                builder.Append("\"gradeUpgradeNormalCount\":").Append(result.gradeUpgradeNormalCount).Append(',');
+                builder.Append("\"gradeUpgradeRareCount\":").Append(result.gradeUpgradeRareCount).Append(',');
+                builder.Append("\"gradeUpgradeEpicCount\":").Append(result.gradeUpgradeEpicCount).Append(',');
+                builder.Append("\"gradeUpgradeLegendaryCount\":").Append(result.gradeUpgradeLegendaryCount).Append(',');
+                builder.Append("\"gradeUpgradeMythicCount\":").Append(result.gradeUpgradeMythicCount).Append(',');
+                builder.Append("\"gradeUpgradeTranscendentCount\":").Append(result.gradeUpgradeTranscendentCount).Append(',');
+                builder.Append("\"emptyGradeUpgradeAttemptCount\":").Append(result.emptyGradeUpgradeAttemptCount).Append(',');
+                builder.Append("\"lastBlockingChoiceReason\":\"").Append(EscapeJson(result.lastBlockingChoiceReason)).Append("\",");
                 builder.Append("\"totalGradeUpgradeLevels\":").Append(result.totalGradeUpgradeLevels).Append(',');
                 builder.Append("\"ultimateRecipeMergeCount\":").Append(result.ultimateRecipeMergeCount).Append(',');
                 builder.Append("\"augmentChoiceCount\":").Append(result.augmentChoiceCount).Append(',');
@@ -1946,6 +2026,9 @@ namespace DefenseGame.Editor
                 builder.Append("\"bossCombatDurationSeconds\":").Append(FormatFloat(result.bossCombatDurationSeconds)).Append(',');
                 builder.Append("\"lastObservedBossHealth01\":").Append(FormatFloat(result.lastObservedBossHealth01)).Append(',');
                 builder.Append("\"bossHealthRemainingOnFailure01\":").Append(FormatFloat(result.bossHealthRemainingOnFailure01)).Append(',');
+                builder.Append("\"r10BossStartSnapshot\":");
+                AppendSnapshotJson(builder, result.r10BossStartSnapshot);
+                builder.Append(',');
                 builder.Append("\"bossForecastBet\":\"").Append(EscapeJson(result.bossForecastBet)).Append("\",");
                 builder.Append("\"fateUses\":").Append(result.fateUses).Append(',');
                 builder.Append("\"milestones\":");
@@ -1959,6 +2042,24 @@ namespace DefenseGame.Editor
             builder.AppendLine("  ]");
             builder.AppendLine("}");
             return builder.ToString();
+        }
+        private static void AppendSnapshotJson(StringBuilder builder, MilestoneSnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                builder.Append("null");
+                return;
+            }
+
+            builder.Append("{\"life\":").Append(snapshot.life).Append(',');
+            builder.Append("\"gold\":").Append(snapshot.gold).Append(',');
+            builder.Append("\"boardUnitCount\":").Append(snapshot.boardUnitCount).Append(',');
+            builder.Append("\"boardCapacity\":").Append(snapshot.boardCapacity).Append(',');
+            builder.Append("\"highestOwnedGrade\":").Append(snapshot.highestOwnedGrade).Append(',');
+            builder.Append("\"summonCost\":").Append(snapshot.summonCost).Append(',');
+            builder.Append("\"totalSummons\":").Append(snapshot.totalSummons).Append(',');
+            builder.Append("\"totalMerges\":").Append(snapshot.totalMerges).Append(',');
+            builder.Append("\"totalGradeUpgradeLevels\":").Append(snapshot.totalGradeUpgradeLevels).Append('}');
         }
         private static void AppendMilestonesJson(StringBuilder builder, Dictionary<int, MilestoneSnapshot> milestones)
         {
@@ -1977,6 +2078,7 @@ namespace DefenseGame.Editor
                 builder.Append("\"totalSummons\":").Append(snapshot.totalSummons).Append(',');
                 builder.Append("\"totalMerges\":").Append(snapshot.totalMerges).Append(',');
                 builder.Append("\"totalGradeUpgradeLevels\":").Append(snapshot.totalGradeUpgradeLevels).Append(',');
+                builder.Append("\"summonCost\":").Append(snapshot.summonCost).Append(',');
                 builder.Append("\"ultimateRecipeCount\":").Append(snapshot.ultimateRecipeCount).Append('}');
                 first = false;
             }
@@ -2021,6 +2123,7 @@ namespace DefenseGame.Editor
             public int totalSummons;
             public int totalMerges;
             public int totalGradeUpgradeLevels;
+            public int summonCost;
             public int ultimateRecipeCount;
         }
         [Serializable]
@@ -2048,6 +2151,15 @@ namespace DefenseGame.Editor
             public int totalMerges;
             public int highestMergeGrade;
             public int gradeUpgradePurchaseCount;
+            public int firstGradeUpgradeRound;
+            public int gradeUpgradeNormalCount;
+            public int gradeUpgradeRareCount;
+            public int gradeUpgradeEpicCount;
+            public int gradeUpgradeLegendaryCount;
+            public int gradeUpgradeMythicCount;
+            public int gradeUpgradeTranscendentCount;
+            public int emptyGradeUpgradeAttemptCount;
+            public string lastBlockingChoiceReason = "None";
             public int totalGradeUpgradeLevels;
             public int ultimateRecipeMergeCount;
             public int augmentChoiceCount;
@@ -2059,6 +2171,7 @@ namespace DefenseGame.Editor
             public int bossAttempts;
             public int bossClears;
             public float bossCombatDurationSeconds;
+            public MilestoneSnapshot r10BossStartSnapshot;
             public int activeBossRound;
             public double activeBossStartTime;
             public int lastControllerRound;

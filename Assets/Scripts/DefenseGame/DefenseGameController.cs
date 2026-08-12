@@ -796,12 +796,8 @@ namespace DefenseGame
         public NextRoundMilestone NextRoundMilestone => ResolveNextRoundMilestone();
         public string PreparationRecommendedAction => BuildPreparationRecommendedAction(NextRoundMilestone);
         public string NextRoundButtonLabel => BuildNextRoundButtonLabel(NextRoundMilestone);
-        public bool IsBlockingChoiceOpen =>
-            CanChooseBossForecastBet ||
-            (augmentManager != null && (augmentManager.IsChoiceOpen || augmentManager.HasPendingChoice)) ||
-            (runShopSystem != null && runShopSystem.IsPanelOpen) ||
-            (tacticalMissionSystem != null && tacticalMissionSystem.IsChoicePanelOpen) ||
-            luckySummonChoiceOpen;
+        public string BlockingChoiceReason => ResolveBlockingChoiceReason();
+        public bool IsBlockingChoiceOpen => BlockingChoiceReason != "None";
         public string RecommendedDeckSummary => BuildRecommendedDeckSummary();
         public string RecommendedBuildName => BuildRecommendedBuildName();
         public string RunNextGoalHeadline => BuildRunNextGoalHeadline();
@@ -1706,28 +1702,53 @@ namespace DefenseGame
             }
         }
 
+        private string ResolveBlockingChoiceReason()
+        {
+            if (CanChooseBossForecastBet)
+            {
+                return "BossForecast";
+            }
+
+            if (augmentManager != null && augmentManager.HasPendingChoice)
+            {
+                return "Augment";
+            }
+
+            if (runShopSystem != null && runShopSystem.IsPanelOpen)
+            {
+                return "RunShop";
+            }
+
+            if (tacticalMissionSystem != null && tacticalMissionSystem.IsChoicePanelOpen)
+            {
+                return "TacticalMission";
+            }
+
+            if (luckySummonChoiceOpen)
+            {
+                return "LuckySummon";
+            }
+
+            return "None";
+        }
+
         public void StartRound()
         {
             if (roundManager == null)
             {
                 return;
             }
-            if (IsBlockingChoiceOpen && !(augmentManager != null && augmentManager.HasPendingChoice))
+            if (IsBlockingChoiceOpen)
             {
-                RequestBanner("\uC120\uD0DD\uC744 \uC644\uB8CC\uD55C \uD6C4 \uB2E4\uC74C \uB77C\uC6B4\uB4DC\uB97C \uC2DC\uC791\uD558\uC138\uC694.", new Color(0.52f, 0.90f, 1f), 2.0f);
+                string blockingChoiceReason = BlockingChoiceReason;
+                if (blockingChoiceReason == "Augment")
+                {
+                    augmentManager?.OpenPendingChoice();
+                }
+
+                RequestBanner("\uC120\uD0DD\uC744 \uC644\uB8CC\uD55C \uD6C4 \uB2E4\uC74C \uB77C\uC6B4\uB4DC\uB97C \uC2DC\uC791\uD558\uC138\uC694. (" + blockingChoiceReason + ")", new Color(0.52f, 0.90f, 1f), 2.0f);
                 return;
             }
-
-            if (augmentManager != null && augmentManager.HasPendingChoice)
-            {
-                augmentManager.OpenPendingChoice();
-                RequestBanner(
-                    "무료 증강체 1개를 선택해야 다음 라운드로 진행할 수 있습니다",
-                    new Color(0.52f, 0.90f, 1f),
-                    2.2f);
-                return;
-            }
-
 
             if (CurrentRound <= 0)
             {
