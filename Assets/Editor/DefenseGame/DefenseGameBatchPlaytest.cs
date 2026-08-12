@@ -32,6 +32,7 @@ namespace DefenseGame.Editor
         private const string Phase2ClassicR30OutputFileName = "DefenseGame_Phase2_Classic_R30.json";
         private const string Phase2OverdriveR30OutputFileName = "DefenseGame_Phase2_Overdrive_R30.json";
         private const string Phase2ClassicR50OutputFileName = "DefenseGame_Phase2_Classic_R50.json";
+        private static readonly int[] PressureCheckpointRounds = { 3, 5, 6, 7, 8, 9, 10, 11, 12, 15, 20, 30 };
         private static string OutputDirectory => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName));
         private static string OutputPath => Path.Combine(OutputDirectory, requestedOutputFileName);
         private static string MissingScriptReportPath => Path.Combine(OutputDirectory, MissingScriptReportFileName);
@@ -423,6 +424,9 @@ namespace DefenseGame.Editor
             current.totalSummons = controller.RunTotalPlayerSummons;
             current.totalMerges = controller.RunTotalMerges;
             current.totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels();
+            current.totalLeakDamage = controller.RunTotalLeakDamage;
+            CopyIntCounts(controller.RunLeakDamageByRound, current.leakDamageByRound);
+            CopyIntCounts(controller.RunEscapedMonsterCountByRound, current.escapedMonsterCountByRound);
             TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
             current.missionCompletedCount = missionSystem != null ? missionSystem.CompletedMissionCount : current.missionCompletedCount;
             CaptureFateCardSnapshot("complete");
@@ -432,9 +436,18 @@ namespace DefenseGame.Editor
             current.clearedR10 = controller.Life > 0 && lastObservedRound >= 10 && !current.technicalFailure;
             current.victory = controller.Life > 0 && lastObservedRound >= requestedTargetRound && !current.technicalFailure;
             current.defeat = controller.Life <= 0 && !current.technicalFailure;
+            if (current.defeat)
+            {
+                current.gameplayDefeatRound = Mathf.Max(1, controller.CurrentRound);
+            }
+            if (current.technicalFailure && current.technicalFailureRound <= 0)
+            {
+                current.technicalFailureRound = Mathf.Max(1, controller.CurrentRound);
+            }
             if (!current.victory && !current.defeat && !current.technicalFailure)
             {
                 current.technicalFailure = true;
+                current.technicalFailureRound = Mathf.Max(1, controller.CurrentRound);
                 current.notes.Add("nonterminal_completion_R" + controller.CurrentRound);
             }
             if (lastObservedRound >= 4 && current.bossForecastBet == BossForecastBet.None.ToString())
@@ -457,6 +470,17 @@ namespace DefenseGame.Editor
             }
 
             StartRun();
+        }
+
+        private static void CopyIntCounts(IReadOnlyDictionary<int, int> source, Dictionary<int, int> destination)
+        {
+            if (destination == null) return;
+            destination.Clear();
+            if (source == null) return;
+            foreach (KeyValuePair<int, int> pair in source)
+            {
+                if (pair.Key > 0 && pair.Value > 0) destination[pair.Key] = pair.Value;
+            }
         }
 
         private static void FinishAll(string status)
@@ -830,7 +854,7 @@ namespace DefenseGame.Editor
             }
 
             int round = controller.CurrentRound;
-            if ((round != 3 && round != 5 && round != 8 && (round < 10 || round % 10 != 0)) || current.milestones.ContainsKey(round))
+            if (Array.IndexOf(PressureCheckpointRounds, round) < 0 || current.milestones.ContainsKey(round))
             {
                 return;
             }
@@ -846,7 +870,11 @@ namespace DefenseGame.Editor
                 totalMerges = controller.RunTotalMerges,
                 totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels(),
                 summonCost = controller.SummonCost,
-                ultimateRecipeCount = controller.ReadyUltimateRecipeCount
+                ultimateRecipeCount = controller.ReadyUltimateRecipeCount,
+                targetMonsterCount = controller.RoundTargetCount,
+                isHordeRound = controller.IsCurrentRoundHorde,
+                isBossRound = controller.IsBossRound,
+                isMidBossRound = controller.IsMidBossRound
             };
         }
 
@@ -1344,7 +1372,11 @@ namespace DefenseGame.Editor
                         totalSummons = controller.RunTotalPlayerSummons,
                         totalMerges = controller.RunTotalMerges,
                         totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels(),
-                        summonCost = controller.SummonCost
+                        summonCost = controller.SummonCost,
+                        targetMonsterCount = controller.RoundTargetCount,
+                        isHordeRound = controller.IsCurrentRoundHorde,
+                        isBossRound = controller.IsBossRound,
+                        isMidBossRound = controller.IsMidBossRound
                     };
                 }
             }
@@ -2002,6 +2034,15 @@ namespace DefenseGame.Editor
                 builder.Append("\"validationCoverageWarnings\":\"").Append(EscapeJson(string.Join(" | ", result.validationCoverageWarnings))).Append("\",");
                 builder.Append("\"endGold\":").Append(result.endGold).Append(',');
                 builder.Append("\"endLife\":").Append(result.endLife).Append(',');
+                builder.Append("\"gameplayDefeatRound\":").Append(result.gameplayDefeatRound).Append(',');
+                builder.Append("\"technicalFailureRound\":").Append(result.technicalFailureRound).Append(',');
+                builder.Append("\"totalLeakDamage\":").Append(result.totalLeakDamage).Append(',');
+                builder.Append("\"leakDamageByRound\":");
+                AppendIntCountsJson(builder, result.leakDamageByRound);
+                builder.Append(',');
+                builder.Append("\"escapedMonsterCountByRound\":");
+                AppendIntCountsJson(builder, result.escapedMonsterCountByRound);
+                builder.Append(',');
                 builder.Append("\"totalSummons\":").Append(result.totalSummons).Append(',');
                 builder.Append("\"totalMerges\":").Append(result.totalMerges).Append(',');
                 builder.Append("\"highestMergeGrade\":").Append(result.highestMergeGrade).Append(',');
@@ -2046,6 +2087,27 @@ namespace DefenseGame.Editor
             builder.AppendLine("}");
             return builder.ToString();
         }
+        private static void AppendIntCountsJson(StringBuilder builder, Dictionary<int, int> counts)
+        {
+            builder.Append('{');
+            bool first = true;
+            if (counts != null)
+            {
+                foreach (KeyValuePair<int, int> pair in counts)
+                {
+                    if (!first)
+                    {
+                        builder.Append(',');
+                    }
+
+                    builder.Append('"').Append(pair.Key).Append("\":").Append(pair.Value);
+                    first = false;
+                }
+            }
+
+            builder.Append('}');
+        }
+
         private static void AppendSnapshotJson(StringBuilder builder, MilestoneSnapshot snapshot)
         {
             if (snapshot == null)
@@ -2062,7 +2124,11 @@ namespace DefenseGame.Editor
             builder.Append("\"summonCost\":").Append(snapshot.summonCost).Append(',');
             builder.Append("\"totalSummons\":").Append(snapshot.totalSummons).Append(',');
             builder.Append("\"totalMerges\":").Append(snapshot.totalMerges).Append(',');
-            builder.Append("\"totalGradeUpgradeLevels\":").Append(snapshot.totalGradeUpgradeLevels).Append('}');
+            builder.Append("\"totalGradeUpgradeLevels\":").Append(snapshot.totalGradeUpgradeLevels).Append(',');
+            builder.Append("\"targetMonsterCount\":").Append(snapshot.targetMonsterCount).Append(',');
+            builder.Append("\"isHordeRound\":").Append(JsonBool(snapshot.isHordeRound)).Append(',');
+            builder.Append("\"isBossRound\":").Append(JsonBool(snapshot.isBossRound)).Append(',');
+            builder.Append("\"isMidBossRound\":").Append(JsonBool(snapshot.isMidBossRound)).Append('}');
         }
         private static void AppendMilestonesJson(StringBuilder builder, Dictionary<int, MilestoneSnapshot> milestones)
         {
@@ -2082,7 +2148,11 @@ namespace DefenseGame.Editor
                 builder.Append("\"totalMerges\":").Append(snapshot.totalMerges).Append(',');
                 builder.Append("\"totalGradeUpgradeLevels\":").Append(snapshot.totalGradeUpgradeLevels).Append(',');
                 builder.Append("\"summonCost\":").Append(snapshot.summonCost).Append(',');
-                builder.Append("\"ultimateRecipeCount\":").Append(snapshot.ultimateRecipeCount).Append('}');
+                builder.Append("\"ultimateRecipeCount\":").Append(snapshot.ultimateRecipeCount).Append(',');
+                builder.Append("\"targetMonsterCount\":").Append(snapshot.targetMonsterCount).Append(',');
+                builder.Append("\"isHordeRound\":").Append(JsonBool(snapshot.isHordeRound)).Append(',');
+                builder.Append("\"isBossRound\":").Append(JsonBool(snapshot.isBossRound)).Append(',');
+                builder.Append("\"isMidBossRound\":").Append(JsonBool(snapshot.isMidBossRound)).Append('}');
                 first = false;
             }
             builder.Append(']');
@@ -2128,6 +2198,10 @@ namespace DefenseGame.Editor
             public int totalGradeUpgradeLevels;
             public int summonCost;
             public int ultimateRecipeCount;
+            public int targetMonsterCount;
+            public bool isHordeRound;
+            public bool isBossRound;
+            public bool isMidBossRound;
         }
         [Serializable]
         private sealed class RunResult
@@ -2137,6 +2211,11 @@ namespace DefenseGame.Editor
             public string strategy;
             public int startGold;
             public int reachedRound;
+            public int gameplayDefeatRound;
+            public int technicalFailureRound;
+            public int totalLeakDamage;
+            public readonly Dictionary<int, int> leakDamageByRound = new Dictionary<int, int>();
+            public readonly Dictionary<int, int> escapedMonsterCountByRound = new Dictionary<int, int>();
             public bool victory;
             public bool defeat;
             public bool softLock;

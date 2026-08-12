@@ -327,6 +327,10 @@ namespace DefenseGame
         private int currentSummonBaseCost;
         private int roundGoldBonus;
         private int currentRoundLeakDamageTaken;
+        // Run telemetry only. These values do not participate in leak resolution or combat balance.
+        private int runTotalLeakDamage;
+        private readonly Dictionary<int, int> runLeakDamageByRound = new Dictionary<int, int>();
+        private readonly Dictionary<int, int> runEscapedMonsterCountByRound = new Dictionary<int, int>();
         private int victoryStreak;
         private float summonCostDiscountRate;
         private float temporaryShopSummonDiscountRate;
@@ -720,6 +724,9 @@ namespace DefenseGame
         public int BossForecastPreferredShopRoleIndex => bossForecastPreferredShopRoleIndex;
         public int RunTotalPlayerSummons => Mathf.Max(0, earlySummonAttempts);
         public int RunTotalMerges => Mathf.Max(0, runTotalMergeCount);
+        public int RunTotalLeakDamage => Mathf.Max(0, runTotalLeakDamage);
+        public IReadOnlyDictionary<int, int> RunLeakDamageByRound => runLeakDamageByRound;
+        public IReadOnlyDictionary<int, int> RunEscapedMonsterCountByRound => runEscapedMonsterCountByRound;
         public string LastTranscendentRecipePacingSnapshot => lastTranscendentRecipePacingSnapshot;
         public int TranscendentRecipePacingSnapshotCount => transcendentRecipePacingSnapshotCount;
         public string BossForecastSummary => BuildBossForecastSummary();
@@ -728,6 +735,8 @@ namespace DefenseGame
         public string CombatModeDisplayName => ActiveCombatModeProfile.displayName;
         public bool IsCombatInteractionLocked => IsRoundRunning && CurrentRound > 0 && roundManager != null && roundManager.CurrentRoundSpawnedCount > 0 && !FateCombatEditingActive;
         public bool IsBossRound => roundManager != null && roundManager.IsBossRound;
+        public bool IsMidBossRound => roundManager != null && roundManager.IsMidBossRound;
+        public bool IsCurrentRoundHorde => roundManager != null && roundManager.IsCurrentRoundHorde;
         public int NextBossRound => roundManager != null ? roundManager.GetNextBossRound(CurrentRound) : 10;
         public int RoundsUntilNextBoss => Mathf.Max(0, NextBossRound - CurrentRound);
         public int BoardUnitCount => boardManager != null ? boardManager.UnitCount : 0;
@@ -3919,6 +3928,7 @@ namespace DefenseGame
             MarkRoundMonsterResolved();
 
             int leakDamage = ResolveMonsterLeakDamage(monster);
+            RecordRunLeakTelemetry(CurrentRound, leakDamage);
             if (leakDamage > 0)
             {
                 life = Mathf.Max(0, life - leakDamage);
@@ -3931,6 +3941,30 @@ namespace DefenseGame
             {
                 TriggerLeakDefeat();
             }
+        }
+
+        private void RecordRunLeakTelemetry(int round, int leakDamage)
+        {
+            int safeRound = Mathf.Max(0, round);
+            if (safeRound <= 0)
+            {
+                return;
+            }
+
+            runEscapedMonsterCountByRound[safeRound] = runEscapedMonsterCountByRound.TryGetValue(safeRound, out int escapedCount)
+                ? escapedCount + 1
+                : 1;
+
+            int appliedDamage = Mathf.Max(0, leakDamage);
+            if (appliedDamage <= 0)
+            {
+                return;
+            }
+
+            runTotalLeakDamage += appliedDamage;
+            runLeakDamageByRound[safeRound] = runLeakDamageByRound.TryGetValue(safeRound, out int roundDamage)
+                ? roundDamage + appliedDamage
+                : appliedDamage;
         }
 
         private int ResolveMonsterLeakDamage(MonsterUnit monster)
@@ -4758,6 +4792,10 @@ namespace DefenseGame
             earlyFallbackRewardGranted = false;
             earlyBossPrepRewardGranted = false;
             earlyRoundTelemetry.Clear();
+            currentRoundLeakDamageTaken = 0;
+            runTotalLeakDamage = 0;
+            runLeakDamageByRound.Clear();
+            runEscapedMonsterCountByRound.Clear();
             currentRoundStartTime = 0f;
             currentRoundStartGold = 0;
             currentRoundSummonCount = 0;

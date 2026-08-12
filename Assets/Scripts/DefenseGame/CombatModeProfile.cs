@@ -166,7 +166,7 @@ namespace DefenseGame
                 packGap = 0.72f,
                 firstHordeRound = 4,
                 hordeFrequency = 3,
-                hordeCountMultiplier = 1.32f,
+                hordeCountMultiplier = 1.20f,
                 hordeHealthMultiplier = 0.66f,
                 hordeAttackMultiplier = 0.60f,
                 hordeMinimumPackSize = 6,
