@@ -159,6 +159,8 @@ namespace DefenseGame
         [SerializeField] private DefenseBoardManager boardManager;
         [SerializeField] private RoundManager roundManager;
         private AugmentManager augmentManager;
+        private RunShopSystem runShopSystem;
+        private TacticalMissionSystem tacticalMissionSystem;
         [SerializeField] private DefenderUnit defaultUnitPrefab;
 
         [Header("Combat Mode")]
@@ -791,6 +793,15 @@ namespace DefenseGame
         public bool LuckySummonReady => enableLuckySummonComeback && !luckySummonConsumed &&
             (luckySummonReady || LuckySummonNormalStreak >= LuckySummonThreshold && GetSummonRateRound() >= Mathf.Max(4, luckySummonEarliestRound));
         public bool LuckySummonChoiceOpen => luckySummonChoiceOpen;
+        public NextRoundMilestone NextRoundMilestone => ResolveNextRoundMilestone();
+        public string PreparationRecommendedAction => BuildPreparationRecommendedAction(NextRoundMilestone);
+        public string NextRoundButtonLabel => BuildNextRoundButtonLabel(NextRoundMilestone);
+        public bool IsBlockingChoiceOpen =>
+            CanChooseBossForecastBet ||
+            (augmentManager != null && (augmentManager.IsChoiceOpen || augmentManager.HasPendingChoice)) ||
+            (runShopSystem != null && runShopSystem.IsPanelOpen) ||
+            (tacticalMissionSystem != null && tacticalMissionSystem.IsChoicePanelOpen) ||
+            luckySummonChoiceOpen;
         public string RecommendedDeckSummary => BuildRecommendedDeckSummary();
         public string RecommendedBuildName => BuildRecommendedBuildName();
         public string RunNextGoalHeadline => BuildRunNextGoalHeadline();
@@ -1401,6 +1412,16 @@ namespace DefenseGame
             augmentManager?.RefreshCombatModeTuning();
         }
 
+        public void RegisterRunShopSystem(RunShopSystem system)
+        {
+            runShopSystem = system;
+        }
+
+        public void RegisterTacticalMissionSystem(TacticalMissionSystem system)
+        {
+            tacticalMissionSystem = system;
+        }
+
         public bool ToggleCombatMode()
         {
             CombatGameMode nextMode = IsOverdriveMode ? CombatGameMode.Classic : CombatGameMode.Overdrive;
@@ -1691,6 +1712,12 @@ namespace DefenseGame
             {
                 return;
             }
+            if (IsBlockingChoiceOpen && !(augmentManager != null && augmentManager.HasPendingChoice))
+            {
+                RequestBanner("\uC120\uD0DD\uC744 \uC644\uB8CC\uD55C \uD6C4 \uB2E4\uC74C \uB77C\uC6B4\uB4DC\uB97C \uC2DC\uC791\uD558\uC138\uC694.", new Color(0.52f, 0.90f, 1f), 2.0f);
+                return;
+            }
+
             if (augmentManager != null && augmentManager.HasPendingChoice)
             {
                 augmentManager.OpenPendingChoice();
@@ -1713,6 +1740,119 @@ namespace DefenseGame
         }
 
 
+        private NextRoundMilestone ResolveNextRoundMilestone()
+        {
+            int nextBossRound = roundManager != null ? roundManager.GetNextBossRound(CurrentRound) : 10;
+            int nextAugmentRound = augmentManager != null
+                ? augmentManager.GetNextScheduledChoiceRoundAfterSelection(CurrentRound)
+                : -1;
+            int nextRunShopRound = runShopSystem != null
+                ? runShopSystem.GetNextScheduledMiniShopRound(CurrentRound)
+                : -1;
+            int nextSlotUnlockRound = boardManager != null
+                ? boardManager.GetNextSlotUnlockRound(CurrentRound)
+                : -1;
+
+            return NextRoundMilestoneResolver.Resolve(
+                CurrentRound,
+                ActiveCombatModeProfile,
+                nextBossRound,
+                nextAugmentRound,
+                nextRunShopRound,
+                nextSlotUnlockRound);
+        }
+
+        private string BuildPreparationRecommendedAction(NextRoundMilestone milestone)
+        {
+            if (IsRoundRunning)
+            {
+                return CurrentBuildGoalSummary;
+            }
+
+            if (milestone.isBossRound)
+            {
+                return "R" + milestone.nextRound + " BOSS \uB300\uBE44: \uD654\uB825\uACFC \uCCB4\uB825\uC744 \uBCF4\uAC15\uD558\uC138\uC694";
+            }
+
+            if (milestone.isClassicChallengeRound)
+            {
+                return "R" + milestone.nextRound + " \uC704\uAE30 \uB77C\uC6B4\uB4DC: \uAC15\uD654/\uD569\uC131\uC744 \uC6B0\uC120\uD558\uC138\uC694";
+            }
+
+            if (milestone.isApproachingMajorHurdle)
+            {
+                return "R" + milestone.nextHurdleRound + " \uAC15\uC801 \uAD6C\uAC04 \uC811\uADFC: \uD654\uB825 \uBCF4\uAC15 \uAD8C\uC7A5";
+            }
+
+            if (milestone.slotUnlockRound > 0 && milestone.slotUnlockRound - CurrentRound <= 1)
+            {
+                return "R" + milestone.slotUnlockRound + " \uBC30\uCE58\uCE78 \uAC1C\uBC29 \uC608\uC815: \uD569\uC131 \uC790\uB9AC\uB97C \uD655\uBCF4\uD558\uC138\uC694";
+            }
+
+            if (ReadyUltimateRecipeCount > 0)
+            {
+                return "\uCD08\uC6D4 \uB808\uC2DC\uD53C \uC644\uC131 \uAC00\uB2A5: \uB808\uC2DC\uD53C\uB97C \uD655\uC778\uD558\uC138\uC694";
+            }
+
+            foreach (CharacterGrade grade in new[] { CharacterGrade.Transcendent, CharacterGrade.Mythic, CharacterGrade.Legendary, CharacterGrade.Epic, CharacterGrade.Rare, CharacterGrade.Normal })
+            {
+                if (CanUpgradeGrade(grade))
+                {
+                    return CharacterGradeUtility.GetDisplayName(grade) + " \uAC15\uD654 \uAC00\uB2A5: \uD604\uC7AC \uC804\uB825\uC744 \uB192\uC774\uC138\uC694";
+                }
+            }
+
+            return BoardUnitCount >= BoardCapacity && BoardCapacity > 0
+                ? "\uBCF4\uB4DC \uAC00\uB4DD: \uD569\uC131\uC73C\uB85C \uC804\uB825\uC744 \uC815\uB9AC\uD558\uC138\uC694"
+                : "\uC18C\uD658 \uD6C4 \uAC19\uC740 \uB4F1\uAE09 3\uAE30\uB97C \uD569\uC131\uD574 \uC804\uB825\uC744 \uB192\uC774\uC138\uC694";
+        }
+
+        private string BuildNextRoundButtonLabel(NextRoundMilestone milestone)
+        {
+            if (milestone.isBossRound)
+            {
+                return "R" + milestone.nextRound + " \uC2DC\uC791\nBOSS";
+            }
+
+            if (milestone.isClassicChallengeRound)
+            {
+                return "R" + milestone.nextRound + " \uC2DC\uC791\n\uC704\uAE30 \uB77C\uC6B4\uB4DC";
+            }
+
+            if (milestone.isApproachingMajorHurdle)
+            {
+                return "R" + milestone.nextRound + " \uC2DC\uC791\n\uAC15\uC801 \uAD6C\uAC04";
+            }
+
+            return "\uB2E4\uC74C \uB77C\uC6B4\uB4DC";
+        }
+
+        private void RequestNextRoundMilestoneBanner(int completedRound, int unlockedFrontSlots)
+        {
+            NextRoundMilestone milestone = ResolveNextRoundMilestone();
+            if (unlockedFrontSlots > 0)
+            {
+                RequestBanner("R" + milestone.nextRound + " \uBC30\uCE58\uCE78 \uAC1C\uBC29  +" + unlockedFrontSlots, new Color(0.46f, 1f, 0.82f), 2.8f);
+                return;
+            }
+
+            if (milestone.isBossRound)
+            {
+                RequestBanner("\uB2E4\uC74C R" + milestone.nextRound + " BOSS  \uC804\uB825\uC744 \uC815\uBE44\uD558\uC138\uC694", new Color(1f, 0.62f, 0.28f), 2.8f);
+                return;
+            }
+
+            if (milestone.isClassicChallengeRound)
+            {
+                RequestBanner("\uB2E4\uC74C R" + milestone.nextRound + " \uC704\uAE30 \uB77C\uC6B4\uB4DC  \uAC15\uD654/\uD569\uC131 \uAD8C\uC7A5", new Color(1f, 0.72f, 0.32f), 2.8f);
+                return;
+            }
+
+            if (milestone.isApproachingMajorHurdle)
+            {
+                RequestBanner("R" + milestone.nextHurdleRound + " \uAC15\uC801 \uAD6C\uAC04 \uC811\uADFC  \uD654\uB825 \uBCF4\uAC15 \uAD8C\uC7A5", new Color(1f, 0.78f, 0.30f), 2.6f);
+            }
+        }
         private int CalculateRoundStartGold()
         {
             int round = Mathf.Max(0, CurrentRound);
@@ -4189,7 +4329,6 @@ namespace DefenseGame
                 if (unlockedFrontSlots > 0)
                 {
                     int unlockedRound = Mathf.Max(1, round + 1);
-                    OnBannerRequested?.Invoke("ROUND " + unlockedRound + "  \uC804\uBC29 \uBC30\uCE58\uCE78 \uAC1C\uBC29 +" + unlockedFrontSlots + "  |  +" + clearReward + "G", new Color(0.46f, 1f, 0.82f), 3.0f);
                     AddRunHighlightCard("\uC804\uBC29 \uC2AC\uB86F \uAC1C\uBC29", "ROUND " + unlockedRound + " / +" + unlockedFrontSlots);
                 }
                 OnRoundMissionSettlement?.Invoke(round);
@@ -4199,6 +4338,7 @@ namespace DefenseGame
                 ResolveBossForecastBet(round, bossRound);
                 OnRoundBoardPreparation?.Invoke(round);
                 RequestBossForecastBetIfNeeded(round);
+                RequestNextRoundMilestoneBanner(round, unlockedFrontSlots);
                 pendingPostRoundChoiceRound = round;
                 boardManager?.CancelActiveDrag();
                 OnRoundCompleted?.Invoke(round);

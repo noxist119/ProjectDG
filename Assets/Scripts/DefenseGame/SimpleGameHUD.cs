@@ -571,9 +571,11 @@ namespace DefenseGame
             bool fateEditing = gameController.FateCombatEditingActive;
             SetText(stateText, fateEditing ? "계약 편집 중" : combatLocked ? "\uC804\uD22C \uC9C4\uD589 \uC911" : roundRunning ? "\uC804\uD22C \uC900\uBE44" : "\uC900\uBE44 \uB2E8\uACC4");
             SetColor(stateText, fateEditing ? new Color(1f, 0.54f, 1f) : combatLocked ? new Color(1f, 0.82f, 0.36f) : new Color(0.42f, 1f, 0.72f));
-            string battleLabel = roundRunning ? (combatLocked ? "\uC804\uD22C \uC911" : "\uC804\uD22C \uC900\uBE44") : "\uB2E4\uC74C \uB77C\uC6B4\uB4DC";
+            string battleLabel = roundRunning
+                ? (combatLocked ? "\uC804\uD22C \uC911" : "\uC804\uD22C \uC900\uBE44")
+                : gameController.NextRoundButtonLabel;
             SetText(battleButtonText, battleLabel);
-            SetInteractable(battleButton, !roundRunning);
+            SetInteractable(battleButton, !roundRunning && !gameController.IsBlockingChoiceOpen);
 
             bool luckySummonReady = gameController.LuckySummonReady;
             bool luckyChoiceOpen = gameController.LuckySummonChoiceOpen;
@@ -665,8 +667,12 @@ namespace DefenseGame
             SetInsightVisible(tileInsightText, true);
             SetInsightVisible(topDamageInsightText, false);
             SetInsightVisible(earlyRunInsightText, false);
-            SetText(synergyInsightText, CompactHudLines(gameController.CurrentDangerSummary, 2, 18));
-            SetText(recipeInsightText, CompactHudLines(gameController.CurrentBuildGoalSummary, 2, 18));
+            NextRoundMilestone milestone = gameController.NextRoundMilestone;
+            string dangerSummary = !gameController.IsRoundRunning && milestone.isApproachingMajorHurdle
+                ? "R" + milestone.nextHurdleRound + " \uAC15\uC801 \uAD6C\uAC04 \uC811\uADFC"
+                : gameController.CurrentDangerSummary;
+            SetText(synergyInsightText, CompactHudLines(dangerSummary, 2, 18));
+            SetText(recipeInsightText, CompactHudLines(gameController.PreparationRecommendedAction, 2, 18));
             SetText(tileInsightText, CompactHudLines(gameController.RoundTopDamageSummary, 2, 18));
             RefreshFateControls();
 

@@ -118,6 +118,7 @@ namespace DefenseGame
         public int PendingMissionSupportSummons => pendingMissionSupportSummons;
         public bool HasInitialStrategyFork => HasOfferedMission(MissionKind.PerfectDefense) && HasOfferedMission(MissionKind.SummonSprint) && HasOfferedMission(MissionKind.LastStandGambit);
         public bool HasActiveMissionSelection => missionSelected;
+        public bool IsChoicePanelOpen => !missionSelected && panelRoot != null && panelRoot.activeSelf;
         public int MissionOfferCount => missionSelected ? 0 : activeMissions.Count;
 
         public void Configure(

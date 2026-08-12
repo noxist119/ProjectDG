@@ -344,6 +344,27 @@ namespace DefenseGame
             SetOpen(false);
         }
 
+        public bool IsPanelOpen => panelRoot != null && panelRoot.activeSelf;
+
+        public int GetNextScheduledMiniShopRound(int completedRound)
+        {
+            if (!enableEarlyMiniShop)
+            {
+                return -1;
+            }
+
+            int firstRound = Mathf.Max(1, earlyMiniShopRound);
+            int interval = Mathf.Max(1, miniShopInterval);
+            int nextRound = Mathf.Max(1, completedRound + 1);
+            if (nextRound <= firstRound)
+            {
+                return firstRound;
+            }
+
+            int elapsed = nextRound - firstRound;
+            return firstRound + Mathf.CeilToInt((float)elapsed / interval) * interval;
+        }
+
         public bool IsScheduledMiniShopRound(int round)
         {
             int firstRound = Mathf.Max(1, earlyMiniShopRound);

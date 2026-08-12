@@ -265,9 +265,10 @@ namespace DefenseGame.Editor
             bool pass1DGradeRulesValid = ValidatePass1DGradeUpgradeRules(controller);
             bool pass1DPressureValid = ValidatePass1DPressureRules();
             bool gradeUpgradeBarUiValid = ValidateGradeUpgradeBarUi(controller);
-            if (!pass1DGradeRulesValid || !pass1DPressureValid || !gradeUpgradeBarUiValid)
+            bool pass1EMilestoneValid = ValidatePass1EMilestoneRules(controller, out string pass1EMilestoneSummary);
+            if (!pass1DGradeRulesValid || !pass1DPressureValid || !gradeUpgradeBarUiValid || !pass1EMilestoneValid)
             {
-                notes.Add("Pass 1D grade upgrade or classic pressure resolver validation failed.");
+                notes.Add("Pass 1D grade upgrade, classic pressure, or Pass 1E milestone validation failed. " + pass1EMilestoneSummary);
             }
             if (!screenSpaceCombatHudValid || !dragTransactionSafetyValid || !dragCombatSuspensionValid || !boardCapacityPacingValid)
             {
@@ -781,7 +782,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -843,6 +844,8 @@ namespace DefenseGame.Editor
                 boardCapacityPacingValid = boardCapacityPacingValid,
                 boardCapacityPacingSummary = boardCapacityPacingSummary,
                 gradeUpgradeBarUiValid = gradeUpgradeBarUiValid,
+                pass1EMilestoneValid = pass1EMilestoneValid,
+                pass1EMilestoneSummary = pass1EMilestoneSummary,
                 runtimeErrors = runtimeErrors,
                 prefabs = prefabResults,
                 notes = notes.ToArray()
@@ -1418,6 +1421,75 @@ namespace DefenseGame.Editor
                          !ClassicRoundPressure.AppliesTo(CombatModeProfile.CreateClassic(), true) &&
                          !ClassicRoundPressure.AppliesTo(CombatModeProfile.CreateOverdrive(), false);
             return classic && challenge && capAndFloor && scope;
+        }
+        private static bool ValidatePass1EMilestoneRules(DefenseGameController controller, out string summary)
+        {
+            CombatModeProfile classic = CombatModeProfile.CreateClassic();
+            CombatModeProfile overdrive = CombatModeProfile.CreateOverdrive();
+            bool challenge = ClassicRoundPressure.IsChallengeRound(5) && ClassicRoundPressure.IsChallengeRound(15) &&
+                             !ClassicRoundPressure.IsChallengeRound(10) &&
+                             ClassicRoundPressure.AppliesTo(classic, false) &&
+                             !ClassicRoundPressure.AppliesTo(classic, true) &&
+                             !ClassicRoundPressure.AppliesTo(overdrive, false);
+            bool hurdle = CommercialRoundPacing.GetNextHurdleRound(0) == CommercialRoundPacing.FirstHurdleRound &&
+                          CommercialRoundPacing.GetNextHurdleRound(20) == 30 &&
+                          CommercialRoundPacing.TryGetApproachingHurdleIndex(18, out _) &&
+                          !CommercialRoundPacing.TryGetApproachingHurdleIndex(17, out _);
+
+            GameObject boardRoot = new GameObject("Pass1EMilestoneBoard");
+            DefenseBoardManager board = boardRoot.AddComponent<DefenseBoardManager>();
+            List<BoardSlot> slots = new List<BoardSlot>();
+            for (int i = 0; i < 15; i++)
+            {
+                slots.Add(CreateDragBoundsSlot(boardRoot.transform, "Pass1ESlot_" + i, new Vector3(i, 0f, 0f)));
+            }
+
+            try
+            {
+                board.Configure(slots, null);
+                bool slotReadout = board.UnlockedSlotCount == 10 &&
+                                   board.GetSlotUnlockRound(0) == 0 &&
+                                   board.GetSlotUnlockRound(10) == 8 &&
+                                   board.GetSlotUnlockRound(11) == 16 &&
+                                   board.GetSlotUnlockRound(12) == 24 &&
+                                   board.GetSlotUnlockRound(13) == 32 &&
+                                   board.GetSlotUnlockRound(14) == 40 &&
+                                   board.GetNextSlotUnlockRound(0) == 8;
+                int[] completedRounds = { 7, 15, 23, 31, 39, 40 };
+                int[] expectedCounts = { 11, 12, 13, 14, 15, 15 };
+                for (int i = 0; i < completedRounds.Length; i++)
+                {
+                    board.RefreshSlotLocks(completedRounds[i]);
+                    slotReadout &= board.UnlockedSlotCount == expectedCounts[i];
+                }
+
+                int goldBefore = controller != null ? controller.Gold : 0;
+                int lifeBefore = controller != null ? controller.Life : 0;
+                int boardCountBefore = controller != null ? controller.BoardUnitCount : 0;
+                int summonCostBefore = controller != null ? controller.SummonCost : 0;
+                UnityEngine.Random.State randomBefore = UnityEngine.Random.state;
+                NextRoundMilestone first = NextRoundMilestoneResolver.Resolve(14, classic, 20, 16, 19, 16);
+                NextRoundMilestone second = NextRoundMilestoneResolver.Resolve(14, classic, 20, 16, 19, 16);
+                bool deterministic = first.nextRound == second.nextRound &&
+                                     first.isClassicChallengeRound == second.isClassicChallengeRound &&
+                                     first.isApproachingMajorHurdle == second.isApproachingMajorHurdle &&
+                                     first.nextHurdleRound == second.nextHurdleRound &&
+                                     first.slotUnlockRound == second.slotUnlockRound &&
+                                     first.roundsUntilAugment == second.roundsUntilAugment &&
+                                     first.roundsUntilRunShop == second.roundsUntilRunShop &&
+                                     UnityEngine.Random.state.Equals(randomBefore) &&
+                                     (controller == null || (controller.Gold == goldBefore && controller.Life == lifeBefore && controller.BoardUnitCount == boardCountBefore && controller.SummonCost == summonCostBefore));
+                NextRoundMilestone boss = NextRoundMilestoneResolver.Resolve(9, classic, 10, 11, 11, 16);
+                NextRoundMilestone challengeNext = NextRoundMilestoneResolver.Resolve(14, classic, 20, 16, 19, 16);
+                NextRoundMilestone overdriveChallenge = NextRoundMilestoneResolver.Resolve(14, overdrive, 20, 16, 19, 16);
+                bool scope = boss.isBossRound && !boss.isClassicChallengeRound && challengeNext.isClassicChallengeRound && !overdriveChallenge.isClassicChallengeRound;
+                summary = "challenge=" + challenge + ", hurdle=" + hurdle + ", slots=" + slotReadout + ", readonly=" + deterministic + ", scope=" + scope;
+                return challenge && hurdle && slotReadout && deterministic && scope;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(boardRoot);
+            }
         }
         private static bool ValidateBoardCapacityPacing(out string summary)
         {
@@ -2025,6 +2097,8 @@ namespace DefenseGame.Editor
             public bool boardCapacityPacingValid;
             public string boardCapacityPacingSummary;
             public bool gradeUpgradeBarUiValid;
+            public bool pass1EMilestoneValid;
+            public string pass1EMilestoneSummary;
             public int runtimeErrors;
             public PrefabSmokeResult[] prefabs = Array.Empty<PrefabSmokeResult>();
             public string[] notes = Array.Empty<string>();

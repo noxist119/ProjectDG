@@ -240,6 +240,29 @@ namespace DefenseGame
 			return newlyUnlocked;
 		}
 
+		public int GetSlotUnlockRound(int slotIndex)
+		{
+			int baseCount = Mathf.Clamp(Mathf.Max(0, baseActiveSlotCount), 0, slots.Count);
+			if (slotIndex < baseCount)
+			{
+				return 0;
+			}
+
+			int extraIndex = slotIndex - baseCount;
+			if (extraIndex >= Mathf.Max(0, maxFrontUnlockCount) || slotIndex >= slots.Count)
+			{
+				return -1;
+			}
+
+			return (extraIndex + 1) * Mathf.Max(1, frontSlotUnlockInterval);
+		}
+
+		public int GetNextSlotUnlockRound(int completedRound)
+		{
+			int currentUnlocked = ResolveActiveSlotCount(completedRound);
+			return currentUnlocked < slots.Count ? GetSlotUnlockRound(currentUnlocked) : -1;
+		}
+
 		private int ResolveActiveSlotCount(int completedRound)
 		{
 			int baseCount = Mathf.Clamp(Mathf.Max(0, baseActiveSlotCount), 0, slots.Count);
@@ -249,11 +272,6 @@ namespace DefenseGame
 			return Mathf.Clamp(baseCount + frontUnlocks, 0, slots.Count);
 		}
 
-		private int ResolveSlotUnlockRound(int slotIndex)
-		{
-			int extraIndex = Mathf.Max(0, slotIndex - Mathf.Max(0, baseActiveSlotCount));
-			return Mathf.Max(1, (extraIndex + 1) * Mathf.Max(1, frontSlotUnlockInterval));
-		}
 
 		public void ClearAllDeployedUnits()
 		{

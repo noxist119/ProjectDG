@@ -188,6 +188,8 @@ namespace DefenseGame
 			roundManager.Configure(monsterDatabase, monsterTemplate, spawnPoints, goalPoint, (presentationConfig != null) ? presentationConfig.spawnPortalPrefab : null);
 			gameController.Configure(characterDatabase, monsterDatabase, boardManager, roundManager, defenderTemplate);
 			tileModifierSystem.Configure(gameController, boardManager);
+			gameController.RegisterRunShopSystem(runShopSystem);
+			gameController.RegisterTacticalMissionSystem(missionSystem);
 			demoInput.Configure(gameController);
 			buttonBinder.Configure(gameController);
             BuildCanvas(root, hud, gameController, boardManager, buttonBinder, augmentManager, collectionUI, metaFlowUI, synergySystem, missionSystem, tileModifierSystem, runShopSystem, characterDatabase, outgameProgression);
