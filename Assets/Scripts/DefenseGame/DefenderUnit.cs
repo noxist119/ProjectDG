@@ -885,19 +885,23 @@ namespace DefenseGame
 		{
 			if (definition != null)
 			{
-				float currentAttackPower = Mathf.Max(0.01f, GetEffectiveAttackPower());
-				float attackRatio = Mathf.Max(0f, inheritedAttackPower / currentAttackPower - 1f);
-				if (attackRatio > 0f)
+				// Source-grade run upgrades are excluded from inherited values. Compare against
+				// this result's intrinsic value as well, then apply only the true shortfall as
+				// a permanent base-stat additive. The result-grade upgrade remains separate.
+				float attackShortfall = Mathf.Max(0f, inheritedAttackPower - GetEffectiveAttackPowerWithoutRunGradeUpgrade());
+				float attackBonusToAdd = attackShortfall / Mathf.Max(0.01f, definition.stats.attackPower);
+				if (attackBonusToAdd > 0f)
 				{
-					AddAttackPowerBonus(attackRatio);
+					AddAttackPowerBonus(attackBonusToAdd);
 				}
-				float currentMaximumHealth = Mathf.Max(0.01f, MaxHealth);
-				float healthRatio = Mathf.Max(0f, inheritedMaxHealth / currentMaximumHealth - 1f);
-				if (healthRatio > 0f)
+
+				float healthShortfall = Mathf.Max(0f, inheritedMaxHealth - GetMaximumHealthWithoutRunGradeUpgrade());
+				float healthBonusToAdd = healthShortfall / Mathf.Max(0.01f, definition.stats.maxHealth);
+				if (healthBonusToAdd > 0f)
 				{
-					AddMaxHealthBonus(healthRatio);
+					AddMaxHealthBonus(healthBonusToAdd);
 				}
-				floatingUi?.ShowStatus("합성 능력 계승", new Color(1f, 0.86f, 0.3f, 1f), 1.25f);
+				floatingUi?.ShowStatus("\uD569\uC131 \uB2A5\uB825 \uACC4\uC2B9", new Color(1f, 0.86f, 0.3f, 1f), 1.25f);
 			}
 		}
 

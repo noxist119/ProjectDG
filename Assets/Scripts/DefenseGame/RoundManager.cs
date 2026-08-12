@@ -585,18 +585,25 @@ namespace DefenseGame
 
             regularCount = ApplyPreBossLeakEaseToRegularCount(round, bossRound, regularCount);
             CombatModeProfile profile = combatModeProfile ?? CombatModeProfile.CreateClassic();
-            bool classicRegularPressure = !bossRound && !profile.IsOverdrive;
+            bool classicRegularPressure = ClassicRoundPressure.AppliesTo(profile, bossRound);
             regularCount = CommercialRoundPacing.ApplySpawnCount(round, bossRound, regularCount);
             regularCount = profile.ApplyRegularCount(round, bossRound, regularCount);
             if (classicRegularPressure)
             {
-                regularCount = Mathf.CeilToInt(regularCount * ClassicRoundPressure.ResolveChallengeSpawnCountMultiplier(round));
+                regularCount = ClassicRoundPressure.ApplyChallengeSpawnCount(
+                    round,
+                    regularCount,
+                    profile.maximumRegularCountPerRound);
             }
 
             float spawnInterval = CommercialRoundPacing.ApplySpawnInterval(round, bossRound, CalculateSpawnInterval(round, bossRound));
             if (classicRegularPressure)
             {
-                spawnInterval *= ClassicRoundPressure.ResolveChallengeSpawnIntervalMultiplier(round);
+                spawnInterval = ClassicRoundPressure.ApplyChallengeSpawnInterval(round, spawnInterval, minimumSpawnInterval);
+            }
+            else
+            {
+                spawnInterval = Mathf.Max(minimumSpawnInterval, spawnInterval);
             }
 
             bool hordeRound = profile.IsHordeRound(round, bossRound);
@@ -1247,6 +1254,10 @@ namespace DefenseGame
     /// <summary>Classic regular-monster pressure only. Bosses and Overdrive do not use this resolver.</summary>
     public static class ClassicRoundPressure
     {
+        public static bool AppliesTo(CombatModeProfile profile, bool bossRound)
+        {
+            return !bossRound && (profile == null || !profile.IsOverdrive);
+        }
         public static bool IsChallengeRound(int round)
         {
             return round > 0 && round % 10 == 5;
@@ -1280,5 +1291,15 @@ namespace DefenseGame
         public static float ResolveChallengeAttackMultiplier(int round) => IsChallengeRound(round) ? 1.15f : 1f;
         public static float ResolveChallengeSpawnCountMultiplier(int round) => IsChallengeRound(round) ? 1.20f : 1f;
         public static float ResolveChallengeSpawnIntervalMultiplier(int round) => IsChallengeRound(round) ? 0.85f : 1f;
+        public static int ApplyChallengeSpawnCount(int round, int count, int maximumCount)
+        {
+            int adjusted = Mathf.CeilToInt(Mathf.Max(0, count) * ResolveChallengeSpawnCountMultiplier(round));
+            return maximumCount > 0 ? Mathf.Min(adjusted, maximumCount) : adjusted;
+        }
+
+        public static float ApplyChallengeSpawnInterval(int round, float interval, float minimumInterval)
+        {
+            return Mathf.Max(Mathf.Max(0.01f, minimumInterval), interval * ResolveChallengeSpawnIntervalMultiplier(round));
+        }
     }
 }

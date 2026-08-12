@@ -1942,6 +1942,7 @@ private void EnsureLight()
         private Button[] buttons;
         private Text[] labels;
         private Image[] bodies;
+        private CanvasGroup canvasGroup;
         private bool subscribed;
 
         public static GradeUpgradeBarUI Create(Transform parent, Font font, DefenseGameController controller, GamePresentationConfig presentationConfig)
@@ -2003,6 +2004,7 @@ private void EnsureLight()
                 bodies[i] = body;
             }
 
+            root.AddComponent<CanvasGroup>();
             GradeUpgradeBarUI ui = root.AddComponent<GradeUpgradeBarUI>();
             ui.Configure(controller, buttons, labels, bodies);
             return ui;
@@ -2012,6 +2014,7 @@ private void EnsureLight()
         {
             Unsubscribe();
             controller = value;
+            canvasGroup = GetComponent<CanvasGroup>();
             buttons = newButtons;
             labels = newLabels;
             bodies = newBodies;
@@ -2060,6 +2063,13 @@ private void EnsureLight()
                 return;
             }
 
+            bool isPreparation = !controller.IsRoundRunning;
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = isPreparation ? 1f : 0f;
+                canvasGroup.blocksRaycasts = isPreparation;
+                canvasGroup.interactable = isPreparation;
+            }
             for (int i = 0; i < Grades.Length && i < buttons.Length && i < labels.Length && i < bodies.Length; i++)
             {
                 CharacterGrade grade = Grades[i];

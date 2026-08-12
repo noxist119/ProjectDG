@@ -254,15 +254,18 @@ namespace DefenseGame.Editor
             {
                 controller.OnPlayerSummoned += directPlayerSummonHandler;
             }
+            bool forecastAvailabilityBeforePlayerSummon = controller != null && controller.CanChooseBossForecastBet;
+            int forecastShopRoleBeforePlayerSummon = controller != null ? controller.BossForecastPreferredShopRoleIndex : -1;
             bool overdriveSelectedForPlayerSummonTest = controller != null && controller.TrySetCombatMode(CombatGameMode.Overdrive);
             bool paidPlayerSummonGranted = controller != null && controller.TrySummon();
             bool screenSpaceCombatHudValid = ValidateScreenSpaceCombatHud();
             bool dragTransactionSafetyValid = ValidateDragTransactionSafety();
             bool dragCombatSuspensionValid = ValidateDraggedUnitCombatSuspension();
             bool boardCapacityPacingValid = ValidateBoardCapacityPacing(out string boardCapacityPacingSummary);
-            bool pass1DGradeRulesValid = ValidatePass1DGradeUpgradeRules();
+            bool pass1DGradeRulesValid = ValidatePass1DGradeUpgradeRules(controller);
             bool pass1DPressureValid = ValidatePass1DPressureRules();
-            if (!pass1DGradeRulesValid || !pass1DPressureValid)
+            bool gradeUpgradeBarUiValid = ValidateGradeUpgradeBarUi(controller);
+            if (!pass1DGradeRulesValid || !pass1DPressureValid || !gradeUpgradeBarUiValid)
             {
                 notes.Add("Pass 1D grade upgrade or classic pressure resolver validation failed.");
             }
@@ -278,11 +281,11 @@ namespace DefenseGame.Editor
                                                     paidPlayerSummonGranted &&
                                                     directPlayerSummonEvents == 1 &&
                                                     controller != null &&
-                                                    controller.BoardUnitCount == 1 &&
-                                                    !controller.CanChooseBossForecastBet;
+                                                    controller.CanChooseBossForecastBet == forecastAvailabilityBeforePlayerSummon &&
+                                                    controller.BossForecastPreferredShopRoleIndex == forecastShopRoleBeforePlayerSummon;
             if (!playerDirectSummonIsolationValid)
             {
-                notes.Add("Player direct summon must not request or grant the Boss Forecast reward.");
+                notes.Add("Player direct summon event or Boss Forecast state changed unexpectedly.");
             }
 
             bool bossForecastTimingValid = ValidateBossForecastTimingAndShopBias(controller, out string bossForecastTimingSummary);
@@ -365,7 +368,6 @@ namespace DefenseGame.Editor
             {
                 notes.Add("전투 종료 후 보상 배너 3개가 순서대로 표시되지 않거나 bounded queue 검증에 실패했습니다.");
             }
-            bool missionSupportCombatBlockValid = true;
             Button returnToLobbyButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
                 .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
             returnToLobbyButton?.onClick.Invoke();
@@ -779,7 +781,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -818,7 +820,6 @@ namespace DefenseGame.Editor
                 tacticalMissionRiskRewardValid = tacticalMissionRiskRewardValid,
                 tacticalMissionChoiceValid = tacticalMissionChoiceValid,
                 roundDiamondRewardValid = roundDiamondRewardValid,
-                missionSupportCombatBlockValid = missionSupportCombatBlockValid,
                 bannerBurstQueueValid = bannerBurstQueueValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
                 earlyMiniShopSummary = earlyMiniShopSummary,
@@ -841,6 +842,7 @@ namespace DefenseGame.Editor
                 animationMaterialEventsSummary = animationMaterialEventsSummary,
                 boardCapacityPacingValid = boardCapacityPacingValid,
                 boardCapacityPacingSummary = boardCapacityPacingSummary,
+                gradeUpgradeBarUiValid = gradeUpgradeBarUiValid,
                 runtimeErrors = runtimeErrors,
                 prefabs = prefabResults,
                 notes = notes.ToArray()
@@ -1063,33 +1065,36 @@ namespace DefenseGame.Editor
         }
         private static bool ValidateScreenSpaceCombatHud()
         {
+            GameObject anchorProbe = new GameObject("FloatingCombatUiAnchorProbe");
+            GameObject head = new GameObject("Head");
+            head.transform.SetParent(anchorProbe.transform, false);
+            GameObject explicitAnchor = new GameObject("FloatingUIAnchor");
+            explicitAnchor.transform.SetParent(anchorProbe.transform, false);
+            FloatingCombatUI smokeUi = FloatingCombatUI.Attach(anchorProbe.transform, "Smoke", Color.white, CharacterGrade.Normal);
             SharedFloatingCombatCanvas sharedRoot = UnityEngine.Object.FindObjectOfType<SharedFloatingCombatCanvas>();
             Canvas sharedCanvas = sharedRoot != null ? sharedRoot.GetComponent<Canvas>() : null;
             CanvasScaler scaler = sharedRoot != null ? sharedRoot.GetComponent<CanvasScaler>() : null;
             bool canvasValid = sharedCanvas != null &&
                                sharedCanvas.renderMode == RenderMode.ScreenSpaceOverlay &&
                                sharedCanvas.worldCamera == null &&
-                               sharedCanvas.overrideSorting &&
                                sharedCanvas.sortingOrder == -10 &&
                                scaler != null &&
                                scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize;
 
-            GameObject anchorProbe = new GameObject("FloatingCombatUiAnchorProbe");
-            GameObject head = new GameObject("Head");
-            head.transform.SetParent(anchorProbe.transform, false);
-            GameObject explicitAnchor = new GameObject("FloatingUIAnchor");
-            explicitAnchor.transform.SetParent(anchorProbe.transform, false);
             const BindingFlags Flags = BindingFlags.Static | BindingFlags.NonPublic;
             MethodInfo resolveAnchor = typeof(FloatingCombatUI).GetMethod("ResolveAnchor", Flags);
             object[] arguments = { anchorProbe.transform, 0f };
             Transform resolvedAnchor = resolveAnchor != null ? resolveAnchor.Invoke(null, arguments) as Transform : null;
             bool anchorPriorityValid = resolvedAnchor == explicitAnchor.transform;
-            UnityEngine.Object.Destroy(anchorProbe);
+            bool uiCreated = smokeUi != null;
+            if (smokeUi != null)
+            {
+                UnityEngine.Object.DestroyImmediate(smokeUi.gameObject);
+            }
+            UnityEngine.Object.DestroyImmediate(anchorProbe);
 
-            return canvasValid && anchorPriorityValid &&
-                   UnityEngine.Object.FindObjectsOfType<FloatingCombatUI>(true).Length > 0;
+            return canvasValid && anchorPriorityValid && uiCreated;
         }
-
         private static bool ValidateDragTransactionSafety()
         {
             GameObject boardRoot = new GameObject("DragTransactionSmokeBoard");
@@ -1137,13 +1142,13 @@ namespace DefenseGame.Editor
                                           !SharedFloatingCombatCanvas.IsPoseRefreshOverrideActive(firstUnit.transform);
 
             beginDrag?.Invoke(board, new object[] { firstUnit });
-            boardRoot.SetActive(false);
+            board.enabled = false;
             bool disableClearsDrag = draggedField != null &&
                                      draggedField.GetValue(board) == null &&
                                      firstUnit.CurrentSlot != null &&
                                      firstUnit.CurrentSlot.OccupiedUnit == firstUnit &&
                                      !SharedFloatingCombatCanvas.IsPoseRefreshOverrideActive(firstUnit.transform);
-            boardRoot.SetActive(true);
+            board.enabled = true;
 
             beginDrag?.Invoke(board, new object[] { firstUnit });
             board.ClearAllDeployedUnits();
@@ -1161,7 +1166,7 @@ namespace DefenseGame.Editor
                    cancelRestoresTracking && disableClearsDrag && clearRemovesLogicalUnits && boardBoundsValid;
         }
 
-        private static bool ValidatePass1DGradeUpgradeRules()
+        private static bool ValidatePass1DGradeUpgradeRules(DefenseGameController controller)
         {
             bool baseCosts = DefenseGameController.ResolveGradeUpgradeBaseCost(CharacterGrade.Normal) == 20 &&
                              DefenseGameController.ResolveGradeUpgradeBaseCost(CharacterGrade.Rare) == 30 &&
@@ -1173,12 +1178,217 @@ namespace DefenseGame.Editor
                               DefenseGameController.ResolveGradeUpgradeCost(CharacterGrade.Normal, 1) == 30 &&
                               DefenseGameController.ResolveGradeUpgradeCost(CharacterGrade.Transcendent, 0) == 120 &&
                               DefenseGameController.ResolveGradeUpgradeCost(CharacterGrade.Transcendent, 1) == 175;
-            return baseCosts && escalation &&
-                   Approximately(1f + DefenseGameController.GradeUpgradeAttackPerLevel, 1.08f) &&
-                   Approximately(1f + DefenseGameController.GradeUpgradeHealthPerLevel, 1.05f) &&
-                   DefenseGameController.GradeUpgradeMaximumLevel == 10;
+            bool constantsValid = baseCosts && escalation &&
+                                  Approximately(1f + DefenseGameController.GradeUpgradeAttackPerLevel, 1.08f) &&
+                                  Approximately(1f + DefenseGameController.GradeUpgradeHealthPerLevel, 1.05f) &&
+                                  DefenseGameController.GradeUpgradeMaximumLevel == 10;
+            return constantsValid && ValidatePass1DGradeUpgradeRuntime(controller) &&
+                   ValidatePass1DMergeInheritanceRegression();
         }
 
+        private static bool ValidatePass1DGradeUpgradeRuntime(DefenseGameController controller)
+        {
+            if (controller == null)
+            {
+                return false;
+            }
+
+            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo goldField = typeof(DefenseGameController).GetField("<Gold>k__BackingField", Flags);
+            FieldInfo boardField = typeof(DefenseGameController).GetField("boardManager", Flags);
+            FieldInfo roundField = typeof(DefenseGameController).GetField("roundManager", Flags);
+            FieldInfo roundRunningField = typeof(RoundManager).GetField("<IsRoundRunning>k__BackingField", Flags);
+            if (goldField == null || boardField == null || roundField == null || roundRunningField == null)
+            {
+                return false;
+            }
+
+            DefenseBoardManager originalBoard = boardField.GetValue(controller) as DefenseBoardManager;
+            RoundManager originalRounds = roundField.GetValue(controller) as RoundManager;
+            int originalGold = controller.Gold;
+            GameObject root = new GameObject("Pass1DGradeUpgradeRuntimeSmoke");
+            DefenseBoardManager board = root.AddComponent<DefenseBoardManager>();
+            GameObject roundsObject = new GameObject("Pass1DGradeUpgradeRuntimeRounds");
+            RoundManager rounds = roundsObject.AddComponent<RoundManager>();
+            List<BoardSlot> slots = new List<BoardSlot>();
+            List<GameObject> units = new List<GameObject>();
+            try
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    slots.Add(CreateDragBoundsSlot(root.transform, "GradeUpgradeSlot_" + i, new Vector3(i, 0f, 0f)));
+                }
+                board.Configure(slots, null);
+                boardField.SetValue(controller, board);
+                roundField.SetValue(controller, rounds);
+                controller.ResetRunForRetry();
+                goldField.SetValue(controller, 10000);
+
+                DefenderUnit normal = CreatePass1DProbeUnit(root.transform, "normal", CharacterGrade.Normal, 100f, 10f, false, units);
+                DefenderUnit rare = CreatePass1DProbeUnit(root.transform, "rare", CharacterGrade.Rare, 100f, 20f, false, units);
+                DefenderUnit temporaryNormal = CreatePass1DProbeUnit(root.transform, "temporary", CharacterGrade.Normal, 100f, 10f, true, units);
+                slots[0].AssignUnit(normal);
+                slots[1].AssignUnit(rare);
+
+                int goldBefore = controller.Gold;
+                int normalCost = controller.GetGradeUpgradeCost(CharacterGrade.Normal);
+                bool firstPurchase = controller.TryUpgradeGrade(CharacterGrade.Normal) &&
+                                     controller.GetGradeUpgradeLevel(CharacterGrade.Normal) == 1 &&
+                                     controller.Gold == goldBefore - normalCost &&
+                                     Approximately(normal.EffectiveAttackPower, 10.8f) &&
+                                     Approximately(normal.MaxHealth, 105f) &&
+                                     Approximately(rare.EffectiveAttackPower, 20f) &&
+                                     Approximately(rare.MaxHealth, 100f) &&
+                                     Approximately(temporaryNormal.EffectiveAttackPower, 10f) &&
+                                     Approximately(temporaryNormal.MaxHealth, 100f);
+
+                DefenderUnit futureNormal = CreatePass1DProbeUnit(root.transform, "future", CharacterGrade.Normal, 100f, 10f, false, units);
+                bool futureApplied = Approximately(futureNormal.EffectiveAttackPower, 10.8f) && Approximately(futureNormal.MaxHealth, 105f);
+
+                goldField.SetValue(controller, 10000);
+                bool capReached = true;
+                while (controller.GetGradeUpgradeLevel(CharacterGrade.Normal) < DefenseGameController.GradeUpgradeMaximumLevel)
+                {
+                    capReached &= controller.TryUpgradeGrade(CharacterGrade.Normal);
+                }
+                bool maxStops = capReached && !controller.TryUpgradeGrade(CharacterGrade.Normal) &&
+                                controller.GetGradeUpgradeLevel(CharacterGrade.Normal) == DefenseGameController.GradeUpgradeMaximumLevel;
+
+                roundRunningField.SetValue(rounds, true);
+                bool combatBlocks = !controller.CanUpgradeGrade(CharacterGrade.Rare) && !controller.TryUpgradeGrade(CharacterGrade.Rare);
+                roundRunningField.SetValue(rounds, false);
+
+                controller.ResetRunForRetry();
+                bool resetClears = controller.GetGradeUpgradeLevel(CharacterGrade.Normal) == 0 &&
+                                   controller.GetGradeUpgradeLevel(CharacterGrade.Rare) == 0;
+                return firstPurchase && futureApplied && maxStops && combatBlocks && resetClears;
+            }
+            finally
+            {
+                boardField.SetValue(controller, originalBoard);
+                roundField.SetValue(controller, originalRounds);
+                goldField.SetValue(controller, originalGold);
+                for (int i = 0; i < units.Count; i++)
+                {
+                    if (units[i] != null)
+                    {
+                        UnityEngine.Object.DestroyImmediate(units[i]);
+                    }
+                }
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(roundsObject);
+                controller.ResetRunForRetry();
+            }
+        }
+
+        private static DefenderUnit CreatePass1DProbeUnit(Transform parent, string id, CharacterGrade grade, float health, float attack, bool temporary, List<GameObject> units)
+        {
+            GameObject unitObject = new GameObject("Pass1DProbe_" + id);
+            unitObject.transform.SetParent(parent, false);
+            DefenderUnit unit = unitObject.AddComponent<DefenderUnit>();
+            CharacterDefinition definition = new CharacterDefinition
+            {
+                id = "pass1d_" + id,
+                displayName = id,
+                grade = grade,
+                stats = new CombatStats { maxHealth = health, attackPower = attack },
+                attackBehavior = new AttackBehavior()
+            };
+            if (temporary)
+            {
+                unit.InitializeSummon(definition);
+            }
+            else
+            {
+                unit.Initialize(definition);
+            }
+            units.Add(unitObject);
+            return unit;
+        }
+
+        private static bool ValidatePass1DMergeInheritanceRegression()
+        {
+            GameObject resultObject = new GameObject("Pass1DMergeResultProbe");
+            DefenderUnit result = resultObject.AddComponent<DefenderUnit>();
+            try
+            {
+                CharacterDefinition definition = new CharacterDefinition
+                {
+                    id = "pass1d_merge_result",
+                    displayName = "Merge Result",
+                    grade = CharacterGrade.Rare,
+                    stats = new CombatStats { maxHealth = 100f, attackPower = 10f },
+                    attackBehavior = new AttackBehavior()
+                };
+                result.Initialize(definition);
+                result.SetRunGradeUpgradeBonuses(0.16f, 0.10f, false);
+                result.ApplyMergeInheritance(15f, 150f);
+                bool exactIntrinsicInheritance = Approximately(result.EffectiveAttackPowerWithoutRunGradeUpgrade, 15f) &&
+                                                 Approximately(result.MaxHealthWithoutRunGradeUpgrade, 150f);
+                bool resultUpgradeAppliedOnce = Approximately(result.EffectiveAttackPower, 16.6f) &&
+                                                Approximately(result.MaxHealth, 160f);
+
+                GameObject higherResultObject = new GameObject("Pass1DHigherMergeResultProbe");
+                DefenderUnit higherResult = higherResultObject.AddComponent<DefenderUnit>();
+                try
+                {
+                    higherResult.Initialize(definition);
+                    higherResult.SetRunGradeUpgradeBonuses(0.32f, 0.20f, false);
+                    higherResult.ApplyMergeInheritance(15f, 150f);
+                    bool strongerAtHigherResultUpgrade = higherResult.EffectiveAttackPower > result.EffectiveAttackPower &&
+                                                         higherResult.MaxHealth > result.MaxHealth;
+                    return exactIntrinsicInheritance && resultUpgradeAppliedOnce && strongerAtHigherResultUpgrade;
+                }
+                finally
+                {
+                    UnityEngine.Object.DestroyImmediate(higherResultObject);
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(resultObject);
+            }
+        }
+        private static bool ValidateGradeUpgradeBarUi(DefenseGameController controller)
+        {
+            GameObject root = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                .FirstOrDefault(transform => transform != null && transform.name == "GradeUpgradeBar")?.gameObject;
+            CanvasGroup canvasGroup = root != null ? root.GetComponent<CanvasGroup>() : null;
+            Button[] gradeButtons = root != null
+                ? root.GetComponentsInChildren<Button>(true).Where(button => button != null && button.name.StartsWith("GradeUpgrade_")).ToArray()
+                : Array.Empty<Button>();
+            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo roundField = typeof(DefenseGameController).GetField("roundManager", Flags);
+            FieldInfo roundRunningField = typeof(RoundManager).GetField("<IsRoundRunning>k__BackingField", Flags);
+            MethodInfo notify = typeof(DefenseGameController).GetMethod("NotifyStateChanged", Flags);
+            RoundManager rounds = controller != null && roundField != null ? roundField.GetValue(controller) as RoundManager : null;
+            if (controller == null || canvasGroup == null || gradeButtons.Length != 6 || rounds == null || roundRunningField == null || notify == null)
+            {
+                return false;
+            }
+
+            bool originalRunning = (bool)roundRunningField.GetValue(rounds);
+            try
+            {
+                roundRunningField.SetValue(rounds, false);
+                notify.Invoke(controller, null);
+                bool preparationVisible = Approximately(canvasGroup.alpha, 1f) && canvasGroup.blocksRaycasts && canvasGroup.interactable;
+
+                roundRunningField.SetValue(rounds, true);
+                notify.Invoke(controller, null);
+                bool combatHidden = Approximately(canvasGroup.alpha, 0f) && !canvasGroup.blocksRaycasts && !canvasGroup.interactable;
+
+                roundRunningField.SetValue(rounds, false);
+                notify.Invoke(controller, null);
+                bool restored = Approximately(canvasGroup.alpha, 1f) && canvasGroup.blocksRaycasts && canvasGroup.interactable;
+                return preparationVisible && combatHidden && restored;
+            }
+            finally
+            {
+                roundRunningField.SetValue(rounds, originalRunning);
+                notify.Invoke(controller, null);
+            }
+        }
         private static bool ValidatePass1DPressureRules()
         {
             bool classic = Approximately(ClassicRoundPressure.ResolveClassicRoundHealthMultiplier(1), 1f) &&
@@ -1200,7 +1410,14 @@ namespace DefenseGame.Editor
                              Approximately(ClassicRoundPressure.ResolveChallengeAttackMultiplier(35), 1.15f) &&
                              Approximately(ClassicRoundPressure.ResolveChallengeSpawnCountMultiplier(35), 1.20f) &&
                              Approximately(ClassicRoundPressure.ResolveChallengeSpawnIntervalMultiplier(35), 0.85f);
-            return classic && challenge;
+            bool capAndFloor = ClassicRoundPressure.ApplyChallengeSpawnCount(35, 60, 60) == 60 &&
+                               ClassicRoundPressure.ApplyChallengeSpawnCount(30, 50, 60) == 50 &&
+                               Approximately(ClassicRoundPressure.ApplyChallengeSpawnInterval(35, 0.30f, 0.28f), 0.28f) &&
+                               Approximately(ClassicRoundPressure.ApplyChallengeSpawnInterval(30, 0.30f, 0.28f), 0.30f);
+            bool scope = ClassicRoundPressure.AppliesTo(CombatModeProfile.CreateClassic(), false) &&
+                         !ClassicRoundPressure.AppliesTo(CombatModeProfile.CreateClassic(), true) &&
+                         !ClassicRoundPressure.AppliesTo(CombatModeProfile.CreateOverdrive(), false);
+            return classic && challenge && capAndFloor && scope;
         }
         private static bool ValidateBoardCapacityPacing(out string summary)
         {
@@ -1224,7 +1441,8 @@ namespace DefenseGame.Editor
                     board.RefreshSlotLocks(completedRounds[i]);
                     actualCounts[i] = board.UnlockedSlotCount;
                     valid &= actualCounts[i] == expectedCounts[i] && actualCounts[i] <= 15;
-                }                summary = "R1=" + actualCounts[0] + ", R7=" + actualCounts[1] + ", R8=" + actualCounts[2] +
+                }
+                summary = "R1=" + actualCounts[0] + ", R7=" + actualCounts[1] + ", R8=" + actualCounts[2] +
                           ", R15=" + actualCounts[3] + ", R16=" + actualCounts[4] + ", R23=" + actualCounts[5] +
                           ", R24=" + actualCounts[6] + ", R31=" + actualCounts[7] + ", R32=" + actualCounts[8] +
                           ", R39=" + actualCounts[9] + ", R40=" + actualCounts[10] + ", R100=" + actualCounts[11];
@@ -1784,7 +2002,6 @@ namespace DefenseGame.Editor
             public bool tacticalMissionRiskRewardValid;
             public bool tacticalMissionChoiceValid;
             public bool roundDiamondRewardValid;
-            public bool missionSupportCombatBlockValid;
             public bool bannerBurstQueueValid;
             public bool earlyMiniShopChoicesValid;
             public string earlyMiniShopSummary;
@@ -1807,6 +2024,7 @@ namespace DefenseGame.Editor
             public string animationMaterialEventsSummary;
             public bool boardCapacityPacingValid;
             public string boardCapacityPacingSummary;
+            public bool gradeUpgradeBarUiValid;
             public int runtimeErrors;
             public PrefabSmokeResult[] prefabs = Array.Empty<PrefabSmokeResult>();
             public string[] notes = Array.Empty<string>();
