@@ -135,6 +135,11 @@ namespace DefenseGame
 
 		private float permanentDamageReductionBonus;
 
+		// Run-only grade upgrades are separate from permanent, tile and synergy bonuses.
+		private float runGradeAttackPowerBonus;
+
+		private float runGradeMaxHealthBonus;
+
 		private float tileAttackPowerBonus;
 
 		private float tileAttackSpeedBonus;
@@ -241,6 +246,9 @@ namespace DefenseGame
 		public CharacterDefinition Definition => definition;
 
 		public float EffectiveAttackPower => (definition != null) ? GetEffectiveAttackPower() : 0f;
+		// Merge inheritance uses intrinsic source value; the result receives only its own grade's run upgrade.
+		public float EffectiveAttackPowerWithoutRunGradeUpgrade => (definition != null) ? GetEffectiveAttackPowerWithoutRunGradeUpgrade() : 0f;
+		public float MaxHealthWithoutRunGradeUpgrade => (definition != null) ? GetMaximumHealthWithoutRunGradeUpgrade() : 0f;
 
 		public float ActiveAttackPowerReductionRatio => (temporaryAttackPowerReductionTimer > 0f) ? temporaryAttackPowerReduction : 0f;
 
@@ -254,7 +262,7 @@ namespace DefenseGame
 
 		public float CurrentHealth => currentHealth;
 
-		public float MaxHealth => (definition != null) ? (definition.stats.maxHealth * Mathf.Max(0.1f, 1f + permanentMaxHealthBonus + synergyBonus.maxHealthBonus + tileMaxHealthBonus)) : 0f;
+		public float MaxHealth => (definition != null) ? (definition.stats.maxHealth * Mathf.Max(0.1f, 1f + permanentMaxHealthBonus + synergyBonus.maxHealthBonus + tileMaxHealthBonus + runGradeMaxHealthBonus)) : 0f;
 
 		public float CurrentMana => currentMana;
 
@@ -599,6 +607,8 @@ namespace DefenseGame
 			permanentCriticalDamageBonus = 0f;
 			permanentBossDamageBonus = 0f;
 			permanentDamageReductionBonus = 0f;
+			runGradeAttackPowerBonus = 0f;
+			runGradeMaxHealthBonus = 0f;
 			tileAttackPowerBonus = 0f;
 			tileAttackSpeedBonus = 0f;
 			tileManaRegenRateBonus = 0f;
@@ -629,6 +639,10 @@ namespace DefenseGame
 			if (!isTemporarySummon && OutgameProgressionSystem.Active != null)
 			{
 				OutgameProgressionSystem.Active.ApplyGrowthToDefender(this, definition);
+			}
+			if (!isTemporarySummon && DefenseGameController.Active != null)
+			{
+				DefenseGameController.Active.ApplyRunGradeUpgrade(this, preserveHealthRatio: false);
 			}
 			currentHealth = MaxHealth;
 			currentMana = 0f;
@@ -3196,8 +3210,33 @@ namespace DefenseGame
 
 		private float GetEffectiveAttackPower()
 		{
+			float multiplier = 1f + permanentAttackPowerBonus + synergyBonus.attackPowerBonus + temporaryAttackPowerBonus + tileAttackPowerBonus + runGradeAttackPowerBonus - temporaryAttackPowerReduction;
+			return definition.stats.attackPower * Mathf.Max(0.1f, multiplier);
+		}
+
+		private float GetEffectiveAttackPowerWithoutRunGradeUpgrade()
+		{
 			float multiplier = 1f + permanentAttackPowerBonus + synergyBonus.attackPowerBonus + temporaryAttackPowerBonus + tileAttackPowerBonus - temporaryAttackPowerReduction;
 			return definition.stats.attackPower * Mathf.Max(0.1f, multiplier);
+		}
+
+		private float GetMaximumHealthWithoutRunGradeUpgrade()
+		{
+			float maximumHealth = definition.stats.maxHealth;
+			maximumHealth *= 1f + permanentMaxHealthBonus + synergyBonus.maxHealthBonus + tileMaxHealthBonus;
+			return Mathf.Max(1f, maximumHealth);
+		}
+
+		public void SetRunGradeUpgradeBonuses(float attackPowerBonus, float maxHealthBonus, bool preserveHealthRatio)
+		{
+			float healthRatio = preserveHealthRatio ? HealthRatio : 1f;
+			runGradeAttackPowerBonus = Mathf.Max(0f, attackPowerBonus);
+			runGradeMaxHealthBonus = Mathf.Max(0f, maxHealthBonus);
+			if (preserveHealthRatio && definition != null)
+			{
+				currentHealth = Mathf.Clamp(MaxHealth * healthRatio, 0f, MaxHealth);
+				floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, MaxMana);
+			}
 		}
 
 		private float CalculateDamageAgainst(MonsterUnit target, float multiplier, bool critical)

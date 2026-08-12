@@ -105,7 +105,7 @@ namespace DefenseGame
 		private int baseActiveSlotCount = 10;
 
 		[SerializeField]
-		private int frontSlotUnlockInterval = 10;
+		private int frontSlotUnlockInterval = 8;
 
 		[SerializeField]
 		private int maxFrontUnlockCount = 5;
@@ -357,8 +357,8 @@ namespace DefenseGame
 				Debug.LogError("No DefenderUnit prefab assigned for merge result.");
 				return false;
 			}
-			float inheritedAttackPower = sameGradeUnits.Sum((DefenderUnit defenderUnit) => (defenderUnit != null) ? defenderUnit.EffectiveAttackPower : 0f) * 0.98f;
-			float inheritedMaxHealth = sameGradeUnits.Sum((DefenderUnit defenderUnit) => (defenderUnit != null) ? defenderUnit.MaxHealth : 0f) * 0.94f;
+			float inheritedAttackPower = sameGradeUnits.Sum((DefenderUnit defenderUnit) => (defenderUnit != null) ? defenderUnit.EffectiveAttackPowerWithoutRunGradeUpgrade : 0f) * 0.98f;
+			float inheritedMaxHealth = sameGradeUnits.Sum((DefenderUnit defenderUnit) => (defenderUnit != null) ? defenderUnit.MaxHealthWithoutRunGradeUpgrade : 0f) * 0.94f;
 			for (int i = 0; i < sameGradeUnits.Count; i++)
 			{
 				sameGradeUnits[i].RemoveFromBoard();

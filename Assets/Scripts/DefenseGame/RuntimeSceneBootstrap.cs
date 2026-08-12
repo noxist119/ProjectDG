@@ -868,6 +868,7 @@ private void EnsureLight()
 			Text synergyInsight = CreateBuildInsightCell(((Component)(object)buildReadoutPanel).transform, font, "DangerInsight", "위험", new Vector2(-292f, 0f), new Color(1f, 0.48f, 0.3f));
 			Text recipeInsight = CreateBuildInsightCell(((Component)(object)buildReadoutPanel).transform, font, "ActionInsight", "추천 행동", Vector2.zero, new Color(0.36f, 0.92f, 1f));
 			Text tileInsight = CreateBuildInsightCell(((Component)(object)buildReadoutPanel).transform, font, "DealerInsight", "핵심 딜러", new Vector2(292f, 0f), new Color(1f, 0.76f, 0.26f));
+			GradeUpgradeBarUI.Create(hudRoot, font, gameController, presentationConfig);
 			Image fatePanel = CreatePanel(hudRoot, "FateInterventionPanel", new Vector2(0f, 434f), new Vector2(1000f, 560f), new Color(0.06f, 0.05f, 0.18f, 0.98f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
 			CanvasGroup fatePanelCanvasGroup = ((Component)(object)fatePanel).gameObject.AddComponent<CanvasGroup>();
 			CreatePanel(((Component)(object)fatePanel).transform, "FateAccent", new Vector2(-488f, 0f), new Vector2(12f, 516f), new Color(1f, 0.3f, 0.88f, 0.96f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), rounded: true, shadow: false);
@@ -1928,4 +1929,175 @@ private void EnsureLight()
 			}
 		}
 	}
+    /// <summary>Preparation-only, run-scoped grade upgrade controls.</summary>
+    public sealed class GradeUpgradeBarUI : MonoBehaviour
+    {
+        private static readonly CharacterGrade[] Grades =
+        {
+            CharacterGrade.Normal, CharacterGrade.Rare, CharacterGrade.Epic,
+            CharacterGrade.Legendary, CharacterGrade.Mythic, CharacterGrade.Transcendent
+        };
+
+        private DefenseGameController controller;
+        private Button[] buttons;
+        private Text[] labels;
+        private Image[] bodies;
+        private bool subscribed;
+
+        public static GradeUpgradeBarUI Create(Transform parent, Font font, DefenseGameController controller, GamePresentationConfig presentationConfig)
+        {
+            GameObject root = new GameObject("GradeUpgradeBar", typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+            RectTransform rootRect = root.GetComponent<RectTransform>();
+            rootRect.anchorMin = new Vector2(0.5f, 0f);
+            rootRect.anchorMax = new Vector2(0.5f, 0f);
+            rootRect.pivot = new Vector2(0.5f, 0.5f);
+            rootRect.anchoredPosition = new Vector2(0f, 468f);
+            rootRect.sizeDelta = new Vector2(960f, 92f);
+
+            Image background = root.AddComponent<Image>();
+            background.color = new Color(0.035f, 0.08f, 0.20f, 0.88f);
+            background.raycastTarget = false;
+            RuntimeUiSkinUtility.ApplyImageSkin(background, presentationConfig != null ? presentationConfig.uiSkin : null, "GradeUpgradeBar", false, true);
+
+            Text title = CreateText(root.transform, font, "GradeUpgradeTitle", new Vector2(0f, 32f), new Vector2(900f, 24f), "\ub4f1\uae09 \uac15\ud654  ·  \ud604\uc7ac \ub4f1\uae09 \uc720\ub2db \uc804\uccb4 \uc801\uc6a9", 17, new Color(0.72f, 0.91f, 1f));
+            title.alignment = TextAnchor.MiddleCenter;
+
+            Button[] buttons = new Button[Grades.Length];
+            Text[] labels = new Text[Grades.Length];
+            Image[] bodies = new Image[Grades.Length];
+            for (int i = 0; i < Grades.Length; i++)
+            {
+                CharacterGrade grade = Grades[i];
+                GameObject buttonObject = new GameObject("GradeUpgrade_" + grade, typeof(RectTransform), typeof(Image), typeof(Button));
+                buttonObject.transform.SetParent(root.transform, false);
+                RectTransform rect = buttonObject.GetComponent<RectTransform>();
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.anchoredPosition = new Vector2(-390f + i * 156f, -12f);
+                rect.sizeDelta = new Vector2(146f, 58f);
+                Image body = buttonObject.GetComponent<Image>();
+                body.color = new Color(0.08f, 0.13f, 0.28f, 0.98f);
+                RuntimeUiSkinUtility.ApplyImageSkin(body, presentationConfig != null ? presentationConfig.uiSkin : null, "GradeUpgradeButton", true, true);
+
+                Text label = CreateText(buttonObject.transform, font, "Label", Vector2.zero, new Vector2(138f, 52f), string.Empty, 16, Color.white);
+                label.alignment = TextAnchor.MiddleCenter;
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = 12;
+                label.resizeTextMaxSize = 16;
+                Shadow shadow = label.gameObject.AddComponent<Shadow>();
+                shadow.effectColor = new Color(0f, 0f, 0f, 0.8f);
+                shadow.effectDistance = new Vector2(1f, -1f);
+
+                int capturedIndex = i;
+                buttonObject.GetComponent<Button>().onClick.AddListener(delegate
+                {
+                    if (controller != null)
+                    {
+                        controller.TryUpgradeGrade(Grades[capturedIndex]);
+                    }
+                });
+                buttons[i] = buttonObject.GetComponent<Button>();
+                labels[i] = label;
+                bodies[i] = body;
+            }
+
+            GradeUpgradeBarUI ui = root.AddComponent<GradeUpgradeBarUI>();
+            ui.Configure(controller, buttons, labels, bodies);
+            return ui;
+        }
+
+        public void Configure(DefenseGameController value, Button[] newButtons, Text[] newLabels, Image[] newBodies)
+        {
+            Unsubscribe();
+            controller = value;
+            buttons = newButtons;
+            labels = newLabels;
+            bodies = newBodies;
+            Subscribe();
+            Refresh();
+        }
+
+        private void OnEnable()
+        {
+            Subscribe();
+            Refresh();
+        }
+
+        private void OnDisable()
+        {
+            Unsubscribe();
+        }
+
+        private void Subscribe()
+        {
+            if (subscribed || controller == null)
+            {
+                return;
+            }
+
+            controller.OnStateChanged += Refresh;
+            subscribed = true;
+        }
+
+        private void Unsubscribe()
+        {
+            if (!subscribed || controller == null)
+            {
+                subscribed = false;
+                return;
+            }
+
+            controller.OnStateChanged -= Refresh;
+            subscribed = false;
+        }
+
+        private void Refresh()
+        {
+            if (controller == null || buttons == null || labels == null || bodies == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < Grades.Length && i < buttons.Length && i < labels.Length && i < bodies.Length; i++)
+            {
+                CharacterGrade grade = Grades[i];
+                int level = controller.GetGradeUpgradeLevel(grade);
+                bool isMax = level >= DefenseGameController.GradeUpgradeMaximumLevel;
+                int cost = controller.GetGradeUpgradeCost(grade);
+                bool available = !isMax && !controller.IsRoundRunning && controller.Gold >= cost;
+                Color gradeColor = CharacterGradeUtility.GetColor(grade, Color.white);
+                buttons[i].interactable = available;
+                bodies[i].color = available
+                    ? Color.Lerp(new Color(0.06f, 0.10f, 0.26f, 0.98f), gradeColor, 0.24f)
+                    : new Color(0.09f, 0.10f, 0.16f, 0.66f);
+                labels[i].color = isMax ? Color.Lerp(gradeColor, Color.white, 0.25f) : (available ? Color.white : new Color(0.72f, 0.74f, 0.80f));
+                string gradeName = CharacterGradeUtility.GetDisplayName(grade);
+                labels[i].text = isMax
+                    ? gradeName + "\nLv.MAX"
+                    : gradeName + "  Lv." + level + "\n\u2191 " + cost + "G";
+            }
+        }
+
+        private static Text CreateText(Transform parent, Font font, string name, Vector2 position, Vector2 size, string value, int fontSize, Color color)
+        {
+            GameObject textObject = new GameObject(name, typeof(RectTransform), typeof(Text));
+            textObject.transform.SetParent(parent, false);
+            RectTransform rect = textObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+            Text text = textObject.GetComponent<Text>();
+            text.font = font;
+            text.fontStyle = FontStyle.Bold;
+            text.fontSize = fontSize;
+            text.color = color;
+            text.text = value;
+            text.raycastTarget = false;
+            return text;
+        }
+    }
 }

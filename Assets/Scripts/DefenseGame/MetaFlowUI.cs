@@ -1391,14 +1391,23 @@ namespace DefenseGame
         {
             defeatPresented = false;
             resultRewardGranted = false;
+            // A combat round owns the complete screen. Explicitly clear every meta page
+            // so no lobby/background strip can remain above the combat HUD.
+            SetGameplayStageVisible(true);
             SetGameplayHudVisible(true);
             HideLobby();
             HideMatchmaking();
             HideLoadout();
             HideOutgamePlaceholder();
             HideShop();
+            HideYahtzee();
+            HideSeasonRanking();
             HideResult();
             HideExitConfirm();
+            if (outgameNavigationRoot != null)
+            {
+                outgameNavigationRoot.SetActive(false);
+            }
         }
 
         private void HandleRoundCompleted(int round)

@@ -584,11 +584,29 @@ namespace DefenseGame
             }
 
             regularCount = ApplyPreBossLeakEaseToRegularCount(round, bossRound, regularCount);
-            regularCount = CommercialRoundPacing.ApplySpawnCount(round, bossRound, regularCount);
             CombatModeProfile profile = combatModeProfile ?? CombatModeProfile.CreateClassic();
+            bool classicRegularPressure = !bossRound && !profile.IsOverdrive;
+            regularCount = CommercialRoundPacing.ApplySpawnCount(round, bossRound, regularCount);
             regularCount = profile.ApplyRegularCount(round, bossRound, regularCount);
+            if (classicRegularPressure)
+            {
+                regularCount = Mathf.CeilToInt(regularCount * ClassicRoundPressure.ResolveChallengeSpawnCountMultiplier(round));
+            }
+
             float spawnInterval = CommercialRoundPacing.ApplySpawnInterval(round, bossRound, CalculateSpawnInterval(round, bossRound));
+            if (classicRegularPressure)
+            {
+                spawnInterval *= ClassicRoundPressure.ResolveChallengeSpawnIntervalMultiplier(round);
+            }
+
             bool hordeRound = profile.IsHordeRound(round, bossRound);
+            float healthMultiplier = profile.ResolveRegularHealthMultiplier(round, bossRound);
+            float attackMultiplier = profile.ResolveRegularAttackMultiplier(round, bossRound);
+            if (classicRegularPressure)
+            {
+                healthMultiplier *= ClassicRoundPressure.ResolveClassicRoundHealthMultiplier(round) * ClassicRoundPressure.ResolveChallengeHealthMultiplier(round);
+                attackMultiplier *= ClassicRoundPressure.ResolveClassicRoundAttackMultiplier(round) * ClassicRoundPressure.ResolveChallengeAttackMultiplier(round);
+            }
 
             return new RoundSpawnPlan
             {
@@ -599,8 +617,8 @@ namespace DefenseGame
                 intervalVariance = Mathf.Max(0f, spawnIntervalVariance),
                 useBurstPacks = profile.useBurstPacks,
                 isHordeRound = hordeRound,
-                regularHealthMultiplier = profile.ResolveRegularHealthMultiplier(round, bossRound),
-                regularAttackMultiplier = profile.ResolveRegularAttackMultiplier(round, bossRound)
+                regularHealthMultiplier = healthMultiplier,
+                regularAttackMultiplier = attackMultiplier
             };
         }
 
@@ -1225,5 +1243,42 @@ namespace DefenseGame
 
             return CommercialRoundPhase.Stable;
         }
+    }
+    /// <summary>Classic regular-monster pressure only. Bosses and Overdrive do not use this resolver.</summary>
+    public static class ClassicRoundPressure
+    {
+        public static bool IsChallengeRound(int round)
+        {
+            return round > 0 && round % 10 == 5;
+        }
+
+        public static float ResolveClassicRoundHealthMultiplier(int round)
+        {
+            if (round < 10) return 1f;
+            if (round < 20) return 1.12f;
+            if (round < 30) return 1.30f;
+            if (round < 40) return 1.55f;
+            if (round < 50) return 1.85f;
+            if (round < 60) return 2.15f;
+            int extraTens = Mathf.Max(0, round / 10 - 5);
+            return Mathf.Min(3.25f, 2.15f + extraTens * 0.25f);
+        }
+
+        public static float ResolveClassicRoundAttackMultiplier(int round)
+        {
+            if (round < 10) return 1f;
+            if (round < 20) return 1.05f;
+            if (round < 30) return 1.12f;
+            if (round < 40) return 1.22f;
+            if (round < 50) return 1.34f;
+            if (round < 60) return 1.46f;
+            int extraTens = Mathf.Max(0, round / 10 - 5);
+            return Mathf.Min(1.85f, 1.46f + extraTens * 0.08f);
+        }
+
+        public static float ResolveChallengeHealthMultiplier(int round) => IsChallengeRound(round) ? 1.25f : 1f;
+        public static float ResolveChallengeAttackMultiplier(int round) => IsChallengeRound(round) ? 1.15f : 1f;
+        public static float ResolveChallengeSpawnCountMultiplier(int round) => IsChallengeRound(round) ? 1.20f : 1f;
+        public static float ResolveChallengeSpawnIntervalMultiplier(int round) => IsChallengeRound(round) ? 0.85f : 1f;
     }
 }

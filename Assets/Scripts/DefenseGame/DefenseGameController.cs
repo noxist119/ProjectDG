@@ -148,6 +148,8 @@ namespace DefenseGame
         private const int EarlyRunRequiredRoundCount = 10;
         private const int RunClipMaxEvents = 6;
         private const int BossForecastPreparationCompletedRound = 3;
+        private const int GradeUpgradeMaxLevel = 10;
+        private readonly Dictionary<CharacterGrade, int> gradeUpgradeLevels = new Dictionary<CharacterGrade, int>();
 
         public static DefenseGameController Active { get; private set; }
 
@@ -596,6 +598,100 @@ namespace DefenseGame
         public event System.Action OnBossForecastBetRequested;
 
         public int Gold { get; private set; }
+        public const float GradeUpgradeAttackPerLevel = 0.08f;
+        public const float GradeUpgradeHealthPerLevel = 0.05f;
+        public const int GradeUpgradeMaximumLevel = GradeUpgradeMaxLevel;
+
+        public int GetGradeUpgradeLevel(CharacterGrade grade)
+        {
+            return gradeUpgradeLevels.TryGetValue(grade, out int level) ? Mathf.Clamp(level, 0, GradeUpgradeMaxLevel) : 0;
+        }
+
+        public static int ResolveGradeUpgradeBaseCost(CharacterGrade grade)
+        {
+            switch (grade)
+            {
+                case CharacterGrade.Normal: return 20;
+                case CharacterGrade.Rare: return 30;
+                case CharacterGrade.Epic: return 45;
+                case CharacterGrade.Legendary: return 65;
+                case CharacterGrade.Mythic: return 90;
+                case CharacterGrade.Transcendent: return 120;
+                default: return 20;
+            }
+        }
+
+        public static int ResolveGradeUpgradeCost(CharacterGrade grade, int currentLevel)
+        {
+            int level = Mathf.Clamp(currentLevel, 0, GradeUpgradeMaxLevel);
+            int rawCost = Mathf.CeilToInt(ResolveGradeUpgradeBaseCost(grade) * Mathf.Pow(1.45f, level));
+            return Mathf.CeilToInt(rawCost / 5f) * 5;
+        }
+
+        public int GetGradeUpgradeCost(CharacterGrade grade)
+        {
+            return GetGradeUpgradeLevel(grade) >= GradeUpgradeMaxLevel ? 0 : ResolveGradeUpgradeCost(grade, GetGradeUpgradeLevel(grade));
+        }
+
+        public float GetGradeAttackMultiplier(CharacterGrade grade)
+        {
+            return 1f + GetGradeUpgradeLevel(grade) * GradeUpgradeAttackPerLevel;
+        }
+
+        public float GetGradeHealthMultiplier(CharacterGrade grade)
+        {
+            return 1f + GetGradeUpgradeLevel(grade) * GradeUpgradeHealthPerLevel;
+        }
+
+        public bool CanUpgradeGrade(CharacterGrade grade)
+        {
+            int cost = GetGradeUpgradeCost(grade);
+            return !IsRoundRunning && cost > 0 && Gold >= cost;
+        }
+
+        public bool TryUpgradeGrade(CharacterGrade grade)
+        {
+            if (!CanUpgradeGrade(grade))
+            {
+                return false;
+            }
+
+            int cost = GetGradeUpgradeCost(grade);
+            Gold -= cost;
+            int level = GetGradeUpgradeLevel(grade) + 1;
+            gradeUpgradeLevels[grade] = level;
+            if (boardManager != null)
+            {
+                DefenderUnit[] defenders = boardManager.GetAliveDefenders();
+                for (int i = 0; i < defenders.Length; i++)
+                {
+                    DefenderUnit defender = defenders[i];
+                    if (defender != null && !defender.IsTemporarySummon && defender.Grade == grade)
+                    {
+                        ApplyRunGradeUpgrade(defender, preserveHealthRatio: true);
+                    }
+                }
+            }
+
+            string gradeName = CharacterGradeUtility.GetDisplayName(grade);
+            OnBannerRequested?.Invoke(gradeName + " \uac15\ud654 Lv." + level + "  \uacf5\uaca9\ub825 +" + (level * 8) + "% / \uccb4\ub825 +" + (level * 5) + "%", CharacterGradeUtility.GetColor(grade, Color.white), 1.8f);
+            NotifyStateChanged();
+            return true;
+        }
+
+        public void ApplyRunGradeUpgrade(DefenderUnit defender, bool preserveHealthRatio)
+        {
+            if (defender == null)
+            {
+                return;
+            }
+
+            CharacterGrade grade = defender.Grade;
+            defender.SetRunGradeUpgradeBonuses(
+                GetGradeAttackMultiplier(grade) - 1f,
+                GetGradeHealthMultiplier(grade) - 1f,
+                preserveHealthRatio);
+        }
         public int Life => life;
         public int MaxLife => maxLife > 0 ? maxLife : life;
         public string LifeHudSummary => "HP " + Life + "/" + MaxLife;
@@ -3986,6 +4082,10 @@ namespace DefenseGame
                     ApplyFateMonsterCrushToActiveMonsters();
                 }
                 AnnounceEarlyCrisisRound(round);
+                if (!bossRound && !IsOverdriveMode && ClassicRoundPressure.IsChallengeRound(round))
+                {
+                    OnBannerRequested?.Invoke("\uc704\uae30 \ub77c\uc6b4\ub4dc  ·  \uac15\uc801 \uc6e8\uc774\ube0c", new Color(1f, 0.48f, 0.22f), 2.2f);
+                }
                 if (IsOverdriveMode)
                 {
                     bool horde = roundManager != null && roundManager.IsCurrentRoundHorde;
@@ -4468,6 +4568,7 @@ namespace DefenseGame
         private void ResetRunStats()
         {
             RestoreFateChoiceSlowMotion();
+            gradeUpgradeLevels.Clear();
             awardedYahtzeeTicketMilestoneRounds.Clear();
             LastYahtzeeTicketReward = 0;
             RunYahtzeeTicketsEarned = 0;

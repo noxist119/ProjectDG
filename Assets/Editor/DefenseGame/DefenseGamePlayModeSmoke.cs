@@ -260,6 +260,12 @@ namespace DefenseGame.Editor
             bool dragTransactionSafetyValid = ValidateDragTransactionSafety();
             bool dragCombatSuspensionValid = ValidateDraggedUnitCombatSuspension();
             bool boardCapacityPacingValid = ValidateBoardCapacityPacing(out string boardCapacityPacingSummary);
+            bool pass1DGradeRulesValid = ValidatePass1DGradeUpgradeRules();
+            bool pass1DPressureValid = ValidatePass1DPressureRules();
+            if (!pass1DGradeRulesValid || !pass1DPressureValid)
+            {
+                notes.Add("Pass 1D grade upgrade or classic pressure resolver validation failed.");
+            }
             if (!screenSpaceCombatHudValid || !dragTransactionSafetyValid || !dragCombatSuspensionValid || !boardCapacityPacingValid)
             {
                 notes.Add("Screen-space combat HUD, anchor priority, drag transaction, drag combat suspension, or board capacity pacing validation failed. " + boardCapacityPacingSummary);
@@ -773,7 +779,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -1155,6 +1161,47 @@ namespace DefenseGame.Editor
                    cancelRestoresTracking && disableClearsDrag && clearRemovesLogicalUnits && boardBoundsValid;
         }
 
+        private static bool ValidatePass1DGradeUpgradeRules()
+        {
+            bool baseCosts = DefenseGameController.ResolveGradeUpgradeBaseCost(CharacterGrade.Normal) == 20 &&
+                             DefenseGameController.ResolveGradeUpgradeBaseCost(CharacterGrade.Rare) == 30 &&
+                             DefenseGameController.ResolveGradeUpgradeBaseCost(CharacterGrade.Epic) == 45 &&
+                             DefenseGameController.ResolveGradeUpgradeBaseCost(CharacterGrade.Legendary) == 65 &&
+                             DefenseGameController.ResolveGradeUpgradeBaseCost(CharacterGrade.Mythic) == 90 &&
+                             DefenseGameController.ResolveGradeUpgradeBaseCost(CharacterGrade.Transcendent) == 120;
+            bool escalation = DefenseGameController.ResolveGradeUpgradeCost(CharacterGrade.Normal, 0) == 20 &&
+                              DefenseGameController.ResolveGradeUpgradeCost(CharacterGrade.Normal, 1) == 30 &&
+                              DefenseGameController.ResolveGradeUpgradeCost(CharacterGrade.Transcendent, 0) == 120 &&
+                              DefenseGameController.ResolveGradeUpgradeCost(CharacterGrade.Transcendent, 1) == 175;
+            return baseCosts && escalation &&
+                   Approximately(1f + DefenseGameController.GradeUpgradeAttackPerLevel, 1.08f) &&
+                   Approximately(1f + DefenseGameController.GradeUpgradeHealthPerLevel, 1.05f) &&
+                   DefenseGameController.GradeUpgradeMaximumLevel == 10;
+        }
+
+        private static bool ValidatePass1DPressureRules()
+        {
+            bool classic = Approximately(ClassicRoundPressure.ResolveClassicRoundHealthMultiplier(1), 1f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundAttackMultiplier(1), 1f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundHealthMultiplier(10), 1.12f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundAttackMultiplier(10), 1.05f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundHealthMultiplier(20), 1.30f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundAttackMultiplier(20), 1.12f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundHealthMultiplier(30), 1.55f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundAttackMultiplier(30), 1.22f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundHealthMultiplier(40), 1.85f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundAttackMultiplier(40), 1.34f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundHealthMultiplier(50), 2.15f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundAttackMultiplier(50), 1.46f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundHealthMultiplier(100), 3.25f) &&
+                           Approximately(ClassicRoundPressure.ResolveClassicRoundAttackMultiplier(100), 1.85f);
+            bool challenge = ClassicRoundPressure.IsChallengeRound(35) && !ClassicRoundPressure.IsChallengeRound(30) &&
+                             Approximately(ClassicRoundPressure.ResolveChallengeHealthMultiplier(35), 1.25f) &&
+                             Approximately(ClassicRoundPressure.ResolveChallengeAttackMultiplier(35), 1.15f) &&
+                             Approximately(ClassicRoundPressure.ResolveChallengeSpawnCountMultiplier(35), 1.20f) &&
+                             Approximately(ClassicRoundPressure.ResolveChallengeSpawnIntervalMultiplier(35), 0.85f);
+            return classic && challenge;
+        }
         private static bool ValidateBoardCapacityPacing(out string summary)
         {
             GameObject boardRoot = new GameObject("BoardCapacityPacingSmokeBoard");
@@ -1168,8 +1215,8 @@ namespace DefenseGame.Editor
             try
             {
                 board.Configure(slots, null);
-                int[] completedRounds = { 0, 8, 9, 19, 29, 39, 49, 50, 99 };
-                int[] expectedCounts = { 10, 10, 11, 12, 13, 14, 15, 15, 15 };
+                int[] completedRounds = { 0, 6, 7, 14, 15, 22, 23, 30, 31, 38, 39, 99 };
+                int[] expectedCounts = { 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15 };
                 int[] actualCounts = new int[completedRounds.Length];
                 bool valid = true;
                 for (int i = 0; i < completedRounds.Length; i++)
@@ -1177,11 +1224,10 @@ namespace DefenseGame.Editor
                     board.RefreshSlotLocks(completedRounds[i]);
                     actualCounts[i] = board.UnlockedSlotCount;
                     valid &= actualCounts[i] == expectedCounts[i] && actualCounts[i] <= 15;
-                }
-
-                summary = "R1=" + actualCounts[0] + ", R9=" + actualCounts[1] + ", R10=" + actualCounts[2] +
-                          ", R20=" + actualCounts[3] + ", R30=" + actualCounts[4] + ", R40=" + actualCounts[5] +
-                          ", R50=" + actualCounts[6] + ", R51=" + actualCounts[7] + ", R100=" + actualCounts[8];
+                }                summary = "R1=" + actualCounts[0] + ", R7=" + actualCounts[1] + ", R8=" + actualCounts[2] +
+                          ", R15=" + actualCounts[3] + ", R16=" + actualCounts[4] + ", R23=" + actualCounts[5] +
+                          ", R24=" + actualCounts[6] + ", R31=" + actualCounts[7] + ", R32=" + actualCounts[8] +
+                          ", R39=" + actualCounts[9] + ", R40=" + actualCounts[10] + ", R100=" + actualCounts[11];
                 return valid;
             }
             finally
@@ -1658,6 +1704,11 @@ namespace DefenseGame.Editor
                 dailyField.SetValue(controller, originalDaily);
                 UnityEngine.Random.state = originalRandomState;
             }
+        }
+
+        private static bool Approximately(float left, float right)
+        {
+            return Mathf.Abs(left - right) <= 0.001f;
         }
 
         private static bool Approximately(Vector2 left, Vector2 right)
