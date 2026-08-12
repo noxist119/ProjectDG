@@ -54,6 +54,7 @@ namespace DefenseGame
             public Color accentColor;
             public int startRound;
             public int startLife;
+            public int startGold;
             public int startSummons;
             public int startMerges;
             public int startRarePlusMerges;
@@ -87,10 +88,13 @@ namespace DefenseGame
         [SerializeField] private Text completionToastTitleText;
         [SerializeField] private Text completionToastRewardText;
 
-        private const int MaxActiveMissions = 3;
+        private const int MaxMissionOffers = 3;
         private const float CompletionToastDuration = 2.4f;
 
+        // Before selection this contains the three offers; after selection it contains one active mission.
         private readonly List<MissionInstance> activeMissions = new List<MissionInstance>();
+        private bool missionSelected;
+        private bool offerRefreshQueued;
         private readonly Dictionary<MissionKind, int> completedFamilyLevels = new Dictionary<MissionKind, int>();
         private readonly HashSet<string> completedMissionKeys = new HashSet<string>();
         private readonly Dictionary<string, int> recentlyExpiredKeys = new Dictionary<string, int>();
@@ -109,11 +113,12 @@ namespace DefenseGame
         private bool subscribed;
         private bool resolvingMission;
         private int pendingMissionSupportSummons;
-        private bool missionSupportWaitingForSlot;
         private bool runStarted;
 
         public int PendingMissionSupportSummons => pendingMissionSupportSummons;
-        public bool HasInitialStrategyFork => HasActiveMission(MissionKind.SummonSprint) && HasActiveMission(MissionKind.LastStandGambit);
+        public bool HasInitialStrategyFork => HasOfferedMission(MissionKind.PerfectDefense) && HasOfferedMission(MissionKind.SummonSprint) && HasOfferedMission(MissionKind.LastStandGambit);
+        public bool HasActiveMissionSelection => missionSelected;
+        public int MissionOfferCount => missionSelected ? 0 : activeMissions.Count;
 
         public void Configure(
             DefenseGameController controller,
@@ -204,8 +209,9 @@ namespace DefenseGame
             toastTimer = 0f;
             resolvingMission = false;
             pendingMissionSupportSummons = 0;
-            missionSupportWaitingForSlot = false;
             runStarted = false;
+            missionSelected = false;
+            offerRefreshQueued = false;
         }
 
         private void WireUi()
@@ -214,7 +220,7 @@ namespace DefenseGame
             {
                 summaryButton.onClick.RemoveListener(TogglePanel);
                 summaryButton.onClick.AddListener(TogglePanel);
-                SetChildText(summaryButton.transform, "MissionOpenHint", "보기");
+                SetChildText(summaryButton.transform, "MissionOpenHint", "\uc5f4\uae30");
             }
 
             if (closeButton != null)
@@ -230,17 +236,18 @@ namespace DefenseGame
 
             for (int i = 0; i < optionButtons.Length; i++)
             {
-                if (optionButtons[i] == null)
+                Button button = optionButtons[i];
+                if (button == null)
                 {
                     continue;
                 }
 
-                optionButtons[i].onClick.RemoveAllListeners();
-                optionButtons[i].interactable = true;
-                SetChildText(optionButtons[i].transform, "PickLabel", "진행");
+                int optionIndex = i;
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => TrySelectMission(optionIndex));
+                SetChildText(button.transform, "PickLabel", "\uc120\ud0dd");
             }
         }
-
         private void Subscribe()
         {
             if (subscribed || gameController == null)
@@ -279,131 +286,293 @@ namespace DefenseGame
             subscribed = false;
         }
 
+        private bool CanShowMissionOffers()
+        {
+            return gameController != null && !gameController.IsRoundRunning;
+        }
+
         private void RefillMissions()
         {
-            if (gameController == null)
+            if (gameController == null || missionSelected || activeMissions.Count > 0 || !CanShowMissionOffers())
             {
                 return;
             }
 
             ClearExpiredCooldowns();
-
-            if (activeMissions.Count == 0 && completedMissionCount == 0 && gameController.CurrentRound <= 0)
+            bool initialOffers = completedMissionCount == 0 && gameController.CurrentRound <= 0;
+            if (initialOffers)
             {
-                AddInitialStrategyMission(MissionKind.SummonSprint);
-                AddInitialStrategyMission(MissionKind.LastStandGambit);
+                AddOffer(MissionKind.PerfectDefense, 0, true);
+                AddOffer(MissionKind.SummonSprint, 0, true);
+                AddOffer(MissionKind.LastStandGambit, 0, true);
+                offerRefreshQueued = false;
+                return;
             }
 
+            List<MissionKind> candidates = BuildCandidateOrder();
+            HashSet<string> usedCategories = new HashSet<string>();
             int guard = 0;
-            while (activeMissions.Count < MaxActiveMissions && guard < 40)
+            while (activeMissions.Count < MaxMissionOffers && guard++ < candidates.Count * 3)
             {
-                MissionInstance mission = CreateNextMissionCandidate(guard);
-                guard++;
+                MissionKind kind = candidates[Mathf.Abs(missionCursor++) % candidates.Count];
+                string category = GetMissionCategory(kind);
+                if (usedCategories.Contains(category) || !IsMissionEligibleForOffer(kind) || HasOfferedMission(kind))
+                {
+                    continue;
+                }
 
-                if (mission == null || IsMissionActive(mission.Key) || completedMissionKeys.Contains(mission.Key) || IsRecentlyExpired(mission.Key))
+                MissionInstance mission = CreateMission(kind, GetNextTier(kind));
+                if (mission == null || completedMissionKeys.Contains(mission.Key) || IsRecentlyExpired(mission.Key))
                 {
                     continue;
                 }
 
                 activeMissions.Add(mission);
-            }
-        }
-
-        private void AddInitialStrategyMission(MissionKind kind)
-        {
-            MissionInstance mission = CreateMission(kind, GetNextTier(kind));
-            if (mission != null && !IsMissionActive(mission.Key) && !completedMissionKeys.Contains(mission.Key))
-            {
-                activeMissions.Add(mission);
-            }
-        }
-
-        private MissionInstance CreateNextMissionCandidate(int attempt)
-        {
-            MissionKind[] candidateOrder = BuildCandidateOrder();
-            if (candidateOrder.Length == 0)
-            {
-                return null;
+                usedCategories.Add(category);
             }
 
-            int index = Mathf.Abs(missionCursor) % candidateOrder.Length;
-            MissionKind kind = candidateOrder[index];
-            int tier = GetNextTier(kind);
-
-            while (completedMissionKeys.Contains(kind + ":" + tier))
+            for (int i = 0; activeMissions.Count < MaxMissionOffers && i < candidates.Count; i++)
             {
-                tier++;
-            }
-
-            missionCursor++;
-            return CreateMission(kind, tier);
-        }
-
-        private MissionKind[] BuildCandidateOrder()
-        {
-            int round = gameController != null ? gameController.CurrentRound : 0;
-            if (round <= 0)
-            {
-                return new[]
+                MissionKind kind = candidates[(missionCursor + i) % candidates.Count];
+                if (!IsMissionEligibleForOffer(kind) || HasOfferedMission(kind))
                 {
-                    MissionKind.SummonSprint,
-                    MissionKind.LastStandGambit,
-                    MissionKind.PerfectDefense,
-                    MissionKind.MonsterHunter,
-                    MissionKind.MergeRush,
-                    MissionKind.RoleCollector
-                };
+                    continue;
+                }
+
+                MissionInstance mission = CreateMission(kind, GetNextTier(kind));
+                if (mission != null)
+                {
+                    activeMissions.Add(mission);
+                }
             }
 
-            List<MissionKind> candidates = new List<MissionKind>
-            {
-                MissionKind.GoldReserve,
-                MissionKind.SummonSprint,
-                MissionKind.MergeRush,
-                MissionKind.PerfectDefense,
-                MissionKind.RoleCollector,
-                MissionKind.MonsterHunter
-            };
-
-            if (round >= 2)
-            {
-                candidates.Add(MissionKind.EmptySlotDiscipline);
-                candidates.Add(MissionKind.RareUpgrade);
-                candidates.Add(MissionKind.KillStreak);
-                candidates.Add(MissionKind.SpendDownGambit);
-            }
-
-            if (round >= 4)
-            {
-                candidates.Add(MissionKind.LeanDefense);
-                candidates.Add(MissionKind.NoSummonHold);
-                candidates.Add(MissionKind.GradeRainbow);
-            }
-
-            if (round >= 5)
-            {
-                candidates.Add(MissionKind.BossPreparation);
-                candidates.Add(MissionKind.HighGradeForge);
-            }
-
-            if (round >= 6)
-            {
-                candidates.Add(MissionKind.LegendaryHunt);
-            }
-
-            if (round >= 8 || GetRoundsUntilNextBoss() <= 2)
-            {
-                candidates.Add(MissionKind.BossSlayer);
-            }
-
-            if (round >= 9)
-            {
-                candidates.Add(MissionKind.UltimateRecipeChase);
-            }
-
-            return candidates.ToArray();
+            offerRefreshQueued = false;
         }
 
+        private void AddOffer(MissionKind kind, int tier, bool initial)
+        {
+            MissionInstance mission = CreateMission(kind, tier);
+            if (mission == null)
+            {
+                return;
+            }
+
+            if (initial)
+            {
+                ConfigureMissionForSelection(mission, true);
+            }
+
+            activeMissions.Add(mission);
+        }
+
+        public bool TrySelectMission(int index)
+        {
+            if (missionSelected || !CanShowMissionOffers() || index < 0 || index >= activeMissions.Count)
+            {
+                return false;
+            }
+
+            MissionInstance selected = activeMissions[index];
+            if (selected == null)
+            {
+                return false;
+            }
+
+            bool initial = gameController.CurrentRound <= 0 &&
+                (selected.kind == MissionKind.PerfectDefense || selected.kind == MissionKind.SummonSprint || selected.kind == MissionKind.LastStandGambit);
+            ConfigureMissionForSelection(selected, initial);
+            activeMissions.Clear();
+            activeMissions.Add(selected);
+            missionSelected = true;
+            offerRefreshQueued = false;
+            SetPanelOpen(false);
+            RefreshUi();
+            return true;
+        }
+
+        private List<MissionKind> BuildCandidateOrder()
+        {
+            return new List<MissionKind>
+            {
+                MissionKind.PerfectDefense,
+                MissionKind.SummonSprint,
+                MissionKind.GoldReserve,
+                MissionKind.MergeRush,
+                MissionKind.RoleCollector,
+                MissionKind.LeanDefense,
+                MissionKind.BossPreparation,
+                MissionKind.NoSummonHold,
+                MissionKind.HighGradeForge,
+                MissionKind.SpendDownGambit,
+                MissionKind.UltimateRecipeChase,
+                MissionKind.GradeRainbow
+            };
+        }
+
+        private string GetMissionCategory(MissionKind kind)
+        {
+            switch (kind)
+            {
+                case MissionKind.PerfectDefense: return "SAFE";
+                case MissionKind.SummonSprint:
+                case MissionKind.MergeRush:
+                case MissionKind.SpendDownGambit: return "TEMPO";
+                case MissionKind.GoldReserve:
+                case MissionKind.NoSummonHold:
+                case MissionKind.LeanDefense: return "GREED";
+                default: return "BUILD";
+            }
+        }
+
+        private bool IsMissionEligibleForOffer(MissionKind kind)
+        {
+            if (gameController == null)
+            {
+                return false;
+            }
+
+            int goldThreshold = Mathf.Max(30, gameController.SummonCost * 3);
+            switch (kind)
+            {
+                case MissionKind.GoldReserve:
+                case MissionKind.SpendDownGambit:
+                    return gameController.Gold >= goldThreshold;
+                case MissionKind.RoleCollector:
+                    return CountDistinctRoles() < 5;
+                case MissionKind.GradeRainbow:
+                    return CountDistinctGrades() < 4;
+                case MissionKind.LeanDefense:
+                    return gameController.BoardUnitCount >= 5;
+                case MissionKind.BossPreparation:
+                    return GetRoundsUntilNextBoss() >= 2 && CountUnitsAtLeast(CharacterGrade.Legendary) < 2;
+                case MissionKind.HighGradeForge:
+                    return gameController.CurrentRound >= 5;
+                case MissionKind.UltimateRecipeChase:
+                    return gameController.CurrentRound >= 20 && GetRoundsUntilNextBoss() >= 2 && boardManager != null && boardManager.HasAnyUltimateRecipeProgress();
+                default:
+                    return true;
+            }
+        }
+
+        private void ConfigureMissionForSelection(MissionInstance mission, bool initialOffer)
+        {
+            if (mission == null || gameController == null)
+            {
+                return;
+            }
+
+            int round = gameController.CurrentRound;
+            mission.startRound = round;
+            mission.startLife = gameController.Life;
+            mission.startGold = gameController.Gold;
+            mission.startSummons = totalSummons;
+            mission.startMerges = totalMerges;
+            mission.startRarePlusMerges = totalRarePlusMerges;
+            mission.startEpicPlusMerges = totalEpicPlusMerges;
+            mission.startLegendaryPlusMerges = totalLegendaryPlusMerges;
+            mission.startFinalMerges = totalFinalMerges;
+            mission.startKills = totalKills;
+            mission.startBossKills = totalBossKills;
+            mission.earliestCompleteRound = round + 1;
+            mission.roundGoldBonus = 0;
+            mission.summonDiscount = 0f;
+            mission.supportSummonReward = 0;
+            mission.rouletteGoldMin = 0;
+            mission.rouletteGoldMax = 0;
+            mission.jackpotGold = 0;
+            mission.jackpotChance = 0f;
+            mission.expiresOnRoundStart = false;
+
+            int summonCost = Mathf.Max(1, gameController.SummonCost);
+            switch (mission.kind)
+            {
+                case MissionKind.PerfectDefense:
+                    mission.targetRound = round + 1;
+                    mission.target = 0;
+                    mission.goldReward = initialOffer ? 8 : Mathf.Clamp(8 + summonCost / 2, 10, 28);
+                    break;
+                case MissionKind.SummonSprint:
+                    mission.targetRound = initialOffer ? 2 : round + 2;
+                    mission.target = initialOffer ? 3 : (round <= 10 ? 3 : round <= 25 ? 4 : 5);
+                    mission.goldReward = initialOffer ? 12 : Mathf.Clamp(Mathf.RoundToInt(mission.target * summonCost * 0.38f), 10, 42);
+                    break;
+                case MissionKind.LastStandGambit:
+                    mission.targetRound = 3;
+                    mission.target = 2;
+                    mission.secondaryTarget = 7;
+                    mission.goldReward = 18;
+                    break;
+                case MissionKind.GoldReserve:
+                    mission.targetRound = round + 1;
+                    mission.target = Mathf.CeilToInt(mission.startGold * 0.75f);
+                    mission.goldReward = Mathf.Clamp(8 + summonCost, 14, 35);
+                    break;
+                case MissionKind.MergeRush:
+                    mission.targetRound = round + 2;
+                    mission.target = round < 10 ? 1 : round < 25 ? 2 : 3;
+                    mission.goldReward = Mathf.Clamp(Mathf.RoundToInt(mission.target * summonCost * 0.55f), 12, 48);
+                    break;
+                case MissionKind.RoleCollector:
+                    mission.targetRound = round + 2;
+                    mission.target = Mathf.Min(5, CountDistinctRoles() + 1);
+                    mission.goldReward = Mathf.Clamp(10 + summonCost, 14, 34);
+                    break;
+                case MissionKind.LeanDefense:
+                    mission.targetRound = round + 1;
+                    mission.target = Mathf.Max(3, gameController.BoardUnitCount - 2);
+                    mission.secondaryTarget = 2;
+                    mission.goldReward = Mathf.Clamp(13 + summonCost, 18, 40);
+                    mission.rouletteGoldMin = 4;
+                    mission.rouletteGoldMax = 10 + summonCost / 2;
+                    break;
+                case MissionKind.BossPreparation:
+                    mission.targetRound = GetNextBossRound(round);
+                    mission.target = Mathf.Min(2, CountUnitsAtLeast(CharacterGrade.Legendary) + 1);
+                    mission.goldReward = Mathf.Clamp(14 + summonCost, 20, 48);
+                    break;
+                case MissionKind.NoSummonHold:
+                    mission.targetRound = round + 1;
+                    mission.secondaryTarget = round < 20 ? 1 : 2;
+                    mission.goldReward = Mathf.Clamp(8 + summonCost / 2, 12, 28);
+                    break;
+                case MissionKind.HighGradeForge:
+                    mission.targetRound = round + 4;
+                    mission.target = 1;
+                    mission.secondaryTarget = (int)(round < 10 ? CharacterGrade.Rare : round < 20 ? CharacterGrade.Epic : round < 35 ? CharacterGrade.Legendary : CharacterGrade.Mythic);
+                    mission.goldReward = Mathf.Clamp(18 + summonCost, 24, 58);
+                    mission.rouletteGoldMin = 6;
+                    mission.rouletteGoldMax = 16 + summonCost / 2;
+                    mission.jackpotChance = 0.12f;
+                    mission.jackpotGold = 18 + summonCost;
+                    break;
+                case MissionKind.SpendDownGambit:
+                    mission.targetRound = round + 1;
+                    mission.target = Mathf.FloorToInt(mission.startGold * 0.35f);
+                    mission.goldReward = Mathf.Clamp(10 + summonCost, 16, 40);
+                    mission.rouletteGoldMin = 5;
+                    mission.rouletteGoldMax = 15 + summonCost / 2;
+                    mission.jackpotChance = 0.10f;
+                    mission.jackpotGold = 16 + summonCost;
+                    break;
+                case MissionKind.UltimateRecipeChase:
+                    mission.targetRound = GetNextBossRound(round);
+                    mission.target = 1;
+                    mission.goldReward = Mathf.Clamp(22 + summonCost, 30, 64);
+                    mission.rouletteGoldMin = 8;
+                    mission.rouletteGoldMax = 20 + summonCost / 2;
+                    mission.jackpotChance = 0.15f;
+                    mission.jackpotGold = 22 + summonCost;
+                    break;
+                case MissionKind.GradeRainbow:
+                    mission.targetRound = round + 2;
+                    mission.target = Mathf.Min(4, CountDistinctGrades() + 1);
+                    mission.goldReward = Mathf.Clamp(11 + summonCost, 16, 36);
+                    break;
+            }
+
+            mission.description = BuildConditionDescription(mission);
+            mission.rewardText = BuildRewardText(mission);
+        }
         private MissionInstance CreateMission(MissionKind kind, int tier)
         {
             int round = gameController != null ? gameController.CurrentRound : 0;
@@ -503,11 +672,11 @@ namespace DefenseGame
                 case MissionKind.LastStandGambit:
                     mission.targetRound = 4;
                     mission.earliestCompleteRound = 0;
-                    mission.goldReward = 0;
-                    mission.supportSummonReward = 1;
+                    mission.goldReward = 18;
+                    mission.supportSummonReward = 0;
                     mission.title = "배수의 진";
-                    mission.description = "R3까지 HP 7 이하를 감수하고 소환 2회·유닛 2기 이하를 유지하세요. 성공 시 다음 준비 단계에 무료 지원 유닛이 옵니다.";
-                    mission.rewardText = "다음 준비 단계 지원 유닛 1개 예약";
+                    mission.description = "R3까지 HP 7 이하를 감수하고 소환 2회·유닛 2기 이하를 유지하세요.";
+                    mission.rewardText = "+18골드";
                     mission.color = new Color(1f, 0.38f, 0.28f);
                     mission.expiresOnRoundStart = true;
                     break;
@@ -703,61 +872,11 @@ namespace DefenseGame
                 return;
             }
 
-            int round = gameController != null ? gameController.CurrentRound : 0;
-            float goldMultiplier = 1f;
-            if (round <= 2)
-            {
-                goldMultiplier = 0.25f;
-            }
-            else if (round <= 5)
-            {
-                goldMultiplier = 0.42f;
-            }
-            else if (round <= 9)
-            {
-                goldMultiplier = 0.62f;
-            }
-            else if (round <= 14)
-            {
-                goldMultiplier = 0.82f;
-            }
-
-            int rewardFloor = round <= 2 ? 5 : round <= 5 ? 7 : 10;
-            if (mission.goldReward > 0)
-            {
-                mission.goldReward = Mathf.Max(rewardFloor, Mathf.RoundToInt(mission.goldReward * goldMultiplier));
-            }
-            if (mission.rouletteGoldMax > 0)
-            {
-                mission.rouletteGoldMin = Mathf.Max(1, Mathf.RoundToInt(mission.rouletteGoldMin * goldMultiplier));
-                mission.rouletteGoldMax = Mathf.Max(mission.rouletteGoldMin, Mathf.RoundToInt(mission.rouletteGoldMax * goldMultiplier));
-            }
-
-            if (mission.jackpotGold > 0)
-            {
-                mission.jackpotGold = Mathf.Max(rewardFloor, Mathf.RoundToInt(mission.jackpotGold * goldMultiplier));
-                mission.jackpotChance = Mathf.Clamp01(mission.jackpotChance * Mathf.Lerp(0.72f, 1f, goldMultiplier));
-            }
-
-            if (round <= 5)
-            {
-                mission.roundGoldBonus = 0;
-                mission.summonDiscount = Mathf.Min(mission.summonDiscount, 0.015f);
-            }
-            else if (round <= 9)
-            {
-                mission.roundGoldBonus = Mathf.Min(mission.roundGoldBonus, 1);
-                mission.summonDiscount = Mathf.Min(mission.summonDiscount, 0.03f);
-            }
-            else if (round <= 14)
-            {
-                mission.roundGoldBonus = Mathf.Min(mission.roundGoldBonus, 2);
-                mission.summonDiscount = Mathf.Min(mission.summonDiscount, 0.05f);
-            }
-
+            // Tactical missions are immediate one-off choices. They never add permanent economy modifiers.
+            mission.roundGoldBonus = 0;
+            mission.summonDiscount = 0f;
             mission.rewardText = BuildRewardText(mission);
         }
-
         private string BuildRewardText(MissionInstance mission)
         {
             if (mission == null)
@@ -812,43 +931,21 @@ namespace DefenseGame
 
         private void EvaluateMissions(bool roundCompleted = false, int completedRound = 0)
         {
-            if (resolvingMission || gameController == null)
+            if (resolvingMission || gameController == null || !missionSelected || activeMissions.Count != 1)
             {
                 return;
             }
 
-            // Determine the eligible set before paying. AddGold may synchronously invoke OnStateChanged.
-            List<MissionInstance> completed = new List<MissionInstance>();
-            List<MissionInstance> expired = new List<MissionInstance>();
-            for (int i = 0; i < activeMissions.Count; i++)
+            MissionInstance mission = activeMissions[0];
+            if (IsMissionComplete(mission, roundCompleted, completedRound))
             {
-                MissionInstance mission = activeMissions[i];
-                if (IsMissionComplete(mission, roundCompleted, completedRound))
-                {
-                    completed.Add(mission);
-                }
-                else if (IsMissionExpired(mission, roundCompleted, completedRound))
-                {
-                    expired.Add(mission);
-                }
+                CompleteMission(mission, roundCompleted ? completedRound : gameController.CurrentRound);
+            }
+            else if (IsMissionExpired(mission, roundCompleted, completedRound))
+            {
+                ExpireMission(0);
             }
 
-            int resolvedRound = roundCompleted ? completedRound : gameController.CurrentRound;
-            for (int i = 0; i < completed.Count; i++)
-            {
-                CompleteMission(completed[i], resolvedRound);
-            }
-
-            for (int i = 0; i < expired.Count; i++)
-            {
-                int index = activeMissions.IndexOf(expired[i]);
-                if (index >= 0)
-                {
-                    ExpireMission(index);
-                }
-            }
-
-            RefillMissions();
             RefreshUi();
         }
         private bool IsMissionComplete(MissionInstance mission, bool roundCompleted, int completedRound)
@@ -867,7 +964,8 @@ namespace DefenseGame
             switch (mission.kind)
             {
                 case MissionKind.GoldReserve:
-                    return gameController.Gold >= mission.target;
+                    return roundCompleted && completedRound == mission.targetRound &&
+                        Mathf.Max(0, gameController.Gold - gameController.LastRoundClearGoldReward) >= mission.target;
                 case MissionKind.PerfectDefense:
                     return roundCompleted && completedRound == mission.targetRound && gameController.Life >= mission.startLife;
                 case MissionKind.MergeRush:
@@ -875,8 +973,7 @@ namespace DefenseGame
                 case MissionKind.RoleCollector:
                     return CountDistinctRoles() >= mission.target;
                 case MissionKind.LeanDefense:
-                    return roundCompleted &&
-                        completedRound == mission.targetRound &&
+                    return roundCompleted && completedRound == mission.targetRound &&
                         gameController.BoardUnitCount <= mission.target &&
                         Mathf.Max(0, mission.startLife - gameController.Life) <= mission.secondaryTarget;
                 case MissionKind.BossPreparation:
@@ -884,25 +981,12 @@ namespace DefenseGame
                 case MissionKind.SummonSprint:
                     return totalSummons - mission.startSummons >= mission.target;
                 case MissionKind.LastStandGambit:
-                    return IsLastStandGambitConditionMet(gameController.Life, totalSummons - mission.startSummons, gameController.BoardUnitCount, checkRound);
-                case MissionKind.EmptySlotDiscipline:
-                    return roundCompleted && completedRound == mission.targetRound && gameController.EmptySlotCount >= mission.target;
-                case MissionKind.RareUpgrade:
-                    return CountUnitsAtLeast(CharacterGrade.Rare) >= mission.target;
-                case MissionKind.LegendaryHunt:
-                    return CountUnitsAtLeast(CharacterGrade.Legendary) >= mission.target;
-                case MissionKind.MonsterHunter:
-                    return totalKills - mission.startKills >= mission.target;
-                case MissionKind.BossSlayer:
-                    return totalBossKills - mission.startBossKills >= mission.target;
+                    return roundCompleted && completedRound == mission.targetRound &&
+                        IsLastStandGambitConditionMet(gameController.Life, totalSummons - mission.startSummons, gameController.BoardUnitCount, completedRound);
                 case MissionKind.NoSummonHold:
-                    return roundCompleted &&
-                        completedRound == mission.targetRound &&
+                    return roundCompleted && completedRound == mission.targetRound &&
                         totalSummons == mission.startSummons &&
                         Mathf.Max(0, mission.startLife - gameController.Life) <= mission.secondaryTarget;
-                case MissionKind.KillStreak:
-                    return totalKills - mission.startKills >= mission.target &&
-                        gameController.Life >= mission.startLife;
                 case MissionKind.HighGradeForge:
                     CharacterGrade requiredForgeGrade = (CharacterGrade)Mathf.Clamp(mission.secondaryTarget, (int)CharacterGrade.Normal, (int)CharacterGrade.Transcendent);
                     return GetMergeResultsAtLeast(requiredForgeGrade) - GetStartMergeResultsAtLeast(mission, requiredForgeGrade) >= mission.target;
@@ -917,7 +1001,6 @@ namespace DefenseGame
                     return false;
             }
         }
-
         private bool IsMissionExpired(MissionInstance mission, bool roundCompleted, int completedRound)
         {
             if (mission == null || mission.targetRound <= 0 || gameController == null)
@@ -948,6 +1031,8 @@ namespace DefenseGame
 
             // Record completion before payout. AddGold can synchronously publish OnStateChanged.
             activeMissions.RemoveAt(index);
+            missionSelected = false;
+            offerRefreshQueued = true;
             completedMissionKeys.Add(mission.Key);
             completedFamilyLevels[mission.kind] = GetCompletedFamilyLevel(mission.kind) + 1;
             completedMissionCount++;
@@ -1002,8 +1087,7 @@ namespace DefenseGame
             if (mission.supportSummonReward > 0)
             {
                 pendingMissionSupportSummons += mission.supportSummonReward;
-                missionSupportWaitingForSlot = false;
-            }
+                }
 
             string rewardSummary = mission.supportSummonReward > 0
                 ? "다음 준비 단계 지원 유닛 " + mission.supportSummonReward + "개 예약"
@@ -1015,9 +1099,7 @@ namespace DefenseGame
 
             AddCompletionFeed("미션 완료! " + mission.title + "  " + rewardSummary);
             ShowCompletionToast(mission, rewardSummary);
-            string banner = mission.kind == MissionKind.LastStandGambit
-                ? "배수의 진 성공! 다음 준비 단계 지원 유닛 예약"
-                : "미션 완료! " + rewardSummary;
+            string banner = "미션 완료! " + rewardSummary;
             gameController.RequestBanner(banner, mission.color, 2.8f);
             RuntimeCameraShake.Request(0.055f, 0.18f);
         }
@@ -1030,6 +1112,8 @@ namespace DefenseGame
 
             MissionInstance mission = activeMissions[index];
             activeMissions.RemoveAt(index);
+            missionSelected = false;
+            offerRefreshQueued = true;
             recentlyExpiredKeys[mission.Key] = (gameController != null ? gameController.CurrentRound : 0) + 3;
 
             if (gameController != null)
@@ -1101,31 +1185,28 @@ namespace DefenseGame
         private void HandleRoundMissionSettlement(int round)
         {
             EvaluateMissions(true, round);
-            RefillMissions();
             RefreshUi();
         }
-
         private void HandleRoundBoardPreparation(int round)
         {
-            if (pendingMissionSupportSummons <= 0 || gameController == null)
+            if (gameController == null || gameController.IsRoundRunning)
             {
                 return;
             }
 
-            if (gameController.EmptySlotCount <= 0 || !gameController.TryGrantMissionSupportUnit())
+            if (offerRefreshQueued || (!missionSelected && activeMissions.Count == 0))
             {
-                missionSupportWaitingForSlot = true;
-                gameController.RequestBanner("지원 유닛 대기: 빈 보드 슬롯 필요", new Color(1f, 0.78f, 0.30f), 2.4f);
-                RefreshUi();
-                return;
+                RefillMissions();
+                if (activeMissions.Count > 0)
+                {
+                    SetPanelOpen(true);
+                }
             }
 
-            pendingMissionSupportSummons--;
-            missionSupportWaitingForSlot = false;
-            gameController.RequestBanner("미션 지원 유닛 도착!", new Color(0.48f, 1f, 0.72f), 2.2f);
+            // LastStand never grants a support unit. This clears only stale runtime state from earlier versions.
+            pendingMissionSupportSummons = 0;
             RefreshUi();
         }
-
         private void HandleMonsterKilled(MonsterUnit monster)
         {
             totalKills++;
@@ -1145,8 +1226,9 @@ namespace DefenseGame
         private void HandleGameOver()
         {
             activeMissions.Clear();
+            missionSelected = false;
+            offerRefreshQueued = false;
             pendingMissionSupportSummons = 0;
-            missionSupportWaitingForSlot = false;
             HideCompletionToast();
             RefreshUi();
         }
@@ -1182,45 +1264,51 @@ namespace DefenseGame
                 return;
             }
 
-            summaryText.text = "미션 " + activeMissions.Count + "/" + MaxActiveMissions + "  완료 " + completedMissionCount;
-            if (pendingMissionSupportSummons > 0)
+            if (missionSelected && activeMissions.Count == 1)
             {
-                summaryText.text += missionSupportWaitingForSlot ? "  |  지원 유닛 대기" : "  |  지원 유닛 예약";
+                summaryText.text = "\uc9c4\ud589 \uc911  " + activeMissions[0].title;
+                summaryText.color = activeMissions[0].accentColor;
             }
-            summaryText.color = activeMissions.Count > 0 ? activeMissions[0].accentColor : Color.white;
+            else if (activeMissions.Count > 0)
+            {
+                summaryText.text = "\uc804\uc220 \ubbf8\uc158 \uc120\ud0dd";
+                summaryText.color = Color.white;
+            }
+            else
+            {
+                summaryText.text = "\uc804\uc220 \ubbf8\uc158 \ub300\uae30";
+                summaryText.color = Color.white;
+            }
         }
-
         private void RefreshPanel()
         {
             if (panelHeaderText != null)
             {
-                panelHeaderText.text = "자동 미션 보드";
+                panelHeaderText.text = "\uc804\uc220 \ubbf8\uc158 \uc120\ud0dd";
             }
 
             if (activeCardRoot != null)
             {
-                bool showActiveCard = activeMissions.Count == 0;
+                bool showActiveCard = missionSelected && activeMissions.Count == 1;
                 activeCardRoot.SetActive(showActiveCard);
                 if (showActiveCard)
                 {
-                    SetText(activeTitleText, "최근 완료");
-                    string feed = recentCompletionFeed.Count > 0
-                        ? string.Join("\n", recentCompletionFeed.ToArray())
-                        : "조건을 만족하면 보상은 즉시 획득합니다.\n지원 유닛 보상은 다음 준비 단계에 도착합니다.";
-                    SetText(activeDescriptionText, feed);
-                    SetText(activeProgressText, "완료 " + completedMissionCount + "개  |  진행 " + activeMissions.Count + "개" + (pendingMissionSupportSummons > 0 ? "  |  지원 " + pendingMissionSupportSummons + "개" : string.Empty));
+                    MissionInstance active = activeMissions[0];
+                    SetText(activeTitleText, "\uc9c4\ud589 \uc911  " + active.title);
+                    SetText(activeDescriptionText, active.description);
+                    SetText(activeProgressText, GetProgressText(active));
                 }
             }
 
             int buttonCount = optionButtons != null ? optionButtons.Length : 0;
             for (int i = 0; i < buttonCount; i++)
             {
-                bool show = i < activeMissions.Count;
+                bool show = !missionSelected && i < activeMissions.Count;
                 if (optionButtons[i] != null)
                 {
                     optionButtons[i].gameObject.SetActive(show);
-                    optionButtons[i].interactable = true;
-                    SetChildText(optionButtons[i].transform, "PickLabel", "진행");
+                    optionButtons[i].interactable = show && CanShowMissionOffers();
+                    SetChildText(optionButtons[i].transform, "PickLabel", "\uc120\ud0dd");
                 }
 
                 if (!show)
@@ -1230,8 +1318,8 @@ namespace DefenseGame
 
                 MissionInstance mission = activeMissions[i];
                 SetText(GetText(optionTitleTexts, i), mission.title);
-                SetText(GetText(optionDescriptionTexts, i), mission.description + "\n" + GetProgressText(mission));
-                SetText(GetText(optionRewardTexts, i), "클리어 즉시: " + mission.rewardText);
+                SetText(GetText(optionDescriptionTexts, i), mission.description);
+                SetText(GetText(optionRewardTexts, i), "\ubcf4\uc0c1: " + mission.rewardText);
 
                 Image accent = GetImage(optionAccentImages, i);
                 if (accent != null)
@@ -1240,7 +1328,6 @@ namespace DefenseGame
                 }
             }
         }
-
         private string GetProgressText(MissionInstance mission)
         {
             if (mission == null || gameController == null)
@@ -1301,7 +1388,7 @@ namespace DefenseGame
             return life > 0 && life <= 7 && currentRound <= 3 && summonsSinceMissionStart <= 2 && boardUnitCount <= 2;
         }
 
-        private bool HasActiveMission(MissionKind kind)
+        private bool HasOfferedMission(MissionKind kind)
         {
             for (int i = 0; i < activeMissions.Count; i++)
             {

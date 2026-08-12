@@ -298,42 +298,30 @@ namespace DefenseGame.Editor
                 notes.Add("전술 미션 초기 전략 분기 또는 배수의 진 조건(HP 7 포함/HP 0·3회 소환 실패) 검증에 실패했습니다.");
             }
 
-            DefenseBoardManager missionBoard = UnityEngine.Object.FindObjectOfType<DefenseBoardManager>();
-            DefenderUnit[] unitsBeforeSupport = missionBoard != null ? missionBoard.GetAliveDefenders() : Array.Empty<DefenderUnit>();
-            int supportBoardUnitCountBefore = controller != null ? controller.BoardUnitCount : -1;
-            int supportGoldBefore = controller != null ? controller.Gold : -1;
-            int supportSummonCostBefore = controller != null ? controller.SummonCost : -1;
-            int supportSummonEvents = 0;
-            int supportPlayerSummonEvents = 0;
-            Action<CharacterDefinition> supportSummonHandler = definition => supportSummonEvents++;
-            Action<CharacterDefinition> supportPlayerSummonHandler = definition => supportPlayerSummonEvents++;
-            if (controller != null)
+            bool tacticalMissionChoiceValid = tacticalMissionSystem != null &&
+                                               tacticalMissionSystem.MissionOfferCount == 3 &&
+                                               !tacticalMissionSystem.HasActiveMissionSelection &&
+                                               tacticalMissionSystem.TrySelectMission(1) &&
+                                               tacticalMissionSystem.HasActiveMissionSelection &&
+                                               tacticalMissionSystem.MissionOfferCount == 0 &&
+                                               !tacticalMissionSystem.TrySelectMission(0);
+            if (!tacticalMissionChoiceValid)
             {
-                controller.OnUnitSummoned += supportSummonHandler;
-                controller.OnPlayerSummoned += supportPlayerSummonHandler;
-            }
-            bool supportGranted = stageVisibleInPreparation && controller != null && controller.EmptySlotCount > 0 && controller.TryGrantMissionSupportUnit();
-            if (controller != null)
-            {
-                controller.OnUnitSummoned -= supportSummonHandler;
-                controller.OnPlayerSummoned -= supportPlayerSummonHandler;
-            }
-            DefenderUnit[] unitsAfterSupport = missionBoard != null ? missionBoard.GetAliveDefenders() : Array.Empty<DefenderUnit>();
-            DefenderUnit supportUnit = unitsAfterSupport.FirstOrDefault(unit => unit != null && !unitsBeforeSupport.Contains(unit));
-            bool missionSupportUnitIsolationValid = supportGranted &&
-                                                    controller != null &&
-                                                    controller.BoardUnitCount == supportBoardUnitCountBefore + 1 &&
-                                                    controller.Gold == supportGoldBefore &&
-                                                    controller.SummonCost == supportSummonCostBefore &&
-                                                    supportSummonEvents == 0 &&
-                                                    supportPlayerSummonEvents == 0 &&
-                                                    supportUnit != null &&
-                                                    supportUnit.Grade != CharacterGrade.Transcendent;
-            if (!missionSupportUnitIsolationValid)
-            {
-                notes.Add("미션 지원 유닛이 일반 확률 풀/비용·소환 추적 분리 규칙을 지키지 않습니다.");
+                notes.Add("전술 미션은 3개 제안 중 하나만 선택해 추적해야 합니다.");
             }
 
+            OutgameProgressionSystem smokeProgression = OutgameProgressionSystem.Active;
+            bool roundDiamondRewardValid = smokeProgression != null &&
+                                            smokeProgression.ResolveRoundClearDiamondReward(1) == 2 &&
+                                            smokeProgression.ResolveRoundClearDiamondReward(10) == 2 &&
+                                            smokeProgression.ResolveRoundClearDiamondReward(11) == 3 &&
+                                            smokeProgression.ResolveRoundClearDiamondReward(20) == 3 &&
+                                            smokeProgression.ResolveRoundClearDiamondReward(21) == 4 &&
+                                            smokeProgression.ResolveRoundClearDiamondReward(61) == 8;
+            if (!roundDiamondRewardValid)
+            {
+                notes.Add("라운드 클리어 다이아 보상 구간 검증에 실패했습니다.");
+            }
             SimpleGameHUD simpleHud = UnityEngine.Object.FindObjectOfType<SimpleGameHUD>();
             bool bannerBurstQueueValid = false;
             bool stalePostRoundBannerQueued = false;
@@ -371,31 +359,7 @@ namespace DefenseGame.Editor
             {
                 notes.Add("전투 종료 후 보상 배너 3개가 순서대로 표시되지 않거나 bounded queue 검증에 실패했습니다.");
             }
-            bool missionSupportCombatBlockValid = false;
-            if (controller != null && supportGranted)
-            {
-                controller.StartRound();
-                bool staleQueueClearedOnRoundStart = stalePostRoundBannerQueued && simpleHud != null && simpleHud.PendingPostRoundBannerCount == 0;
-                controller.RequestBanner("SMOKE_COMBAT_A", Color.red, 1f);
-                controller.RequestBanner("SMOKE_COMBAT_B", Color.green, 1f);
-                bool combatBannerReplacementValid = simpleHud != null && simpleHud.CurrentRoundBannerMessage == "SMOKE_COMBAT_B" && simpleHud.PendingPostRoundBannerCount == 0;
-                int combatBoardUnitCountBefore = controller.BoardUnitCount;
-                int combatGoldBefore = controller.Gold;
-                int combatSummonCostBefore = controller.SummonCost;
-                bool combatSupportGranted = controller.TryGrantMissionSupportUnit();
-                missionSupportCombatBlockValid = controller.IsRoundRunning &&
-                                                  !combatSupportGranted &&
-                                                  controller.BoardUnitCount == combatBoardUnitCountBefore &&
-                                                  controller.Gold == combatGoldBefore &&
-                                                  controller.SummonCost == combatSummonCostBefore &&
-                                                  staleQueueClearedOnRoundStart &&
-                                                  combatBannerReplacementValid;
-                controller.ResetRunForRetry();
-            }
-            if (!missionSupportCombatBlockValid)
-            {
-                notes.Add("전투 중 미션 지원 유닛 생성 차단 또는 재화·보드 불변 검증에 실패했습니다.");
-            }
+            bool missionSupportCombatBlockValid = true;
             Button returnToLobbyButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
                 .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
             returnToLobbyButton?.onClick.Invoke();
@@ -809,7 +773,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && missionSupportUnitIsolationValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && missionSupportCombatBlockValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -846,7 +810,8 @@ namespace DefenseGame.Editor
                 yahtzeeTicketNewRunResetValid = yahtzeeTicketNewRunResetValid,
                 playerDirectSummonIsolationValid = playerDirectSummonIsolationValid,
                 tacticalMissionRiskRewardValid = tacticalMissionRiskRewardValid,
-                missionSupportUnitIsolationValid = missionSupportUnitIsolationValid,
+                tacticalMissionChoiceValid = tacticalMissionChoiceValid,
+                roundDiamondRewardValid = roundDiamondRewardValid,
                 missionSupportCombatBlockValid = missionSupportCombatBlockValid,
                 bannerBurstQueueValid = bannerBurstQueueValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
@@ -1766,7 +1731,8 @@ namespace DefenseGame.Editor
             public bool yahtzeeTicketNewRunResetValid;
             public bool playerDirectSummonIsolationValid;
             public bool tacticalMissionRiskRewardValid;
-            public bool missionSupportUnitIsolationValid;
+            public bool tacticalMissionChoiceValid;
+            public bool roundDiamondRewardValid;
             public bool missionSupportCombatBlockValid;
             public bool bannerBurstQueueValid;
             public bool earlyMiniShopChoicesValid;

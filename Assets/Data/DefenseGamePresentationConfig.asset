@@ -19,7 +19,7 @@ MonoBehaviour:
   monsterDeathEffectPrefab: {fileID: 6591950069710809529, guid: ad49f21b37f647446937626ac199eed6, type: 3}
   defenderDeathEffectPrefab: {fileID: 6591950069710809529, guid: ad49f21b37f647446937626ac199eed6, type: 3}
   projectilePrefab: {fileID: 2560690855817200390, guid: 405247fb50345b74cb6de7fa56815ea7, type: 3}
-  defaultMuzzleEffectPrefab: {fileID: 7045889733438899885, guid: 14078f8f7064d894fad9a68275c46f31, type: 3}
+  defaultMuzzleEffectPrefab: {fileID: 2944396702758532163, guid: e190bf97c041e58448af6b043116cba0, type: 3}
   defaultHitEffectPrefab: {fileID: 2944396702758532163, guid: e190bf97c041e58448af6b043116cba0, type: 3}
   defaultAreaEffectPrefab: {fileID: 8974203713140315807, guid: 709b0bd6b0b625249a98409dd7a87343, type: 3}
   diceAutoDormantEffectPrefab: {fileID: 2385425086815454515, guid: 6beeb62d530cedb42acf51f9e3155224, type: 3}

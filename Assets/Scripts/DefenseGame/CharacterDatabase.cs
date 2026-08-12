@@ -1379,6 +1379,11 @@ namespace DefenseGame
             return true;
         }
 
+        public int ResolveRoundClearDiamondReward(int round)
+        {
+            return Mathf.Clamp(2 + Mathf.FloorToInt((Mathf.Max(1, round) - 1) / 10f), 2, 8);
+        }
+
         public int ResolveBattleDiamondReward(int rewardPoints)
         {
             return Mathf.Max(0, rewardPoints * Mathf.Max(0, Settings.diamondsPerBattleRewardPoint));

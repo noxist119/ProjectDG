@@ -1429,8 +1429,8 @@ namespace DefenseGame
 					{
 						FaceTarget(target2.transform.position);
 						PlaySkillHitEffect(skill, target2);
-						target2.TakeDamage(CalculateDamageAgainst(target2, power * skillMultiplier, critical: false), critical: false, this);
 						target2.ApplyKnockback(radius, base.transform.position);
+						target2.TakeDamage(CalculateDamageAgainst(target2, power * skillMultiplier, critical: false), critical: false, this);
 					}
 					permanentDamageReductionBonus = Mathf.Min(0.4f, permanentDamageReductionBonus + Mathf.Max(0f, secondaryPower));
 					ShowInstantSupportFeedback("방어력 +" + Mathf.RoundToInt(secondaryPower * 100f) + "% / 누적 " + Mathf.RoundToInt(permanentDamageReductionBonus * 100f) + "%", ShieldFeedbackColor, skill.areaEffectPrefab, 0.9f);

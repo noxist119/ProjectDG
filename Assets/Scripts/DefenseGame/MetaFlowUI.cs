@@ -3101,7 +3101,9 @@ namespace DefenseGame
                 ? gameController.LastRoundClearGoldReward
                 : victory ? 110 + round * 18 : Mathf.Max(20, 40 + round * 6);
             int coreReward = victory ? 6 + Mathf.Max(1, round / 2) : gameController != null ? gameController.EarnedGrowthCurrency : Mathf.Max(2, round / 3 + 2);
-            int diamondReward = outgameProgression != null ? outgameProgression.ResolveBattleDiamondReward(coreReward) : coreReward;
+            int diamondReward = victory
+                ? (outgameProgression != null ? outgameProgression.ResolveRoundClearDiamondReward(round) : Mathf.Clamp(2 + Mathf.FloorToInt((Mathf.Max(1, round) - 1) / 10f), 2, 8))
+                : (outgameProgression != null ? outgameProgression.ResolveBattleDiamondReward(coreReward) : coreReward);
             if (!resultRewardGranted && outgameProgression != null)
             {
                 outgameProgression.AddDiamonds(diamondReward);

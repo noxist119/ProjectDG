@@ -408,6 +408,12 @@ namespace DefenseGame
 			return "재료 " + progress + "/" + Mathf.Max(1, required);
 		}
 
+		public bool HasAnyUltimateRecipeProgress()
+		{
+			GetBestUltimateRecipeProgress(out int progress, out int required);
+			return required > 0 && progress > 0;
+		}
+
 		public string GetUltimateMergeDetailStatus(CharacterDatabase database)
 		{
 			UltimateMergeRecipe recipe = GetBestUltimateRecipe(database);

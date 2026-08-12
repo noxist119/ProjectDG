@@ -220,6 +220,16 @@ namespace DefenseGame
 
 		private int impactSequence;
 
+		private const float KnockbackDuration = 0.24f;
+
+		private bool knockbackActive;
+
+		private Vector3 knockbackStartPosition;
+
+		private Vector3 knockbackTargetPosition;
+
+		private float knockbackElapsed;
+
 		private bool isDying;
 
 		private readonly List<DefenderUnit> defenders = new List<DefenderUnit>();
@@ -485,6 +495,12 @@ namespace DefenseGame
 			{
 				return;
 			}
+			if (knockbackActive)
+			{
+				TickKnockback();
+				floatingUi?.SetValues(currentHealth, MaxHealth, currentMana, definition.stats.maxMana);
+				return;
+			}
 			if (isDying)
 			{
 				animationDriver?.PlayMoving(isMoving: false);
@@ -602,6 +618,8 @@ namespace DefenseGame
 			roleTraitTriggered = false;
 			skillCastLocked = false;
 			isDying = false;
+			knockbackActive = false;
+			knockbackElapsed = 0f;
 			RestorePetrifyMaterials(reapplyVisuals: false);
 			RestorePetrifyAnimations(resumeAnimation: false);
 			defenders.Clear();
@@ -751,6 +769,7 @@ namespace DefenseGame
 			if (!isDying)
 			{
 				isDying = true;
+				knockbackActive = false;
 				currentHealth = 0f;
 				skillCastLocked = false;
 				ClearPendingImpacts();
@@ -885,29 +904,55 @@ namespace DefenseGame
 			return IsMajorBoss ? (duration * 0.45f) : (IsBoss ? (duration * 0.65f) : duration);
 		}
 
+		public bool IsKnockbackActive => knockbackActive;
+
 		public void ApplyKnockback(float distance, Vector3 sourcePosition)
 		{
-			if (CanBeCombatTargeted && !IsStatusEffectImmune && !(distance <= 0f))
+			if (!CanBeCombatTargeted || IsStatusEffectImmune || distance <= 0f)
 			{
-				Vector3 awayFromGoal = base.transform.position - laneGoalPosition;
-				awayFromGoal.y = 0f;
-				if (awayFromGoal.sqrMagnitude <= 0.0001f)
-				{
-					awayFromGoal = base.transform.position - sourcePosition;
-					awayFromGoal.y = 0f;
-				}
-				if (awayFromGoal.sqrMagnitude <= 0.0001f)
-				{
-					awayFromGoal = Vector3.back;
-				}
-				Vector3 pushedPosition = base.transform.position + awayFromGoal.normalized * distance;
-				pushedPosition.x = Mathf.Clamp(pushedPosition.x, laneGoalPosition.x - 0.6f, laneGoalPosition.x + 0.6f);
-				pushedPosition.y = base.transform.position.y;
-				base.transform.position = pushedPosition;
-				hitFlashFeedback?.PlayHit(critical: true);
+				return;
 			}
+
+			Vector3 startPosition = base.transform.position;
+			Vector3 awayFromGoal = startPosition - laneGoalPosition;
+			awayFromGoal.y = 0f;
+			if (awayFromGoal.sqrMagnitude <= 0.0001f)
+			{
+				awayFromGoal = startPosition - sourcePosition;
+				awayFromGoal.y = 0f;
+			}
+			if (awayFromGoal.sqrMagnitude <= 0.0001f)
+			{
+				awayFromGoal = Vector3.back;
+			}
+
+			Vector3 pushedPosition = startPosition + awayFromGoal.normalized * distance;
+			pushedPosition.x = Mathf.Clamp(pushedPosition.x, laneGoalPosition.x - 0.6f, laneGoalPosition.x + 0.6f);
+			pushedPosition.y = startPosition.y;
+			knockbackStartPosition = startPosition;
+			knockbackTargetPosition = pushedPosition;
+			knockbackElapsed = 0f;
+			knockbackActive = true;
+			ClearPendingImpacts();
+			animationDriver?.PlayMoving(isMoving: true);
+			hitFlashFeedback?.PlayHit(critical: true);
 		}
 
+		private void TickKnockback()
+		{
+			knockbackElapsed += Time.deltaTime;
+			float normalized = Mathf.Clamp01(knockbackElapsed / KnockbackDuration);
+			float eased = normalized * normalized * (3f - 2f * normalized);
+			base.transform.position = Vector3.Lerp(knockbackStartPosition, knockbackTargetPosition, eased);
+			FaceTarget(knockbackTargetPosition);
+			animationDriver?.PlayMoving(isMoving: true);
+			if (normalized >= 1f)
+			{
+				base.transform.position = knockbackTargetPosition;
+				knockbackActive = false;
+				animationDriver?.PlayMoving(isMoving: false);
+			}
+		}
 		public void ApplyTaunt(DefenderUnit source, float duration)
 		{
 			if (CanBeCombatTargeted && !IsStatusEffectImmune && !(source == null) && !(source.CurrentHealth <= 0f) && !(duration <= 0f))
