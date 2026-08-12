@@ -13,7 +13,10 @@ namespace DefenseGame.Editor
     public static class DefenseGameBatchPlaytest
     {
         private const int DefaultTargetRuns = 20;
-        private const int TargetRound = 10;
+        private const int DefaultTargetRound = 10;
+        private const int Phase2ClassicR30Runs = 12;
+        private const int Phase2OverdriveR30Runs = 12;
+        private const int Phase2ClassicR50Runs = 6;
         private const float BatchTimeScale = 40f;
         private const float BatchFixedDeltaTime = 0.025f;
         private const float BatchMaximumDeltaTime = 0.33f;
@@ -26,6 +29,9 @@ namespace DefenseGame.Editor
         private const string OverdrivePairedOutputFileName = "DefenseGame_Playtest30_OverdrivePaired.json";
         private const string OverdriveFairPairedOutputFileName = "DefenseGame_Playtest30_OverdriveFairPaired.json";
         private const string MissingScriptReportFileName = "RuntimeMissingScripts.json";
+        private const string Phase2ClassicR30OutputFileName = "DefenseGame_Phase2_Classic_R30.json";
+        private const string Phase2OverdriveR30OutputFileName = "DefenseGame_Phase2_Overdrive_R30.json";
+        private const string Phase2ClassicR50OutputFileName = "DefenseGame_Phase2_Classic_R50.json";
         private static string OutputDirectory => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName));
         private static string OutputPath => Path.Combine(OutputDirectory, requestedOutputFileName);
         private static string MissingScriptReportPath => Path.Combine(OutputDirectory, MissingScriptReportFileName);
@@ -33,6 +39,7 @@ namespace DefenseGame.Editor
         private static readonly List<RunResult> Results = new List<RunResult>();
         private static CombatGameMode requestedCombatMode = CombatGameMode.Classic;
         private static int requestedRunCount = DefaultTargetRuns;
+        private static int requestedTargetRound = DefaultTargetRound;
         private static bool pairedSeedMode;
         private static bool fairStrategyPolicy;
         private static string requestedOutputFileName = ClassicOutputFileName;
@@ -61,31 +68,50 @@ namespace DefenseGame.Editor
         [MenuItem("DefenseGame/Batch Playtest/Run Human Strategies 20 Total")]
         public static void RunHumanStrategies20()
         {
-            RunHumanStrategies(CombatGameMode.Classic, DefaultTargetRuns, false, false, ClassicOutputFileName);
+            RunHumanStrategies(CombatGameMode.Classic, DefaultTargetRuns, false, false, DefaultTargetRound, ClassicOutputFileName);
         }
 
         [MenuItem("DefenseGame/Batch Playtest/Run Overdrive Human Strategies 20 Total")]
         public static void RunOverdriveHumanStrategies20()
         {
-            RunHumanStrategies(CombatGameMode.Overdrive, DefaultTargetRuns, false, false, OverdriveOutputFileName);
+            RunHumanStrategies(CombatGameMode.Overdrive, DefaultTargetRuns, false, false, DefaultTargetRound, OverdriveOutputFileName);
         }
 
         [MenuItem("DefenseGame/Batch Playtest/Run Overdrive Paired Seeds 30 Total")]
         public static void RunOverdrivePairedStrategies30()
         {
-            RunHumanStrategies(CombatGameMode.Overdrive, 30, true, false, OverdrivePairedOutputFileName);
+            RunHumanStrategies(CombatGameMode.Overdrive, 30, true, false, DefaultTargetRound, OverdrivePairedOutputFileName);
         }
 
         [MenuItem("DefenseGame/Batch Playtest/Run Overdrive Fair Paired Seeds 30 Total")]
         public static void RunOverdriveFairPairedStrategies30()
         {
-            RunHumanStrategies(CombatGameMode.Overdrive, 30, true, true, OverdriveFairPairedOutputFileName);
+            RunHumanStrategies(CombatGameMode.Overdrive, 30, true, true, DefaultTargetRound, OverdriveFairPairedOutputFileName);
         }
 
-        private static void RunHumanStrategies(CombatGameMode combatMode, int runCount, bool usePairedSeeds, bool useFairPolicy, string outputFileName)
+        [MenuItem("DefenseGame/Batch Playtest/Phase2 Classic R30")]
+        public static void RunPhase2ClassicR30()
+        {
+            RunHumanStrategies(CombatGameMode.Classic, Phase2ClassicR30Runs, true, false, 30, Phase2ClassicR30OutputFileName);
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2 Overdrive R30")]
+        public static void RunPhase2OverdriveR30()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, Phase2OverdriveR30OutputFileName);
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2 Classic R50")]
+        public static void RunPhase2ClassicR50()
+        {
+            RunHumanStrategies(CombatGameMode.Classic, Phase2ClassicR50Runs, true, false, 50, Phase2ClassicR50OutputFileName);
+        }
+
+        private static void RunHumanStrategies(CombatGameMode combatMode, int runCount, bool usePairedSeeds, bool useFairPolicy, int targetRound, string outputFileName)
         {
             requestedCombatMode = combatMode;
             requestedRunCount = Mathf.Max(3, runCount);
+            requestedTargetRound = Mathf.Max(10, targetRound);
             pairedSeedMode = usePairedSeeds;
             fairStrategyPolicy = useFairPolicy;
             requestedOutputFileName = string.IsNullOrWhiteSpace(outputFileName) ? ClassicOutputFileName : outputFileName;
@@ -224,8 +250,13 @@ namespace DefenseGame.Editor
                 return;
             }
 
-            CloseResultOverlayIfOpen();
-            ChooseAugmentIfOpen();
+            if (!ValidateRunInvariants())
+            {
+                CompleteRun();
+                return;
+            }
+
+            ResolveBlockingChoices();
 
             if (waitingRoundEnd)
             {
@@ -255,7 +286,14 @@ namespace DefenseGame.Editor
                 current.endGold = controller.Gold;
                 current.endLife = controller.Life;
                 current.r10BossHealthRemaining01 = ResolveRemainingBossHealth01();
-                if (lastObservedRound >= TargetRound)
+                if (current.activeBossRound == lastObservedRound)
+                {
+                    current.bossClears++;
+                    current.bossCombatDurationSeconds += Mathf.Max(0f, (float)(EditorApplication.timeSinceStartup - current.activeBossStartTime));
+                    current.activeBossRound = 0;
+                }
+                CaptureMilestoneSnapshotIfNeeded();
+                if (lastObservedRound >= requestedTargetRound)
                 {
                     CompleteRun();
                     return;
@@ -266,19 +304,27 @@ namespace DefenseGame.Editor
                 return;
             }
 
-            if (controller.Life <= 0 || controller.CurrentRound > TargetRound)
+            if (controller.Life <= 0 || controller.CurrentRound > requestedTargetRound)
             {
                 CompleteRun();
                 return;
             }
 
-            HandleShopIfOpen();
-            CloseResultOverlayIfOpen();
-            ChooseAugmentIfOpen();
+            if (!ResolveBlockingChoices())
+            {
+                TrackPreparationFingerprint();
+                nextActionTime = EditorApplication.timeSinceStartup + 0.15d;
+                return;
+            }
+
+            ResetPreparationFingerprint();
             TryUsePreferredFateCardByStrategy();
             TryUseFateSummonQualityBoost();
             TryUseFateSurvivalInCrisis();
+            TryUpgradeGradeByStrategy();
+            TryMergeReadyUltimateRecipe();
             ExecutePrepPolicy();
+            CaptureMilestoneSnapshotIfNeeded();
             StartNextRound();
         }
 
@@ -311,12 +357,7 @@ namespace DefenseGame.Editor
             controller.SetRunContentSeedOverride(contentSeed);
             controller.ResetRunForRetry();
 
-            BossForecastBet forecastBet = ResolveBossForecastBet(current.strategy);
-            if (!controller.TryChooseBossForecastBet(forecastBet))
-            {
-                current.notes.Add("boss_forecast_bet_failed_" + forecastBet);
-            }
-            current.bossForecastBet = forecastBet.ToString();
+            current.bossForecastBet = BossForecastBet.None.ToString();
 
             runStartEditorTime = EditorApplication.timeSinceStartup;
             current.startGold = controller.Gold;
@@ -366,10 +407,18 @@ namespace DefenseGame.Editor
             current.endGold = controller.Gold;
             current.endLife = controller.Life;
             current.r10BossHealthRemaining01 = ResolveRemainingBossHealth01();
+            current.totalSummons = controller.RunTotalPlayerSummons;
+            current.totalMerges = controller.RunTotalMerges;
+            current.totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels();
+            TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
+            current.missionCompletedCount = missionSystem != null ? missionSystem.CompletedMissionCount : current.missionCompletedCount;
             CaptureFateCardSnapshot("complete");
             current.bossForecastBonusScore = controller.BossForecastBonusScore;
             current.bossForecastSuccess = controller.BossForecastBonusScore > 0;
-            current.clearedR10 = controller.Life > 0 && lastObservedRound >= TargetRound && !current.timeout;
+            current.clearedR10 = controller.Life > 0 && lastObservedRound >= 10 && !current.timeout;
+            current.victory = controller.Life > 0 && lastObservedRound >= requestedTargetRound && !current.timeout && !current.softLock;
+            current.defeat = !current.victory;
+            CaptureMilestoneSnapshotIfNeeded();
             Results.Add(current);
             File.WriteAllText(OutputPath + ".partial", BuildJson("partial"), Encoding.UTF8);
 
@@ -410,6 +459,331 @@ namespace DefenseGame.Editor
             {
                 EditorApplication.Exit(status == "complete" ? 0 : 1);
             }
+        }
+
+        private static bool ValidateRunInvariants()
+        {
+            if (controller == null || current == null)
+            {
+                return false;
+            }
+
+            bool valid = controller.Gold >= 0 && controller.Life <= controller.MaxLife &&
+                         (controller.BoardCapacity <= 0 || controller.BoardUnitCount <= controller.BoardCapacity);
+            foreach (CharacterGrade grade in new[] { CharacterGrade.Normal, CharacterGrade.Rare, CharacterGrade.Epic, CharacterGrade.Legendary, CharacterGrade.Mythic, CharacterGrade.Transcendent })
+            {
+                valid &= controller.GetGradeUpgradeLevel(grade) <= DefenseGameController.GradeUpgradeMaximumLevel;
+            }
+
+            if (controller.CurrentRound < current.lastControllerRound)
+            {
+                valid = false;
+            }
+
+            current.lastControllerRound = controller.CurrentRound;
+            if (!valid)
+            {
+                current.invariantFailure = true;
+                current.notes.Add("invariant_failure_R" + controller.CurrentRound);
+            }
+
+            return valid;
+        }
+        private static bool ResolveBlockingChoices()
+        {
+            if (controller == null || current == null)
+            {
+                return false;
+            }
+
+            bool resolved = true;
+            if (controller.CanChooseBossForecastBet)
+            {
+                BossForecastBet forecast = ResolveBossForecastBet(current.strategy);
+                if (controller.TryChooseBossForecastBet(forecast))
+                {
+                    current.bossForecastBet = forecast.ToString();
+                    current.notes.Add("boss_forecast_R" + controller.CurrentRound + "_" + forecast);
+                }
+                else
+                {
+                    resolved = false;
+                }
+            }
+
+            TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
+            if (missionSystem != null && missionSystem.IsChoicePanelOpen)
+            {
+                if (!TryChooseMissionByStrategy(missionSystem))
+                {
+                    resolved = false;
+                }
+                else
+                {
+                    current.missionChoiceCount++;
+                }
+            }
+
+            if (GameObject.Find("AugmentChoiceOverlay")?.activeInHierarchy == true)
+            {
+                if (!ChooseAugmentIfOpen())
+                {
+                    resolved = false;
+                }
+                else
+                {
+                    current.augmentChoiceCount++;
+                }
+            }
+
+            if (GameObject.Find("RunShopOverlay")?.activeInHierarchy == true)
+            {
+                if (current.lastShopOpenRound != controller.CurrentRound)
+                {
+                    current.shopOpenCount++;
+                    current.lastShopOpenRound = controller.CurrentRound;
+                }
+                HandleShopIfOpen();
+                if (GameObject.Find("RunShopOverlay")?.activeInHierarchy == true)
+                {
+                    resolved = false;
+                }
+            }
+
+            if (controller.LuckySummonChoiceOpen)
+            {
+                if (!TryResolveLuckyChoiceByStrategy())
+                {
+                    resolved = false;
+                }
+                else
+                {
+                    current.luckySummonChoiceCount++;
+                }
+            }
+
+            if (IsFateChoiceVisible())
+            {
+                if (!TryResolveFateChoice())
+                {
+                    resolved = false;
+                }
+            }
+
+            if (IsResultOverlayOpen())
+            {
+                CloseResultOverlayIfOpen();
+                if (IsResultOverlayOpen())
+                {
+                    resolved = false;
+                }
+            }
+
+            return resolved && !controller.IsBlockingChoiceOpen;
+        }
+
+        private static bool TryChooseMissionByStrategy(TacticalMissionSystem missionSystem)
+        {
+            if (missionSystem == null || missionSystem.MissionOfferCount <= 0)
+            {
+                return false;
+            }
+
+            string[] preferred = current.strategy == "summon-heavy"
+                ? new[] { "growth", "balanced", "safety" }
+                : current.strategy == "shop-save"
+                    ? new[] { "economy", "safety", "balanced" }
+                    : new[] { "safety", "balanced", "growth" };
+            for (int p = 0; p < preferred.Length; p++)
+            {
+                for (int i = 0; i < missionSystem.MissionOfferCount; i++)
+                {
+                    if (string.Equals(missionSystem.GetMissionOfferAutomationTag(i), preferred[p], StringComparison.Ordinal) && missionSystem.TrySelectMission(i))
+                    {
+                        current.notes.Add("mission_" + preferred[p]);
+                        return true;
+                    }
+                }
+            }
+
+            return missionSystem.TrySelectMission(0);
+        }
+
+        private static bool TryResolveLuckyChoiceByStrategy()
+        {
+            LuckySummonChoice choice = current.strategy == "summon-heavy"
+                ? LuckySummonChoice.SafeRare
+                : current.strategy == "balanced" ? LuckySummonChoice.MergeLink : LuckySummonChoice.Jackpot;
+            if (controller.TryResolveLuckySummonChoice(choice))
+            {
+                return true;
+            }
+
+            if (controller.TryResolveLuckySummonChoice(LuckySummonChoice.MergeLink) ||
+                controller.TryResolveLuckySummonChoice(LuckySummonChoice.SafeRare) ||
+                controller.TryResolveLuckySummonChoice(LuckySummonChoice.Jackpot))
+            {
+                return true;
+            }
+
+            controller.CancelLuckySummonChoice();
+            return !controller.LuckySummonChoiceOpen;
+        }
+
+        private static bool IsFateChoiceVisible()
+        {
+            GameObject backdrop = GameObject.Find("FateChoiceBackdrop");
+            return backdrop != null && backdrop.activeInHierarchy;
+        }
+
+        private static bool TryResolveFateChoice()
+        {
+            if (controller == null || !controller.CanOpenFateCard)
+            {
+                return false;
+            }
+
+            int choice = FindPreferredFateChoiceIndex(ResolveFateCardPreferences());
+            return choice >= 0 && controller.TryActivateFateCardChoice(choice);
+        }
+
+        private static bool IsResultOverlayOpen()
+        {
+            GameObject overlay = GameObject.Find("RoundResultOverlay");
+            return overlay != null && overlay.activeInHierarchy;
+        }
+
+        private static void TrackPreparationFingerprint()
+        {
+            if (current == null || controller == null || controller.IsRoundRunning)
+            {
+                return;
+            }
+
+            string fingerprint = controller.CurrentRound + "|" + controller.Gold + "|" + controller.Life + "|" + controller.BoardUnitCount + "|" +
+                                 controller.IsBlockingChoiceOpen + "|" + IsResultOverlayOpen() + "|" + IsFateChoiceVisible();
+            if (string.Equals(current.lastPreparationFingerprint, fingerprint, StringComparison.Ordinal))
+            {
+                current.preparationFingerprintRepeats++;
+            }
+            else
+            {
+                current.lastPreparationFingerprint = fingerprint;
+                current.preparationFingerprintRepeats = 0;
+            }
+
+            if (current.preparationFingerprintRepeats >= 20)
+            {
+                current.softLock = true;
+                current.notes.Add("soft_lock_" + fingerprint);
+                CompleteRun();
+            }
+        }
+
+        private static void ResetPreparationFingerprint()
+        {
+            if (current != null)
+            {
+                current.lastPreparationFingerprint = string.Empty;
+                current.preparationFingerprintRepeats = 0;
+            }
+        }
+
+        private static void TryUpgradeGradeByStrategy()
+        {
+            if (controller == null || current == null || controller.IsRoundRunning)
+            {
+                return;
+            }
+
+            int reserve = ResolveGoldReserve();
+            CharacterGrade bestGrade = CharacterGrade.Normal;
+            int bestCount = -1;
+            foreach (CharacterGrade grade in new[] { CharacterGrade.Transcendent, CharacterGrade.Mythic, CharacterGrade.Legendary, CharacterGrade.Epic, CharacterGrade.Rare, CharacterGrade.Normal })
+            {
+                int count = controller.CountUnitsOfGrade(grade);
+                if (count > bestCount && controller.CanUpgradeGrade(grade) && controller.Gold - controller.GetGradeUpgradeCost(grade) >= reserve)
+                {
+                    bestGrade = grade;
+                    bestCount = count;
+                }
+            }
+
+            if (bestCount >= 0 && controller.TryUpgradeGrade(bestGrade))
+            {
+                current.gradeUpgradePurchaseCount++;
+            }
+        }
+
+        private static void TryMergeReadyUltimateRecipe()
+        {
+            if (controller == null || current == null || controller.IsRoundRunning || controller.ReadyUltimateRecipeCount <= 0)
+            {
+                return;
+            }
+
+            if (current.strategy == "summon-heavy" && controller.EmptySlotCount > 1)
+            {
+                return;
+            }
+
+            UltimateRecipeOption[] options = controller.GetReadyUltimateRecipeOptions();
+            if (options.Length > 0 && controller.TryMergeUltimateRecipe(options[0].recipeName))
+            {
+                current.ultimateRecipeMergeCount++;
+                current.highestMergeGrade = Mathf.Max(current.highestMergeGrade, (int)CharacterGrade.Transcendent);
+            }
+        }
+
+        private static void CaptureMilestoneSnapshotIfNeeded()
+        {
+            if (current == null || controller == null)
+            {
+                return;
+            }
+
+            int round = controller.CurrentRound;
+            if (round < 10 || round % 10 != 0 || current.milestones.ContainsKey(round))
+            {
+                return;
+            }
+
+            current.milestones[round] = new MilestoneSnapshot
+            {
+                life = controller.Life,
+                gold = controller.Gold,
+                boardUnitCount = controller.BoardUnitCount,
+                boardCapacity = controller.BoardCapacity,
+                highestOwnedGrade = ResolveHighestOwnedGrade(),
+                totalSummons = controller.RunTotalPlayerSummons,
+                totalMerges = controller.RunTotalMerges,
+                totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels(),
+                ultimateRecipeCount = controller.ReadyUltimateRecipeCount
+            };
+        }
+
+        private static int ResolveHighestOwnedGrade()
+        {
+            int highest = (int)CharacterGrade.Normal;
+            DefenderUnit[] units = UnityEngine.Object.FindObjectsOfType<DefenderUnit>();
+            for (int i = 0; i < units.Length; i++)
+            {
+                if (units[i] != null && !units[i].IsTemporarySummon)
+                {
+                    highest = Mathf.Max(highest, (int)units[i].Grade);
+                }
+            }
+            return highest;
+        }
+
+        private static int ResolveTotalGradeUpgradeLevels()
+        {
+            int total = 0;
+            foreach (CharacterGrade grade in new[] { CharacterGrade.Normal, CharacterGrade.Rare, CharacterGrade.Epic, CharacterGrade.Legendary, CharacterGrade.Mythic, CharacterGrade.Transcendent })
+            {
+                total += controller.GetGradeUpgradeLevel(grade);
+            }
+            return total;
         }
 
         private static void ExecutePrepPolicy()
@@ -574,7 +948,7 @@ namespace DefenseGame.Editor
             {
                 return controller.CurrentRound >= 6 && lifeRatio <= 0.78f;
             }
-            if (controller.CurrentRound >= TargetRound)
+            if (controller.CurrentRound >= requestedTargetRound)
             {
                 return true;
             }
@@ -823,6 +1197,7 @@ namespace DefenseGame.Editor
             }
 
             current.merges++;
+            current.highestMergeGrade = Mathf.Max(current.highestMergeGrade, (int)grade + 1);
             if (current.firstMergeRound <= 0)
             {
                 current.firstMergeRound = Mathf.Max(1, controller.CurrentRound + 1);
@@ -852,9 +1227,22 @@ namespace DefenseGame.Editor
 
         private static void StartNextRound()
         {
-            lastObservedRound = controller.CurrentRound + 1;
+            int nextRound = controller.CurrentRound + 1;
             roundStartEditorTime = EditorApplication.timeSinceStartup;
             controller.StartRound();
+            if (!controller.IsRoundRunning)
+            {
+                nextActionTime = EditorApplication.timeSinceStartup + 0.15d;
+                return;
+            }
+
+            lastObservedRound = nextRound;
+            if (controller.IsBossRound)
+            {
+                current.bossAttempts++;
+                current.activeBossRound = nextRound;
+                current.activeBossStartTime = roundStartEditorTime;
+            }
             waitingRoundEnd = true;
             nextActionTime = EditorApplication.timeSinceStartup + 0.2d;
         }
@@ -1141,19 +1529,22 @@ namespace DefenseGame.Editor
             return false;
         }
 
-        private static void ChooseAugmentIfOpen()
+        private static bool ChooseAugmentIfOpen()
         {
             GameObject overlay = GameObject.Find("AugmentChoiceOverlay");
             if (overlay == null || !overlay.activeInHierarchy)
             {
-                return;
+                return true;
             }
 
             Button choice = FindButton("AugmentChoice_0");
-            if (choice != null && choice.gameObject.activeInHierarchy)
+            if (choice == null || !choice.gameObject.activeInHierarchy)
             {
-                choice.onClick.Invoke();
+                return false;
             }
+
+            choice.onClick.Invoke();
+            return !overlay.activeInHierarchy;
         }
 
         private static void CloseResultOverlayIfOpen()
@@ -1187,6 +1578,15 @@ namespace DefenseGame.Editor
 
         private static void HandleLogMessage(string condition, string stackTrace, LogType type)
         {
+            if ((type == LogType.Error || type == LogType.Exception || type == LogType.Assert) && current != null)
+            {
+                current.runtimeErrorCount++;
+                if (current.runtimeErrorSamples.Count < 8 && !string.IsNullOrWhiteSpace(condition))
+                {
+                    current.runtimeErrorSamples.Add(CompactNote(condition, 120));
+                }
+            }
+
             if (type == LogType.Warning && !string.IsNullOrEmpty(condition) && condition.Contains("referenced script") && condition.Contains("missing"))
             {
                 missingScriptWarningsObserved++;
@@ -1313,124 +1713,64 @@ namespace DefenseGame.Editor
 
         private static string BuildJson(string status)
         {
-            int cleared = 0;
-            int r3Seen = 0;
-            int r6Seen = 0;
-            int shopPurchases = 0;
-            int shopGoldSpent = 0;
-            int fateUses = 0;
-            int summonHeavyRuns = 0;
-            int summonHeavyClears = 0;
-            int summonHeavyReachedR10 = 0;
-            int summonHeavyReachedR9Plus = 0;
-            int balancedRuns = 0;
-            int balancedClears = 0;
-            int shopSaveRuns = 0;
-            int shopSaveClears = 0;
-            float rareRoundSum = 0f;
-            int rareRoundCount = 0;
-            float mergeRoundSum = 0f;
-            int mergeRoundCount = 0;
-            Dictionary<string, int> fateCardUsesByTitle = new Dictionary<string, int>();
-            Dictionary<string, int> fateCardClearsByTitle = new Dictionary<string, int>();
-
+            int r10Clears = 0;
+            int reachedTarget = 0;
+            int victories = 0;
+            int timeouts = 0;
+            int softLocks = 0;
+            int bossAttempts = 0;
+            int bossClears = 0;
+            int totalShopPurchases = 0;
+            Dictionary<string, int> strategyReachedTarget = new Dictionary<string, int>();
+            Dictionary<string, int> strategyRunCount = new Dictionary<string, int>();
             for (int i = 0; i < Results.Count; i++)
             {
                 RunResult result = Results[i];
-                if (result.clearedR10) cleared++;
-                if (result.r3ShopSeen) r3Seen++;
-                if (result.r6ShopSeen) r6Seen++;
-                shopPurchases += result.shopPurchases;
-                shopGoldSpent += result.shopGoldSpent;
-                fateUses += result.fateUses;
-                if (result.strategy == "summon-heavy")
+                if (result.clearedR10) r10Clears++;
+                if (result.reachedRound >= requestedTargetRound) reachedTarget++;
+                if (result.victory) victories++;
+                if (result.timeout) timeouts++;
+                if (result.softLock) softLocks++;
+                bossAttempts += result.bossAttempts;
+                bossClears += result.bossClears;
+                totalShopPurchases += result.shopPurchases;
+                AddCount(strategyRunCount, result.strategy, 1);
+                if (result.reachedRound >= requestedTargetRound)
                 {
-                    summonHeavyRuns++;
-                    if (result.clearedR10) summonHeavyClears++;
-                    if (result.reachedRound >= TargetRound)
-                    {
-                        summonHeavyReachedR10++;
-                    }
-
-                    if (result.reachedRound >= 9)
-                    {
-                        summonHeavyReachedR9Plus++;
-                    }
-                }
-                else if (result.strategy == "balanced")
-                {
-                    balancedRuns++;
-                    if (result.clearedR10) balancedClears++;
-                }
-                else if (result.strategy == "shop-save")
-                {
-                    shopSaveRuns++;
-                    if (result.clearedR10) shopSaveClears++;
-                }
-                if (!string.IsNullOrWhiteSpace(result.fateCardTitle) && result.fateCardTitle != "미사용")
-                {
-                    AddCount(fateCardUsesByTitle, result.fateCardTitle, 1);
-                    if (result.clearedR10)
-                    {
-                        AddCount(fateCardClearsByTitle, result.fateCardTitle, 1);
-                    }
-                }
-                if (result.firstRarePlusRound > 0)
-                {
-                    rareRoundSum += result.firstRarePlusRound;
-                    rareRoundCount++;
-                }
-
-                if (result.firstMergeRound > 0)
-                {
-                    mergeRoundSum += result.firstMergeRound;
-                    mergeRoundCount++;
+                    AddCount(strategyReachedTarget, result.strategy, 1);
                 }
             }
 
-            StringBuilder builder = new StringBuilder(4096);
+            StringBuilder builder = new StringBuilder(16384);
             builder.AppendLine("{");
-            builder.AppendLine("  \"status\": \"" + status + "\",");
+            builder.AppendLine("  \"status\": \"" + EscapeJson(status) + "\",");
             builder.AppendLine("  \"combatMode\": \"" + requestedCombatMode + "\",");
-            builder.AppendLine("  \"pairedSeedMode\": " + (pairedSeedMode ? "true" : "false") + ",");
-            builder.AppendLine("  \"fairStrategyPolicy\": " + (fairStrategyPolicy ? "true" : "false") + ",");
+            builder.AppendLine("  \"targetRound\": " + requestedTargetRound + ",");
+            builder.AppendLine("  \"pairedSeedMode\": " + JsonBool(pairedSeedMode) + ",");
+            builder.AppendLine("  \"fairStrategyPolicy\": " + JsonBool(fairStrategyPolicy) + ",");
             builder.AppendLine("  \"runs\": " + Results.Count + ",");
             builder.AppendLine("  \"targetRuns\": " + requestedRunCount + ",");
-            builder.AppendLine("  \"r10Clears\": " + cleared + ",");
-            builder.AppendLine("  \"r10SuccessRate\": " + FormatRatio(cleared, Results.Count) + ",");
-            builder.AppendLine("  \"r3ShopSeen\": " + r3Seen + ",");
-            builder.AppendLine("  \"r6ShopSeen\": " + r6Seen + ",");
-            builder.AppendLine("  \"shopPurchases\": " + shopPurchases + ",");
-            builder.AppendLine("  \"shopGoldSpent\": " + shopGoldSpent + ",");
-            builder.AppendLine("  \"fateUses\": " + fateUses + ",");
-            builder.AppendLine("  \"summonHeavyRuns\": " + summonHeavyRuns + ",");
-            builder.AppendLine("  \"summonHeavyR10Clears\": " + summonHeavyClears + ",");
-            builder.AppendLine("  \"summonHeavyR10SuccessRate\": " + FormatRatio(summonHeavyClears, summonHeavyRuns) + ",");
-            builder.AppendLine("  \"summonHeavyReachedR10\": " + summonHeavyReachedR10 + ",");
-            builder.AppendLine("  \"summonHeavyReachedR9Plus\": " + summonHeavyReachedR9Plus + ",");
-            builder.AppendLine("  \"balancedRuns\": " + balancedRuns + ",");
-            builder.AppendLine("  \"balancedR10Clears\": " + balancedClears + ",");
-            builder.AppendLine("  \"balancedR10SuccessRate\": " + FormatRatio(balancedClears, balancedRuns) + ",");
-            builder.AppendLine("  \"shopSaveRuns\": " + shopSaveRuns + ",");
-            builder.AppendLine("  \"shopSaveR10Clears\": " + shopSaveClears + ",");
-            builder.AppendLine("  \"shopSaveR10SuccessRate\": " + FormatRatio(shopSaveClears, shopSaveRuns) + ",");
-            builder.AppendLine("  \"avgFirstRarePlusRound\": " + FormatFloat(rareRoundCount > 0 ? rareRoundSum / rareRoundCount : -1f) + ",");
-            builder.AppendLine("  \"avgFirstMergeRound\": " + FormatFloat(mergeRoundCount > 0 ? mergeRoundSum / mergeRoundCount : -1f) + ",");
-            builder.AppendLine("  \"fateCardBreakdown\": [");
-            int fateCardIndex = 0;
-            foreach (KeyValuePair<string, int> pair in fateCardUsesByTitle)
+            builder.AppendLine("  \"r10Clears\": " + r10Clears + ",");
+            builder.AppendLine("  \"r10SuccessRate\": " + FormatRatio(r10Clears, Results.Count) + ",");
+            builder.AppendLine("  \"reachedTargetCount\": " + reachedTarget + ",");
+            builder.AppendLine("  \"reachedTargetRate\": " + FormatRatio(reachedTarget, Results.Count) + ",");
+            builder.AppendLine("  \"victories\": " + victories + ",");
+            builder.AppendLine("  \"timeouts\": " + timeouts + ",");
+            builder.AppendLine("  \"softLocks\": " + softLocks + ",");
+            builder.AppendLine("  \"bossAttempts\": " + bossAttempts + ",");
+            builder.AppendLine("  \"bossClears\": " + bossClears + ",");
+            builder.AppendLine("  \"bossClearRate\": " + FormatRatio(bossClears, bossAttempts) + ",");
+            builder.AppendLine("  \"shopPurchases\": " + totalShopPurchases + ",");
+            builder.AppendLine("  \"strategySummary\": [");
+            int strategyIndex = 0;
+            foreach (KeyValuePair<string, int> strategy in strategyRunCount)
             {
-                int cardClears = fateCardClearsByTitle.TryGetValue(pair.Key, out int clearCount) ? clearCount : 0;
-                builder.Append("    {");
-                builder.Append("\"title\":\"").Append(EscapeJson(pair.Key)).Append("\",");
-                builder.Append("\"uses\":").Append(pair.Value).Append(',');
-                builder.Append("\"r10Clears\":").Append(cardClears).Append(',');
-                builder.Append("\"successRate\":").Append(FormatRatio(cardClears, pair.Value));
-                builder.Append("}");
-                if (++fateCardIndex < fateCardUsesByTitle.Count)
-                {
-                    builder.Append(',');
-                }
+                int strategyReached = strategyReachedTarget.TryGetValue(strategy.Key, out int count) ? count : 0;
+                builder.Append("    {\"strategy\":\"").Append(EscapeJson(strategy.Key)).Append("\",");
+                builder.Append("\"runs\":").Append(strategy.Value).Append(',');
+                builder.Append("\"reachedTarget\":").Append(strategyReached).Append(',');
+                builder.Append("\"reachedTargetRate\":").Append(FormatRatio(strategyReached, strategy.Value)).Append('}');
+                if (++strategyIndex < strategyRunCount.Count) builder.Append(',');
                 builder.AppendLine();
             }
             builder.AppendLine("  ],");
@@ -1441,46 +1781,69 @@ namespace DefenseGame.Editor
                 builder.Append("    {");
                 builder.Append("\"index\":").Append(result.index).Append(',');
                 builder.Append("\"contentSeed\":").Append(result.contentSeed).Append(',');
-                builder.Append("\"strategy\":\"").Append(result.strategy).Append("\",");
+                builder.Append("\"strategy\":\"").Append(EscapeJson(result.strategy)).Append("\",");
                 builder.Append("\"reachedRound\":").Append(result.reachedRound).Append(',');
-                builder.Append("\"clearedR10\":").Append(result.clearedR10 ? "true" : "false").Append(',');
-                builder.Append("\"summons\":").Append(result.summons).Append(',');
-                builder.Append("\"merges\":").Append(result.merges).Append(',');
-                builder.Append("\"shopPurchases\":").Append(result.shopPurchases).Append(',');
-                builder.Append("\"shopGoldSpent\":").Append(result.shopGoldSpent).Append(',');
-                builder.Append("\"fateUses\":").Append(result.fateUses).Append(',');
-                builder.Append("\"fateCardTitle\":\"").Append(EscapeJson(result.fateCardTitle)).Append("\",");
-                builder.Append("\"fateCardDebt\":").Append(result.fateCardDebt).Append(',');
-                builder.Append("\"fateChoiceIndex\":").Append(result.fateChoiceIndex).Append(',');
-                builder.Append("\"fateActivationRound\":").Append(result.fateActivationRound).Append(',');
-                builder.Append("\"fateTrigger\":\"").Append(EscapeJson(result.fateTrigger)).Append("\",");
-                builder.Append("\"fateCardDetail\":\"").Append(EscapeJson(result.fateCardDetail)).Append("\",");
-                builder.Append("\"r3ShopSeen\":").Append(result.r3ShopSeen ? "true" : "false").Append(',');
-                builder.Append("\"r6ShopSeen\":").Append(result.r6ShopSeen ? "true" : "false").Append(',');
-                builder.Append("\"firstRarePlusRound\":").Append(result.firstRarePlusRound).Append(',');
-                builder.Append("\"firstMergeRound\":").Append(result.firstMergeRound).Append(',');
+                builder.Append("\"victory\":").Append(JsonBool(result.victory)).Append(',');
+                builder.Append("\"defeat\":").Append(JsonBool(result.defeat)).Append(',');
+                builder.Append("\"timeout\":").Append(JsonBool(result.timeout)).Append(',');
+                builder.Append("\"softLock\":").Append(JsonBool(result.softLock)).Append(',');
+                builder.Append("\"invariantFailure\":").Append(JsonBool(result.invariantFailure)).Append(',');
+                builder.Append("\"runtimeErrorCount\":").Append(result.runtimeErrorCount).Append(',');                builder.Append("\"runtimeErrorSamples\":\"").Append(EscapeJson(string.Join(" | ", result.runtimeErrorSamples))).Append("\",");
                 builder.Append("\"endGold\":").Append(result.endGold).Append(',');
                 builder.Append("\"endLife\":").Append(result.endLife).Append(',');
-                builder.Append("\"r10BossHealthRemaining01\":").Append(FormatFloat(result.r10BossHealthRemaining01)).Append(',');
+                builder.Append("\"totalSummons\":").Append(result.totalSummons).Append(',');
+                builder.Append("\"totalMerges\":").Append(result.totalMerges).Append(',');
+                builder.Append("\"highestMergeGrade\":").Append(result.highestMergeGrade).Append(',');
+                builder.Append("\"gradeUpgradePurchaseCount\":").Append(result.gradeUpgradePurchaseCount).Append(',');
+                builder.Append("\"totalGradeUpgradeLevels\":").Append(result.totalGradeUpgradeLevels).Append(',');
+                builder.Append("\"ultimateRecipeMergeCount\":").Append(result.ultimateRecipeMergeCount).Append(',');
+                builder.Append("\"augmentChoiceCount\":").Append(result.augmentChoiceCount).Append(',');
+                builder.Append("\"missionChoiceCount\":").Append(result.missionChoiceCount).Append(',');
+                builder.Append("\"missionCompletedCount\":").Append(result.missionCompletedCount).Append(',');
+                builder.Append("\"shopOpenCount\":").Append(result.shopOpenCount).Append(',');
+                builder.Append("\"shopPurchaseCount\":").Append(result.shopPurchases).Append(',');
+                builder.Append("\"luckySummonChoiceCount\":").Append(result.luckySummonChoiceCount).Append(',');
+                builder.Append("\"bossAttempts\":").Append(result.bossAttempts).Append(',');
+                builder.Append("\"bossClears\":").Append(result.bossClears).Append(',');
+                builder.Append("\"bossCombatDurationSeconds\":").Append(FormatFloat(result.bossCombatDurationSeconds)).Append(',');
+                builder.Append("\"bossHealthRemaining01\":").Append(FormatFloat(result.r10BossHealthRemaining01)).Append(',');
                 builder.Append("\"bossForecastBet\":\"").Append(EscapeJson(result.bossForecastBet)).Append("\",");
-                builder.Append("\"bossForecastSuccess\":").Append(result.bossForecastSuccess ? "true" : "false").Append(',');
-                builder.Append("\"bossForecastBonusScore\":").Append(result.bossForecastBonusScore).Append(',');
-                builder.Append("\"timeout\":").Append(result.timeout ? "true" : "false").Append(',');
+                builder.Append("\"fateUses\":").Append(result.fateUses).Append(',');
+                builder.Append("\"milestones\":");
+                AppendMilestonesJson(builder, result.milestones);
+                builder.Append(',');
                 builder.Append("\"notes\":\"").Append(EscapeJson(string.Join(";", result.notes))).Append("\"");
-                builder.Append("}");
-                if (i < Results.Count - 1)
-                {
-                    builder.Append(',');
-                }
-
+                builder.Append('}');
+                if (i < Results.Count - 1) builder.Append(',');
                 builder.AppendLine();
             }
-
             builder.AppendLine("  ]");
             builder.AppendLine("}");
             return builder.ToString();
         }
 
+        private static void AppendMilestonesJson(StringBuilder builder, Dictionary<int, MilestoneSnapshot> milestones)
+        {
+            builder.Append('[');
+            bool first = true;
+            foreach (KeyValuePair<int, MilestoneSnapshot> pair in milestones)
+            {
+                if (!first) builder.Append(',');
+                MilestoneSnapshot snapshot = pair.Value;
+                builder.Append("{\"round\":").Append(pair.Key).Append(',');
+                builder.Append("\"life\":").Append(snapshot.life).Append(',');
+                builder.Append("\"gold\":").Append(snapshot.gold).Append(',');
+                builder.Append("\"boardUnitCount\":").Append(snapshot.boardUnitCount).Append(',');
+                builder.Append("\"boardCapacity\":").Append(snapshot.boardCapacity).Append(',');
+                builder.Append("\"highestOwnedGrade\":").Append(snapshot.highestOwnedGrade).Append(',');
+                builder.Append("\"totalSummons\":").Append(snapshot.totalSummons).Append(',');
+                builder.Append("\"totalMerges\":").Append(snapshot.totalMerges).Append(',');
+                builder.Append("\"totalGradeUpgradeLevels\":").Append(snapshot.totalGradeUpgradeLevels).Append(',');
+                builder.Append("\"ultimateRecipeCount\":").Append(snapshot.ultimateRecipeCount).Append('}');
+                first = false;
+            }
+            builder.Append(']');
+        }
         private static void AddCount(Dictionary<string, int> target, string key, int amount)
         {
             if (target == null || string.IsNullOrWhiteSpace(key))
@@ -1502,6 +1865,19 @@ namespace DefenseGame.Editor
         }
 
         [Serializable]
+        private sealed class MilestoneSnapshot
+        {
+            public int life;
+            public int gold;
+            public int boardUnitCount;
+            public int boardCapacity;
+            public int highestOwnedGrade;
+            public int totalSummons;
+            public int totalMerges;
+            public int totalGradeUpgradeLevels;
+            public int ultimateRecipeCount;
+        }
+        [Serializable]
         private sealed class RunResult
         {
             public int index;
@@ -1509,6 +1885,33 @@ namespace DefenseGame.Editor
             public string strategy;
             public int startGold;
             public int reachedRound;
+            public bool victory;
+            public bool defeat;
+            public bool softLock;
+            public bool invariantFailure;
+            public int runtimeErrorCount;
+            public readonly List<string> runtimeErrorSamples = new List<string>();
+            public int totalSummons;
+            public int totalMerges;
+            public int highestMergeGrade;
+            public int gradeUpgradePurchaseCount;
+            public int totalGradeUpgradeLevels;
+            public int ultimateRecipeMergeCount;
+            public int augmentChoiceCount;
+            public int missionChoiceCount;
+            public int missionCompletedCount;
+            public int shopOpenCount;
+            public int lastShopOpenRound = -1;
+            public int luckySummonChoiceCount;
+            public int bossAttempts;
+            public int bossClears;
+            public float bossCombatDurationSeconds;
+            public int activeBossRound;
+            public double activeBossStartTime;
+            public int lastControllerRound;
+            public string lastPreparationFingerprint = string.Empty;
+            public int preparationFingerprintRepeats;
+            public readonly Dictionary<int, MilestoneSnapshot> milestones = new Dictionary<int, MilestoneSnapshot>();
             public bool clearedR10;
             public int summons;
             public int merges;

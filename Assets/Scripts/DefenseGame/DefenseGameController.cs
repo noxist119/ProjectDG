@@ -1819,10 +1819,6 @@ namespace DefenseGame
                 return "R" + milestone.nextRound + " \uC2DC\uC791\n\uC704\uAE30 \uB77C\uC6B4\uB4DC";
             }
 
-            if (milestone.isApproachingMajorHurdle)
-            {
-                return "R" + milestone.nextRound + " \uC2DC\uC791\n\uAC15\uC801 \uAD6C\uAC04";
-            }
 
             return "\uB2E4\uC74C \uB77C\uC6B4\uB4DC";
         }

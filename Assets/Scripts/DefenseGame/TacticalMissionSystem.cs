@@ -120,6 +120,26 @@ namespace DefenseGame
         public bool HasActiveMissionSelection => missionSelected;
         public bool IsChoicePanelOpen => !missionSelected && panelRoot != null && panelRoot.activeSelf;
         public int MissionOfferCount => missionSelected ? 0 : activeMissions.Count;
+        public int CompletedMissionCount => completedMissionCount;
+
+        // Read-only automation/telemetry surface. This deliberately exposes broad intent,
+        // rather than the private MissionKind enum, so external test policies remain stable
+        // when individual missions are added or renamed.
+        public string GetMissionOfferAutomationTag(int index)
+        {
+            if (missionSelected || index < 0 || index >= activeMissions.Count || activeMissions[index] == null)
+            {
+                return string.Empty;
+            }
+
+            switch (GetMissionCategory(activeMissions[index].kind))
+            {
+                case "TEMPO": return "growth";
+                case "GREED": return "economy";
+                case "SAFE": return "safety";
+                default: return "balanced";
+            }
+        }
 
         public void Configure(
             DefenseGameController controller,
