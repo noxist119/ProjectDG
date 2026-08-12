@@ -296,9 +296,7 @@ namespace DefenseGame.Editor
                 current.r10BossHealthRemaining01 = ResolveRemainingBossHealth01();
                 if (current.activeBossRound == lastObservedRound)
                 {
-                    current.bossClears++;
-                    current.bossCombatDurationSeconds += Mathf.Max(0f, (float)(EditorApplication.timeSinceStartup - current.activeBossStartTime));
-                    current.activeBossRound = 0;
+                    FinalizeActiveBossAttempt();
                 }
                 CaptureMilestoneSnapshotIfNeeded();
                 if (lastObservedRound >= requestedTargetRound)
@@ -413,6 +411,7 @@ namespace DefenseGame.Editor
         {
             ObserveActiveBossHealth();
             FinalizeActiveBossAttempt();
+            bool bossAttemptAccountingValid = ValidateBossAttemptAccounting(requireFinalizedWhenNoActive: true);
             current.reachedRound = Mathf.Max(current.reachedRound, controller.CurrentRound);
             current.endGold = controller.Gold;
             current.endLife = controller.Life;
@@ -429,7 +428,7 @@ namespace DefenseGame.Editor
             CaptureFateCardSnapshot("complete");
             current.bossForecastBonusScore = controller.BossForecastBonusScore;
             current.bossForecastSuccess = controller.BossForecastBonusScore > 0;
-            current.technicalFailure = current.runtimeErrorCount > 0 || current.timeout || current.softLock || current.invariantFailure;
+            current.technicalFailure = current.runtimeErrorCount > 0 || current.timeout || current.softLock || current.invariantFailure || !bossAttemptAccountingValid;
             current.clearedR10 = controller.Life > 0 && lastObservedRound >= 10 && !current.technicalFailure;
             current.victory = controller.Life > 0 && lastObservedRound >= requestedTargetRound && !current.technicalFailure;
             current.defeat = controller.Life <= 0 && !current.technicalFailure;
@@ -498,6 +497,7 @@ namespace DefenseGame.Editor
 
             bool valid = controller.Gold >= 0 && controller.Life <= controller.MaxLife &&
                          (controller.BoardCapacity <= 0 || controller.BoardUnitCount <= controller.BoardCapacity);
+            valid &= ValidateBossAttemptAccounting(requireFinalizedWhenNoActive: false);
             foreach (CharacterGrade grade in new[] { CharacterGrade.Normal, CharacterGrade.Rare, CharacterGrade.Epic, CharacterGrade.Legendary, CharacterGrade.Mythic, CharacterGrade.Transcendent })
             {
                 valid &= controller.GetGradeUpgradeLevel(grade) <= DefenseGameController.GradeUpgradeMaximumLevel;
@@ -1297,6 +1297,32 @@ namespace DefenseGame.Editor
             }
 
             current.activeBossRound = 0;
+        }
+
+        private static bool ValidateBossAttemptAccounting(bool requireFinalizedWhenNoActive)
+        {
+            if (current == null)
+            {
+                return false;
+            }
+
+            int resolvedAttempts = current.bossClears + current.bossFailures;
+            bool valid = resolvedAttempts <= current.bossAttempts;
+            if (requireFinalizedWhenNoActive && current.activeBossRound <= 0)
+            {
+                valid &= resolvedAttempts == current.bossAttempts;
+            }
+
+            if (!valid)
+            {
+                string warning = "boss_attempt_accounting_mismatch_attempts_" + current.bossAttempts + "_resolved_" + resolvedAttempts + "_active_" + current.activeBossRound;
+                if (!current.validationCoverageWarnings.Contains(warning))
+                {
+                    current.validationCoverageWarnings.Add(warning);
+                }
+            }
+
+            return valid;
         }
 
         private static void ObserveActiveBossHealth()
