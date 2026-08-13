@@ -51,7 +51,7 @@ namespace DefenseGame
             bool bossHunterPlaced = false;
             for (int i = 0; i < tileCount && pool.Count > 0; i++)
             {
-                int index = Random.Range(0, pool.Count);
+                int index = ContentRange(0, pool.Count, "board.tile.slot");
                 BoardSlot slot = pool[index];
                 pool.RemoveAt(index);
 
@@ -148,7 +148,7 @@ namespace DefenseGame
                     BoardTileModifierType.AttackPower,
                     BoardTileModifierType.Range
                 };
-                return early[(Random.Range(0, early.Length) + index) % early.Length];
+                return early[(ContentRange(0, early.Length, "board.tile.early") + index) % early.Length];
             }
 
             if (round <= 9)
@@ -178,7 +178,7 @@ namespace DefenseGame
                     BoardTileModifierType.LifeSteal,
                     BoardTileModifierType.Overload
                 };
-                return mid[(Random.Range(0, mid.Length) + index) % mid.Length];
+                return mid[(ContentRange(0, mid.Length, "board.tile.mid") + index) % mid.Length];
             }
 
             BoardTileModifierType[] late =
@@ -194,7 +194,13 @@ namespace DefenseGame
                 BoardTileModifierType.BossHunter,
                 BoardTileModifierType.AllStats
             };
-            return late[(Random.Range(0, late.Length) + index) % late.Length];
+            return late[(ContentRange(0, late.Length, "board.tile.late") + index) % late.Length];
+        }
+        private int ContentRange(int minInclusive, int maxExclusive, string eventType)
+        {
+            return gameController != null
+                ? gameController.RunContentRandom.Range(RunContentRandomChannel.Board, minInclusive, maxExclusive, eventType)
+                : Random.Range(minInclusive, maxExclusive);
         }
         private bool IsBossPreparationRound(int completedRound)
         {

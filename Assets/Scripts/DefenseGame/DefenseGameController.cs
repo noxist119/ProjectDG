@@ -172,6 +172,8 @@ namespace DefenseGame
         private bool dailyFateCupEnabled;
         private bool runContentSeedOverrideEnabled;
         private int runContentSeedOverride;
+        private int generatedRunContentSeed;
+        private readonly RunContentRandomService runContentRandom = new RunContentRandomService();
         private BossForecastBet bossForecastBet;
         private bool bossForecastBetResolved;
         private bool bossForecastRequestRaised;
@@ -710,7 +712,12 @@ namespace DefenseGame
         public bool DailyFateCupEnabled => dailyFateCupEnabled;
         public int DailyFateCupSeed => DailyFateCupRules.TodaySeed;
         public bool HasRunContentSeedOverride => runContentSeedOverrideEnabled;
-        public int ActiveRunContentSeed => runContentSeedOverrideEnabled ? runContentSeedOverride : DailyFateCupSeed;
+        public int ActiveRunContentSeed => runContentSeedOverrideEnabled
+            ? runContentSeedOverride
+            : dailyFateCupEnabled
+                ? DailyFateCupSeed
+                : generatedRunContentSeed;
+        public RunContentRandomService RunContentRandom => runContentRandom;
         public string DailyFateCupSummary => dailyFateCupEnabled
             ? DailyFateCupRules.TodayLabel + "  ·  시드 " + Mathf.Abs(DailyFateCupSeed % 100000).ToString("D5")
             : "데일리 운명컵 OFF  ·  일반 랜덤 시드";
@@ -1225,34 +1232,27 @@ namespace DefenseGame
         {
             jackpotSuccess = false;
             jackpotFailed = false;
-            if (characterDatabase == null)
-            {
-                return null;
-            }
+            if (characterDatabase == null) return null;
 
             CharacterDefinition selected;
             switch (choice)
             {
                 case LuckySummonChoice.MergeLink:
-                    selected = characterDatabase.GetRandomCharacterByGrade(SelectMergeAssistGrade(), true);
+                    selected = characterDatabase.GetRunContentRandomCharacterByGrade(SelectMergeAssistGrade(), runContentRandom, RunContentRandomChannel.Lucky, "lucky.mergeLink", true);
                     break;
-
                 case LuckySummonChoice.SafeRare:
-                    selected = characterDatabase.GetRandomSummonableCharacter(GetSummonRateRound(), true);
+                    selected = characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Lucky, "lucky.safeRare", true);
                     if (selected == null || (int)selected.grade < (int)CharacterGrade.Rare)
-                    {
-                        selected = characterDatabase.GetRandomCharacterByGrade(CharacterGrade.Rare, true);
-                    }
+                        selected = characterDatabase.GetRunContentRandomCharacterByGrade(CharacterGrade.Rare, runContentRandom, RunContentRandomChannel.Lucky, "lucky.safeRareFallback", true);
                     break;
-
                 default:
-                    jackpotSuccess = UnityEngine.Random.value < Mathf.Clamp01(luckySummonJackpotEpicChance);
+                    jackpotSuccess = runContentRandom.Value(RunContentRandomChannel.Lucky, "lucky.jackpot.roll") < Mathf.Clamp01(luckySummonJackpotEpicChance);
                     jackpotFailed = !jackpotSuccess;
-                    selected = characterDatabase.GetRandomCharacterByGrade(jackpotSuccess ? CharacterGrade.Epic : CharacterGrade.Normal, true);
+                    selected = characterDatabase.GetRunContentRandomCharacterByGrade(jackpotSuccess ? CharacterGrade.Epic : CharacterGrade.Normal, runContentRandom, RunContentRandomChannel.Lucky, "lucky.jackpot", true);
                     break;
             }
 
-            selected ??= characterDatabase.GetRandomSummonableCharacter(GetSummonRateRound(), true);
+            selected ??= characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Lucky, "lucky.fallback", true);
             return selected != null ? ApplyFateSummonIntervention(selected) : null;
         }
 
@@ -1313,7 +1313,7 @@ namespace DefenseGame
             LastMergeResult = null;
             gameOverRaised = false;
             ResetRunStats();
-            ApplyDailyFateCupSeed();
+            ResetRunContentRandom();
             OnBannerRequested?.Invoke(
                 dailyFateCupEnabled ? DailyFateCupRules.TodayLabel : "새 판 준비",
                 dailyFateCupEnabled ? new Color(0.86f, 0.62f, 1f) : new Color(0.52f, 0.82f, 1f),
@@ -1374,7 +1374,7 @@ namespace DefenseGame
                 return false;
             }
 
-            bool merged = boardManager.TryMergeUnitsOfGrade(grade, characterDatabase, out MergeResultInfo mergeResult, defaultUnitPrefab);
+            bool merged = boardManager.TryMergeUnitsOfGrade(grade, characterDatabase, out MergeResultInfo mergeResult, defaultUnitPrefab, runContentRandom);
             return FinalizeMergeResult(merged, mergeResult);
         }
 
@@ -1508,15 +1508,15 @@ namespace DefenseGame
             runContentSeedOverride = seed.GetValueOrDefault();
         }
 
-        private void ApplyDailyFateCupSeed()
+        private void ResetRunContentRandom()
         {
             if (!dailyFateCupEnabled && !runContentSeedOverrideEnabled)
             {
-                return;
+                generatedRunContentSeed = unchecked(Environment.TickCount ^ (int)DateTime.UtcNow.Ticks);
             }
 
             int modeSalt = (int)currentCombatMode * 7919;
-            UnityEngine.Random.InitState(ActiveRunContentSeed ^ modeSalt);
+            runContentRandom.Reset(ActiveRunContentSeed ^ modeSalt);
         }
 
 
@@ -5051,7 +5051,7 @@ namespace DefenseGame
             earlyPitySummon = false;
             int summonRateRound = GetSummonRateRound();
             CharacterDefinition selected;
-            selected = characterDatabase.GetRandomSummonableCharacter(summonRateRound, true);
+            selected = characterDatabase.GetRunContentRandomSummonableCharacter(summonRateRound, runContentRandom, RunContentRandomChannel.Summon, "player.summon", true);
             return ApplyFateSummonIntervention(selected);
         }
 
@@ -5067,7 +5067,7 @@ namespace DefenseGame
 
             if (fateGradeLockSummonsRemaining > 0 && (int)result.grade < (int)fateGradeLockMinimum)
             {
-                CharacterDefinition lockedGrade = characterDatabase.GetRandomCharacterByGrade(fateGradeLockMinimum, true);
+                CharacterDefinition lockedGrade = characterDatabase.GetRunContentRandomCharacterByGrade(fateGradeLockMinimum, runContentRandom, RunContentRandomChannel.Fate, "fate.gradeLock", true);
                 if (lockedGrade != null)
                 {
                     result = lockedGrade;
@@ -5077,9 +5077,7 @@ namespace DefenseGame
 
             if (fateNormalBanSummonsRemaining > 0 && result.grade == CharacterGrade.Normal)
             {
-                CharacterDefinition rareOrBetter = characterDatabase.GetRandomCharacterByGrade(CharacterGrade.Rare, true)
-                    ?? characterDatabase.GetRandomCharacterByGrade(CharacterGrade.Epic, true)
-                    ?? characterDatabase.GetRandomSummonableCharacter(GetSummonRateRound(), true);
+                CharacterDefinition rareOrBetter = characterDatabase.GetRunContentRandomCharacterByGrade(CharacterGrade.Rare, runContentRandom, RunContentRandomChannel.Fate, "fate.normalBan.rare", true)`n                    ?? characterDatabase.GetRunContentRandomCharacterByGrade(CharacterGrade.Epic, runContentRandom, RunContentRandomChannel.Fate, "fate.normalBan.epic", true)`n                    ?? characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Fate, "fate.normalBan.fallback", true);
                 if (rareOrBetter != null)
                 {
                     result = rareOrBetter;

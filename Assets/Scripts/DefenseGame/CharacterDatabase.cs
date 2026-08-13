@@ -321,6 +321,47 @@ namespace DefenseGame
             return fallback.Count > 0 ? fallback[Random.Range(0, fallback.Count)] : null;
         }
 
+        public CharacterDefinition GetRunContentRandomCharacterByGrade(CharacterGrade grade, RunContentRandomService contentRandom, RunContentRandomChannel channel, string eventType, bool deployableOnly = false)
+        {
+            List<CharacterDefinition> candidates = GetCharactersByGrade(grade, deployableOnly);
+            if (candidates.Count == 0) return null;
+            int index = contentRandom != null ? contentRandom.Range(channel, 0, candidates.Count, eventType + ".index") : Random.Range(0, candidates.Count);
+            CharacterDefinition selected = candidates[index];
+            contentRandom?.RecordOutcome(channel, eventType + ".result", selected.id);
+            return selected;
+        }
+
+        public CharacterDefinition GetRunContentRandomCharacterByGradeOrLower(CharacterGrade grade, RunContentRandomService contentRandom, RunContentRandomChannel channel, string eventType, bool deployableOnly = false)
+        {
+            for (int gradeIndex = (int)grade; gradeIndex >= (int)CharacterGrade.Normal; gradeIndex--)
+            {
+                CharacterDefinition candidate = GetRunContentRandomCharacterByGrade((CharacterGrade)gradeIndex, contentRandom, channel, eventType + ".grade" + gradeIndex, deployableOnly);
+                if (candidate != null) return candidate;
+            }
+            return null;
+        }
+
+        public CharacterDefinition GetRunContentRandomSummonableCharacter(int currentRound, RunContentRandomService contentRandom, RunContentRandomChannel channel, string eventType, bool deployableOnly = false)
+        {
+            SummonGradeRates rates = ResolveSummonGradeRates(currentRound);
+            float total = rates.normal + rates.rare + rates.epic + rates.legendary + rates.mythic;
+            CharacterGrade grade = CharacterGrade.Normal;
+            if (total > 0.0001f)
+            {
+                float roll = (contentRandom != null ? contentRandom.Value(channel, eventType + ".gradeRoll") : Random.value) * total;
+                if (roll < rates.normal) grade = CharacterGrade.Normal;
+                else { roll -= rates.normal; if (roll < rates.rare) grade = CharacterGrade.Rare; else { roll -= rates.rare; if (roll < rates.epic) grade = CharacterGrade.Epic; else { roll -= rates.epic; grade = roll < rates.legendary ? CharacterGrade.Legendary : CharacterGrade.Mythic; } } }
+            }
+
+            CharacterDefinition selected = GetRunContentRandomCharacterByGradeOrLower(grade, contentRandom, channel, eventType, deployableOnly);
+            if (selected != null || !deployableOnly) return selected;
+            List<CharacterDefinition> fallback = GetDeployableCharacters();
+            if (fallback.Count == 0) return null;
+            int index = contentRandom != null ? contentRandom.Range(channel, 0, fallback.Count, eventType + ".fallback") : Random.Range(0, fallback.Count);
+            selected = fallback[index];
+            contentRandom?.RecordOutcome(channel, eventType + ".fallbackResult", selected.id);
+            return selected;
+        }
         private CharacterGrade RollSummonGradeForRound(int currentRound)
         {
             SummonGradeRates rates = ResolveSummonGradeRates(currentRound);
