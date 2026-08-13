@@ -48,12 +48,19 @@ namespace DefenseGame.Editor
         private static bool pairedSeedMode;
         private static bool fairStrategyPolicy;
         private static string requestedOutputFileName = ClassicOutputFileName;
+        private static float requestedBatchTimeScale = BatchTimeScale;
+        private static List<DiagnosticRunRequest> requestedDiagnosticRuns;
         private static DefenseGameController controller;
         private static RunResult current;
         private static int runIndex;
         private static double nextActionTime;
         private static double runStartEditorTime;
         private static double roundStartEditorTime;
+        private static double roundStartGameTime;
+        private static float roundFirstLeakWallClockSeconds;
+        private static float roundFirstLeakGameTimeSeconds;
+        private static BossTimeoutObservation latestBossTimeoutObservation;
+        private static BossTimeoutObservation previousBossTimeoutObservation;
         private static int lastObservedRound;
         private static bool waitingRoundEnd;
         private static bool started;
@@ -169,13 +176,56 @@ namespace DefenseGame.Editor
             RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, "DefenseGame_Phase2H_Overdrive_R30_Baseline.json");
         }
 
+        [MenuItem("DefenseGame/Batch Playtest/Pass2I Timeout Diagnosis Overdrive R10 40x")]
+        public static void RunPass2ITimeoutDiagnosis40x()
+        {
+            RunPass2ITimeoutDiagnosis(40f, "DefenseGame_Phase2I_Overdrive_R10_TimeoutDiagnostic_40x.json");
+        }
+
+        public static void RunPass2ITimeoutDiagnosis40xBatch()
+        {
+            EditorApplication.delayCall -= RunPass2ITimeoutDiagnosis40x;
+            EditorApplication.delayCall += RunPass2ITimeoutDiagnosis40x;
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Pass2I Timeout Diagnosis Overdrive R10 10x")]
+        public static void RunPass2ITimeoutDiagnosis10x()
+        {
+            RunPass2ITimeoutDiagnosis(10f, "DefenseGame_Phase2I_Overdrive_R10_TimeoutDiagnostic_10x.json");
+        }
+
+        public static void RunPass2ITimeoutDiagnosis10xBatch()
+        {
+            EditorApplication.delayCall -= RunPass2ITimeoutDiagnosis10x;
+            EditorApplication.delayCall += RunPass2ITimeoutDiagnosis10x;
+        }
+
+        private static void RunPass2ITimeoutDiagnosis(float timeScale, string outputFileName)
+        {
+            List<DiagnosticRunRequest> requests = new List<DiagnosticRunRequest>
+            {
+                new DiagnosticRunRequest(90210, "balanced"),
+                new DiagnosticRunRequest(90210, "shop-save"),
+                new DiagnosticRunRequest(98129, "balanced")
+            };
+            RunHumanStrategies(CombatGameMode.Overdrive, requests.Count, false, false, 10, outputFileName, requests, timeScale);
+        }
+
         [MenuItem("DefenseGame/Batch Playtest/Phase2 Classic R50")]
         public static void RunPhase2ClassicR50()
         {
             RunHumanStrategies(CombatGameMode.Classic, Phase2ClassicR50Runs, true, false, 50, Phase2ClassicR50OutputFileName);
         }
 
-        private static void RunHumanStrategies(CombatGameMode combatMode, int runCount, bool usePairedSeeds, bool useFairPolicy, int targetRound, string outputFileName)
+        private static void RunHumanStrategies(
+            CombatGameMode combatMode,
+            int runCount,
+            bool usePairedSeeds,
+            bool useFairPolicy,
+            int targetRound,
+            string outputFileName,
+            List<DiagnosticRunRequest> diagnosticRuns = null,
+            float timeScale = BatchTimeScale)
         {
             requestedCombatMode = combatMode;
             requestedRunCount = Mathf.Max(3, runCount);
@@ -183,6 +233,8 @@ namespace DefenseGame.Editor
             pairedSeedMode = usePairedSeeds;
             fairStrategyPolicy = useFairPolicy;
             requestedOutputFileName = string.IsNullOrWhiteSpace(outputFileName) ? ClassicOutputFileName : outputFileName;
+            requestedBatchTimeScale = Mathf.Max(0.1f, timeScale);
+            requestedDiagnosticRuns = diagnosticRuns != null ? new List<DiagnosticRunRequest>(diagnosticRuns) : null;
             Results.Clear();
             controller = null;
             current = null;
@@ -190,6 +242,9 @@ namespace DefenseGame.Editor
             nextActionTime = 0d;
             runStartEditorTime = 0d;
             roundStartEditorTime = 0d;
+            roundStartGameTime = 0d;
+            latestBossTimeoutObservation = null;
+            previousBossTimeoutObservation = null;
             lastObservedRound = 0;
             waitingRoundEnd = false;
             started = false;
@@ -257,9 +312,9 @@ namespace DefenseGame.Editor
 
         private static void ApplyBatchSpeedSettings()
         {
-            if (!Mathf.Approximately(Time.timeScale, BatchTimeScale))
+            if (!Mathf.Approximately(Time.timeScale, requestedBatchTimeScale))
             {
-                Time.timeScale = BatchTimeScale;
+                Time.timeScale = requestedBatchTimeScale;
             }
 
             if (!Mathf.Approximately(Time.fixedDeltaTime, BatchFixedDeltaTime))
@@ -347,13 +402,16 @@ namespace DefenseGame.Editor
 
                 if (controller.IsRoundRunning)
                 {
+                    ObserveRoundFirstLeakTime();
                     ObserveActivePostBossRoundTelemetry();
                     ObserveActiveBossHealth();
+                    ObserveTimeoutProgress();
                     TryUsePreferredFateCardByStrategy();
                     if (EditorApplication.timeSinceStartup - roundStartEditorTime > RoundTimeoutSeconds)
                     {
                         current.timeout = true;
                         current.r10BossHealthRemaining01 = ResolveRemainingBossHealth01();
+                        CaptureRoundTimeoutSnapshot();
                         current.notes.Add("round_timeout_R" + lastObservedRound + "_bossHp_" + FormatFloat(current.r10BossHealthRemaining01));
                         CompleteRun();
                     }
@@ -410,12 +468,15 @@ namespace DefenseGame.Editor
         private static void StartRun()
         {
             ResetR10EncounterTelemetry();
+            DiagnosticRunRequest diagnosticRequest = requestedDiagnosticRuns != null && runIndex < requestedDiagnosticRuns.Count
+                ? requestedDiagnosticRuns[runIndex]
+                : null;
             int seedIndex = pairedSeedMode ? runIndex / 3 : runIndex;
-            int contentSeed = 90210 + seedIndex * 7919;
+            int contentSeed = diagnosticRequest != null ? diagnosticRequest.contentSeed : 90210 + seedIndex * 7919;
             current = new RunResult
             {
                 index = runIndex + 1,
-                strategy = ResolveStrategy(runIndex),
+                strategy = diagnosticRequest != null ? diagnosticRequest.strategy : ResolveStrategy(runIndex),
                 contentSeed = contentSeed,
                 startGold = controller.Gold
             };
@@ -1122,7 +1183,9 @@ namespace DefenseGame.Editor
                 isHordeRound = controller.IsCurrentRoundHorde,
                 isBossRound = controller.IsBossRound,
                 isMidBossRound = controller.IsMidBossRound,
-                firstLeakSeconds = -1f
+                firstLeakSeconds = -1f,
+                firstLeakWallClockSeconds = -1f,
+                firstLeakGameTimeSeconds = -1f
             };
             current.postBossRoundTelemetry[round] = activePostBossRoundTelemetry;
             ObserveActivePostBossRoundTelemetry();
@@ -1143,7 +1206,10 @@ namespace DefenseGame.Editor
             telemetry.peakActiveMonsters = Mathf.Max(telemetry.peakActiveMonsters, controller.RoundPeakActiveMonsterCount, MonsterUnit.ActiveCount);
             if (telemetry.firstLeakSeconds < 0f && telemetry.leakDamage > 0)
             {
-                telemetry.firstLeakSeconds = Mathf.Max(0f, (float)(EditorApplication.timeSinceStartup - roundStartEditorTime));
+                float wallClockSeconds = GetRoundWallClockSeconds();
+                telemetry.firstLeakSeconds = wallClockSeconds; // Legacy wall-clock field retained for existing reports.
+                telemetry.firstLeakWallClockSeconds = wallClockSeconds;
+                telemetry.firstLeakGameTimeSeconds = GetRoundGameTimeSeconds();
             }
         }
 
@@ -1165,7 +1231,10 @@ namespace DefenseGame.Editor
             telemetry.totalSummonsAtEnd = controller.RunTotalPlayerSummons;
             telemetry.totalMergesAtEnd = controller.RunTotalMerges;
             telemetry.totalGradeUpgradeLevelsAtEnd = ResolveTotalGradeUpgradeLevels();
-            telemetry.roundDurationSeconds = Mathf.Max(0f, (float)(EditorApplication.timeSinceStartup - roundStartEditorTime));
+            float wallClockDurationSeconds = GetRoundWallClockSeconds();
+            telemetry.roundDurationSeconds = wallClockDurationSeconds; // Legacy wall-clock field retained for existing reports.
+            telemetry.wallClockDurationSeconds = wallClockDurationSeconds;
+            telemetry.gameTimeDurationSeconds = GetRoundGameTimeSeconds();
             activePostBossRoundTelemetry = null;
         }
 
@@ -1674,6 +1743,11 @@ namespace DefenseGame.Editor
         {
             int nextRound = controller.CurrentRound + 1;
             roundStartEditorTime = EditorApplication.timeSinceStartup;
+            roundStartGameTime = Time.timeAsDouble;
+            roundFirstLeakWallClockSeconds = -1f;
+            roundFirstLeakGameTimeSeconds = -1f;
+            latestBossTimeoutObservation = null;
+            previousBossTimeoutObservation = null;
             controller.StartRound();
             if (!controller.IsRoundRunning)
             {
@@ -1805,6 +1879,179 @@ namespace DefenseGame.Editor
             }
 
             return found ? highest : 0f;
+        }
+
+        private static float GetRoundWallClockSeconds()
+        {
+            return Mathf.Max(0f, (float)(EditorApplication.timeSinceStartup - roundStartEditorTime));
+        }
+
+        private static float GetRoundGameTimeSeconds()
+        {
+            return Mathf.Max(0f, (float)(Time.timeAsDouble - roundStartGameTime));
+        }
+
+        private static void ObserveRoundFirstLeakTime()
+        {
+            if (controller == null || lastObservedRound <= 0 || roundFirstLeakWallClockSeconds >= 0f)
+            {
+                return;
+            }
+
+            if (ResolveRoundCount(controller.RunLeakDamageByRound, lastObservedRound) <= 0)
+            {
+                return;
+            }
+
+            roundFirstLeakWallClockSeconds = GetRoundWallClockSeconds();
+            roundFirstLeakGameTimeSeconds = GetRoundGameTimeSeconds();
+        }
+
+        private static void ObserveTimeoutProgress()
+        {
+            BossTimeoutObservation observation = CaptureBossTimeoutObservation();
+            if (observation == null)
+            {
+                return;
+            }
+
+            previousBossTimeoutObservation = latestBossTimeoutObservation;
+            latestBossTimeoutObservation = observation;
+        }
+
+        private static BossTimeoutObservation CaptureBossTimeoutObservation()
+        {
+            MonsterUnit boss = FindActiveBoss();
+            if (boss == null)
+            {
+                return null;
+            }
+
+            Vector3 position = boss.transform.position;
+            return new BossTimeoutObservation
+            {
+                wallClockSeconds = GetRoundWallClockSeconds(),
+                gameTimeSeconds = GetRoundGameTimeSeconds(),
+                health01 = boss.MaxHealth > 0f ? Mathf.Clamp01(boss.CurrentHealth / boss.MaxHealth) : -1f,
+                positionX = position.x,
+                positionY = position.y,
+                positionZ = position.z,
+                canBeCombatTargeted = boss.CanBeCombatTargeted,
+                statusEffectImmune = boss.IsStatusEffectImmune,
+                stunned = boss.IsStunned,
+                petrified = boss.IsPetrified,
+                activeMonsterCount = MonsterUnit.ActiveCount,
+                resolvedMonsterCount = controller != null ? controller.RoundResolvedMonsterCount : 0
+            };
+        }
+
+        private static MonsterUnit FindActiveBoss()
+        {
+            IReadOnlyList<MonsterUnit> monsters = MonsterUnit.ActiveInstances;
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                MonsterUnit monster = monsters[i];
+                if (monster != null && monster.IsBoss && monster.MaxHealth > 0f)
+                {
+                    return monster;
+                }
+            }
+
+            return null;
+        }
+
+        private static void CaptureRoundTimeoutSnapshot()
+        {
+            if (current == null || controller == null)
+            {
+                return;
+            }
+
+            if (latestBossTimeoutObservation == null)
+            {
+                ObserveTimeoutProgress();
+            }
+            BossTimeoutObservation latest = latestBossTimeoutObservation;
+            BossTimeoutObservation previous = previousBossTimeoutObservation;
+            float bossHealthDelta = latest != null && previous != null ? latest.health01 - previous.health01 : 0f;
+            float bossPositionDelta = latest != null && previous != null
+                ? Vector3.Distance(
+                    new Vector3(latest.positionX, latest.positionY, latest.positionZ),
+                    new Vector3(previous.positionX, previous.positionY, previous.positionZ))
+                : 0f;
+            int resolvedDelta = latest != null && previous != null ? latest.resolvedMonsterCount - previous.resolvedMonsterCount : 0;
+            int activeCount = latest != null ? latest.activeMonsterCount : MonsterUnit.ActiveCount;
+            int spawned = controller.RoundSpawnedMonsterCount;
+            int resolved = controller.RoundResolvedMonsterCount;
+            TimeoutSnapshot snapshot = new TimeoutSnapshot
+            {
+                combatMode = requestedCombatMode.ToString(),
+                contentSeed = current.contentSeed,
+                strategy = current.strategy,
+                round = lastObservedRound,
+                wallClockDurationSeconds = GetRoundWallClockSeconds(),
+                gameTimeDurationSeconds = GetRoundGameTimeSeconds(),
+                firstLeakWallClockSeconds = roundFirstLeakWallClockSeconds,
+                firstLeakGameTimeSeconds = roundFirstLeakGameTimeSeconds,
+                life = controller.Life,
+                gold = controller.Gold,
+                targetMonsterCount = controller.RoundTargetCount,
+                spawnedMonsterCount = spawned,
+                killedMonsterCount = controller.RoundKilledMonsterCount,
+                escapedMonsterCount = ResolveRoundCount(controller.RunEscapedMonsterCountByRound, lastObservedRound),
+                resolvedMonsterCount = resolved,
+                activeMonsterCount = activeCount,
+                peakActiveMonsterCount = controller.RoundPeakActiveMonsterCount,
+                bossExists = latest != null,
+                bossHealth01 = latest != null ? latest.health01 : -1f,
+                bossHealthDeltaRecent = bossHealthDelta,
+                bossPositionX = latest != null ? latest.positionX : 0f,
+                bossPositionY = latest != null ? latest.positionY : 0f,
+                bossPositionZ = latest != null ? latest.positionZ : 0f,
+                bossPositionDeltaRecent = bossPositionDelta,
+                bossCanBeCombatTargeted = latest != null && latest.canBeCombatTargeted,
+                bossStatusEffectImmune = latest != null && latest.statusEffectImmune,
+                bossStunned = latest != null && latest.stunned,
+                bossPetrified = latest != null && latest.petrified,
+                defenderCount = controller.BoardUnitCount,
+                observationWindowWallClockSeconds = latest != null && previous != null ? Mathf.Max(0f, latest.wallClockSeconds - previous.wallClockSeconds) : 0f,
+                observationWindowGameTimeSeconds = latest != null && previous != null ? Mathf.Max(0f, latest.gameTimeSeconds - previous.gameTimeSeconds) : 0f,
+                resolvedMonsterDeltaRecent = resolvedDelta
+            };
+            snapshot.classification = ClassifyTimeout(snapshot);
+            current.timeoutSnapshots.Add(snapshot);
+            current.notes.Add("timeout_classification_" + snapshot.classification + "_R" + snapshot.round);
+        }
+
+        private static string ClassifyTimeout(TimeoutSnapshot snapshot)
+        {
+            if (snapshot.gameTimeDurationSeconds < Mathf.Max(0.25f, snapshot.wallClockDurationSeconds * 0.25f))
+            {
+                return "editor_or_batch_timing_issue";
+            }
+
+            if (snapshot.spawnedMonsterCount > 0 &&
+                (snapshot.resolvedMonsterCount > snapshot.spawnedMonsterCount ||
+                 snapshot.activeMonsterCount > snapshot.spawnedMonsterCount ||
+                 snapshot.resolvedMonsterCount + snapshot.activeMonsterCount > snapshot.spawnedMonsterCount))
+            {
+                return "spawn_or_resolution_mismatch";
+            }
+
+            if (snapshot.bossExists &&
+                (Mathf.Abs(snapshot.bossHealthDeltaRecent) > 0.0005f ||
+                 snapshot.bossPositionDeltaRecent > 0.005f ||
+                 snapshot.resolvedMonsterDeltaRecent != 0))
+            {
+                return "simulation_still_progressing";
+            }
+
+            if (snapshot.bossExists && snapshot.observationWindowWallClockSeconds > 0f)
+            {
+                return "combat_stalemate";
+            }
+
+            return "unknown";
         }
         private static void HandleShopIfOpen()
         {
@@ -2456,6 +2703,9 @@ namespace DefenseGame.Editor
                 builder.Append("\"postBossRoundTelemetry\":");
                 AppendPostBossRoundTelemetryJson(builder, result.postBossRoundTelemetry);
                 builder.Append(',');
+                builder.Append("\"timeoutSnapshots\":");
+                AppendTimeoutSnapshotsJson(builder, result.timeoutSnapshots);
+                builder.Append(',');
                 builder.Append("\"milestones\":");
                 AppendMilestonesJson(builder, result.milestones);
                 builder.Append(',');
@@ -2548,7 +2798,11 @@ namespace DefenseGame.Editor
                     builder.Append("\"leakDamage\":").Append(telemetry.leakDamage).Append(',');
                     builder.Append("\"peakActiveMonsters\":").Append(telemetry.peakActiveMonsters).Append(',');
                     builder.Append("\"firstLeakSeconds\":").Append(FormatFloat(telemetry.firstLeakSeconds)).Append(',');
+                    builder.Append("\"firstLeakWallClockSeconds\":").Append(FormatFloat(telemetry.firstLeakWallClockSeconds)).Append(',');
+                    builder.Append("\"firstLeakGameTimeSeconds\":").Append(FormatFloat(telemetry.firstLeakGameTimeSeconds)).Append(',');
                     builder.Append("\"roundDurationSeconds\":").Append(FormatFloat(telemetry.roundDurationSeconds)).Append(',');
+                    builder.Append("\"wallClockDurationSeconds\":").Append(FormatFloat(telemetry.wallClockDurationSeconds)).Append(',');
+                    builder.Append("\"gameTimeDurationSeconds\":").Append(FormatFloat(telemetry.gameTimeDurationSeconds)).Append(',');
                     builder.Append("\"isHordeRound\":").Append(JsonBool(telemetry.isHordeRound)).Append(',');
                     builder.Append("\"isBossRound\":").Append(JsonBool(telemetry.isBossRound)).Append(',');
                     builder.Append("\"isMidBossRound\":").Append(JsonBool(telemetry.isMidBossRound)).Append('}');
@@ -2557,6 +2811,51 @@ namespace DefenseGame.Editor
             }
             builder.Append(']');
         }
+        private static void AppendTimeoutSnapshotsJson(StringBuilder builder, List<TimeoutSnapshot> snapshots)
+        {
+            builder.Append('[');
+            if (snapshots != null)
+            {
+                for (int i = 0; i < snapshots.Count; i++)
+                {
+                    if (i > 0) builder.Append(',');
+                    TimeoutSnapshot snapshot = snapshots[i];
+                    builder.Append("{\"combatMode\":\"").Append(EscapeJson(snapshot.combatMode)).Append("\",");
+                    builder.Append("\"contentSeed\":").Append(snapshot.contentSeed).Append(',');
+                    builder.Append("\"strategy\":\"").Append(EscapeJson(snapshot.strategy)).Append("\",");
+                    builder.Append("\"round\":").Append(snapshot.round).Append(',');
+                    builder.Append("\"wallClockDurationSeconds\":").Append(FormatFloat(snapshot.wallClockDurationSeconds)).Append(',');
+                    builder.Append("\"gameTimeDurationSeconds\":").Append(FormatFloat(snapshot.gameTimeDurationSeconds)).Append(',');
+                    builder.Append("\"firstLeakWallClockSeconds\":").Append(FormatFloat(snapshot.firstLeakWallClockSeconds)).Append(',');
+                    builder.Append("\"firstLeakGameTimeSeconds\":").Append(FormatFloat(snapshot.firstLeakGameTimeSeconds)).Append(',');
+                    builder.Append("\"classification\":\"").Append(EscapeJson(snapshot.classification)).Append("\",");
+                    builder.Append("\"life\":").Append(snapshot.life).Append(',');
+                    builder.Append("\"gold\":").Append(snapshot.gold).Append(',');
+                    builder.Append("\"targetMonsterCount\":").Append(snapshot.targetMonsterCount).Append(',');
+                    builder.Append("\"spawnedMonsterCount\":").Append(snapshot.spawnedMonsterCount).Append(',');
+                    builder.Append("\"killedMonsterCount\":").Append(snapshot.killedMonsterCount).Append(',');
+                    builder.Append("\"escapedMonsterCount\":").Append(snapshot.escapedMonsterCount).Append(',');
+                    builder.Append("\"resolvedMonsterCount\":").Append(snapshot.resolvedMonsterCount).Append(',');
+                    builder.Append("\"activeMonsterCount\":").Append(snapshot.activeMonsterCount).Append(',');
+                    builder.Append("\"peakActiveMonsterCount\":").Append(snapshot.peakActiveMonsterCount).Append(',');
+                    builder.Append("\"bossExists\":").Append(JsonBool(snapshot.bossExists)).Append(',');
+                    builder.Append("\"bossHealth01\":").Append(FormatFloat(snapshot.bossHealth01)).Append(',');
+                    builder.Append("\"bossHealthDeltaRecent\":").Append(FormatFloat(snapshot.bossHealthDeltaRecent)).Append(',');
+                    builder.Append("\"bossPosition\":[").Append(FormatFloat(snapshot.bossPositionX)).Append(',').Append(FormatFloat(snapshot.bossPositionY)).Append(',').Append(FormatFloat(snapshot.bossPositionZ)).Append("],");
+                    builder.Append("\"bossPositionDeltaRecent\":").Append(FormatFloat(snapshot.bossPositionDeltaRecent)).Append(',');
+                    builder.Append("\"bossCanBeCombatTargeted\":").Append(JsonBool(snapshot.bossCanBeCombatTargeted)).Append(',');
+                    builder.Append("\"bossStatusEffectImmune\":").Append(JsonBool(snapshot.bossStatusEffectImmune)).Append(',');
+                    builder.Append("\"bossStunned\":").Append(JsonBool(snapshot.bossStunned)).Append(',');
+                    builder.Append("\"bossPetrified\":").Append(JsonBool(snapshot.bossPetrified)).Append(',');
+                    builder.Append("\"defenderCount\":").Append(snapshot.defenderCount).Append(',');
+                    builder.Append("\"observationWindowWallClockSeconds\":").Append(FormatFloat(snapshot.observationWindowWallClockSeconds)).Append(',');
+                    builder.Append("\"observationWindowGameTimeSeconds\":").Append(FormatFloat(snapshot.observationWindowGameTimeSeconds)).Append(',');
+                    builder.Append("\"resolvedMonsterDeltaRecent\":").Append(snapshot.resolvedMonsterDeltaRecent).Append('}');
+                }
+            }
+            builder.Append(']');
+        }
+
         private static void AppendMilestonesJson(StringBuilder builder, Dictionary<int, MilestoneSnapshot> milestones)
         {
             builder.Append('[');
@@ -2662,11 +2961,83 @@ namespace DefenseGame.Editor
             public int leakDamage;
             public int peakActiveMonsters;
             public float firstLeakSeconds;
+            public float firstLeakWallClockSeconds;
+            public float firstLeakGameTimeSeconds;
             public float roundDurationSeconds;
+            public float wallClockDurationSeconds;
+            public float gameTimeDurationSeconds;
             public bool isHordeRound;
             public bool isBossRound;
             public bool isMidBossRound;
         }
+        [Serializable]
+        private sealed class DiagnosticRunRequest
+        {
+            public readonly int contentSeed;
+            public readonly string strategy;
+
+            public DiagnosticRunRequest(int contentSeed, string strategy)
+            {
+                this.contentSeed = contentSeed;
+                this.strategy = strategy ?? string.Empty;
+            }
+        }
+
+        [Serializable]
+        private sealed class BossTimeoutObservation
+        {
+            public float wallClockSeconds;
+            public float gameTimeSeconds;
+            public float health01;
+            public float positionX;
+            public float positionY;
+            public float positionZ;
+            public bool canBeCombatTargeted;
+            public bool statusEffectImmune;
+            public bool stunned;
+            public bool petrified;
+            public int activeMonsterCount;
+            public int resolvedMonsterCount;
+        }
+
+        [Serializable]
+        private sealed class TimeoutSnapshot
+        {
+            public string combatMode = string.Empty;
+            public int contentSeed;
+            public string strategy = string.Empty;
+            public int round;
+            public float wallClockDurationSeconds;
+            public float gameTimeDurationSeconds;
+            public float firstLeakWallClockSeconds;
+            public float firstLeakGameTimeSeconds;
+            public string classification = string.Empty;
+            public int life;
+            public int gold;
+            public int targetMonsterCount;
+            public int spawnedMonsterCount;
+            public int killedMonsterCount;
+            public int escapedMonsterCount;
+            public int resolvedMonsterCount;
+            public int activeMonsterCount;
+            public int peakActiveMonsterCount;
+            public bool bossExists;
+            public float bossHealth01;
+            public float bossHealthDeltaRecent;
+            public float bossPositionX;
+            public float bossPositionY;
+            public float bossPositionZ;
+            public float bossPositionDeltaRecent;
+            public bool bossCanBeCombatTargeted;
+            public bool bossStatusEffectImmune;
+            public bool bossStunned;
+            public bool bossPetrified;
+            public int defenderCount;
+            public float observationWindowWallClockSeconds;
+            public float observationWindowGameTimeSeconds;
+            public int resolvedMonsterDeltaRecent;
+        }
+
         [Serializable]
         private sealed class RunContentChannelTrace
         {
@@ -2779,6 +3150,7 @@ namespace DefenseGame.Editor
             public int bossForecastBonusScore;
             public bool timeout;
             public readonly List<string> notes = new List<string>();
+            public readonly List<TimeoutSnapshot> timeoutSnapshots = new List<TimeoutSnapshot>();
         }
     }
 }
