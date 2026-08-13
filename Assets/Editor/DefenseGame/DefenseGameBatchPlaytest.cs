@@ -32,7 +32,11 @@ namespace DefenseGame.Editor
         private const string Phase2ClassicR30OutputFileName = "DefenseGame_Phase2_Classic_R30.json";
         private const string Phase2OverdriveR30OutputFileName = "DefenseGame_Phase2_Overdrive_R30.json";
         private const string Phase2ClassicR50OutputFileName = "DefenseGame_Phase2_Classic_R50.json";
-        private static readonly int[] PressureCheckpointRounds = { 3, 5, 6, 7, 8, 9, 10, 11, 12, 15, 20, 30 };
+        private const string Phase2FClassicRepeatAOutputFileName = "DefenseGame_Phase2F_Classic_R30_RepeatA.json";
+        private const string Phase2FClassicRepeatBOutputFileName = "DefenseGame_Phase2F_Classic_R30_RepeatB.json";
+        private const string Phase2FOverdriveRepeatAOutputFileName = "DefenseGame_Phase2F_Overdrive_R30_RepeatA.json";
+        private const string Phase2FOverdriveRepeatBOutputFileName = "DefenseGame_Phase2F_Overdrive_R30_RepeatB.json";
+        private static readonly int[] PressureCheckpointRounds = { 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 30 };
         private static string OutputDirectory => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName));
         private static string OutputPath => Path.Combine(OutputDirectory, requestedOutputFileName);
         private static string MissingScriptReportPath => Path.Combine(OutputDirectory, MissingScriptReportFileName);
@@ -102,6 +106,30 @@ namespace DefenseGame.Editor
         public static void RunPhase2OverdriveR30()
         {
             RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, Phase2OverdriveR30OutputFileName);
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2F Classic R30 Repeat A")]
+        public static void RunPhase2FClassicR30RepeatA()
+        {
+            RunHumanStrategies(CombatGameMode.Classic, Phase2ClassicR30Runs, true, false, 30, Phase2FClassicRepeatAOutputFileName);
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2F Classic R30 Repeat B")]
+        public static void RunPhase2FClassicR30RepeatB()
+        {
+            RunHumanStrategies(CombatGameMode.Classic, Phase2ClassicR30Runs, true, false, 30, Phase2FClassicRepeatBOutputFileName);
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2F Overdrive R30 Repeat A")]
+        public static void RunPhase2FOverdriveR30RepeatA()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, Phase2FOverdriveRepeatAOutputFileName);
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2F Overdrive R30 Repeat B")]
+        public static void RunPhase2FOverdriveR30RepeatB()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, Phase2FOverdriveRepeatBOutputFileName);
         }
 
         [MenuItem("DefenseGame/Batch Playtest/Phase2 Classic R50")]
@@ -368,6 +396,7 @@ namespace DefenseGame.Editor
             UnityEngine.Random.InitState(contentSeed);
             controller.SetRunContentSeedOverride(contentSeed);
             controller.ResetRunForRetry();
+            SubscribeRunTrace();
 
             current.bossForecastBet = BossForecastBet.None.ToString();
 
@@ -435,6 +464,8 @@ namespace DefenseGame.Editor
             TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
             current.missionCompletedCount = missionSystem != null ? missionSystem.CompletedMissionCount : current.missionCompletedCount;
             CaptureFateCardSnapshot("complete");
+            FinalizeRunTrace();
+            UnsubscribeRunTrace();
             current.bossForecastBonusScore = controller.BossForecastBonusScore;
             current.bossForecastSuccess = controller.BossForecastBonusScore > 0;
             current.technicalFailure = current.runtimeErrorCount > 0 || current.timeout || current.softLock || current.invariantFailure || !bossAttemptAccountingValid;
@@ -573,6 +604,7 @@ namespace DefenseGame.Editor
         private static void FinishAll(string status)
         {
             EditorApplication.update -= Tick;
+            UnsubscribeRunTrace();
             UnsubscribeR10EncounterTelemetry();
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
             controller?.SetRunContentSeedOverride(null);
@@ -598,6 +630,73 @@ namespace DefenseGame.Editor
             {
                 EditorApplication.Exit(status == "complete" ? 0 : 1);
             }
+        }
+
+        private static void SubscribeRunTrace()
+        {
+            if (controller == null)
+            {
+                return;
+            }
+
+            controller.OnUnitSummoned -= RecordSummonedUnitTrace;
+            controller.OnUnitSummoned += RecordSummonedUnitTrace;
+        }
+
+        private static void UnsubscribeRunTrace()
+        {
+            if (controller != null)
+            {
+                controller.OnUnitSummoned -= RecordSummonedUnitTrace;
+            }
+        }
+
+        private static void RecordSummonedUnitTrace(CharacterDefinition definition)
+        {
+            if (current == null || definition == null)
+            {
+                return;
+            }
+
+            current.summonSequenceTrace.Add("R" + Mathf.Max(1, controller.CurrentRound) + ":" + definition.id + ":" + (int)definition.grade);
+        }
+
+        private static void FinalizeRunTrace()
+        {
+            if (current == null)
+            {
+                return;
+            }
+
+            current.summonSequenceHash = ComputeTraceHash(current.summonSequenceTrace);
+            current.mergeSequenceHash = ComputeTraceHash(current.mergeTrace);
+            current.augmentChoiceIdsHash = ComputeTraceHash(current.augmentChoiceTrace);
+            current.missionChoiceIdsHash = ComputeTraceHash(current.missionChoiceTrace);
+            current.shopPurchaseIdsHash = ComputeTraceHash(current.shopPurchaseTrace);
+        }
+
+        private static string ComputeTraceHash(List<string> trace)
+        {
+            const ulong OffsetBasis = 14695981039346656037UL;
+            const ulong Prime = 1099511628211UL;
+            ulong hash = OffsetBasis;
+            if (trace != null)
+            {
+                for (int i = 0; i < trace.Count; i++)
+                {
+                    string entry = trace[i] ?? string.Empty;
+                    for (int c = 0; c < entry.Length; c++)
+                    {
+                        hash ^= entry[c];
+                        hash *= Prime;
+                    }
+
+                    hash ^= 10;
+                    hash *= Prime;
+                }
+            }
+
+            return hash.ToString("X16", System.Globalization.CultureInfo.InvariantCulture);
         }
 
         private static bool ValidateRunInvariants()
@@ -748,12 +847,19 @@ namespace DefenseGame.Editor
                     if (string.Equals(missionSystem.GetMissionOfferAutomationTag(i), preferred[p], StringComparison.Ordinal) && missionSystem.TrySelectMission(i))
                     {
                         current.notes.Add("mission_" + preferred[p]);
+                        current.missionChoiceTrace.Add("R" + Mathf.Max(1, controller.CurrentRound) + ":" + preferred[p] + ":" + i);
                         return true;
                     }
                 }
             }
 
-            return missionSystem.TrySelectMission(0);
+            if (missionSystem.TrySelectMission(0))
+            {
+                current.missionChoiceTrace.Add("R" + Mathf.Max(1, controller.CurrentRound) + ":fallback:0");
+                return true;
+            }
+
+            return false;
         }
 
         private static bool TryResolveLuckyChoiceByStrategy()
@@ -960,6 +1066,7 @@ namespace DefenseGame.Editor
                 summonCost = controller.SummonCost,
                 ultimateRecipeCount = controller.ReadyUltimateRecipeCount,
                 targetMonsterCount = controller.RoundTargetCount,
+                leakDamage = controller.RunTotalLeakDamage,
                 isHordeRound = controller.IsCurrentRoundHorde,
                 isBossRound = controller.IsBossRound,
                 isMidBossRound = controller.IsMidBossRound
@@ -1401,6 +1508,7 @@ namespace DefenseGame.Editor
             }
 
             current.merges++;
+            current.mergeTrace.Add("R" + Mathf.Max(1, controller.CurrentRound) + ":" + grade);
             current.highestMergeGrade = Mathf.Max(current.highestMergeGrade, (int)grade + 1);
             if (current.firstMergeRound <= 0)
             {
@@ -1627,6 +1735,7 @@ namespace DefenseGame.Editor
                         current.shopPurchases++;
                         current.shopGoldSpent += before - controller.Gold;
                         current.notes.Add("shop_" + Mathf.Max(1, controller.CurrentRound) + "_" + CompactNote(BuildButtonSearchText(bestButton), 24) + "_" + bestCost + "G");
+                    current.shopPurchaseTrace.Add("R" + Mathf.Max(1, controller.CurrentRound) + ":" + bestButton.name + ":" + CompactNote(BuildButtonSearchText(bestButton), 96) + ":" + bestCost);
                     }
                 }
             }
@@ -1842,6 +1951,10 @@ namespace DefenseGame.Editor
             }
 
             choice.onClick.Invoke();
+            if (!overlay.activeInHierarchy)
+            {
+                current.augmentChoiceTrace.Add("R" + Mathf.Max(1, controller.CurrentRound) + ":" + choice.name + ":" + CompactNote(BuildButtonSearchText(choice), 96));
+            }
             return !overlay.activeInHierarchy;
         }
 
@@ -2149,6 +2262,11 @@ namespace DefenseGame.Editor
                 builder.Append(',');
                 builder.Append("\"totalSummons\":").Append(result.totalSummons).Append(',');
                 builder.Append("\"totalMerges\":").Append(result.totalMerges).Append(',');
+                builder.Append("\"summonSequenceHash\":\"").Append(EscapeJson(result.summonSequenceHash)).Append("\",");
+                builder.Append("\"mergeSequenceHash\":\"").Append(EscapeJson(result.mergeSequenceHash)).Append("\",");
+                builder.Append("\"augmentChoiceIdsHash\":\"").Append(EscapeJson(result.augmentChoiceIdsHash)).Append("\",");
+                builder.Append("\"missionChoiceIdsHash\":\"").Append(EscapeJson(result.missionChoiceIdsHash)).Append("\",");
+                builder.Append("\"shopPurchaseIdsHash\":\"").Append(EscapeJson(result.shopPurchaseIdsHash)).Append("\",");
                 builder.Append("\"highestMergeGrade\":").Append(result.highestMergeGrade).Append(',');
                 builder.Append("\"gradeUpgradePurchaseCount\":").Append(result.gradeUpgradePurchaseCount).Append(',');
                 builder.Append("\"firstGradeUpgradeRound\":").Append(result.firstGradeUpgradeRound).Append(',');
@@ -2238,6 +2356,7 @@ namespace DefenseGame.Editor
             builder.Append("\"totalMerges\":").Append(snapshot.totalMerges).Append(',');
             builder.Append("\"totalGradeUpgradeLevels\":").Append(snapshot.totalGradeUpgradeLevels).Append(',');
             builder.Append("\"targetMonsterCount\":").Append(snapshot.targetMonsterCount).Append(',');
+            builder.Append("\"leakDamage\":").Append(snapshot.leakDamage).Append(',');
             builder.Append("\"isHordeRound\":").Append(JsonBool(snapshot.isHordeRound)).Append(',');
             builder.Append("\"isBossRound\":").Append(JsonBool(snapshot.isBossRound)).Append(',');
             builder.Append("\"isMidBossRound\":").Append(JsonBool(snapshot.isMidBossRound)).Append('}');
@@ -2262,6 +2381,7 @@ namespace DefenseGame.Editor
                 builder.Append("\"summonCost\":").Append(snapshot.summonCost).Append(',');
                 builder.Append("\"ultimateRecipeCount\":").Append(snapshot.ultimateRecipeCount).Append(',');
                 builder.Append("\"targetMonsterCount\":").Append(snapshot.targetMonsterCount).Append(',');
+                builder.Append("\"leakDamage\":").Append(snapshot.leakDamage).Append(',');
                 builder.Append("\"isHordeRound\":").Append(JsonBool(snapshot.isHordeRound)).Append(',');
                 builder.Append("\"isBossRound\":").Append(JsonBool(snapshot.isBossRound)).Append(',');
                 builder.Append("\"isMidBossRound\":").Append(JsonBool(snapshot.isMidBossRound)).Append('}');
@@ -2312,6 +2432,7 @@ namespace DefenseGame.Editor
             public int summonCost;
             public int ultimateRecipeCount;
             public int targetMonsterCount;
+            public int leakDamage;
             public bool isHordeRound;
             public bool isBossRound;
             public bool isMidBossRound;
@@ -2353,6 +2474,16 @@ namespace DefenseGame.Editor
             public readonly List<string> runtimeErrorSamples = new List<string>();
             public int totalSummons;
             public int totalMerges;
+            public string summonSequenceHash = string.Empty;
+            public string mergeSequenceHash = string.Empty;
+            public string augmentChoiceIdsHash = string.Empty;
+            public string missionChoiceIdsHash = string.Empty;
+            public string shopPurchaseIdsHash = string.Empty;
+            public readonly List<string> summonSequenceTrace = new List<string>();
+            public readonly List<string> mergeTrace = new List<string>();
+            public readonly List<string> augmentChoiceTrace = new List<string>();
+            public readonly List<string> missionChoiceTrace = new List<string>();
+            public readonly List<string> shopPurchaseTrace = new List<string>();
             public int highestMergeGrade;
             public int gradeUpgradePurchaseCount;
             public int firstGradeUpgradeRound;
