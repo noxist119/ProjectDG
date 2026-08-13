@@ -58,3 +58,42 @@ The numbers above are final run hashes, not direct stream-seed mismatches. A con
 - `git diff --check`: pass.
 - Unity PlayMode Smoke: pass (`runSeedRepeatValid=true`, `runContentChannelIsolationValid=true`, `earlyMiniShopChoicesValid=true`, `runtimeErrors=0`).
 - No combat balancing constants were edited.
+## Finalization — Shop -> Summon isolation
+
+### Leak fixed
+
+`RunShopSystem` previously selected the actual units for `RandomUnit`, `RareUnit`, and `RiskChest` through `DefenseGameController` helpers whose implicit source channel was `Summon`. A shop purchase could therefore advance the player-direct Summon stream and alter a later paid summon result.
+
+The grant helpers now accept an explicit `RunContentRandomChannel` and an event prefix. Every shop-origin unit grant uses `Shop`: RandomUnit, RareUnit, RiskChest (including its selected unit after the existing Shop grade roll), TwinRecruit, EpicDraft, RecoveryRareUnit, and the shop fallbacks used by the related contracts. Player direct summon keeps `Summon`. Boss Forecast supply, Fate grants, and early fallback grants now also state their existing semantic channels explicitly; this is a trace/source clarification only.
+
+### Cross-channel regression
+
+The PlayMode smoke creates two services with the same run seed and verifies:
+
+1. Summon draw #1 -> three Shop draws -> Summon draw #2 matches Summon draw #1 -> Summon draw #2.
+2. Two Summon draws before a Shop draw do not change the Shop draw.
+3. Augment, Board, and Merge draws do not change a Summon draw.
+
+Result: **PASS**. This is a direct service-level regression check; no economy, summon probability, or balance value changed.
+
+### Repeat A/B trace-prefix comparison
+
+Source files: the existing Pass 2G `Classic/Overdrive Repeat A/B` JSON files. Pairs are matched by `mode + contentSeed + strategy`. Every compared pair had the same channel seed (`24/24` for each channel). The comparison uses actual recorded random-draw entries up to the shared draw count; `Mission` has no stream draws (`drawCount = 0`) and is reported as a recorded branch-request sequence.
+
+| Channel | Same-seed pairs | Equal request prefix pairs | First request divergence | First verified outcome divergence (same request + draw index) |
+|---|---:|---:|---|---|
+| Summon | 24/24 | 19/24 | Classic: `90210/balanced/d9`; Overdrive: `90210/shop-save/d7` | none (0) |
+| Augment | 24/24 | 18/24 | Classic: `98129/balanced/d9`; Overdrive: `90210/shop-save/d11` | none verified (0) |
+| Mission (record-only) | 24/24 | 12/24 | Classic: `90210/summon-heavy/d0`; Overdrive: `90210/shop-save/d0` | n/a — no RNG draw |
+| Shop | 24/24 | 24/24 | none | none (0) |
+| Board | 24/24 | 24/24 | none | none (0) |
+| Lucky | 24/24 | 24/24 | none | none (0) |
+| Fate | 24/24 | 24/24 | none | none (0) |
+| Merge | 24/24 | 24/24 | none | none (0) |
+
+The only legacy raw-output delta was Augment `90210/shop-save/d11` (`augment.pick` 11 vs 4). That pre-finalization entry has no candidate-pool identity, so its actual `[min,max)` request is unknown; it is not a verified same-request outcome mismatch and is not evidence of a cross-channel leak. Finalization records each `Range` request with its `[min,max)` input in new traces, so a changed candidate-pool size is now recorded as request divergence rather than outcome divergence. The finalization smoke uses direct, identical request inputs and reports zero cross-channel outcome mismatches. Later branch-driven differences are recorded as request divergence rather than treated as a failure of stream seeding.
+
+### Scope confirmation
+
+- Gameplay balance change: **NONE**.
+- Overdrive horde multiplier, R10 support count, boss values, economy, probabilities/costs, grade upgrade, missions, augments, shop pricing, recipes, merge inheritance, slot pacing, Yahtzee, hero behavior, and `StopEffectKey` were not changed.

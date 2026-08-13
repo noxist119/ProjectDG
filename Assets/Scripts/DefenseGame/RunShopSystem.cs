@@ -1688,9 +1688,9 @@ namespace DefenseGame
             switch (offer.type)
             {
                 case OfferType.RandomUnit:
-                    return gameController.TryGrantRandomSummonableUnit();
+                    return gameController.TryGrantRandomSummonableUnit(RunContentRandomChannel.Shop, "shop.randomUnit");
                 case OfferType.RareUnit:
-                    return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare);
+                    return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare, RunContentRandomChannel.Shop, "shop.rareUnit");
                 case OfferType.RiskChest:
                     if (!gameController.TrySpendLifeForContract(1, "위험한 상자"))
                     {
@@ -1699,7 +1699,7 @@ namespace DefenseGame
 
                     float roll = ContentValue("shop.riskChest.grade");
                     CharacterGrade grade = roll < 0.10f ? CharacterGrade.Legendary : roll < 0.38f ? CharacterGrade.Epic : CharacterGrade.Rare;
-                    return gameController.TryGrantRandomUnitByGrade(grade);
+                    return gameController.TryGrantRandomUnitByGrade(grade, RunContentRandomChannel.Shop, "shop.riskChest.unit");
                 case OfferType.MergeAssist:
                     return gameController.TryGrantMergeAssistUnit();
                 case OfferType.TileReroll:
@@ -1775,14 +1775,14 @@ namespace DefenseGame
 
                     if (!buffed)
                     {
-                        gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare);
+                        gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare, RunContentRandomChannel.Shop, "shop.rareUnit");
                     }
 
                     gameController.AddGold(6);
                     gameController.AddRoundGoldBonus(1);
                     return true;
                 case OfferType.RecoveryRareUnit:
-                    return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare);
+                    return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare, RunContentRandomChannel.Shop, "shop.rareUnit");
                 case OfferType.RecoveryBossPrep:
                     DefenderUnit[] bossPrepUnits = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
                     if (bossPrepUnits.Length == 0)
@@ -1804,7 +1804,7 @@ namespace DefenseGame
 
                     return true;
                 case OfferType.InsuranceMergeMaterial:
-                    return gameController.TryGrantMergeAssistUnit() || gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare);
+                    return gameController.TryGrantMergeAssistUnit() || gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare, RunContentRandomChannel.Shop, "shop.rareUnit");
                 case OfferType.InsuranceRecoveryTicket:
                     gameController.AddGold(4);
                     HealAliveDefenders(0.20f);
@@ -1813,7 +1813,7 @@ namespace DefenseGame
                     DefenderUnit[] counterUnits = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
                     if (counterUnits.Length == 0)
                     {
-                        return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare);
+                        return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Rare, RunContentRandomChannel.Shop, "shop.rareUnit");
                     }
 
                     for (int i = 0; i < counterUnits.Length; i++)
@@ -1857,8 +1857,8 @@ namespace DefenseGame
                     gameController.AddGold(salvageGranted ? 4 : 8);
                     return true;
                 case OfferType.TwinRecruit:
-                    bool firstRecruit = gameController.TryGrantRandomSummonableUnit();
-                    bool secondRecruit = gameController.TryGrantRandomSummonableUnit();
+                    bool firstRecruit = gameController.TryGrantRandomSummonableUnit(RunContentRandomChannel.Shop, "shop.twinRecruit.first");
+                    bool secondRecruit = gameController.TryGrantRandomSummonableUnit(RunContentRandomChannel.Shop, "shop.twinRecruit.second");
                     return firstRecruit || secondRecruit;
                 case OfferType.FusionWorkshop:
                     gameController.TryGrantMergeAssistUnit();
@@ -1869,7 +1869,7 @@ namespace DefenseGame
                 case OfferType.ArcaneConductor:
                     return ApplyCombatPackage(0f, 0.04f, 0f, 0f, 0.025f, 0.16f);
                 case OfferType.EpicDraft:
-                    return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Epic);
+                    return gameController.TryGrantRandomUnitByGrade(CharacterGrade.Epic, RunContentRandomChannel.Shop, "shop.epicDraft");
                 case OfferType.BossRaidWager:
                     DefenderUnit[] raidUnits = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
                     if (raidUnits.Length == 0 || !gameController.TrySpendLifeForContract(1, "보스 담보 계약"))

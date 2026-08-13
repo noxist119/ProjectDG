@@ -58,7 +58,10 @@ namespace DefenseGame
             StreamState stream = GetStream(channel);
             uint range = (uint)(maxExclusive - minInclusive);
             int result = minInclusive + (int)(stream.NextUInt() % range);
-            stream.Record(eventType, result.ToString(CultureInfo.InvariantCulture));
+            string request = (eventType ?? "range") + "[" +
+                minInclusive.ToString(CultureInfo.InvariantCulture) + "," +
+                maxExclusive.ToString(CultureInfo.InvariantCulture) + ")";
+            stream.Record(request, result.ToString(CultureInfo.InvariantCulture));
             return result;
         }
 

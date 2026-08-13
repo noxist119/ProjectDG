@@ -140,14 +140,44 @@ namespace DefenseGame.Editor
                 int secondSummonSample = controller.RunContentRandom.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.summon");
                 int secondBoardSample = controller.RunContentRandom.Range(RunContentRandomChannel.Board, 0, int.MaxValue, "smoke.board");
                 runSeedRepeatValid = firstSummonSample == secondSummonSample && firstBoardSample == secondBoardSample;
-                RunContentRandomService firstStreams = new RunContentRandomService();
-                firstStreams.Reset(314159);
-                int isolatedSummonSample = firstStreams.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.isolation.summon");
-                firstStreams.Value(RunContentRandomChannel.Augment, "smoke.isolation.unrelated");
-                RunContentRandomService secondStreams = new RunContentRandomService();
-                secondStreams.Reset(314159);
-                int controlSummonSample = secondStreams.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.isolation.summon");
-                runContentChannelIsolationValid = isolatedSummonSample == controlSummonSample;
+                RunContentRandomService summonWithShop = new RunContentRandomService();
+                summonWithShop.Reset(314159);
+                int summonWithShopFirst = summonWithShop.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.summon.first");
+                summonWithShop.Range(RunContentRandomChannel.Shop, 0, int.MaxValue, "smoke.shop.first");
+                summonWithShop.Range(RunContentRandomChannel.Shop, 0, int.MaxValue, "smoke.shop.second");
+                summonWithShop.Range(RunContentRandomChannel.Shop, 0, int.MaxValue, "smoke.shop.third");
+                int summonWithShopSecond = summonWithShop.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.summon.second");
+
+                RunContentRandomService summonControl = new RunContentRandomService();
+                summonControl.Reset(314159);
+                int summonControlFirst = summonControl.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.summon.first");
+                int summonControlSecond = summonControl.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.summon.second");
+
+                RunContentRandomService shopAfterSummon = new RunContentRandomService();
+                shopAfterSummon.Reset(314159);
+                shopAfterSummon.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.summon.first");
+                shopAfterSummon.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.summon.second");
+                int shopAfterSummonSample = shopAfterSummon.Range(RunContentRandomChannel.Shop, 0, int.MaxValue, "smoke.shop.first");
+
+                RunContentRandomService shopControl = new RunContentRandomService();
+                shopControl.Reset(314159);
+                int shopControlSample = shopControl.Range(RunContentRandomChannel.Shop, 0, int.MaxValue, "smoke.shop.first");
+
+                RunContentRandomService unrelatedChannelProbe = new RunContentRandomService();
+                unrelatedChannelProbe.Reset(314159);
+                int unrelatedSummonSample = unrelatedChannelProbe.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.unrelated.summon");
+                unrelatedChannelProbe.Value(RunContentRandomChannel.Augment, "smoke.unrelated.augment");
+                unrelatedChannelProbe.Value(RunContentRandomChannel.Board, "smoke.unrelated.board");
+                unrelatedChannelProbe.Value(RunContentRandomChannel.Merge, "smoke.unrelated.merge");
+                RunContentRandomService unrelatedControl = new RunContentRandomService();
+                unrelatedControl.Reset(314159);
+                int unrelatedControlSample = unrelatedControl.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.unrelated.summon");
+
+                runContentChannelIsolationValid =
+                    summonWithShopFirst == summonControlFirst &&
+                    summonWithShopSecond == summonControlSecond &&
+                    shopAfterSummonSample == shopControlSample &&
+                    unrelatedSummonSample == unrelatedControlSample;
                 controller.SetRunContentSeedOverride(null);
                 controller.ResetRunForRetry();
             }

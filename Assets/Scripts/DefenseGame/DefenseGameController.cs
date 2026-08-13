@@ -1561,7 +1561,7 @@ namespace DefenseGame
             {
                 const int sponsorGold = 10;
                 Gold += sponsorGold;
-                bool grantedRare = TryGrantRandomUnitByGrade(CharacterGrade.Rare);
+                bool grantedRare = TryGrantRandomUnitByGrade(CharacterGrade.Rare, RunContentRandomChannel.Mission, "forecast.supply");
                 entryBonus = grantedRare
                     ? "레어 보급 1기 + 폭주 시동 골드 +" + sponsorGold
                     : "폭주 시동 골드 +" + sponsorGold;
@@ -2519,10 +2519,10 @@ namespace DefenseGame
             int targetRound = ResolveFateCardTargetRound();
             fateSummonTaxRate = Mathf.Max(fateSummonTaxRate, Mathf.Clamp01(fateCardForbiddenSummonCostPenalty));
             fateSummonTaxUntilRound = Mathf.Max(fateSummonTaxUntilRound, targetRound + Mathf.Max(1, fateCardForbiddenSummonTaxRounds) - 1);
-            bool granted = TryGrantRandomUnitByGrade(CharacterGrade.Legendary);
+            bool granted = TryGrantRandomUnitByGrade(CharacterGrade.Legendary, RunContentRandomChannel.Fate, "fate.forbidden.legendary");
             if (!granted)
             {
-                granted = TryGrantRandomUnitByGrade(CharacterGrade.Epic);
+                granted = TryGrantRandomUnitByGrade(CharacterGrade.Epic, RunContentRandomChannel.Fate, "fate.forbidden.epic");
             }
 
             AddRunHighlightCard("금단의 소환", granted ? "전설 유닛 획득 / 소환비 +" + Mathf.RoundToInt(fateSummonTaxRate * 100f) + "%" : "빈 슬롯 없음 / 소환 실패");
@@ -2939,7 +2939,7 @@ namespace DefenseGame
                     break;
                 }
 
-                if (TryGrantRandomUnitByGrade(grade))
+                if (TryGrantRandomUnitByGrade(grade, RunContentRandomChannel.Fate, "fate.grantByGrade"))
                 {
                     granted++;
                 }
@@ -3612,11 +3612,15 @@ namespace DefenseGame
             NotifyStateChanged();
         }
 
-        public bool TryGrantRandomUnitByGrade(CharacterGrade grade)
+        public bool TryGrantRandomUnitByGrade(
+            CharacterGrade grade,
+            RunContentRandomChannel channel = RunContentRandomChannel.Summon,
+            string eventPrefix = "grant.grade")
         {
             if (characterDatabase == null || boardManager == null) return false;
-            CharacterDefinition definition = characterDatabase.GetRunContentRandomCharacterByGrade(grade, runContentRandom, RunContentRandomChannel.Summon, "grant.grade", true)
-                ?? characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Summon, "grant.fallback", true);
+            string prefix = string.IsNullOrWhiteSpace(eventPrefix) ? "grant.grade" : eventPrefix;
+            CharacterDefinition definition = characterDatabase.GetRunContentRandomCharacterByGrade(grade, runContentRandom, channel, prefix, true)
+                ?? characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, channel, prefix + ".fallback", true);
             if (definition == null || !boardManager.TrySpawnUnit(definition, defaultUnitPrefab, out DefenderUnit spawnedUnit)) return false;
             RegisterGrantedUnitExcitement(definition, spawnedUnit);
             OnUnitSummoned?.Invoke(definition);
@@ -3661,10 +3665,13 @@ namespace DefenseGame
             }
             return null;
         }
-        public bool TryGrantRandomSummonableUnit()
+        public bool TryGrantRandomSummonableUnit(
+            RunContentRandomChannel channel = RunContentRandomChannel.Summon,
+            string eventPrefix = "grant.summonable")
         {
             if (characterDatabase == null || boardManager == null) return false;
-            CharacterDefinition definition = characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Summon, "grant.summonable", true);
+            string prefix = string.IsNullOrWhiteSpace(eventPrefix) ? "grant.summonable" : eventPrefix;
+            CharacterDefinition definition = characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, channel, prefix, true);
             if (definition == null || !boardManager.TrySpawnUnit(definition, defaultUnitPrefab, out DefenderUnit spawnedUnit)) return false;
             RegisterGrantedUnitExcitement(definition, spawnedUnit);
             OnUnitSummoned?.Invoke(definition);
@@ -5276,7 +5283,7 @@ namespace DefenseGame
             }
 
             earlyFallbackRewardGranted = true;
-            bool grantedUnit = TryGrantRandomUnitByGrade(earlyFallbackRewardGrade);
+            bool grantedUnit = TryGrantRandomUnitByGrade(earlyFallbackRewardGrade, RunContentRandomChannel.Lucky, "early.fallback");
             if (grantedUnit)
             {
                 earlyRunMomentTriggered = true;
