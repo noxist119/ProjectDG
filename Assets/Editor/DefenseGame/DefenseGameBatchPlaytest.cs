@@ -71,6 +71,7 @@ namespace DefenseGame.Editor
         private static readonly List<string> MissingScriptWarningSamples = new List<string>();
         private static bool r10EncounterTelemetryActive;
         private static double r10BossSpawnEditorTime;
+        private static PostBossRoundTelemetry activePostBossRoundTelemetry;
 
         [MenuItem("DefenseGame/Batch Playtest/Run Human Strategies 20 Total")]
         public static void RunHumanStrategies20()
@@ -154,6 +155,18 @@ namespace DefenseGame.Editor
         public static void RunPhase2GOverdriveR30RepeatB()
         {
             RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, "DefenseGame_Phase2G_Overdrive_R30_RepeatB.json");
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2H Classic R30 Baseline")]
+        public static void RunPhase2HClassicR30Baseline()
+        {
+            RunHumanStrategies(CombatGameMode.Classic, Phase2ClassicR30Runs, true, false, 30, "DefenseGame_Phase2H_Classic_R30_Baseline.json");
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2H Overdrive R30 Baseline")]
+        public static void RunPhase2HOverdriveR30Baseline()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, "DefenseGame_Phase2H_Overdrive_R30_Baseline.json");
         }
 
         [MenuItem("DefenseGame/Batch Playtest/Phase2 Classic R50")]
@@ -326,6 +339,7 @@ namespace DefenseGame.Editor
             {
                 if (controller.Life <= 0)
                 {
+                    FinalizeActivePostBossRoundTelemetry(false);
                     current.notes.Add("life_zero_during_round_R" + lastObservedRound);
                     CompleteRun();
                     return;
@@ -333,6 +347,7 @@ namespace DefenseGame.Editor
 
                 if (controller.IsRoundRunning)
                 {
+                    ObserveActivePostBossRoundTelemetry();
                     ObserveActiveBossHealth();
                     TryUsePreferredFateCardByStrategy();
                     if (EditorApplication.timeSinceStartup - roundStartEditorTime > RoundTimeoutSeconds)
@@ -347,6 +362,7 @@ namespace DefenseGame.Editor
                     return;
                 }
 
+                FinalizeActivePostBossRoundTelemetry(true);
                 current.reachedRound = Mathf.Max(current.reachedRound, controller.CurrentRound);
                 current.endGold = controller.Gold;
                 current.endLife = controller.Life;
@@ -427,6 +443,7 @@ namespace DefenseGame.Editor
             current.startGold = controller.Gold;
             lastObservedRound = controller.CurrentRound;
             waitingRoundEnd = false;
+            activePostBossRoundTelemetry = null;
             nextActionTime = EditorApplication.timeSinceStartup + 0.3d;
         }
 
@@ -467,6 +484,8 @@ namespace DefenseGame.Editor
 
         private static void CompleteRun()
         {
+            ObserveActivePostBossRoundTelemetry();
+            FinalizeActivePostBossRoundTelemetry(false);
             ObserveActiveBossHealth();
             FinalizeActiveBossAttempt();
             bool bossAttemptAccountingValid = ValidateBossAttemptAccounting(requireFinalizedWhenNoActive: true);
@@ -1079,6 +1098,81 @@ namespace DefenseGame.Editor
             }
         }
 
+        private static void BeginPostBossRoundTelemetry(int round)
+        {
+            activePostBossRoundTelemetry = null;
+            if (current == null || controller == null || round < 11 || round > 15)
+            {
+                return;
+            }
+
+            activePostBossRoundTelemetry = new PostBossRoundTelemetry
+            {
+                round = round,
+                reached = true,
+                lifeAtStart = controller.Life,
+                goldAtStart = controller.Gold,
+                boardUnitCountAtStart = controller.BoardUnitCount,
+                boardCapacityAtStart = controller.BoardCapacity,
+                highestOwnedGradeAtStart = ResolveHighestOwnedGrade(),
+                totalSummonsAtStart = controller.RunTotalPlayerSummons,
+                totalMergesAtStart = controller.RunTotalMerges,
+                totalGradeUpgradeLevelsAtStart = ResolveTotalGradeUpgradeLevels(),
+                targetMonsterCount = controller.RoundTargetCount,
+                isHordeRound = controller.IsCurrentRoundHorde,
+                isBossRound = controller.IsBossRound,
+                isMidBossRound = controller.IsMidBossRound,
+                firstLeakSeconds = -1f
+            };
+            current.postBossRoundTelemetry[round] = activePostBossRoundTelemetry;
+            ObserveActivePostBossRoundTelemetry();
+        }
+
+        private static void ObserveActivePostBossRoundTelemetry()
+        {
+            if (activePostBossRoundTelemetry == null || controller == null)
+            {
+                return;
+            }
+
+            PostBossRoundTelemetry telemetry = activePostBossRoundTelemetry;
+            telemetry.totalSpawned = Mathf.Max(telemetry.totalSpawned, controller.RoundSpawnedMonsterCount);
+            telemetry.totalKilled = Mathf.Max(telemetry.totalKilled, controller.RoundKilledMonsterCount);
+            telemetry.totalEscaped = ResolveRoundCount(controller.RunEscapedMonsterCountByRound, telemetry.round);
+            telemetry.leakDamage = ResolveRoundCount(controller.RunLeakDamageByRound, telemetry.round);
+            telemetry.peakActiveMonsters = Mathf.Max(telemetry.peakActiveMonsters, controller.RoundPeakActiveMonsterCount, MonsterUnit.ActiveCount);
+            if (telemetry.firstLeakSeconds < 0f && telemetry.leakDamage > 0)
+            {
+                telemetry.firstLeakSeconds = Mathf.Max(0f, (float)(EditorApplication.timeSinceStartup - roundStartEditorTime));
+            }
+        }
+
+        private static void FinalizeActivePostBossRoundTelemetry(bool actuallyCleared)
+        {
+            if (activePostBossRoundTelemetry == null || controller == null)
+            {
+                return;
+            }
+
+            ObserveActivePostBossRoundTelemetry();
+            PostBossRoundTelemetry telemetry = activePostBossRoundTelemetry;
+            telemetry.actuallyCleared = actuallyCleared && controller.Life > 0;
+            telemetry.lifeAtEnd = controller.Life;
+            telemetry.goldAtEnd = controller.Gold;
+            telemetry.boardUnitCountAtEnd = controller.BoardUnitCount;
+            telemetry.boardCapacityAtEnd = controller.BoardCapacity;
+            telemetry.highestOwnedGradeAtEnd = ResolveHighestOwnedGrade();
+            telemetry.totalSummonsAtEnd = controller.RunTotalPlayerSummons;
+            telemetry.totalMergesAtEnd = controller.RunTotalMerges;
+            telemetry.totalGradeUpgradeLevelsAtEnd = ResolveTotalGradeUpgradeLevels();
+            telemetry.roundDurationSeconds = Mathf.Max(0f, (float)(EditorApplication.timeSinceStartup - roundStartEditorTime));
+            activePostBossRoundTelemetry = null;
+        }
+
+        private static int ResolveRoundCount(IReadOnlyDictionary<int, int> counts, int round)
+        {
+            return counts != null && counts.TryGetValue(round, out int value) ? Mathf.Max(0, value) : 0;
+        }
         private static void CaptureMilestoneSnapshotIfNeeded()
         {
             if (current == null || controller == null)
@@ -1588,6 +1682,7 @@ namespace DefenseGame.Editor
             }
 
             lastObservedRound = nextRound;
+            BeginPostBossRoundTelemetry(nextRound);
             if (controller.IsBossRound)
             {
                 current.bossAttempts++;
@@ -2358,6 +2453,9 @@ namespace DefenseGame.Editor
                 builder.Append(',');
                 builder.Append("\"bossForecastBet\":\"").Append(EscapeJson(result.bossForecastBet)).Append("\",");
                 builder.Append("\"fateUses\":").Append(result.fateUses).Append(',');
+                builder.Append("\"postBossRoundTelemetry\":");
+                AppendPostBossRoundTelemetryJson(builder, result.postBossRoundTelemetry);
+                builder.Append(',');
                 builder.Append("\"milestones\":");
                 AppendMilestonesJson(builder, result.milestones);
                 builder.Append(',');
@@ -2413,6 +2511,51 @@ namespace DefenseGame.Editor
             builder.Append("\"isHordeRound\":").Append(JsonBool(snapshot.isHordeRound)).Append(',');
             builder.Append("\"isBossRound\":").Append(JsonBool(snapshot.isBossRound)).Append(',');
             builder.Append("\"isMidBossRound\":").Append(JsonBool(snapshot.isMidBossRound)).Append('}');
+        }
+        private static void AppendPostBossRoundTelemetryJson(StringBuilder builder, Dictionary<int, PostBossRoundTelemetry> telemetryByRound)
+        {
+            builder.Append('[');
+            bool first = true;
+            if (telemetryByRound != null)
+            {
+                foreach (KeyValuePair<int, PostBossRoundTelemetry> pair in telemetryByRound)
+                {
+                    if (!first) builder.Append(',');
+                    PostBossRoundTelemetry telemetry = pair.Value;
+                    builder.Append("{\"round\":").Append(telemetry.round).Append(',');
+                    builder.Append("\"reached\":").Append(JsonBool(telemetry.reached)).Append(',');
+                    builder.Append("\"actuallyCleared\":").Append(JsonBool(telemetry.actuallyCleared)).Append(',');
+                    builder.Append("\"lifeAtStart\":").Append(telemetry.lifeAtStart).Append(',');
+                    builder.Append("\"lifeAtEnd\":").Append(telemetry.lifeAtEnd).Append(',');
+                    builder.Append("\"goldAtStart\":").Append(telemetry.goldAtStart).Append(',');
+                    builder.Append("\"goldAtEnd\":").Append(telemetry.goldAtEnd).Append(',');
+                    builder.Append("\"boardUnitCountAtStart\":").Append(telemetry.boardUnitCountAtStart).Append(',');
+                    builder.Append("\"boardUnitCountAtEnd\":").Append(telemetry.boardUnitCountAtEnd).Append(',');
+                    builder.Append("\"boardCapacityAtStart\":").Append(telemetry.boardCapacityAtStart).Append(',');
+                    builder.Append("\"boardCapacityAtEnd\":").Append(telemetry.boardCapacityAtEnd).Append(',');
+                    builder.Append("\"highestOwnedGradeAtStart\":").Append(telemetry.highestOwnedGradeAtStart).Append(',');
+                    builder.Append("\"highestOwnedGradeAtEnd\":").Append(telemetry.highestOwnedGradeAtEnd).Append(',');
+                    builder.Append("\"totalSummonsAtStart\":").Append(telemetry.totalSummonsAtStart).Append(',');
+                    builder.Append("\"totalSummonsAtEnd\":").Append(telemetry.totalSummonsAtEnd).Append(',');
+                    builder.Append("\"totalMergesAtStart\":").Append(telemetry.totalMergesAtStart).Append(',');
+                    builder.Append("\"totalMergesAtEnd\":").Append(telemetry.totalMergesAtEnd).Append(',');
+                    builder.Append("\"totalGradeUpgradeLevelsAtStart\":").Append(telemetry.totalGradeUpgradeLevelsAtStart).Append(',');
+                    builder.Append("\"totalGradeUpgradeLevelsAtEnd\":").Append(telemetry.totalGradeUpgradeLevelsAtEnd).Append(',');
+                    builder.Append("\"targetMonsterCount\":").Append(telemetry.targetMonsterCount).Append(',');
+                    builder.Append("\"totalSpawned\":").Append(telemetry.totalSpawned).Append(',');
+                    builder.Append("\"totalKilled\":").Append(telemetry.totalKilled).Append(',');
+                    builder.Append("\"totalEscaped\":").Append(telemetry.totalEscaped).Append(',');
+                    builder.Append("\"leakDamage\":").Append(telemetry.leakDamage).Append(',');
+                    builder.Append("\"peakActiveMonsters\":").Append(telemetry.peakActiveMonsters).Append(',');
+                    builder.Append("\"firstLeakSeconds\":").Append(FormatFloat(telemetry.firstLeakSeconds)).Append(',');
+                    builder.Append("\"roundDurationSeconds\":").Append(FormatFloat(telemetry.roundDurationSeconds)).Append(',');
+                    builder.Append("\"isHordeRound\":").Append(JsonBool(telemetry.isHordeRound)).Append(',');
+                    builder.Append("\"isBossRound\":").Append(JsonBool(telemetry.isBossRound)).Append(',');
+                    builder.Append("\"isMidBossRound\":").Append(JsonBool(telemetry.isMidBossRound)).Append('}');
+                    first = false;
+                }
+            }
+            builder.Append(']');
         }
         private static void AppendMilestonesJson(StringBuilder builder, Dictionary<int, MilestoneSnapshot> milestones)
         {
@@ -2486,6 +2629,40 @@ namespace DefenseGame.Editor
             public int ultimateRecipeCount;
             public int targetMonsterCount;
             public int leakDamage;
+            public bool isHordeRound;
+            public bool isBossRound;
+            public bool isMidBossRound;
+        }
+        [Serializable]
+        private sealed class PostBossRoundTelemetry
+        {
+            public int round;
+            public bool reached;
+            public bool actuallyCleared;
+            public int lifeAtStart;
+            public int lifeAtEnd;
+            public int goldAtStart;
+            public int goldAtEnd;
+            public int boardUnitCountAtStart;
+            public int boardUnitCountAtEnd;
+            public int boardCapacityAtStart;
+            public int boardCapacityAtEnd;
+            public int highestOwnedGradeAtStart;
+            public int highestOwnedGradeAtEnd;
+            public int totalSummonsAtStart;
+            public int totalSummonsAtEnd;
+            public int totalMergesAtStart;
+            public int totalMergesAtEnd;
+            public int totalGradeUpgradeLevelsAtStart;
+            public int totalGradeUpgradeLevelsAtEnd;
+            public int targetMonsterCount;
+            public int totalSpawned;
+            public int totalKilled;
+            public int totalEscaped;
+            public int leakDamage;
+            public int peakActiveMonsters;
+            public float firstLeakSeconds;
+            public float roundDurationSeconds;
             public bool isHordeRound;
             public bool isBossRound;
             public bool isMidBossRound;
@@ -2576,6 +2753,7 @@ namespace DefenseGame.Editor
             public int lastControllerRound;
             public string lastPreparationFingerprint = string.Empty;
             public int preparationFingerprintRepeats;
+            public readonly Dictionary<int, PostBossRoundTelemetry> postBossRoundTelemetry = new Dictionary<int, PostBossRoundTelemetry>();
             public readonly Dictionary<int, MilestoneSnapshot> milestones = new Dictionary<int, MilestoneSnapshot>();
             public bool r10BossCleared;
             public int summons;

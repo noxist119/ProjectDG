@@ -755,6 +755,9 @@ namespace DefenseGame
         public int CharacterCount => characterDatabase != null ? characterDatabase.Characters.Count : 0;
         public int MonsterCount => monsterDatabase != null ? monsterDatabase.Monsters.Count : 0;
         public int RoundTargetCount => roundManager != null ? roundManager.CurrentRoundTargetCount : 0;
+        public int RoundSpawnedMonsterCount => roundManager != null ? roundManager.CurrentRoundSpawnedCount : 0;
+        public int RoundKilledMonsterCount => Mathf.Max(0, currentRoundKilledMonsters);
+        public int RoundPeakActiveMonsterCount => Mathf.Max(0, currentRoundPeakActiveMonsters);
         public int RoundResolvedMonsterCount => currentRoundResolvedMonsters;
         public float RoundProgress01 => RoundTargetCount <= 0
             ? CurrentRound > 0 && !IsRoundRunning ? 1f : 0f
