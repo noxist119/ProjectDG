@@ -433,7 +433,6 @@ namespace DefenseGame.Editor
             current.bossForecastBonusScore = controller.BossForecastBonusScore;
             current.bossForecastSuccess = controller.BossForecastBonusScore > 0;
             current.technicalFailure = current.runtimeErrorCount > 0 || current.timeout || current.softLock || current.invariantFailure || !bossAttemptAccountingValid;
-            current.clearedR10 = controller.Life > 0 && lastObservedRound >= 10 && !current.technicalFailure;
             current.victory = controller.Life > 0 && lastObservedRound >= requestedTargetRound && !current.technicalFailure;
             current.defeat = controller.Life <= 0 && !current.technicalFailure;
             if (current.defeat)
@@ -1395,11 +1394,19 @@ namespace DefenseGame.Editor
             if (controller.RunBossKillCount > current.bossKillCountAtRoundStart)
             {
                 current.bossClears++;
+                if (current.activeBossRound == 10)
+                {
+                    current.r10BossCleared = true;
+                }
             }
             else
             {
                 current.bossFailures++;
                 current.bossHealthRemainingOnFailure01 = current.lastObservedBossHealth01;
+                if (current.activeBossRound == 10)
+                {
+                    current.r10BossHealthRemainingOnFailure01 = current.lastObservedBossHealth01;
+                }
             }
 
             current.activeBossRound = 0;
@@ -1934,7 +1941,7 @@ namespace DefenseGame.Editor
             for (int i = 0; i < Results.Count; i++)
             {
                 RunResult result = Results[i];
-                if (result.clearedR10) r10Clears++;
+                if (result.r10BossCleared) r10Clears++;
                 if (result.reachedRound >= requestedTargetRound) reachedTarget++;
                 if (result.victory) victories++;
                 if (result.defeat) defeats++;
@@ -1964,6 +1971,7 @@ namespace DefenseGame.Editor
                 summary.endLifeSum += result.endLife;
                 summary.endGoldSum += result.endGold;
                 if (result.reachedRound >= requestedTargetRound) summary.reachedTarget++;
+                if (result.r10BossCleared) summary.r10BossClears++;
             }
 
             StringBuilder builder = new StringBuilder(16384);
@@ -2006,6 +2014,7 @@ namespace DefenseGame.Editor
                 builder.Append("    {\"strategy\":\"").Append(EscapeJson(pair.Key)).Append("\",");
                 builder.Append("\"runs\":").Append(summary.runs).Append(',');
                 builder.Append("\"reachedTarget\":").Append(summary.reachedTarget).Append(',');
+                builder.Append("\"r10BossClears\":").Append(summary.r10BossClears).Append(',');
                 builder.Append("\"reachedTargetRate\":").Append(FormatRatio(summary.reachedTarget, summary.runs)).Append(',');
                 builder.Append("\"averageReachedRound\":").Append(FormatFloat(summary.reachedRoundSum / Mathf.Max(1, summary.runs))).Append(',');
                 builder.Append("\"averageEndLife\":").Append(FormatFloat(summary.endLifeSum / Mathf.Max(1, summary.runs))).Append(',');
@@ -2023,6 +2032,7 @@ namespace DefenseGame.Editor
                 builder.Append("\"contentSeed\":").Append(result.contentSeed).Append(',');
                 builder.Append("\"strategy\":\"").Append(EscapeJson(result.strategy)).Append("\",");
                 builder.Append("\"reachedRound\":").Append(result.reachedRound).Append(',');
+                builder.Append("\"r10BossCleared\":").Append(JsonBool(result.r10BossCleared)).Append(',');
                 builder.Append("\"victory\":").Append(JsonBool(result.victory)).Append(',');
                 builder.Append("\"defeat\":").Append(JsonBool(result.defeat)).Append(',');
                 builder.Append("\"technicalFailure\":").Append(JsonBool(result.technicalFailure)).Append(',');
@@ -2070,6 +2080,7 @@ namespace DefenseGame.Editor
                 builder.Append("\"bossCombatDurationSeconds\":").Append(FormatFloat(result.bossCombatDurationSeconds)).Append(',');
                 builder.Append("\"lastObservedBossHealth01\":").Append(FormatFloat(result.lastObservedBossHealth01)).Append(',');
                 builder.Append("\"bossHealthRemainingOnFailure01\":").Append(FormatFloat(result.bossHealthRemainingOnFailure01)).Append(',');
+                builder.Append("\"r10BossHealthRemainingOnFailure01\":").Append(FormatFloat(result.r10BossHealthRemainingOnFailure01)).Append(',');
                 builder.Append("\"r10BossStartSnapshot\":");
                 AppendSnapshotJson(builder, result.r10BossStartSnapshot);
                 builder.Append(',');
@@ -2181,6 +2192,7 @@ namespace DefenseGame.Editor
         {
             public int runs;
             public int reachedTarget;
+            public int r10BossClears;
             public float reachedRoundSum;
             public float endLifeSum;
             public float endGoldSum;
@@ -2226,6 +2238,7 @@ namespace DefenseGame.Editor
             public int bossKillCountAtRoundStart;
             public float lastObservedBossHealth01 = -1f;
             public float bossHealthRemainingOnFailure01 = -1f;
+            public float r10BossHealthRemainingOnFailure01 = -1f;
             public readonly List<string> validationCoverageWarnings = new List<string>();
             public int runtimeErrorCount;
             public readonly List<string> runtimeErrorSamples = new List<string>();
@@ -2260,7 +2273,7 @@ namespace DefenseGame.Editor
             public string lastPreparationFingerprint = string.Empty;
             public int preparationFingerprintRepeats;
             public readonly Dictionary<int, MilestoneSnapshot> milestones = new Dictionary<int, MilestoneSnapshot>();
-            public bool clearedR10;
+            public bool r10BossCleared;
             public int summons;
             public int merges;
             public int shopPurchases;
