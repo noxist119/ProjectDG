@@ -588,6 +588,10 @@ namespace DefenseGame
             bool classicRegularPressure = ClassicRoundPressure.AppliesTo(profile, bossRound);
             regularCount = CommercialRoundPacing.ApplySpawnCount(round, bossRound, regularCount);
             regularCount = profile.ApplyRegularCount(round, bossRound, regularCount);
+            if (bossRound)
+            {
+                regularCount = profile.ApplyBossSupportCount(round, regularCount);
+            }
             if (classicRegularPressure)
             {
                 regularCount = ClassicRoundPressure.ApplyChallengeSpawnCount(

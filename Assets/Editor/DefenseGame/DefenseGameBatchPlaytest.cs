@@ -65,6 +65,8 @@ namespace DefenseGame.Editor
         private static bool previousRunInBackground;
         private static int missingScriptWarningsObserved;
         private static readonly List<string> MissingScriptWarningSamples = new List<string>();
+        private static bool r10EncounterTelemetryActive;
+        private static double r10BossSpawnEditorTime;
 
         [MenuItem("DefenseGame/Batch Playtest/Run Human Strategies 20 Total")]
         public static void RunHumanStrategies20()
@@ -128,6 +130,7 @@ namespace DefenseGame.Editor
             started = false;
             missingScriptWarningsObserved = 0;
             MissingScriptWarningSamples.Clear();
+            UnsubscribeR10EncounterTelemetry();
 
             Directory.CreateDirectory(OutputDirectory);
             if (File.Exists(OutputPath))
@@ -168,6 +171,7 @@ namespace DefenseGame.Editor
             Debug.unityLogger.filterLogType = LogType.Error;
             Application.logMessageReceived -= HandleLogMessage;
             Application.logMessageReceived += HandleLogMessage;
+            SubscribeR10EncounterTelemetry();
 
             EditorSceneManager.OpenScene(ScenePath);
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
@@ -337,6 +341,7 @@ namespace DefenseGame.Editor
 
         private static void StartRun()
         {
+            ResetR10EncounterTelemetry();
             int seedIndex = pairedSeedMode ? runIndex / 3 : runIndex;
             int contentSeed = 90210 + seedIndex * 7919;
             current = new RunResult
@@ -482,9 +487,93 @@ namespace DefenseGame.Editor
             }
         }
 
+        private static void SubscribeR10EncounterTelemetry()
+        {
+            MonsterUnit.OnMonsterSpawned -= HandleR10MonsterSpawned;
+            MonsterUnit.OnMonsterKilled -= HandleR10MonsterKilled;
+            MonsterUnit.OnMonsterEscaped -= HandleR10MonsterEscaped;
+            DefenderUnit.OnDamageDealt -= HandleR10DamageDealt;
+            MonsterUnit.OnMonsterSpawned += HandleR10MonsterSpawned;
+            MonsterUnit.OnMonsterKilled += HandleR10MonsterKilled;
+            MonsterUnit.OnMonsterEscaped += HandleR10MonsterEscaped;
+            DefenderUnit.OnDamageDealt += HandleR10DamageDealt;
+        }
+
+        private static void UnsubscribeR10EncounterTelemetry()
+        {
+            MonsterUnit.OnMonsterSpawned -= HandleR10MonsterSpawned;
+            MonsterUnit.OnMonsterKilled -= HandleR10MonsterKilled;
+            MonsterUnit.OnMonsterEscaped -= HandleR10MonsterEscaped;
+            DefenderUnit.OnDamageDealt -= HandleR10DamageDealt;
+        }
+
+        private static void ResetR10EncounterTelemetry()
+        {
+            r10EncounterTelemetryActive = false;
+            r10BossSpawnEditorTime = -1d;
+        }
+
+        private static bool IsTrackingR10Encounter()
+        {
+            return r10EncounterTelemetryActive && current != null && controller != null &&
+                current.activeBossRound == 10 && controller.CurrentRound == 10;
+        }
+
+        private static void HandleR10MonsterSpawned(MonsterUnit monster)
+        {
+            if (!IsTrackingR10Encounter() || monster == null)
+            {
+                return;
+            }
+
+            if (!monster.IsBoss)
+            {
+                current.r10SupportSpawnCount++;
+                return;
+            }
+
+            if (r10BossSpawnEditorTime >= 0d)
+            {
+                return;
+            }
+
+            r10BossSpawnEditorTime = EditorApplication.timeSinceStartup;
+            current.r10LifeAtBossSpawn = controller.Life;
+            current.r10LeakDamageBeforeBossSpawn = Mathf.Max(0, current.r10LifeAtRoundStart - controller.Life);
+        }
+
+        private static void HandleR10MonsterKilled(MonsterUnit monster)
+        {
+            if (IsTrackingR10Encounter() && r10BossSpawnEditorTime < 0d && monster != null && !monster.IsBoss)
+            {
+                current.r10SupportKillsBeforeBossSpawn++;
+            }
+        }
+
+        private static void HandleR10MonsterEscaped(MonsterUnit monster)
+        {
+            if (IsTrackingR10Encounter() && r10BossSpawnEditorTime < 0d && monster != null && !monster.IsBoss)
+            {
+                current.r10SupportEscapesBeforeBossSpawn++;
+            }
+        }
+
+        private static void HandleR10DamageDealt(DefenderUnit source, MonsterUnit target, float damage, bool critical)
+        {
+            if (!IsTrackingR10Encounter() || r10BossSpawnEditorTime < 0d || current.r10BossFirstDamagedSeconds >= 0f ||
+                target == null || !target.IsBoss || target.MaxHealth <= 0f)
+            {
+                return;
+            }
+
+            current.r10BossFirstDamagedSeconds = Mathf.Max(0f, (float)(EditorApplication.timeSinceStartup - r10BossSpawnEditorTime));
+            current.r10BossHealthAtFirstDamage01 = Mathf.Clamp01(target.CurrentHealth / target.MaxHealth);
+        }
+
         private static void FinishAll(string status)
         {
             EditorApplication.update -= Tick;
+            UnsubscribeR10EncounterTelemetry();
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
             controller?.SetRunContentSeedOverride(null);
 
@@ -1361,6 +1450,10 @@ namespace DefenseGame.Editor
                 current.lastObservedBossHealth01 = -1f;
                 if (nextRound == 10)
                 {
+                    r10EncounterTelemetryActive = true;
+                    current.r10LifeAtRoundStart = controller.Life;
+                    current.r10BossFirstDamagedSeconds = -1f;
+                    current.r10BossHealthAtFirstDamage01 = -1f;
                     current.r10BossStartSnapshot = new MilestoneSnapshot
                     {
                         life = controller.Life,
@@ -1409,6 +1502,7 @@ namespace DefenseGame.Editor
                 }
             }
 
+            r10EncounterTelemetryActive = false;
             current.activeBossRound = 0;
         }
 
@@ -2081,6 +2175,13 @@ namespace DefenseGame.Editor
                 builder.Append("\"lastObservedBossHealth01\":").Append(FormatFloat(result.lastObservedBossHealth01)).Append(',');
                 builder.Append("\"bossHealthRemainingOnFailure01\":").Append(FormatFloat(result.bossHealthRemainingOnFailure01)).Append(',');
                 builder.Append("\"r10BossHealthRemainingOnFailure01\":").Append(FormatFloat(result.r10BossHealthRemainingOnFailure01)).Append(',');
+                builder.Append("\"r10LifeAtBossSpawn\":").Append(result.r10LifeAtBossSpawn).Append(',');
+                builder.Append("\"r10SupportSpawnCount\":").Append(result.r10SupportSpawnCount).Append(',');
+                builder.Append("\"r10SupportKillsBeforeBossSpawn\":").Append(result.r10SupportKillsBeforeBossSpawn).Append(',');
+                builder.Append("\"r10SupportEscapesBeforeBossSpawn\":").Append(result.r10SupportEscapesBeforeBossSpawn).Append(',');
+                builder.Append("\"r10LeakDamageBeforeBossSpawn\":").Append(result.r10LeakDamageBeforeBossSpawn).Append(',');
+                builder.Append("\"r10BossFirstDamagedSeconds\":").Append(FormatFloat(result.r10BossFirstDamagedSeconds)).Append(',');
+                builder.Append("\"r10BossHealthAtFirstDamage01\":").Append(FormatFloat(result.r10BossHealthAtFirstDamage01)).Append(',');
                 builder.Append("\"r10BossStartSnapshot\":");
                 AppendSnapshotJson(builder, result.r10BossStartSnapshot);
                 builder.Append(',');
@@ -2239,6 +2340,14 @@ namespace DefenseGame.Editor
             public float lastObservedBossHealth01 = -1f;
             public float bossHealthRemainingOnFailure01 = -1f;
             public float r10BossHealthRemainingOnFailure01 = -1f;
+            public int r10LifeAtRoundStart;
+            public int r10LifeAtBossSpawn = -1;
+            public int r10SupportSpawnCount;
+            public int r10SupportKillsBeforeBossSpawn;
+            public int r10SupportEscapesBeforeBossSpawn;
+            public int r10LeakDamageBeforeBossSpawn;
+            public float r10BossFirstDamagedSeconds = -1f;
+            public float r10BossHealthAtFirstDamage01 = -1f;
             public readonly List<string> validationCoverageWarnings = new List<string>();
             public int runtimeErrorCount;
             public readonly List<string> runtimeErrorSamples = new List<string>();

@@ -24,6 +24,7 @@ namespace DefenseGame
         [Header("Wave Density")]
         [Min(0.1f)] public float regularCountMultiplier = 1f;
         [Min(0.1f)] public float bossSupportCountMultiplier = 1f;
+        [Min(0)] public int overdriveFirstBossSupportCountOverride;
         [Min(1)] public int maximumRegularCountPerRound = 60;
         public bool useBurstPacks;
         [Min(1)] public int minimumPackSize = 1;
@@ -86,6 +87,16 @@ namespace DefenseGame
 
             int maximum = Mathf.Max(1, maximumRegularCountPerRound);
             return Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(0, baseCount) * Mathf.Max(0.1f, multiplier)), 0, maximum);
+        }
+
+        public int ApplyBossSupportCount(int round, int scaledSupportCount)
+        {
+            if (IsOverdrive && round == 10 && overdriveFirstBossSupportCountOverride > 0)
+            {
+                return overdriveFirstBossSupportCountOverride;
+            }
+
+            return Mathf.Max(0, scaledSupportCount);
         }
 
         public float ResolveRegularHealthMultiplier(int round, bool bossRound)
@@ -158,6 +169,7 @@ namespace DefenseGame
                 description = "짧고 강한 물량 파도와 빠른 증강 성장을 중심으로 진행합니다.",
                 regularCountMultiplier = 1.26f,
                 bossSupportCountMultiplier = 1.06f,
+                overdriveFirstBossSupportCountOverride = 8,
                 maximumRegularCountPerRound = 84,
                 useBurstPacks = true,
                 minimumPackSize = 4,
