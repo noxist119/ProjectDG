@@ -445,7 +445,21 @@ namespace DefenseGame
 
             float chanceCeiling = Mathf.Clamp(maxLuckyShopAppearanceChance, Mathf.Clamp01(baseChance), 1f);
             float chance = Mathf.Min(chanceCeiling, Mathf.Clamp01(baseChance + Mathf.Max(0, missCount) * missedShopChanceBonus));
-            return UnityEngine.Random.value <= chance;
+            return ContentValue("shop.appearance") <= chance;
+        }
+
+        private int ContentRange(int minInclusive, int maxExclusive, string eventType)
+        {
+            return gameController != null
+                ? gameController.RunContentRandom.Range(RunContentRandomChannel.Shop, minInclusive, maxExclusive, eventType)
+                : UnityEngine.Random.Range(minInclusive, maxExclusive);
+        }
+
+        private float ContentValue(string eventType)
+        {
+            return gameController != null
+                ? gameController.RunContentRandom.Value(RunContentRandomChannel.Shop, eventType)
+                : UnityEngine.Random.value;
         }
 
         private void HandleGameOver()
@@ -669,22 +683,22 @@ namespace DefenseGame
             };
         }
 
-        private static OfferRole[] BuildMiniShopRoleSlots(int round, int offerCount, int preferredRole, bool deterministicContent, int contentSeed)
+        private OfferRole[] BuildMiniShopRoleSlots(int round, int offerCount, int preferredRole, bool deterministicContent, int contentSeed)
         {
             int progressionPhase = Mathf.Max(0, (round - 3) / 8) % 4;
             int pack;
             if (deterministicContent)
             {
-                pack = (contentSeed ^ (round * 397)) & 3;
+                pack = ContentRange(0, 4, "shop.rolePack");
             }
             else
             {
                 string key = "DefenseGame.LastRunMiniShopRolePack." + round;
                 int previousPack = PlayerPrefs.GetInt(key, -1);
-                pack = UnityEngine.Random.Range(0, 4);
+                pack = ContentRange(0, 4, "shop.rolePack");
                 if (pack == previousPack)
                 {
-                    pack = (pack + UnityEngine.Random.Range(1, 4)) % 4;
+                    pack = (pack + ContentRange(1, 4, "shop.rolePackRetry")) % 4;
                 }
 
                 PlayerPrefs.SetInt(key, pack);
@@ -715,9 +729,9 @@ namespace DefenseGame
             return slots;
         }
 
-        private static OfferRarity RollOfferRarity(int round)
+        private OfferRarity RollOfferRarity(int round)
         {
-            float roll = UnityEngine.Random.value;
+            float roll = ContentValue("shop.rarity");
             float legendaryChance = round <= 5 ? 0.02f : round <= 10 ? 0.06f : round <= 15 ? 0.10f : 0.13f;
             float rareChance = round <= 5 ? 0.23f : round <= 10 ? 0.26f : round <= 15 ? 0.30f : 0.32f;
             return roll < legendaryChance ? OfferRarity.Legendary : roll < legendaryChance + rareChance ? OfferRarity.Rare : OfferRarity.Normal;
@@ -755,7 +769,7 @@ namespace DefenseGame
             }
         }
 
-        private static int FindOfferIndexForRarity(List<OfferType> pool, OfferRarity rarity)
+        private int FindOfferIndexForRarity(List<OfferType> pool, OfferRarity rarity)
         {
             List<int> candidates = new List<int>();
             for (int i = 0; i < pool.Count; i++)
@@ -766,10 +780,10 @@ namespace DefenseGame
                 }
             }
 
-            return candidates.Count > 0 ? candidates[UnityEngine.Random.Range(0, candidates.Count)] : UnityEngine.Random.Range(0, pool.Count);
+            return candidates.Count > 0 ? candidates[ContentRange(0, candidates.Count, "shop.offerIndex")] : ContentRange(0, pool.Count, "shop.offerFallback");
         }
 
-        private static int FindOfferIndexForRoleAndRarity(List<OfferType> pool, OfferRole role, OfferRarity rarity)
+        private int FindOfferIndexForRoleAndRarity(List<OfferType> pool, OfferRole role, OfferRarity rarity)
         {
             List<int> candidates = new List<int>();
             for (int i = 0; i < pool.Count; i++)
@@ -780,7 +794,7 @@ namespace DefenseGame
                 }
             }
 
-            return candidates.Count > 0 ? candidates[UnityEngine.Random.Range(0, candidates.Count)] : FindOfferIndexForRole(pool, role);
+            return candidates.Count > 0 ? candidates[ContentRange(0, candidates.Count, "shop.roleOfferIndex")] : FindOfferIndexForRole(pool, role);
         }
 
         private static string GetOfferRarityLabel(OfferRarity rarity)
@@ -793,7 +807,7 @@ namespace DefenseGame
             return rarity == OfferRarity.Legendary ? new Color(1f, 0.72f, 0.20f, 1f) :
                 rarity == OfferRarity.Rare ? new Color(0.24f, 0.62f, 1f, 1f) : new Color(0.68f, 0.70f, 0.78f, 1f);
         }
-        private static int FindOfferIndexForRole(List<OfferType> pool, OfferRole role)
+        private int FindOfferIndexForRole(List<OfferType> pool, OfferRole role)
         {
             List<int> candidates = new List<int>();
             for (int i = 0; i < pool.Count; i++)
@@ -805,8 +819,8 @@ namespace DefenseGame
             }
 
             return candidates.Count > 0
-                ? candidates[UnityEngine.Random.Range(0, candidates.Count)]
-                : UnityEngine.Random.Range(0, pool.Count);
+                ? candidates[ContentRange(0, candidates.Count, "shop.roleIndex")]
+                : ContentRange(0, pool.Count, "shop.roleFallback");
         }
 
         private static OfferRole GetOfferRole(OfferType type)
@@ -1105,6 +1119,7 @@ namespace DefenseGame
             }
             ApplyReadableFateOfferText(offer, miniPrefix);
             currentOffers.Add(offer);
+            gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Shop, "shop.offer", type.ToString());
         }
 
 
@@ -1682,7 +1697,7 @@ namespace DefenseGame
                         return false;
                     }
 
-                    float roll = UnityEngine.Random.value;
+                    float roll = ContentValue("shop.riskChest.grade");
                     CharacterGrade grade = roll < 0.10f ? CharacterGrade.Legendary : roll < 0.38f ? CharacterGrade.Epic : CharacterGrade.Rare;
                     return gameController.TryGrantRandomUnitByGrade(grade);
                 case OfferType.MergeAssist:

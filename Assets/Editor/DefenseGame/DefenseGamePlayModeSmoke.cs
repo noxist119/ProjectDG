@@ -124,6 +124,7 @@ namespace DefenseGame.Editor
             bool hpTen = controller != null && controller.Life == 10 && controller.MaxLife == 10;
             bool runResetStateValid = false;
             bool runSeedRepeatValid = false;
+            bool runContentChannelIsolationValid = false;
             if (controller != null)
             {
                 int expectedBaseMaxLife = controller.MaxLife;
@@ -133,10 +134,20 @@ namespace DefenseGame.Editor
 
                 controller.SetRunContentSeedOverride(314159);
                 controller.ResetRunForRetry();
-                int firstSeedSample = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+                int firstSummonSample = controller.RunContentRandom.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.summon");
+                int firstBoardSample = controller.RunContentRandom.Range(RunContentRandomChannel.Board, 0, int.MaxValue, "smoke.board");
                 controller.ResetRunForRetry();
-                int secondSeedSample = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
-                runSeedRepeatValid = firstSeedSample == secondSeedSample;
+                int secondSummonSample = controller.RunContentRandom.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.summon");
+                int secondBoardSample = controller.RunContentRandom.Range(RunContentRandomChannel.Board, 0, int.MaxValue, "smoke.board");
+                runSeedRepeatValid = firstSummonSample == secondSummonSample && firstBoardSample == secondBoardSample;
+                RunContentRandomService firstStreams = new RunContentRandomService();
+                firstStreams.Reset(314159);
+                int isolatedSummonSample = firstStreams.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.isolation.summon");
+                firstStreams.Value(RunContentRandomChannel.Augment, "smoke.isolation.unrelated");
+                RunContentRandomService secondStreams = new RunContentRandomService();
+                secondStreams.Reset(314159);
+                int controlSummonSample = secondStreams.Range(RunContentRandomChannel.Summon, 0, int.MaxValue, "smoke.isolation.summon");
+                runContentChannelIsolationValid = isolatedSummonSample == controlSummonSample;
                 controller.SetRunContentSeedOverride(null);
                 controller.ResetRunForRetry();
             }
@@ -787,7 +798,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -804,6 +815,7 @@ namespace DefenseGame.Editor
                 hpTextTen = hpTextTen,
                 runResetStateValid = runResetStateValid,
                 runSeedRepeatValid = runSeedRepeatValid,
+                runContentChannelIsolationValid = runContentChannelIsolationValid,
                 fateEntryLayoutValid = fateEntryLayoutValid,
                 fateEntryPastelColorValid = fateEntryPastelColorValid,
                 fateEntryIdleAtFullHealth = fateEntryIdleAtFullHealth,
@@ -1986,14 +1998,24 @@ namespace DefenseGame.Editor
             object originalGold = goldField.GetValue(controller);
             object originalSummonCost = summonCostField.GetValue(controller);
             object originalDaily = dailyField.GetValue(controller);
+            FieldInfo contentSeedOverrideEnabledField = typeof(DefenseGameController).GetField("runContentSeedOverrideEnabled", instanceFlags);
+            FieldInfo contentSeedOverrideField = typeof(DefenseGameController).GetField("runContentSeedOverride", instanceFlags);
+            if (contentSeedOverrideEnabledField == null || contentSeedOverrideField == null)
+            {
+                summary = "content_seed_override_reflection_missing";
+                return false;
+            }
+            object originalContentSeedOverrideEnabled = contentSeedOverrideEnabledField.GetValue(controller);
+            object originalContentSeedOverride = contentSeedOverrideField.GetValue(controller);
             UnityEngine.Random.State originalRandomState = UnityEngine.Random.state;
             IList offers = null;
             try
             {
                 dailyField.SetValue(controller, true);
+                controller.SetRunContentSeedOverride(731903);
+                controller.ResetRunForRetry();
                 object recentHistory = recentHistoryField.GetValue(shop);
                 recentHistory?.GetType().GetMethod("Clear")?.Invoke(recentHistory, null);
-                UnityEngine.Random.InitState(731903);
                 goldField.SetValue(controller, 34);
                 summonCostField.SetValue(controller, 16);
                 buildOffers.Invoke(shop, new object[] { 11, true, false, false, false });
@@ -2025,7 +2047,7 @@ namespace DefenseGame.Editor
                 }
 
                 recentHistory?.GetType().GetMethod("Clear")?.Invoke(recentHistory, null);
-                UnityEngine.Random.InitState(731903);
+                controller.ResetRunForRetry();
                 goldField.SetValue(controller, 1);
                 summonCostField.SetValue(controller, 60);
                 buildOffers.Invoke(shop, new object[] { 11, true, false, false, false });
@@ -2057,6 +2079,9 @@ namespace DefenseGame.Editor
                 goldField.SetValue(controller, originalGold);
                 summonCostField.SetValue(controller, originalSummonCost);
                 dailyField.SetValue(controller, originalDaily);
+                contentSeedOverrideEnabledField.SetValue(controller, originalContentSeedOverrideEnabled);
+                contentSeedOverrideField.SetValue(controller, originalContentSeedOverride);
+                controller.ResetRunForRetry();
                 UnityEngine.Random.state = originalRandomState;
             }
         }
@@ -2117,6 +2142,7 @@ namespace DefenseGame.Editor
             public bool hpTextTen;
             public bool runResetStateValid;
             public bool runSeedRepeatValid;
+            public bool runContentChannelIsolationValid;
             public bool fateEntryLayoutValid;
             public bool fateEntryPastelColorValid;
             public bool fateEntryIdleAtFullHealth;

@@ -356,7 +356,9 @@ namespace DefenseGame
 				return false;
 			}
 			CharacterGrade nextGrade = grade + 1;
-			CharacterDefinition mergedCharacter = contentRandom != null`n`t`t`t? database.GetRunContentRandomCharacterByGrade(nextGrade, contentRandom, RunContentRandomChannel.Merge, "normalMerge", false)`n`t`t`t: database.GetRandomCharacterByGrade(nextGrade);
+			CharacterDefinition mergedCharacter = contentRandom != null
+			? database.GetRunContentRandomCharacterByGrade(nextGrade, contentRandom, RunContentRandomChannel.Merge, "normalMerge", false)
+			: database.GetRandomCharacterByGrade(nextGrade);
 			if (mergedCharacter == null)
 			{
 				LastMergeFailureReason = "상위 등급 결과 유닛 데이터가 없습니다.";

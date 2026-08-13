@@ -349,6 +349,7 @@ namespace DefenseGame
                 }
 
                 activeMissions.Add(mission);
+                gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Mission, "mission.offer", mission.kind.ToString());
                 usedCategories.Add(category);
             }
 
@@ -364,6 +365,7 @@ namespace DefenseGame
                 if (mission != null)
                 {
                     activeMissions.Add(mission);
+                    gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Mission, "mission.offer", mission.kind.ToString());
                 }
             }
 
@@ -384,6 +386,7 @@ namespace DefenseGame
             }
 
             activeMissions.Add(mission);
+            gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Mission, "mission.offer", mission.kind.ToString());
         }
 
         public bool TrySelectMission(int index)
@@ -404,6 +407,7 @@ namespace DefenseGame
             ConfigureMissionForSelection(selected, initial);
             activeMissions.Clear();
             activeMissions.Add(selected);
+            gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Mission, "mission.selected", selected.kind.ToString());
             missionSelected = true;
             offerRefreshQueued = false;
             SetPanelOpen(false);

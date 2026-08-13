@@ -132,6 +132,30 @@ namespace DefenseGame.Editor
             RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, Phase2FOverdriveRepeatBOutputFileName);
         }
 
+        [MenuItem("DefenseGame/Batch Playtest/Phase2G Classic R30 Repeat A")]
+        public static void RunPhase2GClassicR30RepeatA()
+        {
+            RunHumanStrategies(CombatGameMode.Classic, Phase2ClassicR30Runs, true, false, 30, "DefenseGame_Phase2G_Classic_R30_RepeatA.json");
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2G Classic R30 Repeat B")]
+        public static void RunPhase2GClassicR30RepeatB()
+        {
+            RunHumanStrategies(CombatGameMode.Classic, Phase2ClassicR30Runs, true, false, 30, "DefenseGame_Phase2G_Classic_R30_RepeatB.json");
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2G Overdrive R30 Repeat A")]
+        public static void RunPhase2GOverdriveR30RepeatA()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, "DefenseGame_Phase2G_Overdrive_R30_RepeatA.json");
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Phase2G Overdrive R30 Repeat B")]
+        public static void RunPhase2GOverdriveR30RepeatB()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, "DefenseGame_Phase2G_Overdrive_R30_RepeatB.json");
+        }
+
         [MenuItem("DefenseGame/Batch Playtest/Phase2 Classic R50")]
         public static void RunPhase2ClassicR50()
         {
@@ -393,7 +417,6 @@ namespace DefenseGame.Editor
                 current.notes.Add("combat_mode_switch_failed_" + requestedCombatMode);
             }
 
-            UnityEngine.Random.InitState(contentSeed);
             controller.SetRunContentSeedOverride(contentSeed);
             controller.ResetRunForRetry();
             SubscribeRunTrace();
@@ -673,6 +696,22 @@ namespace DefenseGame.Editor
             current.augmentChoiceIdsHash = ComputeTraceHash(current.augmentChoiceTrace);
             current.missionChoiceIdsHash = ComputeTraceHash(current.missionChoiceTrace);
             current.shopPurchaseIdsHash = ComputeTraceHash(current.shopPurchaseTrace);
+            current.runContentChannels.Clear();
+            if (controller != null && controller.RunContentRandom != null)
+            {
+                foreach (RunContentRandomChannel channel in System.Enum.GetValues(typeof(RunContentRandomChannel)))
+                {
+                    RunContentChannelTrace trace = new RunContentChannelTrace
+                    {
+                        channel = channel.ToString(),
+                        seed = controller.RunContentRandom.GetChannelSeed(channel),
+                        drawCount = controller.RunContentRandom.GetDrawCount(channel),
+                        outcomeHash = controller.RunContentRandom.GetOutcomeHash(channel),
+                        tracePrefix = string.Join(" | ", controller.RunContentRandom.GetTracePrefix(channel))
+                    };
+                    current.runContentChannels.Add(trace);
+                }
+            }
         }
 
         private static string ComputeTraceHash(List<string> trace)
@@ -2267,6 +2306,20 @@ namespace DefenseGame.Editor
                 builder.Append("\"augmentChoiceIdsHash\":\"").Append(EscapeJson(result.augmentChoiceIdsHash)).Append("\",");
                 builder.Append("\"missionChoiceIdsHash\":\"").Append(EscapeJson(result.missionChoiceIdsHash)).Append("\",");
                 builder.Append("\"shopPurchaseIdsHash\":\"").Append(EscapeJson(result.shopPurchaseIdsHash)).Append("\",");
+                builder.Append("\"runContentChannels\":[");
+                for (int channelIndex = 0; channelIndex < result.runContentChannels.Count; channelIndex++)
+                {
+                    RunContentChannelTrace channel = result.runContentChannels[channelIndex];
+                    if (channelIndex > 0) builder.Append(',');
+                    builder.Append('{');
+                    builder.Append("\"channel\":\"").Append(EscapeJson(channel.channel)).Append("\",");
+                    builder.Append("\"seed\":").Append(channel.seed).Append(',');
+                    builder.Append("\"drawCount\":").Append(channel.drawCount).Append(',');
+                    builder.Append("\"outcomeHash\":\"").Append(EscapeJson(channel.outcomeHash)).Append("\",");
+                    builder.Append("\"tracePrefix\":\"").Append(EscapeJson(channel.tracePrefix)).Append("\"");
+                    builder.Append('}');
+                }
+                builder.Append("],");
                 builder.Append("\"highestMergeGrade\":").Append(result.highestMergeGrade).Append(',');
                 builder.Append("\"gradeUpgradePurchaseCount\":").Append(result.gradeUpgradePurchaseCount).Append(',');
                 builder.Append("\"firstGradeUpgradeRound\":").Append(result.firstGradeUpgradeRound).Append(',');
@@ -2438,6 +2491,16 @@ namespace DefenseGame.Editor
             public bool isMidBossRound;
         }
         [Serializable]
+        private sealed class RunContentChannelTrace
+        {
+            public string channel = string.Empty;
+            public uint seed;
+            public int drawCount;
+            public string outcomeHash = string.Empty;
+            public string tracePrefix = string.Empty;
+        }
+
+        [Serializable]
         private sealed class RunResult
         {
             public int index;
@@ -2484,6 +2547,7 @@ namespace DefenseGame.Editor
             public readonly List<string> augmentChoiceTrace = new List<string>();
             public readonly List<string> missionChoiceTrace = new List<string>();
             public readonly List<string> shopPurchaseTrace = new List<string>();
+            public readonly List<RunContentChannelTrace> runContentChannels = new List<RunContentChannelTrace>();
             public int highestMergeGrade;
             public int gradeUpgradePurchaseCount;
             public int firstGradeUpgradeRound;

@@ -62,6 +62,7 @@ namespace DefenseGame
                 }
 
                 slot.SetTileModifier(type, ResolveTileColor(type), ResolveTileLabel(type));
+                gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Board, "board.tile", type.ToString());
             }
 
             if (!string.IsNullOrWhiteSpace(bannerLabel) && gameController != null)

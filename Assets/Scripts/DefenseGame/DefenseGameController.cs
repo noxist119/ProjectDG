@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -2145,85 +2146,43 @@ namespace DefenseGame
 
         private void EnsureFateCardChoices()
         {
-            if (fateCardChoicesInitialized)
-            {
-                return;
-            }
-
+            if (fateCardChoicesInitialized) return;
             List<FateCardType> pool = new List<FateCardType>
             {
-                FateCardType.MonsterCrush,
-                FateCardType.CombatDraft,
-                FateCardType.FullHeal,
-                FateCardType.ForbiddenSummon,
-                FateCardType.GamblerGold,
-                FateCardType.LastBarrier,
-                FateCardType.GoldLoan,
-                FateCardType.RareMercenaries,
-                FateCardType.EpicAdvance,
-                FateCardType.MythicLease,
-                FateCardType.BlackMarket,
-                FateCardType.TimeStop,
-                FateCardType.ThunderStrike,
-                FateCardType.ManaFlood,
-                FateCardType.WallRepair,
-                FateCardType.SmugglerRoute,
-                FateCardType.LifeForge,
-                FateCardType.GradeRigging
+                FateCardType.MonsterCrush, FateCardType.CombatDraft, FateCardType.FullHeal, FateCardType.ForbiddenSummon,
+                FateCardType.GamblerGold, FateCardType.LastBarrier, FateCardType.GoldLoan, FateCardType.RareMercenaries,
+                FateCardType.EpicAdvance, FateCardType.MythicLease, FateCardType.BlackMarket, FateCardType.TimeStop,
+                FateCardType.ThunderStrike, FateCardType.ManaFlood, FateCardType.WallRepair, FateCardType.SmugglerRoute,
+                FateCardType.LifeForge, FateCardType.GradeRigging
             };
-
             if (EmptySlotCount <= 0)
             {
-                pool.Remove(FateCardType.ForbiddenSummon);
-                pool.Remove(FateCardType.RareMercenaries);
-                pool.Remove(FateCardType.EpicAdvance);
-                pool.Remove(FateCardType.MythicLease);
+                pool.Remove(FateCardType.ForbiddenSummon); pool.Remove(FateCardType.RareMercenaries);
+                pool.Remove(FateCardType.EpicAdvance); pool.Remove(FateCardType.MythicLease);
             }
-
-            if (fateCardChoices.Length > 0)
-            {
-                fateCardChoices[0] = TakeRandomFateCard(pool, IsFateSurvivalCard);
-            }
-
-            if (fateCardChoices.Length > 1)
-            {
-                fateCardChoices[1] = TakeRandomFateCard(pool, IsFateCombatCard);
-            }
-
-            if (fateCardChoices.Length > 2)
-            {
-                fateCardChoices[2] = TakeRandomFateCard(pool, IsFateGrowthCard);
-            }
-
+            if (fateCardChoices.Length > 0) fateCardChoices[0] = TakeRandomFateCard(pool, IsFateSurvivalCard, "fate.survival");
+            if (fateCardChoices.Length > 1) fateCardChoices[1] = TakeRandomFateCard(pool, IsFateCombatCard, "fate.combat");
+            if (fateCardChoices.Length > 2) fateCardChoices[2] = TakeRandomFateCard(pool, IsFateGrowthCard, "fate.growth");
             for (int i = fateCardChoices.Length - 1; i > 0; i--)
             {
-                int swapIndex = UnityEngine.Random.Range(0, i + 1);
-                FateCardType temp = fateCardChoices[i];
-                fateCardChoices[i] = fateCardChoices[swapIndex];
-                fateCardChoices[swapIndex] = temp;
+                int swapIndex = runContentRandom.Range(RunContentRandomChannel.Fate, 0, i + 1, "fate.shuffle");
+                FateCardType temp = fateCardChoices[i]; fateCardChoices[i] = fateCardChoices[swapIndex]; fateCardChoices[swapIndex] = temp;
             }
-
+            for (int i = 0; i < fateCardChoices.Length; i++)
+                runContentRandom.RecordOutcome(RunContentRandomChannel.Fate, "fate.choice", fateCardChoices[i].ToString());
             fateCardChoicesInitialized = true;
         }
 
-        private static FateCardType TakeRandomFateCard(List<FateCardType> pool, System.Predicate<FateCardType> predicate)
+        private FateCardType TakeRandomFateCard(List<FateCardType> pool, System.Predicate<FateCardType> predicate, string eventType)
         {
             List<FateCardType> candidates = predicate != null ? pool.FindAll(predicate) : pool;
-            if (candidates.Count <= 0)
-            {
-                candidates = pool;
-            }
-
-            if (candidates.Count <= 0)
-            {
-                return FateCardType.MonsterCrush;
-            }
-
-            FateCardType selected = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            if (candidates.Count <= 0) candidates = pool;
+            if (candidates.Count <= 0) return FateCardType.MonsterCrush;
+            FateCardType selected = candidates[runContentRandom.Range(RunContentRandomChannel.Fate, 0, candidates.Count, eventType)];
             pool.Remove(selected);
+            runContentRandom.RecordOutcome(RunContentRandomChannel.Fate, eventType + ".result", selected.ToString());
             return selected;
         }
-
         private static bool IsFateSurvivalCard(FateCardType card)
         {
             return card == FateCardType.FullHeal ||
@@ -3655,22 +3614,10 @@ namespace DefenseGame
 
         public bool TryGrantRandomUnitByGrade(CharacterGrade grade)
         {
-            if (characterDatabase == null || boardManager == null)
-            {
-                return false;
-            }
-
-            CharacterDefinition definition = characterDatabase.GetRandomCharacterByGrade(grade, true);
-            if (definition == null)
-            {
-                definition = characterDatabase.GetRandomSummonableCharacter(GetSummonRateRound(), true);
-            }
-
-            if (definition == null || !boardManager.TrySpawnUnit(definition, defaultUnitPrefab, out DefenderUnit spawnedUnit))
-            {
-                return false;
-            }
-
+            if (characterDatabase == null || boardManager == null) return false;
+            CharacterDefinition definition = characterDatabase.GetRunContentRandomCharacterByGrade(grade, runContentRandom, RunContentRandomChannel.Summon, "grant.grade", true)
+                ?? characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Summon, "grant.fallback", true);
+            if (definition == null || !boardManager.TrySpawnUnit(definition, defaultUnitPrefab, out DefenderUnit spawnedUnit)) return false;
             RegisterGrantedUnitExcitement(definition, spawnedUnit);
             OnUnitSummoned?.Invoke(definition);
             NotifyStateChanged();
@@ -3705,36 +3652,20 @@ namespace DefenseGame
 
         private CharacterDefinition SelectMissionSupportDefinition()
         {
-            CharacterDefinition definition = characterDatabase.GetRandomSummonableCharacter(GetSummonRateRound(), true);
-            if (definition != null && definition.grade != CharacterGrade.Transcendent)
-            {
-                return definition;
-            }
-
+            CharacterDefinition definition = characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Mission, "mission.support", true);
+            if (definition != null && definition.grade != CharacterGrade.Transcendent) return definition;
             for (int grade = (int)CharacterGrade.Mythic; grade >= (int)CharacterGrade.Normal; grade--)
             {
-                definition = characterDatabase.GetRandomCharacterByGrade((CharacterGrade)grade, true);
-                if (definition != null)
-                {
-                    return definition;
-                }
+                definition = characterDatabase.GetRunContentRandomCharacterByGrade((CharacterGrade)grade, runContentRandom, RunContentRandomChannel.Mission, "mission.supportFallback", true);
+                if (definition != null) return definition;
             }
-
             return null;
         }
         public bool TryGrantRandomSummonableUnit()
         {
-            if (characterDatabase == null || boardManager == null)
-            {
-                return false;
-            }
-
-            CharacterDefinition definition = characterDatabase.GetRandomSummonableCharacter(GetSummonRateRound(), true);
-            if (definition == null || !boardManager.TrySpawnUnit(definition, defaultUnitPrefab, out DefenderUnit spawnedUnit))
-            {
-                return false;
-            }
-
+            if (characterDatabase == null || boardManager == null) return false;
+            CharacterDefinition definition = characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Summon, "grant.summonable", true);
+            if (definition == null || !boardManager.TrySpawnUnit(definition, defaultUnitPrefab, out DefenderUnit spawnedUnit)) return false;
             RegisterGrantedUnitExcitement(definition, spawnedUnit);
             OnUnitSummoned?.Invoke(definition);
             NotifyStateChanged();
@@ -3762,7 +3693,7 @@ namespace DefenseGame
             DefenderUnit featuredUnit = null;
             for (int i = 0; i < grantCount; i++)
             {
-                CharacterDefinition definition = characterDatabase.GetRandomCharacterByGrade(targetGrade, true);
+                CharacterDefinition definition = characterDatabase.GetRunContentRandomCharacterByGrade(targetGrade, runContentRandom, RunContentRandomChannel.Shop, "mergeAssist", true);
                 if (definition == null ||
                     !boardManager.TrySpawnUnit(definition, defaultUnitPrefab, out DefenderUnit spawnedUnit))
                 {
@@ -5077,7 +5008,9 @@ namespace DefenseGame
 
             if (fateNormalBanSummonsRemaining > 0 && result.grade == CharacterGrade.Normal)
             {
-                CharacterDefinition rareOrBetter = characterDatabase.GetRunContentRandomCharacterByGrade(CharacterGrade.Rare, runContentRandom, RunContentRandomChannel.Fate, "fate.normalBan.rare", true)`n                    ?? characterDatabase.GetRunContentRandomCharacterByGrade(CharacterGrade.Epic, runContentRandom, RunContentRandomChannel.Fate, "fate.normalBan.epic", true)`n                    ?? characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Fate, "fate.normalBan.fallback", true);
+                CharacterDefinition rareOrBetter = characterDatabase.GetRunContentRandomCharacterByGrade(CharacterGrade.Rare, runContentRandom, RunContentRandomChannel.Fate, "fate.normalBan.rare", true)
+                    ?? characterDatabase.GetRunContentRandomCharacterByGrade(CharacterGrade.Epic, runContentRandom, RunContentRandomChannel.Fate, "fate.normalBan.epic", true)
+                    ?? characterDatabase.GetRunContentRandomSummonableCharacter(GetSummonRateRound(), runContentRandom, RunContentRandomChannel.Fate, "fate.normalBan.fallback", true);
                 if (rareOrBetter != null)
                 {
                     result = rareOrBetter;

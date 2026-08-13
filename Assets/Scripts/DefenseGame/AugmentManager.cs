@@ -1021,6 +1021,11 @@ namespace DefenseGame
             FillMissingChoices();
             EnsureOwnedHeroChoice(round);
             EnsureTransformingChoice();
+            for (int i = 0; i < currentChoices.Count; i++)
+            {
+                gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Augment, "augment.offer", currentChoices[i].id);
+            }
+
             RememberCurrentChoices();
             SaveLastRunChoiceIds(round);
 
@@ -1135,6 +1140,20 @@ namespace DefenseGame
             }
         }
 
+        private int ContentRange(int minInclusive, int maxExclusive, string eventType)
+        {
+            return gameController != null
+                ? gameController.RunContentRandom.Range(RunContentRandomChannel.Augment, minInclusive, maxExclusive, eventType)
+                : UnityEngine.Random.Range(minInclusive, maxExclusive);
+        }
+
+        private float ContentValue(string eventType)
+        {
+            return gameController != null
+                ? gameController.RunContentRandom.Value(RunContentRandomChannel.Augment, eventType)
+                : UnityEngine.Random.value;
+        }
+
         private AugmentStyle[] BuildChoiceStyleSlots(int round)
         {
             int safeInterval = ResolveFixedChoiceInterval();
@@ -1143,17 +1162,16 @@ namespace DefenseGame
             int pack;
             if (deterministicContent)
             {
-                int contentSeed = gameController != null ? gameController.ActiveRunContentSeed : DailyFateCupRules.TodaySeed;
-                pack = (contentSeed ^ (round * 193)) & 3;
+                pack = ContentRange(0, 4, "augment.stylePack");
             }
             else
             {
                 string key = "DefenseGame.LastRunAugmentStylePack." + round;
                 int previousPack = PlayerPrefs.GetInt(key, -1);
-                pack = UnityEngine.Random.Range(0, 4);
+                pack = ContentRange(0, 4, "augment.stylePack");
                 if (pack == previousPack)
                 {
-                    pack = (pack + UnityEngine.Random.Range(1, 4)) % 4;
+                    pack = (pack + ContentRange(1, 4, "augment.stylePackRetry")) % 4;
                 }
 
                 PlayerPrefs.SetInt(key, pack);
@@ -1196,7 +1214,7 @@ namespace DefenseGame
                 candidates = BuildChoiceCandidates(null, null, false, false);
             }
 
-            return candidates.Count > 0 ? candidates[UnityEngine.Random.Range(0, candidates.Count)] : null;
+            return candidates.Count > 0 ? candidates[ContentRange(0, candidates.Count, "augment.pick")] : null;
         }
 
         private List<AugmentDefinition> BuildChoiceCandidates(
@@ -1246,7 +1264,7 @@ namespace DefenseGame
 
         private ChoiceRarity RollChoiceRarity(int round)
         {
-            float roll = UnityEngine.Random.value;
+            float roll = ContentValue("augment.rarity");
             float legendaryChance = round <= 5 ? 0.02f : round <= 10 ? 0.06f : round <= 15 ? 0.10f : 0.13f;
             float rareChance = round <= 5 ? 0.23f : round <= 10 ? 0.26f : round <= 15 ? 0.30f : 0.32f;
             if (IsOverdriveMode())
@@ -1298,7 +1316,7 @@ namespace DefenseGame
                     break;
                 }
 
-                currentChoices.Add(candidates[UnityEngine.Random.Range(0, candidates.Count)]);
+                currentChoices.Add(candidates[ContentRange(0, candidates.Count, "augment.fill")]);
             }
         }
 
@@ -1341,7 +1359,7 @@ namespace DefenseGame
                 return;
             }
 
-            currentChoices[currentChoices.Count - 1] = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            currentChoices[currentChoices.Count - 1] = candidates[ContentRange(0, candidates.Count, "augment.heroGuarantee")];
             heroAugmentChoiceMisses = 0;
         }
 
@@ -1431,7 +1449,7 @@ namespace DefenseGame
             }
 
             int replacementIndex = currentChoices.Count - 1;
-            currentChoices[replacementIndex] = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            currentChoices[replacementIndex] = candidates[ContentRange(0, candidates.Count, "augment.transforming")];
         }
 
         private static bool IsTransformingAugment(AugmentDefinition augment)
@@ -2114,7 +2132,7 @@ namespace DefenseGame
                 float maxChance = GetHeroAugmentMaxOfferChance(augment.heroTier);
                 float modeMultiplier = Mathf.Max(0f, ResolveCombatModeProfile().heroAugmentOfferChanceMultiplier);
                 float chance = Mathf.Clamp((baseChance + Mathf.Max(0, heroCount - 1) * extraHeroCopyOfferBonus) * modeMultiplier, 0f, maxChance);
-                canOffer = UnityEngine.Random.value <= chance;
+                canOffer = ContentValue("augment.heroOffer") <= chance;
                 heroAugmentOfferRolls[augment.id] = canOffer;
             }
 
@@ -2147,7 +2165,7 @@ namespace DefenseGame
             if (!heroAugmentOfferRolls.TryGetValue(augment.id, out bool canOffer))
             {
                 float chance = Mathf.Clamp01(baseChance + Mathf.Max(0, heroCount - 1) * 0.18f);
-                canOffer = UnityEngine.Random.value <= chance;
+                canOffer = ContentValue("augment.heroOffer") <= chance;
                 heroAugmentOfferRolls[augment.id] = canOffer;
             }
 
