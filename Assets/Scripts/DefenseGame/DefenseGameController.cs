@@ -1588,8 +1588,8 @@ namespace DefenseGame
             }
 
 
-            string title = choice == BossForecastBet.Supply ? "보급 예측" :
-                choice == BossForecastBet.Build ? "빌드 예측" : "전술 예측";
+            string title = choice == BossForecastBet.Supply ? "\uc720\ub2db \ud655\ubcf4" :
+                choice == BossForecastBet.Build ? "\uace0\ub4f1\uae09 \ub178\ub9ac\uae30" : "\uc548\uc804\ud558\uac8c \ubc84\ud2f0\uae30";
             AddRunHighlightCard("R10 \ubcf4\uc2a4 \uc804\ub7b5", title + " / " + entryBonus + " / R10 \ubaa9\ud45c \ub4f1\ub85d");
             RequestBanner("R10 \ubcf4\uc2a4 \uc804\ub7b5 \uc120\ud0dd \uc644\ub8cc  " + BuildBossForecastSummary(), new Color(1f, 0.78f, 0.30f), 2.6f);
             NotifyStateChanged();
@@ -1601,23 +1601,22 @@ namespace DefenseGame
             if (bossForecastBetResolved)
             {
                 return bossForecastBonusScore > 0
-                    ? "보스 베팅 성공  +" + bossForecastBonusScore + "점"
-                    : "보스 베팅 실패  다음 판 재도전";
+                    ? "R10 \ubcf4\uc2a4 \ubaa9\ud45c \ub2ec\uc131  +" + bossForecastBonusScore + "\uc810"
+                    : "R10 \ubcf4\uc2a4 \ubaa9\ud45c \ubbf8\ub2ec\uc131  \ub2e4\uc74c \ud310 \uc7ac\ub3c4\uc804";
             }
 
             switch (bossForecastBet)
             {
                 case BossForecastBet.Supply:
-                    return "보급 예측  ·  R10에 유닛 8기 이상";
+                    return "\uc720\ub2db \ud655\ubcf4  ·  R10\uc5d0 \uc720\ub2db 8\uae30 \uc774\uc0c1";
                 case BossForecastBet.Build:
-                    return "빌드 예측  ·  R10에 에픽 이상 1기";
+                    return "\uace0\ub4f1\uae09 \ub178\ub9ac\uae30  ·  R10\uc5d0 \uc5d0\ud53d \uc774\uc0c1 1\uae30";
                 case BossForecastBet.Tactical:
-                    return "전술 예측  ·  R10 클리어 후 HP 60% 이상";
+                    return "\uc548\uc804\ud558\uac8c \ubc84\ud2f0\uae30  ·  R10 \ud074\ub9ac\uc5b4 \ud6c4 HP 60% \uc774\uc0c1";
                 default:
-                    return "R3 클리어 후 R4 준비에서 R10 보스 공략 방향을 선택";
+                    return "R3 \ud074\ub9ac\uc5b4 \ud6c4 R4 \uc900\ube44\uc5d0\uc11c R10 \ubcf4\uc2a4 \uacf5\ub7b5 \ubc29\ud5a5\uc744 \uc120\ud0dd";
             }
         }
-
         private string BuildLuckProtectionLedgerSummary()
         {
             if (!enableLuckySummonComeback)
@@ -1670,17 +1669,16 @@ namespace DefenseGame
             {
                 bossForecastBonusScore = 45;
                 Gold += 18;
-                AddRunHighlightCard("보스 베팅 적중", BuildBossForecastSummary() + " / +18G");
-                RequestBanner("보스 베팅 적중!  +45점  +18G", new Color(1f, 0.86f, 0.28f), 3.0f);
+                AddRunHighlightCard("R10 \ubcf4\uc2a4 \ubaa9\ud45c \ub2ec\uc131", BuildBossForecastSummary() + " / +18G");
+                RequestBanner("R10 \ubcf4\uc2a4 \ubaa9\ud45c \ub2ec\uc131!  +45\uc810  +18G", new Color(1f, 0.86f, 0.28f), 3.0f);
             }
             else
             {
                 bossForecastBonusScore = 0;
-                AddRunHighlightCard("보스 베팅 빗나감", BuildBossForecastSummary());
-                RequestBanner("보스 베팅 실패  조건을 확인하고 다음 판에 재도전", new Color(0.78f, 0.70f, 1f), 2.6f);
+                AddRunHighlightCard("R10 \ubcf4\uc2a4 \ubaa9\ud45c \ubbf8\ub2ec\uc131", BuildBossForecastSummary());
+                RequestBanner("R10 \ubcf4\uc2a4 \ubaa9\ud45c \ubbf8\ub2ec\uc131  \uc870\uac74\uc744 \ud655\uc778\ud558\uace0 \ub2e4\uc74c \ud310\uc5d0 \uc7ac\ub3c4\uc804", new Color(0.78f, 0.70f, 1f), 2.6f);
             }
         }
-
         private int CountUnitsAtLeastGrade(CharacterGrade minimum)
         {
             int count = 0;

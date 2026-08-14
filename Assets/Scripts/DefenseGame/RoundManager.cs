@@ -368,7 +368,9 @@ namespace DefenseGame
                 roundRoutine = null;
             }
 
-            SuspendCombatTimeAcceleration();
+            // Defeat owns the upcoming slow motion. Restore the combat baseline
+            // before the controller captures that slow-motion starting point.
+            EndCombatTimeAcceleration(true);
             LastRoundEndedByDefeat = true;
         }
 

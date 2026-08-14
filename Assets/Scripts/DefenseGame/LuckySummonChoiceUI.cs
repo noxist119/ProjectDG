@@ -123,18 +123,17 @@ namespace DefenseGame
 			{
 				if ((Object)(object)titleText != null)
 				{
-					titleText.text = "불운을 뒤집는 행운 소환";
+					titleText.text = "\uc5f0\uc18d \uc77c\ubc18 \ubcf4\uc0c1! \ud2b9\ubcc4 \uc18c\ud658";
 				}
 				if ((Object)(object)instructionText != null)
 				{
-					instructionText.text = "일반 " + gameController.LuckySummonNormalStreak + "회 연속 누적  |  보유 " + gameController.Gold + "G  |  한 판 1회";
+					instructionText.text = "\uc77c\ubc18 \ub4f1\uae09\uc774 \uc5f0\uc18d\uc73c\ub85c \ub098\uc640 \ud2b9\ubcc4 \uc18c\ud658\uc774 \uc5f4\ub838\uc2b5\ub2c8\ub2e4.\n\ud604\uc7ac " + gameController.LuckySummonNormalStreak + "\ud68c \uc5f0\uc18d \u00b7 \uc544\ub798 1\uac1c\ub97c \uace0\ub974\uc138\uc694. \u00b7 \ud55c \ud310 1\ud68c";
 				}
-				SetChoice(0, LuckySummonChoice.MergeLink, "연결의 주사위\n\n가장 가까운\n합성 재료 1기\n\n");
-				SetChoice(1, LuckySummonChoice.SafeRare, "안전의 주사위\n\n레어 이상 확정\n소환비 150%\n\n");
-				SetChoice(2, LuckySummonChoice.Jackpot, "승부의 주사위\n\n25% 에픽\n실패 시 일반 + 50% 환급\n\n");
+				SetChoice(0, LuckySummonChoice.MergeLink, "\ud569\uc131 \uc7ac\ub8cc \ubcf4\ucda9\n\n\ud604\uc7ac \ubcf4\ub4dc\uc5d0\uc11c\n\ud569\uc131\uc5d0 \uac00\uc7a5 \uac00\uae4c\uc6b4 \uc720\ub2db 1\uae30\n\n");
+				SetChoice(1, LuckySummonChoice.SafeRare, "\ub808\uc5b4 \uc774\uc0c1 \ud655\uc815\n\n\ub808\uc5b4 \uc774\uc0c1 \uc720\ub2db\n1\uae30 \ud655\uc815 \uc18c\ud658\n\n");
+				SetChoice(2, LuckySummonChoice.Jackpot, "\uc5d0\ud53d 25% \ub3c4\uc804\n\n\uc131\uacf5: \uc5d0\ud53d\n\uc2e4\ud328: \uc77c\ubc18 + \uc0ac\uc6a9 \uace8\ub4dc 50% \ud658\uae09\n\n");
 			}
 		}
-
 		private void SetChoice(int index, LuckySummonChoice choice, string description)
 		{
 			if (index >= 0 && index < choiceButtons.Length)
@@ -274,13 +273,46 @@ namespace DefenseGame
 
 			if (instructionText != null)
 			{
-				instructionText.text = "\u0052\u0031\u0030\uae4c\uc9c0\u0020\ub2ec\uc131\ud560\u0020\ubaa9\ud45c\ub97c\u0020\ud558\ub098\u0020\uace0\ub974\uc138\uc694\u002e\u0020\uc120\ud0dd\ud55c\u0020\uacf5\ub7b5\uc740\u0020\ub2e4\uc74c\u0020\uc804\ud22c\uc0c1\uc810\uc5d0\ub3c4\u0020\u0031\ud68c\u0020\uc601\ud5a5\uc744\u0020\uc90d\ub2c8\ub2e4\u002e";
+				instructionText.text = "R10\uc744 \uc5b4\ub5bb\uac8c \uc900\ube44\ud560\uae4c\uc694?\n\uc9c0\uae08 \ubcf4\ub108\uc2a4\ub97c \ud558\ub098 \ubc1b\uace0, \ubaa9\ud45c\uae4c\uc9c0 \ub2ec\uc131\ud558\uba74 \ucd94\uac00 \ubcf4\uc0c1\uc744 \ubc1b\uc2b5\ub2c8\ub2e4.";
 			}
-			SetChoice(0, "\ubcf4\uae09\u0020\uacf5\ub7b5\n\n\uc989\uc2dc\u003a\u0020\ub808\uc5b4\u0020\uc720\ub2db\u0020\u0031\uae30\u0020\u002b\u0020\u0031\u0030\u0047\n\ubaa9\ud45c\u003a\u0020\u0052\u0031\u0030\u0020\uc720\ub2db\u0020\u0038\uae30\u0020\uc774\uc0c1\n\uc131\uacf5\u003a\u0020\u002b\u0034\u0035\uc810\u002c\u0020\u002b\u0031\u0038\u0047\n\ub2e4\uc74c\u0020\uc804\ud22c\uc0c1\uc810\u003a\u0020\ubcf4\uae09\u0020\uc120\ud0dd\uc9c0\u0020\u0031\ud68c\u0020\uc6b0\ub300");
-			SetChoice(1, "\ube4c\ub4dc\u0020\uacf5\ub7b5\n\n\uc989\uc2dc\u003a\u0020\ud589\uc6b4\u0020\uc18c\ud658\uae4c\uc9c0\u0020\ub0a8\uc740\u0020\uc77c\ubc18\u0020\uc18c\ud658\u0020\ud69f\uc218\u0020\u002d\u0033\n\ubaa9\ud45c\u003a\u0020\u0052\u0031\u0030\u0020\uc5d0\ud53d\u0020\uc774\uc0c1\u0020\u0031\uae30\n\uc131\uacf5\u003a\u0020\u002b\u0034\u0035\uc810\u002c\u0020\u002b\u0031\u0038\u0047\n\ub2e4\uc74c\u0020\uc804\ud22c\uc0c1\uc810\u003a\u0020\ube4c\ub4dc\u0020\uc120\ud0dd\uc9c0\u0020\u0031\ud68c\u0020\uc6b0\ub300");
-			SetChoice(2, "\uc804\uc220\u0020\uacf5\ub7b5\n\n\uc989\uc2dc\u003a\u0020\ucd5c\ub300\u0020\u0048\u0050\u0020\u002b\u0031\n\ubaa9\ud45c\u003a\u0020\u0052\u0031\u0030\u0020\uc885\ub8cc\u0020\ud6c4\u0020\u0048\u0050\u0020\u0036\u0030\u0025\u0020\uc774\uc0c1\n\uc131\uacf5\u003a\u0020\u002b\u0034\u0035\uc810\u002c\u0020\u002b\u0031\u0038\u0047\n\ub2e4\uc74c\u0020\uc804\ud22c\uc0c1\uc810\u003a\u0020\uc804\uc220\u0020\uc120\ud0dd\uc9c0\u0020\u0031\ud68c\u0020\uc6b0\ub300");
+
+			SetChoice(0, BuildChoiceLabel(BossForecastBet.Supply));
+			SetChoice(1, BuildChoiceLabel(BossForecastBet.Build));
+			SetChoice(2, BuildChoiceLabel(BossForecastBet.Tactical));
 		}
 
+		private string BuildChoiceLabel(BossForecastBet choice)
+		{
+			bool overdrive = gameController != null && gameController.IsOverdriveMode;
+			string title;
+			string immediate;
+			string goal;
+			string nextShop;
+			switch (choice)
+			{
+				case BossForecastBet.Supply:
+					title = "\uc720\ub2db \ud655\ubcf4";
+					immediate = overdrive ? "\ub808\uc5b4 \uc720\ub2db 1\uae30 + 10G" : "\ub2e4\uc74c \uc0c1\uc810 \ubcf4\uae09 \uc635\uc158 \uc6b0\uc120";
+					goal = "\uc720\ub2db 8\uae30 \ud655\ubcf4";
+					nextShop = "\ubcf4\uae09 \uc635\uc158 \uc6b0\uc120";
+					break;
+				case BossForecastBet.Build:
+					title = "\uace0\ub4f1\uae09 \ub178\ub9ac\uae30";
+					immediate = overdrive ? "\ud589\uc6b4 \uc18c\ud658 3\ud68c \ub2f9\uae40" : "\ub2e4\uc74c \uc0c1\uc810 \uc131\uc7a5 \uc635\uc158 \uc6b0\uc120";
+					goal = "\uc5d0\ud53d \uc774\uc0c1 1\uae30";
+					nextShop = "\uc131\uc7a5 \uc635\uc158 \uc6b0\uc120";
+					break;
+				default:
+					title = "\uc548\uc804\ud558\uac8c \ubc84\ud2f0\uae30";
+					immediate = overdrive ? "\ucd5c\ub300 HP +1" : "\ub2e4\uc74c \uc0c1\uc810 \uc0dd\uc874 \uc635\uc158 \uc6b0\uc120";
+					goal = "\ud074\ub9ac\uc5b4 \ud6c4 HP 60% \uc774\uc0c1";
+					nextShop = "\uc0dd\uc874 \uc635\uc158 \uc6b0\uc120";
+					break;
+			}
+
+			return title + "\n\n\uc9c0\uae08\n" + immediate + "\n\nR10 \ubaa9\ud45c\n" + goal +
+				"\n\n\ub2ec\uc131 \ubcf4\uc0c1\n18G + \uc810\uc218 45\n\n\ub2e4\uc74c \uc0c1\uc810\n" + nextShop;
+		}
 		private void SetChoice(int index, string label)
 		{
 			if (index < 0 || index >= choiceButtons.Length)

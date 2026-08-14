@@ -1344,7 +1344,7 @@ namespace DefenseGame
                 MissionInstance mission = activeMissions[i];
                 SetText(GetText(optionTitleTexts, i), mission.title);
                 SetText(GetText(optionDescriptionTexts, i), mission.description);
-                SetText(GetText(optionRewardTexts, i), "\ubcf4\uc0c1: " + mission.rewardText);
+				SetText(GetText(optionRewardTexts, i), "\ubcf4\uc0c1  " + mission.rewardText);
 
                 Image accent = GetImage(optionAccentImages, i);
                 if (accent != null)

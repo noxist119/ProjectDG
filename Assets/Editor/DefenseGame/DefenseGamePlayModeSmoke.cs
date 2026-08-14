@@ -837,6 +837,18 @@ namespace DefenseGame.Editor
                 notes.Add("장기전 가속 단계가 30초 2배, 이후 5초마다 1배 증가 규칙과 일치하지 않습니다.");
             }
 
+            bool retryTimeScaleResetValid = ValidateDefeatRetryTimeScaleReset(controller, out string retryTimeScaleResetSummary);
+            if (!retryTimeScaleResetValid)
+            {
+                notes.Add("패배 후 재시도 Time.timeScale/fixedDeltaTime 복구 검증에 실패했습니다. " + retryTimeScaleResetSummary);
+            }
+
+            bool choiceReadabilityValid = ValidateChoiceReadability(out string choiceReadabilitySummary);
+            if (!choiceReadabilityValid)
+            {
+                notes.Add("미션/보스 대비/행운 소환 선택지의 가독성 또는 세로 안전영역 검증에 실패했습니다. " + choiceReadabilitySummary);
+            }
+
             PrefabSmokeResult[] prefabResults = new PrefabSmokeResult[PrefabPaths.Length];
             for (int i = 0; i < PrefabPaths.Length; i++)
             {
@@ -847,7 +859,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -907,6 +919,10 @@ namespace DefenseGame.Editor
                 hero32SignatureValid = hero32SignatureValid,
                 gargoyleLoopDurationValid = gargoyleLoopDurationValid,
                 longCombatAccelerationValid = longCombatAccelerationValid,
+                retryTimeScaleResetValid = retryTimeScaleResetValid,
+                retryTimeScaleResetSummary = retryTimeScaleResetSummary,
+                choiceReadabilityValid = choiceReadabilityValid,
+                choiceReadabilitySummary = choiceReadabilitySummary,
                 defaultVfxConfigured = defaultVfxConfigured,
                 animationMaterialEventsValid = animationMaterialEventsValid,
                 animationMaterialEventsSummary = animationMaterialEventsSummary,
@@ -1015,6 +1031,116 @@ namespace DefenseGame.Editor
             return attackVisual && (skillVisual || defaultCombatVfx);
         }
 
+        private static bool ValidateDefeatRetryTimeScaleReset(DefenseGameController controller, out string summary)
+        {
+            RoundManager roundManager = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            FieldInfo isRoundRunning = typeof(RoundManager).GetField("<IsRoundRunning>k__BackingField", flags);
+            FieldInfo accelerationActive = typeof(RoundManager).GetField("combatTimeAccelerationActive", flags);
+            FieldInfo baselineCaptured = typeof(RoundManager).GetField("combatSpeedBaselineCaptured", flags);
+            FieldInfo baselineScale = typeof(RoundManager).GetField("combatSpeedBaselineTimeScale", flags);
+            FieldInfo baselineFixed = typeof(RoundManager).GetField("combatSpeedBaselineFixedDeltaTime", flags);
+            FieldInfo appliedScale = typeof(RoundManager).GetField("combatSpeedAppliedTimeScale", flags);
+            MethodInfo captureFate = typeof(DefenseGameController).GetMethod("CaptureFateChoiceSlowMotion", flags);
+            MethodInfo restoreFate = typeof(DefenseGameController).GetMethod("RestoreFateChoiceSlowMotion", flags);
+            MethodInfo captureDefeat = typeof(DefenseGameController).GetMethod("CaptureDefeatTimeScale", flags);
+            MethodInfo restoreDefeat = typeof(DefenseGameController).GetMethod("RestoreDefeatTimeScale", flags);
+            if (controller == null || roundManager == null || isRoundRunning == null || accelerationActive == null || baselineCaptured == null || baselineScale == null || baselineFixed == null || appliedScale == null || captureFate == null || restoreFate == null || captureDefeat == null || restoreDefeat == null)
+            {
+                summary = "reflection_target_missing";
+                return false;
+            }
+
+            float originalScale = Time.timeScale;
+            float originalFixed = Time.fixedDeltaTime;
+            try
+            {
+                controller.ResetRunForRetry();
+                bool baseline = Mathf.Approximately(Time.timeScale, 1f) && Mathf.Approximately(Time.fixedDeltaTime, 0.02f);
+
+                captureFate.Invoke(controller, null);
+                Time.timeScale = 0.1f;
+                Time.fixedDeltaTime = 0.002f;
+                restoreFate.Invoke(controller, null);
+                bool fateRestored = Mathf.Approximately(Time.timeScale, 1f) && Mathf.Approximately(Time.fixedDeltaTime, 0.02f);
+
+                isRoundRunning.SetValue(roundManager, true);
+                accelerationActive.SetValue(roundManager, true);
+                baselineCaptured.SetValue(roundManager, true);
+                baselineScale.SetValue(roundManager, 1f);
+                baselineFixed.SetValue(roundManager, 0.02f);
+                appliedScale.SetValue(roundManager, 2f);
+                Time.timeScale = 2f;
+                Time.fixedDeltaTime = 0.04f;
+                roundManager.BeginDefeatCinematic();
+                bool cinematicBaseline = Mathf.Approximately(Time.timeScale, 1f) && Mathf.Approximately(Time.fixedDeltaTime, 0.02f);
+
+                captureDefeat.Invoke(controller, null);
+                Time.timeScale = DefenseGameController.DefeatSlowMotionTargetScale;
+                Time.fixedDeltaTime = 0.002f;
+                restoreDefeat.Invoke(controller, null);
+                bool defeatRestored = Mathf.Approximately(Time.timeScale, 1f) && Mathf.Approximately(Time.fixedDeltaTime, 0.02f);
+
+                controller.ResetRunForRetry();
+                bool retryRestored = Mathf.Approximately(Time.timeScale, 1f) && Mathf.Approximately(Time.fixedDeltaTime, 0.02f);
+                summary = "baseline=" + baseline + ", fate=" + fateRestored + ", defeat=" + cinematicBaseline + ", slowmo=" + defeatRestored + ", retry=" + retryRestored;
+                return baseline && fateRestored && cinematicBaseline && defeatRestored && retryRestored;
+            }
+            finally
+            {
+                restoreFate.Invoke(controller, null);
+                restoreDefeat.Invoke(controller, null);
+                controller.ResetRunForRetry();
+                Time.timeScale = originalScale;
+                Time.fixedDeltaTime = originalFixed;
+            }
+        }
+
+        private static bool ValidateChoiceReadability(out string summary)
+        {
+            Text bossTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(textComponent => textComponent != null && textComponent.name == "BossForecastTitle");
+            Text bossInstruction = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(textComponent => textComponent != null && textComponent.name == "BossForecastInstruction");
+            Button[] bossChoices = UnityEngine.Object.FindObjectsOfType<Button>(true).Where(button => button != null && button.name.StartsWith("BossForecastChoice_", StringComparison.Ordinal)).OrderBy(button => button.name).ToArray();
+            Button[] luckyChoices = UnityEngine.Object.FindObjectsOfType<Button>(true).Where(button => button != null && button.name.StartsWith("LuckySummonChoice", StringComparison.Ordinal)).OrderBy(button => button.name).ToArray();
+            Button[] missionChoices = UnityEngine.Object.FindObjectsOfType<Button>(true).Where(button => button != null && button.name.StartsWith("MissionOption_", StringComparison.Ordinal)).OrderBy(button => button.name).ToArray();
+            Text activeDescription = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(textComponent => textComponent != null && textComponent.name == "ActiveMissionDescription");
+            Text activeProgress = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(textComponent => textComponent != null && textComponent.name == "ActiveMissionProgress");
+            bool bossCopy = bossTitle != null && bossTitle.text == "R10 \ubcf4\uc2a4 \ub300\ube44" && bossInstruction != null && bossInstruction.text.Contains("R10\uc744 \uc5b4\ub5bb\uac8c \uc900\ube44") && bossChoices.Length == 3 &&
+                bossChoices[0].GetComponentInChildren<Text>(true).text.Contains("\uc720\ub2db \ud655\ubcf4") && bossChoices[1].GetComponentInChildren<Text>(true).text.Contains("\uace0\ub4f1\uae09 \ub178\ub9ac\uae30") && bossChoices[2].GetComponentInChildren<Text>(true).text.Contains("\uc548\uc804\ud558\uac8c \ubc84\ud2f0\uae30");
+            bool luckyCopy = luckyChoices.Length == 3 && luckyChoices[0].GetComponentInChildren<Text>(true).text.Contains("\ud569\uc131 \uc7ac\ub8cc \ubcf4\ucda9") && luckyChoices[1].GetComponentInChildren<Text>(true).text.Contains("\ub808\uc5b4 \uc774\uc0c1 \ud655\uc815") && luckyChoices[2].GetComponentInChildren<Text>(true).text.Contains("\uc5d0\ud53d 25% \ub3c4\uc804");
+            bool missionFonts = missionChoices.Length == 3 && missionChoices.All(button =>
+            {
+                Text title = button.transform.Find("Title")?.GetComponent<Text>();
+                Text description = button.transform.Find("Description")?.GetComponent<Text>();
+                Text reward = button.transform.Find("Reward")?.GetComponent<Text>();
+                return title != null && description != null && reward != null && title.fontSize >= 29 && description.fontSize >= 22 && reward.fontSize >= 23 && reward.fontStyle == FontStyle.Bold && !title.resizeTextForBestFit && !description.resizeTextForBestFit && !reward.resizeTextForBestFit;
+            });
+            bool activeFonts = activeDescription != null && activeProgress != null && activeDescription.fontSize >= 23 && activeProgress.fontSize > activeDescription.fontSize && activeProgress.fontStyle == FontStyle.Bold;
+            bool portraitBounds = missionChoices.All(button => IsInsideOverlay(button.GetComponent<RectTransform>(), "TacticalMissionOverlay"));
+            summary = "boss=" + bossCopy + ", lucky=" + luckyCopy + ", missionFonts=" + missionFonts + ", active=" + activeFonts + ", portrait=" + portraitBounds;
+            return bossCopy && luckyCopy && missionFonts && activeFonts && portraitBounds;
+        }
+
+        private static bool IsInsideOverlay(RectTransform child, string overlayName)
+        {
+            RectTransform overlay = UnityEngine.Object.FindObjectsOfType<RectTransform>(true).FirstOrDefault(rect => rect != null && rect.name == overlayName);
+            if (child == null || overlay == null)
+            {
+                return false;
+            }
+
+            Vector3[] corners = new Vector3[4];
+            child.GetWorldCorners(corners);
+            for (int i = 0; i < corners.Length; i++)
+            {
+                if (!overlay.rect.Contains(overlay.InverseTransformPoint(corners[i])))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
         private static bool ValidateAnimationMaterialEvents(out string summary)
         {
             Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? Shader.Find("Sprites/Default");
@@ -2320,6 +2446,10 @@ namespace DefenseGame.Editor
             public bool hero32SignatureValid;
             public bool gargoyleLoopDurationValid;
             public bool longCombatAccelerationValid;
+            public bool retryTimeScaleResetValid;
+            public string retryTimeScaleResetSummary;
+            public bool choiceReadabilityValid;
+            public string choiceReadabilitySummary;
             public bool defaultVfxConfigured;
             public bool animationMaterialEventsValid;
             public string animationMaterialEventsSummary;

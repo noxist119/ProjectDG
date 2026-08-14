@@ -1057,8 +1057,8 @@ private void EnsureLight()
 
 			Image panel = CreatePanel(root.transform, "BossForecastBetPanel", new Vector2(0f, 72f), new Vector2(980f, 690f), new Color(0.04f, 0.08f, 0.19f, 0.99f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
 			CreatePanel(panel.transform, "ForecastTopLine", new Vector2(0f, -6f), new Vector2(870f, 8f), new Color(1f, 0.68f, 0.20f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: false);
-			CreateText(panel.transform, font, new Color(1f, 0.86f, 0.42f), "BossForecastTitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(760f, 50f), "R10 \ubcf4\uc2a4 \uc804\ub7b5 \uc120\ud0dd", 35, TextAnchor.MiddleCenter, bold: true);
-			Text instruction = CreateText(panel.transform, font, new Color(0.82f, 0.91f, 1f), "BossForecastInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -118f), new Vector2(850f, 62f), "R10\uae4c\uc9c0 \ub2ec\uc131\ud560 \ubaa9\ud45c\ub97c \ud558\ub098 \uace0\ub974\uc138\uc694. \uc120\ud0dd\ud55c \uacf5\ub7b5\uc740 \ub2e4\uc74c \uc804\ud22c\uc0c1\uc810\uc5d0\uc11c 1\ud68c \uc6b0\ub300\ub97c \ubc1b\uc2b5\ub2c8\ub2e4.", 20, TextAnchor.MiddleCenter, bold: false);
+			CreateText(panel.transform, font, new Color(1f, 0.86f, 0.42f), "BossForecastTitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(760f, 50f), "R10 \ubcf4\uc2a4 \ub300\ube44", 35, TextAnchor.MiddleCenter, bold: true);
+			Text instruction = CreateText(panel.transform, font, new Color(0.82f, 0.91f, 1f), "BossForecastInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -118f), new Vector2(850f, 62f), "R10\uc744 \uc5b4\ub5bb\uac8c \uc900\ube44\ud560\uae4c\uc694?\n\uc9c0\uae08 \ubcf4\ub108\uc2a4\ub97c \ud558\ub098 \ubc1b\uace0, \ubaa9\ud45c\uae4c\uc9c0 \ub2ec\uc131\ud558\uba74 \ucd94\uac00 \ubcf4\uc0c1\uc744 \ubc1b\uc2b5\ub2c8\ub2e4.", 20, TextAnchor.MiddleCenter, bold: false);
 
 			Button[] buttons = new Button[3];
 			Text[] labels = new Text[3];
@@ -1073,9 +1073,7 @@ private void EnsureLight()
 				float x = (i - 1) * 310f;
 				buttons[i] = CreateButton(panel.transform, font, "BossForecastChoice_" + i, string.Empty, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, -28f), new Vector2(286f, 350f), colors[i], Color.white, null, out Text label);
 				label.fontSize = 23;
-				label.resizeTextForBestFit = true;
-				label.resizeTextMinSize = 16;
-				label.resizeTextMaxSize = 23;
+				label.resizeTextForBestFit = false;
 				label.rectTransform.offsetMin = new Vector2(16f, 18f);
 				label.rectTransform.offsetMax = new Vector2(-16f, -18f);
 				Outline outline = buttons[i].gameObject.AddComponent<Outline>();
@@ -1106,8 +1104,8 @@ private void EnsureLight()
 			Image panel = CreatePanel(root.transform, "LuckySummonChoicePanel", new Vector2(0f, 72f), new Vector2(980f, 650f), new Color(0.05f, 0.1f, 0.2f, 0.99f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
 			CreatePanel(((Component)(object)panel).transform, "LuckyTopGlow", new Vector2(0f, -18f), new Vector2(900f, 100f), new Color(0.46f, 0.78f, 0.26f, 0.25f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: false);
 			CreatePanel(((Component)(object)panel).transform, "LuckyTopLine", new Vector2(0f, -6f), new Vector2(870f, 8f), new Color(0.72f, 0.9f, 0.38f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: false);
-			Text title = CreateText(((Component)(object)panel).transform, font, new Color(0.92f, 1f, 0.78f), "LuckySummonTitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(760f, 48f), "불운을 뒤집는 행운 소환", 34, TextAnchor.MiddleCenter, bold: true);
-			Text instruction = CreateText(((Component)(object)panel).transform, font, new Color(0.8f, 0.9f, 1f), "LuckySummonInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(800f, 42f), "일반 7회 연속의 불운을 한 번의 선택으로 바꿉니다.", 21, TextAnchor.MiddleCenter, bold: false);
+			Text title = CreateText(((Component)(object)panel).transform, font, new Color(0.92f, 1f, 0.78f), "LuckySummonTitle", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(760f, 48f), "\uc5f0\uc18d \uc77c\ubc18 \ubcf4\uc0c1! \ud2b9\ubcc4 \uc18c\ud658", 34, TextAnchor.MiddleCenter, bold: true);
+			Text instruction = CreateText(((Component)(object)panel).transform, font, new Color(0.8f, 0.9f, 1f), "LuckySummonInstruction", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -112f), new Vector2(800f, 42f), "\uc77c\ubc18 \ub4f1\uae09\uc774 \uc5f0\uc18d\uc73c\ub85c \ub098\uc640 \ud2b9\ubcc4 \uc18c\ud658\uc774 \uc5f4\ub838\uc2b5\ub2c8\ub2e4.", 21, TextAnchor.MiddleCenter, bold: false);
 			Button[] buttons = (Button[])(object)new Button[3];
 			Text[] labels = (Text[])(object)new Text[3];
 			Color[] colors = new Color[3]
@@ -1121,9 +1119,7 @@ private void EnsureLight()
 				float x = (float)(i - 1) * 310f;
 				buttons[i] = CreateButton(((Component)(object)panel).transform, font, "LuckySummonChoice" + i, string.Empty, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(x, -34f), new Vector2(286f, 330f), colors[i], Color.white, null, out var label);
 				label.fontSize = 23;
-				label.resizeTextForBestFit = true;
-				label.resizeTextMinSize = 16;
-				label.resizeTextMaxSize = 23;
+				label.resizeTextForBestFit = false;
 				((Graphic)label).rectTransform.offsetMin = new Vector2(16f, 18f);
 				((Graphic)label).rectTransform.offsetMax = new Vector2(-16f, -18f);
 				Outline outline = ((Component)(object)buttons[i]).gameObject.AddComponent<Outline>();
@@ -1419,17 +1415,17 @@ private void EnsureLight()
 				rootRect.anchorMax = Vector2.one;
 				rootRect.offsetMin = Vector2.zero;
 				rootRect.offsetMax = Vector2.zero;
-				Image modal = CreatePanel(root.transform, "MissionModal", Vector2.zero, new Vector2(860f, 760f), new Color(0.13f, 0.16f, 0.4f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
+				Image modal = CreatePanel(root.transform, "MissionModal", Vector2.zero, new Vector2(860f, 1340f), new Color(0.13f, 0.16f, 0.4f, 0.98f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
 				CreatePanel(((Component)(object)modal).transform, "MissionTopGlow", new Vector2(0f, -34f), new Vector2(720f, 74f), new Color(1f, 0.76f, 0.22f, 0.2f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: false);
 				Text header = CreateText(((Component)(object)modal).transform, font, Color.white, "MissionPanelHeader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(420f, 44f), "\uc804\uc220 \ubbf8\uc158 \uc120\ud0dd", 35, TextAnchor.MiddleCenter, bold: true);
 				CreateText(((Component)(object)modal).transform, font, new Color(0.86f, 0.92f, 1f), "MissionPanelSubHeader", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -104f), new Vector2(720f, 30f), "\uc774\ubc88 \ubaa9\ud45c \ud558\ub098\ub97c \uc120\ud0dd\ud558\uc138\uc694.", 22, TextAnchor.MiddleCenter, bold: false);
 				Button closeButton = CreateButton(((Component)(object)modal).transform, font, "MissionCloseButton", "X", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-26f, -36f), new Vector2(58f, 58f), new Color(0.94f, 0.36f, 0.3f, 0.98f), Color.white, null, out labelText);
-				Image activeCard = CreatePanel(((Component)(object)modal).transform, "ActiveMissionCard", new Vector2(0f, -168f), new Vector2(740f, 220f), new Color(0.08f, 0.12f, 0.3f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: true);
+				Image activeCard = CreatePanel(((Component)(object)modal).transform, "ActiveMissionCard", new Vector2(0f, -168f), new Vector2(740f, 238f), new Color(0.08f, 0.12f, 0.3f, 0.94f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: true);
 				CreatePanel(((Component)(object)activeCard).transform, "ActiveMissionIcon", new Vector2(28f, -26f), new Vector2(76f, 76f), new Color(1f, 0.76f, 0.24f, 0.9f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: true, shadow: false);
 				CreateSkinIcon(((Component)(object)activeCard).transform, "ActiveMissionGlyph", "mission", new Vector2(66f, -64f), new Vector2(52f, 52f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0.5f, 0.5f), Color.white);
 				Text activeTitle = CreateText(((Component)(object)activeCard).transform, font, Color.white, "ActiveMissionTitle", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(124f, -24f), new Vector2(-164f, 38f), "미션", 30, TextAnchor.MiddleLeft, bold: true);
-				Text activeDescription = CreateText(((Component)(object)activeCard).transform, font, new Color(0.88f, 0.94f, 1f), "ActiveMissionDescription", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(124f, -72f), new Vector2(-156f, 86f), "설명", 21, TextAnchor.UpperLeft, bold: false);
-				Text activeProgress = CreateText(((Component)(object)activeCard).transform, font, new Color(1f, 0.9f, 0.42f), "ActiveMissionProgress", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(560f, 34f), "0 / 0", 24, TextAnchor.MiddleCenter, bold: true);
+				Text activeDescription = CreateText(((Component)(object)activeCard).transform, font, new Color(0.88f, 0.94f, 1f), "ActiveMissionDescription", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(124f, -72f), new Vector2(-156f, 96f), "\uc124\uba85", 24, TextAnchor.UpperLeft, bold: false);
+				Text activeProgress = CreateText(((Component)(object)activeCard).transform, font, new Color(1f, 0.9f, 0.42f), "ActiveMissionProgress", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(560f, 40f), "0 / 0", 32, TextAnchor.MiddleCenter, bold: true);
 				Button[] optionButtons = (Button[])(object)new Button[3];
 				Text[] optionTitles = (Text[])(object)new Text[3];
 				Text[] optionDescriptions = (Text[])(object)new Text[3];
@@ -1437,14 +1433,14 @@ private void EnsureLight()
 				Image[] optionAccents = (Image[])(object)new Image[3];
 				for (int i = 0; i < 3; i++)
 				{
-					float y = -156f - (float)i * 162f;
-					optionButtons[i] = CreateButton(((Component)(object)modal).transform, font, "MissionOption_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(740f, 144f), new Color(0.1f, 0.14f, 0.34f, 0.96f), Color.white, null, out labelText);
+					float y = -166f - (float)i * 190f;
+					optionButtons[i] = CreateButton(((Component)(object)modal).transform, font, "MissionOption_" + i, string.Empty, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(740f, 172f), new Color(0.1f, 0.14f, 0.34f, 0.96f), Color.white, null, out labelText);
 					optionAccents[i] = CreatePanel(((Component)(object)optionButtons[i]).transform, "MissionOptionIcon", new Vector2(26f, -28f), new Vector2(82f, 82f), new Color(1f, 0.76f, 0.24f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: true, shadow: false);
 					CreatePanel(((Component)(object)optionButtons[i]).transform, "MissionOptionIconCore", new Vector2(67f, -69f), new Vector2(34f, 34f), new Color(1f, 1f, 1f, 0.24f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0.5f, 0.5f), rounded: true, shadow: false);
 					CreateSkinIcon(((Component)(object)optionButtons[i]).transform, "MissionOptionGlyph", "mission", new Vector2(67f, -69f), new Vector2(52f, 52f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0.5f, 0.5f), Color.white);
-					optionTitles[i] = CreateText(((Component)(object)optionButtons[i]).transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(132f, -18f), new Vector2(-182f, 34f), "미션", 28, TextAnchor.MiddleLeft, bold: true);
-					optionDescriptions[i] = CreateText(((Component)(object)optionButtons[i]).transform, font, new Color(0.88f, 0.94f, 1f), "Description", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(132f, -56f), new Vector2(-182f, 34f), "설명", 19, TextAnchor.UpperLeft, bold: false);
-					optionRewards[i] = CreateText(((Component)(object)optionButtons[i]).transform, font, new Color(1f, 0.88f, 0.38f), "Reward", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 0f), new Vector2(132f, 8f), new Vector2(-260f, 28f), "보상", 19, TextAnchor.MiddleLeft, bold: true);
+					optionTitles[i] = CreateText(((Component)(object)optionButtons[i]).transform, font, Color.white, "Title", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(132f, -20f), new Vector2(-182f, 38f), "\ubbf8\uc158", 30, TextAnchor.MiddleLeft, bold: true);
+					optionDescriptions[i] = CreateText(((Component)(object)optionButtons[i]).transform, font, new Color(0.88f, 0.94f, 1f), "Description", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(132f, -62f), new Vector2(-182f, 58f), "\uc124\uba85", 23, TextAnchor.UpperLeft, bold: false);
+					optionRewards[i] = CreateText(((Component)(object)optionButtons[i]).transform, font, new Color(1f, 0.88f, 0.38f), "Reward", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 0f), new Vector2(132f, 12f), new Vector2(-260f, 34f), "\ubcf4\uc0c1", 24, TextAnchor.MiddleLeft, bold: true);
 					CreateText(((Component)(object)optionButtons[i]).transform, font, new Color(0.45f, 1f, 0.68f), "PickLabel", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-26f, 0f), new Vector2(92f, 36f), "선택", 21, TextAnchor.MiddleRight, bold: true);
 				}
 				Image toast = CreatePanel(hudRoot, "MissionCompletionToast", new Vector2(0f, -228f), new Vector2(620f, 126f), new Color(0.05f, 0.15f, 0.32f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: true);
