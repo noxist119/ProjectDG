@@ -401,7 +401,7 @@ namespace DefenseGame
             lobbyRecordStatusText = CreateText(recordStatus.transform, "LobbyRecordValue", "최고 R1", Color.white, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(198f, 38f), 18, TextAnchor.MiddleCenter, true);
 
             lobbyBattleButton = CreateButton(modal.transform, "LobbyBattleButton", "전장 입장", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 500f), new Vector2(420f, 150f), new Color(0.98f, 0.20f, 0.13f, 1f), HandleEnterPreparationPressed, 45);
-            CreateText(modal.transform, "LobbyBottomHint", "전장 입장 후 유닛을 소환하면 전투를 시작할 수 있습니다.", new Color(0.88f, 0.92f, 1f, 0.88f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 400f), new Vector2(760f, 38f), 19, TextAnchor.MiddleCenter, false);
+            CreateText(modal.transform, "LobbyBottomHint", "\uC900\uBE44\uAC00 \uB05D\uB098\uBA74 \uB2E4\uC74C \uB77C\uC6B4\uB4DC\uB97C \uB20C\uB7EC \uC804\uD22C\uB97C \uC2DC\uC791\uD558\uC138\uC694.", new Color(0.88f, 0.92f, 1f, 0.88f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 400f), new Vector2(760f, 38f), 19, TextAnchor.MiddleCenter, false);
 
         }
 
@@ -1267,7 +1267,7 @@ namespace DefenseGame
 
 
             SetGameplayHudVisible(true);
-            gameController.RequestBanner("준비 단계  유닛을 소환한 뒤 다음 라운드를 누르세요", new Color(0.72f, 0.86f, 0.58f), 3.0f);
+            gameController.RequestBanner("\uC900\uBE44\uAC00 \uB05D\uB098\uBA74 \uB2E4\uC74C \uB77C\uC6B4\uB4DC\uB97C \uB20C\uB7EC \uC804\uD22C\uB97C \uC2DC\uC791\uD558\uC138\uC694.", new Color(0.72f, 0.86f, 0.58f), 3.0f);
         }
 
         private void HandleBattlePressed()

@@ -289,6 +289,11 @@ namespace DefenseGame.Editor
                 notes.Add("전장 입장 후 다음 라운드를 누르기 전까지 R1 카운트다운이 대기하지 않습니다.");
             }
             bool stageVisibleInPreparation = runtimeBootstrap != null && runtimeBootstrap.IsGameplayStageVisible;
+            bool initialPreparationBattleStartUiPathValid = ValidateInitialPreparationBattleStartUiPath(controller, out string initialPreparationBattleStartUiPathSummary);
+            if (!initialPreparationBattleStartUiPathValid)
+            {
+                notes.Add("Pass 2K initial preparation UI battle-start validation failed. " + initialPreparationBattleStartUiPathSummary);
+            }
             bool pass2BPreparationSkipValid = ValidatePass2BPreparationSkip(controller, out string pass2BPreparationSkipSummary);
             if (!pass2BPreparationSkipValid)
             {
@@ -842,7 +847,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -865,6 +870,8 @@ namespace DefenseGame.Editor
                 fateEntryIdleAtFullHealth = fateEntryIdleAtFullHealth,
                 summonHudReadable = summonHudReadable,
                 initialPreparationFlowValid = initialPreparationFlowValid,
+                initialPreparationBattleStartUiPathValid = initialPreparationBattleStartUiPathValid,
+                initialPreparationBattleStartUiPathSummary = initialPreparationBattleStartUiPathSummary,
                 runtimeStageLifecycleValid = runtimeStageLifecycleValid,
                 inventoryStageHidden = inventoryStageHidden,
                 dailyFateCupUiValid = dailyFateCupUiValid,
@@ -1864,12 +1871,95 @@ namespace DefenseGame.Editor
             return structuredDataValid && relatedFilterValid && hiddenZeroProgressValid && layoutValid;
         }
 
+        private static bool ValidateInitialPreparationBattleStartUiPath(DefenseGameController controller, out string summary)
+        {
+            RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
+            Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "BattleButton");
+            Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
+            MethodInfo requestForecast = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
+            MethodInfo notifyStateChanged = typeof(DefenseGameController).GetMethod("NotifyStateChanged", flags);
+            if (controller == null || rounds == null || lobbyEntryButton == null || battleButton == null || lobbyNavigationButton == null || currentRoundField == null || requestForecast == null || notifyStateChanged == null)
+            {
+                summary = "ui_or_reflection_target_missing";
+                return false;
+            }
+
+            try
+            {
+                controller.ResetRunForRetry();
+                lobbyNavigationButton.onClick.Invoke();
+                bool lobbyHiddenHud = controller.BoardUnitCount == 0 &&
+                                      !controller.IsRoundRunning &&
+                                      !battleButton.gameObject.activeInHierarchy;
+
+                lobbyEntryButton.onClick.Invoke();
+                bool zeroSummonReady = controller.BoardUnitCount == 0 &&
+                                       !controller.IsRoundRunning &&
+                                       controller.BlockingChoiceReason == "None" &&
+                                       battleButton.gameObject.activeInHierarchy &&
+                                       battleButton.interactable;
+                battleButton.onClick.Invoke();
+                bool zeroSummonStarts = zeroSummonReady && controller.IsRoundRunning && controller.BoardUnitCount == 0;
+
+                controller.ResetRunForRetry();
+                lobbyNavigationButton.onClick.Invoke();
+                lobbyEntryButton.onClick.Invoke();
+                bool normalSummonGranted = controller.TrySummon();
+                bool normalSummonReady = normalSummonGranted && battleButton.interactable;
+                battleButton.onClick.Invoke();
+                bool normalSummonStarts = normalSummonReady && controller.IsRoundRunning && controller.BoardUnitCount > 0;
+
+                controller.ResetRunForRetry();
+                lobbyNavigationButton.onClick.Invoke();
+                lobbyEntryButton.onClick.Invoke();
+                bool retryZeroSummonReady = controller.BoardUnitCount == 0 &&
+                                            !controller.IsRoundRunning &&
+                                            controller.BlockingChoiceReason == "None" &&
+                                            battleButton.interactable;
+                battleButton.onClick.Invoke();
+                bool retryZeroSummonStarts = retryZeroSummonReady && controller.IsRoundRunning && controller.BoardUnitCount == 0;
+
+                controller.ResetRunForRetry();
+                lobbyNavigationButton.onClick.Invoke();
+                lobbyEntryButton.onClick.Invoke();
+                currentRoundField.SetValue(rounds, 3);
+                requestForecast.Invoke(controller, new object[] { 3 });
+                // Production round completion raises the choice request before its final
+                // state refresh. Reproduce that completed lifecycle before checking the HUD.
+                notifyStateChanged.Invoke(controller, null);
+                bool blockingChoicePreventsStart = controller.BlockingChoiceReason == "BossForecast" &&
+                                                   !battleButton.interactable;
+                battleButton.onClick.Invoke();
+                blockingChoicePreventsStart &= !controller.IsRoundRunning;
+
+                summary = "lobbyHudHidden=" + lobbyHiddenHud +
+                          ", zeroReady=" + zeroSummonReady +
+                          ", zeroStarts=" + zeroSummonStarts +
+                          ", normalStarts=" + normalSummonStarts +
+                          ", retryZeroStarts=" + retryZeroSummonStarts +
+                          ", choiceBlocks=" + blockingChoicePreventsStart;
+                return lobbyHiddenHud && zeroSummonStarts && normalSummonStarts &&
+                       retryZeroSummonStarts && blockingChoicePreventsStart;
+            }
+            finally
+            {
+                controller.ResetRunForRetry();
+                lobbyNavigationButton.onClick.Invoke();
+            }
+        }
         private static bool ValidatePass2BPreparationSkip(DefenseGameController controller, out string summary)
         {
             RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
             MethodInfo requestForecast = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
+            MethodInfo notifyStateChanged = typeof(DefenseGameController).GetMethod("NotifyStateChanged", flags);
             if (controller == null || rounds == null || currentRoundField == null || requestForecast == null)
             {
                 summary = "reflection_target_missing";
@@ -2193,6 +2283,8 @@ namespace DefenseGame.Editor
             public bool fateEntryIdleAtFullHealth;
             public bool summonHudReadable;
             public bool initialPreparationFlowValid;
+            public bool initialPreparationBattleStartUiPathValid;
+            public string initialPreparationBattleStartUiPathSummary;
             public bool runtimeStageLifecycleValid;
             public bool inventoryStageHidden;
             public bool dailyFateCupUiValid;

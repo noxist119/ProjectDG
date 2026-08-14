@@ -313,6 +313,7 @@ namespace DefenseGame
         private void OnEnable()
         {
             Subscribe();
+            Refresh();
         }
 
         private void Start()
