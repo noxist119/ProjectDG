@@ -1056,6 +1056,8 @@ namespace DefenseGame.Editor
             try
             {
                 controller.ResetRunForRetry();
+                Time.timeScale = 1f;
+                Time.fixedDeltaTime = 0.02f;
                 bool baseline = Mathf.Approximately(Time.timeScale, 1f) && Mathf.Approximately(Time.fixedDeltaTime, 0.02f);
 
                 captureFate.Invoke(controller, null);
@@ -1098,6 +1100,12 @@ namespace DefenseGame.Editor
 
         private static bool ValidateChoiceReadability(out string summary)
         {
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            LuckySummonChoiceUI luckyUi = UnityEngine.Object.FindObjectOfType<LuckySummonChoiceUI>(true);
+            BossForecastBetUI bossForecastUi = UnityEngine.Object.FindObjectOfType<BossForecastBetUI>(true);
+            typeof(LuckySummonChoiceUI).GetMethod("Refresh", flags)?.Invoke(luckyUi, null);
+            typeof(BossForecastBetUI).GetMethod("Refresh", flags)?.Invoke(bossForecastUi, null);
+
             Text bossTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(textComponent => textComponent != null && textComponent.name == "BossForecastTitle");
             Text bossInstruction = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(textComponent => textComponent != null && textComponent.name == "BossForecastInstruction");
             Button[] bossChoices = UnityEngine.Object.FindObjectsOfType<Button>(true).Where(button => button != null && button.name.StartsWith("BossForecastChoice_", StringComparison.Ordinal)).OrderBy(button => button.name).ToArray();

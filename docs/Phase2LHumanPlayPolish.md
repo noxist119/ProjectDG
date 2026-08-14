@@ -66,7 +66,7 @@ The PlayMode smoke now verifies:
 - `dotnet build Assembly-CSharp.csproj --no-restore`: pass, 0 warnings, 0 errors.
 - `dotnet build Assembly-CSharp-Editor.csproj --no-restore`: pass, 1 existing unrelated CS0649 warning in `DefenseGameBatchPlaytest.RunResult.emptyGradeUpgradeAttemptCount`.
 - `git diff --check`: pass.
-- Unity PlayMode smoke: not launched by this pass because Unity 2022.3.62f3 was already open. The batch runner was intentionally not forced against an active editor project.
+- Unity PlayMode smoke: pass. retry baseline=True, fate=True, defeat=True, slowmo=True, retry=True; choice readability boss=True, lucky=True, missionFonts=True, active=True, portrait=True; runtime errors=0.
 
 ## Deferred
 
