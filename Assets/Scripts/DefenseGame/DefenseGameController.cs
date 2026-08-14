@@ -226,8 +226,8 @@ namespace DefenseGame
         [SerializeField] private int earlyRoundLeakDamageCap = 3;
         [SerializeField] private bool enableFirstBossSummonRushBonus = true;
         [SerializeField] private int firstBossSummonRushRound = 10;
-        [SerializeField] private int firstBossSummonRushMinSummons = 34;
-        [SerializeField] private int firstBossSummonRushMinMerges = 15;
+        [SerializeField] private int firstBossSummonRushMinSummons = 14;
+        [SerializeField] private int firstBossSummonRushMinMerges = 4;
         [SerializeField] [Range(0f, 0.5f)] private float firstBossSummonRushAttackBonus = 0.06f;
         [SerializeField] [Range(0f, 0.8f)] private float firstBossSummonRushBossDamageBonus = 0.10f;
         [SerializeField] [Range(0f, 1f)] private float firstBossSummonRushMaxBossDamageBonus = 0.18f;
@@ -732,6 +732,12 @@ namespace DefenseGame
         public int BossForecastPreferredShopRoleIndex => bossForecastPreferredShopRoleIndex;
         public int RunTotalPlayerSummons => Mathf.Max(0, earlySummonAttempts);
         public int RunTotalMerges => Mathf.Max(0, runTotalMergeCount);
+        public bool FirstBossPreparationRewardTriggered => firstBossSummonRushBonusGranted;
+        public int FirstBossPreparationRewardMinSummons => Mathf.Max(1, firstBossSummonRushMinSummons);
+        public int FirstBossPreparationRewardMinMerges => Mathf.Max(1, firstBossSummonRushMinMerges);
+        public float FirstBossPreparationRewardAttackBonus => Mathf.Max(0f, firstBossSummonRushAttackBonus);
+        public float FirstBossPreparationRewardBossDamageBonus => Mathf.Max(0f, firstBossSummonRushBossDamageBonus);
+        public float FirstBossPreparationRewardMaxBossDamageBonus => Mathf.Max(firstBossSummonRushBossDamageBonus, firstBossSummonRushMaxBossDamageBonus);
         public int RunTotalLeakDamage => Mathf.Max(0, runTotalLeakDamage);
         public IReadOnlyDictionary<int, int> RunLeakDamageByRound => runLeakDamageByRound;
         public IReadOnlyDictionary<int, int> RunEscapedMonsterCountByRound => runEscapedMonsterCountByRound;
@@ -5329,6 +5335,12 @@ namespace DefenseGame
             OnBannerRequested?.Invoke("보스 대비 보급!  +" + earlyBossPrepGoldReward + "G", new Color(1f, 0.86f, 0.32f), 2.4f);
         }
 
+        public static bool IsFirstBossPreparationRewardConditionMet(int summonCount, int mergeCount, int minSummons, int minMerges)
+        {
+            return Mathf.Max(0, summonCount) >= Mathf.Max(1, minSummons) ||
+                   Mathf.Max(0, mergeCount) >= Mathf.Max(1, minMerges);
+        }
+
         private void TryApplyFirstBossSummonRushBonus(int round, bool bossRound)
         {
             if (!enableFirstBossSummonRushBonus ||
@@ -5342,9 +5354,11 @@ namespace DefenseGame
 
             int summonCount = Mathf.Max(0, earlySummonAttempts);
             int mergeCount = Mathf.Max(0, runMergeCount);
-            bool enoughSummons = summonCount >= Mathf.Max(1, firstBossSummonRushMinSummons);
-            bool enoughMerges = mergeCount >= Mathf.Max(1, firstBossSummonRushMinMerges);
-            if (!enoughSummons && !enoughMerges)
+            if (!IsFirstBossPreparationRewardConditionMet(
+                    summonCount,
+                    mergeCount,
+                    firstBossSummonRushMinSummons,
+                    firstBossSummonRushMinMerges))
             {
                 return;
             }
@@ -5378,8 +5392,11 @@ namespace DefenseGame
             }
 
             firstBossSummonRushBonusGranted = true;
-            AddRunHighlightCard("R10 소환 압축", "소환 " + summonCount + " / 합성 " + mergeCount + " / 보스 피해 +" + Mathf.RoundToInt(bossDamageBonus * 100f) + "%");
-            OnBannerRequested?.Invoke("R10 소환 압축  보스 피해 +" + Mathf.RoundToInt(bossDamageBonus * 100f) + "%", new Color(1f, 0.74f, 0.22f), 1.4f);
+            string preparationDetail = "\uC18C\uD658 " + summonCount + " / \uD569\uC131 " + mergeCount+
+                "  \u00B7  \uACF5\uACA9\uB825 +" + Mathf.RoundToInt(attackBonus * 100f) + "%"+
+                "  \u00B7  \uBCF4\uC2A4 \uD53C\uD574 +" + Mathf.RoundToInt(bossDamageBonus * 100f) + "%";
+            AddRunHighlightCard("\uCCAB \uBCF4\uC2A4 \uC900\uBE44 \uBCF4\uC0C1", preparationDetail);
+            OnBannerRequested?.Invoke("\uCCAB \uBCF4\uC2A4 \uC900\uBE44 \uC131\uACF5  \u00B7  \uBCF4\uC2A4 \uD53C\uD574 +" + Mathf.RoundToInt(bossDamageBonus * 100f) + "%", new Color(1f, 0.74f, 0.22f), 1.8f);
         }
 
         private void BeginEarlyRoundTelemetry(int round)

@@ -335,6 +335,20 @@ namespace DefenseGame.Editor
                 notes.Add("Player direct summon event or Boss Forecast state changed unexpectedly.");
             }
 
+            bool firstBossPreparationRewardRulesValid = controller != null &&
+                                                        controller.FirstBossPreparationRewardMinSummons == 14 &&
+                                                        controller.FirstBossPreparationRewardMinMerges == 4 &&
+                                                        Mathf.Approximately(controller.FirstBossPreparationRewardAttackBonus, 0.06f) &&
+                                                        Mathf.Approximately(controller.FirstBossPreparationRewardBossDamageBonus, 0.10f) &&
+                                                        Mathf.Approximately(controller.FirstBossPreparationRewardMaxBossDamageBonus, 0.18f) &&
+                                                        !DefenseGameController.IsFirstBossPreparationRewardConditionMet(13, 3, 14, 4) &&
+                                                        DefenseGameController.IsFirstBossPreparationRewardConditionMet(14, 0, 14, 4) &&
+                                                        DefenseGameController.IsFirstBossPreparationRewardConditionMet(0, 4, 14, 4);
+            if (!firstBossPreparationRewardRulesValid)
+            {
+                notes.Add("First boss preparation reward thresholds, OR condition, or bonus values are invalid.");
+            }
+
             bool bossForecastTimingValid = ValidateBossForecastTimingAndShopBias(controller, out string bossForecastTimingSummary);
             if (!bossForecastTimingValid)
             {
@@ -828,7 +842,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -857,6 +871,7 @@ namespace DefenseGame.Editor
                 bossForecastUiValid = bossForecastUiValid,
                 bossForecastTimingValid = bossForecastTimingValid,
                 bossForecastTimingSummary = bossForecastTimingSummary,
+                firstBossPreparationRewardRulesValid = firstBossPreparationRewardRulesValid,
                 resultRewardIconsValid = resultRewardIconsValid,
                 rankingPageValid = rankingPageValid,
                 yahtzeeModeUiValid = yahtzeeModeUiValid,
@@ -2184,6 +2199,7 @@ namespace DefenseGame.Editor
             public bool bossForecastUiValid;
             public bool bossForecastTimingValid;
             public string bossForecastTimingSummary;
+            public bool firstBossPreparationRewardRulesValid;
             public bool resultRewardIconsValid;
             public bool rankingPageValid;
             public bool yahtzeeModeUiValid;

@@ -176,6 +176,29 @@ namespace DefenseGame.Editor
             RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, "DefenseGame_Phase2H_Overdrive_R30_Baseline.json");
         }
 
+        [MenuItem("DefenseGame/Batch Playtest/Pass2J Classic R30")]
+        public static void RunPass2JClassicR30()
+        {
+            RunHumanStrategies(CombatGameMode.Classic, Phase2ClassicR30Runs, true, false, 30, "DefenseGame_Phase2J_Classic_R30.json");
+        }
+
+        public static void RunPass2JClassicR30Batch()
+        {
+            EditorApplication.delayCall -= RunPass2JClassicR30;
+            EditorApplication.delayCall += RunPass2JClassicR30;
+        }
+
+        [MenuItem("DefenseGame/Batch Playtest/Pass2J Overdrive R30")]
+        public static void RunPass2JOverdriveR30()
+        {
+            RunHumanStrategies(CombatGameMode.Overdrive, Phase2OverdriveR30Runs, true, false, 30, "DefenseGame_Phase2J_Overdrive_R30.json");
+        }
+
+        public static void RunPass2JOverdriveR30Batch()
+        {
+            EditorApplication.delayCall -= RunPass2JOverdriveR30;
+            EditorApplication.delayCall += RunPass2JOverdriveR30;
+        }
         [MenuItem("DefenseGame/Batch Playtest/Pass2I Timeout Diagnosis Overdrive R10 40x")]
         public static void RunPass2ITimeoutDiagnosis40x()
         {
@@ -1780,6 +1803,9 @@ namespace DefenseGame.Editor
                         totalSummons = controller.RunTotalPlayerSummons,
                         totalMerges = controller.RunTotalMerges,
                         totalGradeUpgradeLevels = ResolveTotalGradeUpgradeLevels(),
+                        firstBossPreparationRewardTriggered = controller.FirstBossPreparationRewardTriggered,
+                        firstBossPreparationRewardMinSummons = controller.FirstBossPreparationRewardMinSummons,
+                        firstBossPreparationRewardMinMerges = controller.FirstBossPreparationRewardMinMerges,
                         summonCost = controller.SummonCost,
                         targetMonsterCount = controller.RoundTargetCount,
                         isHordeRound = controller.IsCurrentRoundHorde,
@@ -2756,6 +2782,9 @@ namespace DefenseGame.Editor
             builder.Append("\"totalSummons\":").Append(snapshot.totalSummons).Append(',');
             builder.Append("\"totalMerges\":").Append(snapshot.totalMerges).Append(',');
             builder.Append("\"totalGradeUpgradeLevels\":").Append(snapshot.totalGradeUpgradeLevels).Append(',');
+            builder.Append("\"firstBossPreparationRewardTriggered\":").Append(JsonBool(snapshot.firstBossPreparationRewardTriggered)).Append(',');
+            builder.Append("\"firstBossPreparationRewardMinSummons\":").Append(snapshot.firstBossPreparationRewardMinSummons).Append(',');
+            builder.Append("\"firstBossPreparationRewardMinMerges\":").Append(snapshot.firstBossPreparationRewardMinMerges).Append(',');
             builder.Append("\"targetMonsterCount\":").Append(snapshot.targetMonsterCount).Append(',');
             builder.Append("\"leakDamage\":").Append(snapshot.leakDamage).Append(',');
             builder.Append("\"isHordeRound\":").Append(JsonBool(snapshot.isHordeRound)).Append(',');
@@ -2924,6 +2953,9 @@ namespace DefenseGame.Editor
             public int totalSummons;
             public int totalMerges;
             public int totalGradeUpgradeLevels;
+            public bool firstBossPreparationRewardTriggered;
+            public int firstBossPreparationRewardMinSummons;
+            public int firstBossPreparationRewardMinMerges;
             public int summonCost;
             public int ultimateRecipeCount;
             public int targetMonsterCount;
