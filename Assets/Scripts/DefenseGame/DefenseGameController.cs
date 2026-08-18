@@ -150,7 +150,9 @@ namespace DefenseGame
         private const int RunClipMaxEvents = 6;
         private const int BossForecastPreparationCompletedRound = 3;
         private const int GradeUpgradeMaxLevel = 10;
+        private const int SummonGradeLuckMaxLevel = 7;
         private readonly Dictionary<CharacterGrade, int> gradeUpgradeLevels = new Dictionary<CharacterGrade, int>();
+        private int summonGradeLuckLevel;
 
         public static DefenseGameController Active { get; private set; }
 
@@ -610,6 +612,40 @@ namespace DefenseGame
         public const float GradeUpgradeAttackPerLevel = 0.08f;
         public const float GradeUpgradeHealthPerLevel = 0.05f;
         public const int GradeUpgradeMaximumLevel = GradeUpgradeMaxLevel;
+        public const int SummonGradeLuckMaximumLevel = SummonGradeLuckMaxLevel;
+        public int SummonGradeLuckLevel => Mathf.Clamp(summonGradeLuckLevel, 0, SummonGradeLuckMaxLevel);
+
+        public static int ResolveSummonGradeLuckCost(int currentLevel)
+        {
+            int level = Mathf.Clamp(currentLevel, 0, SummonGradeLuckMaxLevel);
+            return level >= SummonGradeLuckMaxLevel ? 0 : 50 << level;
+        }
+
+        public int GetSummonGradeLuckCost()
+        {
+            return ResolveSummonGradeLuckCost(SummonGradeLuckLevel);
+        }
+
+        public bool CanUpgradeSummonGradeLuck()
+        {
+            int cost = GetSummonGradeLuckCost();
+            return !IsRoundRunning && cost > 0 && Gold >= cost;
+        }
+
+        public bool TryUpgradeSummonGradeLuck()
+        {
+            if (!CanUpgradeSummonGradeLuck())
+            {
+                return false;
+            }
+
+            int cost = GetSummonGradeLuckCost();
+            Gold -= cost;
+            summonGradeLuckLevel = Mathf.Min(SummonGradeLuckMaxLevel, summonGradeLuckLevel + 1);
+            OnBannerRequested?.Invoke("\uc18c\ud658 \ub4f1\uae09 \ud589\uc6b4 Lv." + SummonGradeLuckLevel + "  Epic+ +" + SummonGradeLuckLevel + "%p", new Color(0.74f, 0.62f, 1f), 1.8f);
+            NotifyStateChanged();
+            return true;
+        }
 
         public int GetGradeUpgradeLevel(CharacterGrade grade)
         {
@@ -4705,6 +4741,7 @@ namespace DefenseGame
         {
             RestoreFateChoiceSlowMotion();
             gradeUpgradeLevels.Clear();
+            summonGradeLuckLevel = 0;
             awardedYahtzeeTicketMilestoneRounds.Clear();
             LastYahtzeeTicketReward = 0;
             RunYahtzeeTicketsEarned = 0;
@@ -4996,7 +5033,7 @@ namespace DefenseGame
             earlyPitySummon = false;
             int summonRateRound = GetSummonRateRound();
             CharacterDefinition selected;
-            selected = characterDatabase.GetRunContentRandomSummonableCharacter(summonRateRound, runContentRandom, RunContentRandomChannel.Summon, "player.summon", true);
+            selected = characterDatabase.GetRunContentRandomSummonableCharacter(summonRateRound, runContentRandom, RunContentRandomChannel.Summon, "player.summon", true, SummonGradeLuckLevel);
             return ApplyFateSummonIntervention(selected);
         }
 

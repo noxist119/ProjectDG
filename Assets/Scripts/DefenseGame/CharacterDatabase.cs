@@ -4,6 +4,27 @@ using UnityEngine;
 
 namespace DefenseGame
 {
+    public readonly struct SummonGradeRateSnapshot
+    {
+        public readonly float normal;
+        public readonly float rare;
+        public readonly float epic;
+        public readonly float legendary;
+        public readonly float mythic;
+
+        public SummonGradeRateSnapshot(float normal, float rare, float epic, float legendary, float mythic)
+        {
+            this.normal = normal;
+            this.rare = rare;
+            this.epic = epic;
+            this.legendary = legendary;
+            this.mythic = mythic;
+        }
+
+        public float EpicPlus => epic + legendary + mythic;
+        public float Total => normal + rare + epic + legendary + mythic;
+    }
+
     public class CharacterDatabase : MonoBehaviour
     {
         [SerializeField] private List<CharacterDefinition> characters = new List<CharacterDefinition>();
@@ -16,23 +37,23 @@ namespace DefenseGame
         {
             new SummonGradeRateMilestone(1, 0.960f, 0.040f, 0.000f, 0.000f, 0.000f),
             new SummonGradeRateMilestone(3, 0.940f, 0.060f, 0.000f, 0.000f, 0.000f),
-            new SummonGradeRateMilestone(5, 0.910f, 0.085f, 0.005f, 0.000f, 0.000f),
-            new SummonGradeRateMilestone(7, 0.880f, 0.105f, 0.015f, 0.000f, 0.000f),
-            new SummonGradeRateMilestone(9, 0.840f, 0.130f, 0.028f, 0.002f, 0.000f),
-            new SummonGradeRateMilestone(11, 0.800f, 0.155f, 0.040f, 0.005f, 0.000f),
-            new SummonGradeRateMilestone(13, 0.760f, 0.180f, 0.052f, 0.008f, 0.000f),
-            new SummonGradeRateMilestone(16, 0.700f, 0.215f, 0.070f, 0.015f, 0.000f),
-            new SummonGradeRateMilestone(19, 0.650f, 0.240f, 0.087f, 0.022f, 0.001f),
-            new SummonGradeRateMilestone(22, 0.610f, 0.260f, 0.100f, 0.027f, 0.003f),
-            new SummonGradeRateMilestone(25, 0.570f, 0.275f, 0.115f, 0.035f, 0.005f),
-            new SummonGradeRateMilestone(28, 0.540f, 0.290f, 0.125f, 0.038f, 0.007f),
-            new SummonGradeRateMilestone(31, 0.510f, 0.305f, 0.135f, 0.041f, 0.009f),
-            new SummonGradeRateMilestone(34, 0.485f, 0.315f, 0.145f, 0.044f, 0.011f),
-            new SummonGradeRateMilestone(37, 0.460f, 0.325f, 0.150f, 0.052f, 0.013f),
-            new SummonGradeRateMilestone(40, 0.435f, 0.335f, 0.155f, 0.060f, 0.015f),
-            new SummonGradeRateMilestone(43, 0.410f, 0.345f, 0.160f, 0.068f, 0.017f),
-            new SummonGradeRateMilestone(46, 0.390f, 0.350f, 0.165f, 0.075f, 0.020f),
-            new SummonGradeRateMilestone(49, 0.370f, 0.355f, 0.170f, 0.082f, 0.023f)
+            new SummonGradeRateMilestone(5, 0.911f, 0.085f, 0.004f, 0.000f, 0.000f),
+            new SummonGradeRateMilestone(7, 0.883f, 0.105f, 0.012f, 0.000f, 0.000f),
+            new SummonGradeRateMilestone(9, 0.845f, 0.130f, 0.023333f, 0.001667f, 0.000f),
+            new SummonGradeRateMilestone(11, 0.807f, 0.155f, 0.033778f, 0.004222f, 0.000f),
+            new SummonGradeRateMilestone(13, 0.770f, 0.180f, 0.043333f, 0.006667f, 0.000f),
+            new SummonGradeRateMilestone(16, 0.713f, 0.215f, 0.059294f, 0.012706f, 0.000f),
+            new SummonGradeRateMilestone(19, 0.665f, 0.240f, 0.075136f, 0.019000f, 0.000864f),
+            new SummonGradeRateMilestone(22, 0.625f, 0.260f, 0.088462f, 0.023885f, 0.002653f),
+            new SummonGradeRateMilestone(25, 0.585f, 0.275f, 0.103871f, 0.031613f, 0.004516f),
+            new SummonGradeRateMilestone(28, 0.555f, 0.290f, 0.113971f, 0.034647f, 0.006382f),
+            new SummonGradeRateMilestone(31, 0.525f, 0.305f, 0.124054f, 0.037676f, 0.008270f),
+            new SummonGradeRateMilestone(34, 0.500f, 0.315f, 0.134125f, 0.040700f, 0.010175f),
+            new SummonGradeRateMilestone(37, 0.475f, 0.325f, 0.139535f, 0.048372f, 0.012093f),
+            new SummonGradeRateMilestone(40, 0.450f, 0.335f, 0.144891f, 0.056087f, 0.014022f),
+            new SummonGradeRateMilestone(43, 0.425f, 0.345f, 0.150204f, 0.063429f, 0.016367f),
+            new SummonGradeRateMilestone(46, 0.405f, 0.350f, 0.155481f, 0.070673f, 0.018846f),
+            new SummonGradeRateMilestone(49, 0.385f, 0.355f, 0.160727f, 0.077527f, 0.021746f)
         };
 
         private const int NormalHeroMax = 5;
@@ -341,9 +362,9 @@ namespace DefenseGame
             return null;
         }
 
-        public CharacterDefinition GetRunContentRandomSummonableCharacter(int currentRound, RunContentRandomService contentRandom, RunContentRandomChannel channel, string eventType, bool deployableOnly = false)
+        public CharacterDefinition GetRunContentRandomSummonableCharacter(int currentRound, RunContentRandomService contentRandom, RunContentRandomChannel channel, string eventType, bool deployableOnly = false, int summonGradeLuckLevel = 0)
         {
-            SummonGradeRates rates = ResolveSummonGradeRates(currentRound);
+            SummonGradeRates rates = ResolveSummonGradeRates(currentRound, summonGradeLuckLevel);
             float total = rates.normal + rates.rare + rates.epic + rates.legendary + rates.mythic;
             CharacterGrade grade = CharacterGrade.Normal;
             if (total > 0.0001f)
@@ -382,12 +403,24 @@ namespace DefenseGame
             return CharacterGrade.Mythic;
         }
 
+        public SummonGradeRateSnapshot GetSummonGradeRateSnapshot(int currentRound, int summonGradeLuckLevel, bool includeDailyFortune = true)
+        {
+            SummonGradeRates rates = ResolveSummonGradeRates(currentRound, summonGradeLuckLevel, includeDailyFortune);
+            return new SummonGradeRateSnapshot(rates.normal, rates.rare, rates.epic, rates.legendary, rates.mythic);
+        }
+
         private SummonGradeRates ResolveSummonGradeRates(int currentRound)
+        {
+            return ResolveSummonGradeRates(currentRound, 0, true);
+        }
+
+        private SummonGradeRates ResolveSummonGradeRates(int currentRound, int summonGradeLuckLevel, bool includeDailyFortune = true)
         {
             int round = Mathf.Max(1, currentRound);
             if (summonGradeRateMilestones == null || summonGradeRateMilestones.Count == 0)
             {
-                return ApplyDailyFortuneSummonRates(new SummonGradeRates(0.96f, 0.04f, 0f, 0f, 0f), round);
+                SummonGradeRates fallback = ApplySummonGradeLuck(new SummonGradeRates(0.96f, 0.04f, 0f, 0f, 0f), summonGradeLuckLevel);
+                return includeDailyFortune ? ApplyDailyFortuneSummonRates(fallback, round) : fallback;
             }
 
             SummonGradeRateMilestone selected = null;
@@ -415,10 +448,29 @@ namespace DefenseGame
             SummonGradeRateMilestone resolved = selected ?? earliest;
             if (resolved == null)
             {
-                return ApplyDailyFortuneSummonRates(new SummonGradeRates(0.96f, 0.04f, 0f, 0f, 0f), round);
+                SummonGradeRates fallback = ApplySummonGradeLuck(new SummonGradeRates(0.96f, 0.04f, 0f, 0f, 0f), summonGradeLuckLevel);
+                return includeDailyFortune ? ApplyDailyFortuneSummonRates(fallback, round) : fallback;
             }
 
-            return ApplyDailyFortuneSummonRates(resolved.ToRates(), round);
+            SummonGradeRates baseRates = ApplySummonGradeLuck(resolved.ToRates(), summonGradeLuckLevel);
+            return includeDailyFortune ? ApplyDailyFortuneSummonRates(baseRates, round) : baseRates;
+        }
+
+        private static SummonGradeRates ApplySummonGradeLuck(SummonGradeRates rates, int summonGradeLuckLevel)
+        {
+            int level = Mathf.Clamp(summonGradeLuckLevel, 0, DefenseGameController.SummonGradeLuckMaximumLevel);
+            float eligibleEpicPlus = rates.epic + rates.legendary + rates.mythic;
+            if (level <= 0 || eligibleEpicPlus <= 0.0001f || rates.normal <= 0f)
+            {
+                return rates;
+            }
+
+            float bonus = Mathf.Min(level * 0.01f, rates.normal);
+            rates.normal -= bonus;
+            rates.epic += bonus * (rates.epic / eligibleEpicPlus);
+            rates.legendary += bonus * (rates.legendary / eligibleEpicPlus);
+            rates.mythic += bonus * (rates.mythic / eligibleEpicPlus);
+            return rates;
         }
 
         private SummonGradeRates ApplyDailyFortuneSummonRates(SummonGradeRates rates, int currentRound)

@@ -1940,6 +1940,9 @@ private void EnsureLight()
         private Button[] buttons;
         private Text[] labels;
         private Image[] bodies;
+        private Button summonGradeLuckButton;
+        private Text summonGradeLuckLabel;
+        private Image summonGradeLuckBody;
         private CanvasGroup canvasGroup;
         private bool subscribed;
 
@@ -1951,8 +1954,8 @@ private void EnsureLight()
             rootRect.anchorMin = new Vector2(0.5f, 0f);
             rootRect.anchorMax = new Vector2(0.5f, 0f);
             rootRect.pivot = new Vector2(0.5f, 0.5f);
-            rootRect.anchoredPosition = new Vector2(0f, 468f);
-            rootRect.sizeDelta = new Vector2(960f, 92f);
+            rootRect.anchoredPosition = new Vector2(0f, 445f);
+            rootRect.sizeDelta = new Vector2(960f, 142f);
 
             Image background = root.AddComponent<Image>();
             background.color = new Color(0.035f, 0.08f, 0.20f, 0.88f);
@@ -2002,13 +2005,40 @@ private void EnsureLight()
                 bodies[i] = body;
             }
 
+            GameObject luckObject = new GameObject("SummonGradeLuckUpgrade", typeof(RectTransform), typeof(Image), typeof(Button));
+            luckObject.transform.SetParent(root.transform, false);
+            RectTransform luckRect = luckObject.GetComponent<RectTransform>();
+            luckRect.anchorMin = new Vector2(0.5f, 0.5f);
+            luckRect.anchorMax = new Vector2(0.5f, 0.5f);
+            luckRect.pivot = new Vector2(0.5f, 0.5f);
+            luckRect.anchoredPosition = new Vector2(0f, -56f);
+            luckRect.sizeDelta = new Vector2(390f, 42f);
+            Image luckBody = luckObject.GetComponent<Image>();
+            luckBody.color = new Color(0.14f, 0.10f, 0.28f, 0.98f);
+            RuntimeUiSkinUtility.ApplyImageSkin(luckBody, presentationConfig != null ? presentationConfig.uiSkin : null, "GradeUpgradeButton", true, true);
+            Text luckLabel = CreateText(luckObject.transform, font, "Label", Vector2.zero, new Vector2(374f, 38f), string.Empty, 15, Color.white);
+            luckLabel.alignment = TextAnchor.MiddleCenter;
+            luckLabel.resizeTextForBestFit = true;
+            luckLabel.resizeTextMinSize = 12;
+            luckLabel.resizeTextMaxSize = 15;
+            Shadow luckShadow = luckLabel.gameObject.AddComponent<Shadow>();
+            luckShadow.effectColor = new Color(0f, 0f, 0f, 0.8f);
+            luckShadow.effectDistance = new Vector2(1f, -1f);
+            luckObject.GetComponent<Button>().onClick.AddListener(delegate
+            {
+                if (controller != null)
+                {
+                    controller.TryUpgradeSummonGradeLuck();
+                }
+            });
+
             root.AddComponent<CanvasGroup>();
             GradeUpgradeBarUI ui = root.AddComponent<GradeUpgradeBarUI>();
-            ui.Configure(controller, buttons, labels, bodies);
+            ui.Configure(controller, buttons, labels, bodies, luckObject.GetComponent<Button>(), luckLabel, luckBody);
             return ui;
         }
 
-        public void Configure(DefenseGameController value, Button[] newButtons, Text[] newLabels, Image[] newBodies)
+        public void Configure(DefenseGameController value, Button[] newButtons, Text[] newLabels, Image[] newBodies, Button newSummonGradeLuckButton, Text newSummonGradeLuckLabel, Image newSummonGradeLuckBody)
         {
             Unsubscribe();
             controller = value;
@@ -2016,6 +2046,9 @@ private void EnsureLight()
             buttons = newButtons;
             labels = newLabels;
             bodies = newBodies;
+            summonGradeLuckButton = newSummonGradeLuckButton;
+            summonGradeLuckLabel = newSummonGradeLuckLabel;
+            summonGradeLuckBody = newSummonGradeLuckBody;
             Subscribe();
             Refresh();
         }
@@ -2085,6 +2118,22 @@ private void EnsureLight()
                 labels[i].text = isMax
                     ? gradeName + "\nLv.MAX"
                     : gradeName + "  Lv." + level + "\n\u2191 " + cost + "G";
+            }
+
+            if (summonGradeLuckButton != null && summonGradeLuckLabel != null && summonGradeLuckBody != null)
+            {
+                int level = controller.SummonGradeLuckLevel;
+                bool isMax = level >= DefenseGameController.SummonGradeLuckMaximumLevel;
+                int cost = controller.GetSummonGradeLuckCost();
+                bool available = !isMax && !controller.IsRoundRunning && controller.Gold >= cost;
+                summonGradeLuckButton.interactable = available;
+                summonGradeLuckBody.color = available
+                    ? new Color(0.30f, 0.20f, 0.56f, 0.98f)
+                    : new Color(0.13f, 0.12f, 0.19f, 0.66f);
+                summonGradeLuckLabel.color = isMax ? new Color(0.94f, 0.82f, 1f) : (available ? Color.white : new Color(0.72f, 0.74f, 0.80f));
+                summonGradeLuckLabel.text = isMax
+                    ? "\uc18c\ud658 \ub4f1\uae09 \ud589\uc6b4  Lv.MAX  /  Epic+ +7%p"
+                    : "\uc18c\ud658 \ub4f1\uae09 \ud589\uc6b4  Lv." + level + "  /  Epic+ +" + level + "%p  \u2191 " + cost + "G";
             }
         }
 
