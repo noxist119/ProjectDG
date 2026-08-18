@@ -781,8 +781,7 @@ private void EnsureLight()
 			Transform metaFlowRoot = CreateSafeAreaRoot(canvas.transform, "MetaFlowSafeAreaRoot");
 			Font font = RuntimeUiSkinUtility.ResolveFont(presentationConfig);
 			Color textColor = ((presentationConfig != null) ? presentationConfig.hudTextColor : Color.white);
-			bool showKeyboardHint = !Application.isMobilePlatform;
-			string hintValue = ((!showKeyboardHint) ? string.Empty : ((presentationConfig != null && !string.IsNullOrWhiteSpace(presentationConfig.hintText)) ? presentationConfig.hintText : "Space Round | S Summon | 1-5 Merge"));
+			string hintValue = string.Empty;
 			CreatePanel(hudRoot, "TopSafeBackdrop", new Vector2(0f, -12f), new Vector2(0f, 232f), new Color(0.03f, 0.05f, 0.17f, 0.74f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), rounded: false, shadow: true);
 			CreatePanel(hudRoot, "TopGlow", new Vector2(0f, -224f), new Vector2(0f, 8f), new Color(0.17f, 0.42f, 0.72f, 0.35f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), rounded: false, shadow: false);
 			Image playerPanel = CreatePanel(hudRoot, "PlayerBadge", new Vector2(28f, -28f), new Vector2(276f, 88f), new Color(0.93f, 0.74f, 0.27f, 0.96f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: true, shadow: true);
@@ -859,13 +858,7 @@ private void EnsureLight()
 			luckySummonProgress.resizeTextMinSize = 14;
 			luckySummonProgress.resizeTextMaxSize = 17;
 			((Component)(object)luckySummonBadge).gameObject.SetActive(value: false);
-			Image ultimateRecipePanel = CreatePanel(hudRoot, "UltimateRecipeHudPanel", new Vector2(0f, 700f), new Vector2(920f, 76f), new Color(0.05f, 0.1f, 0.28f, 0.78f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
-			Text ultimateRecipeHud = CreateText(((Component)(object)ultimateRecipePanel).transform, font, new Color(0.76f, 0.94f, 1f), "UltimateRecipeHudText", new Vector2(0f, 0f), Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(18f, 0f), new Vector2(-36f, -18f), "레시피 빙고\nTOP 0/3", 20, TextAnchor.MiddleLeft, bold: true);
-			ultimateRecipeHud.resizeTextForBestFit = true;
-			ultimateRecipeHud.fontSize = 20;
-			ultimateRecipeHud.resizeTextMinSize = 16;
-			ultimateRecipeHud.resizeTextMaxSize = 20;
-			AddStrongTextOutline(ultimateRecipeHud);
+			Text ultimateRecipeHud = null;
 			Image buildReadoutPanel = CreatePanel(hudRoot, "BuildReadoutPanel", new Vector2(0f, 592f), new Vector2(920f, 96f), new Color(0.04f, 0.08f, 0.24f, 0.78f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
 			Text synergyInsight = CreateBuildInsightCell(((Component)(object)buildReadoutPanel).transform, font, "DangerInsight", "위험", new Vector2(-292f, 0f), new Color(1f, 0.48f, 0.3f));
 			Text recipeInsight = CreateBuildInsightCell(((Component)(object)buildReadoutPanel).transform, font, "ActionInsight", "추천 행동", Vector2.zero, new Color(0.36f, 0.92f, 1f));
@@ -1003,8 +996,7 @@ private void EnsureLight()
 			Button unitSellButton = CreateButton(((Component)(object)unitSellPanel).transform, font, "SellSelectedUnitButton", "판매", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-24f, 0f), new Vector2(206f, 62f), new Color(0.92f, 0.38f, 0.22f, 0.98f), Color.white, null, out unitSellButtonLabel);
 			unitSellButtonLabel.fontSize = 23;
 			((Component)(object)unitSellPanel).gameObject.SetActive(value: false);
-			Text hint = CreateText(hudRoot, font, new Color(0.84f, 0.92f, 1f, 0.86f), "HintText", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 780f), new Vector2(860f, 32f), hintValue, 17, TextAnchor.MiddleCenter, bold: false);
-			((Component)(object)hint).gameObject.SetActive(showKeyboardHint);
+			Text hint = null;
 			Text countdown = CreateText(hudRoot, font, new Color(1f, 0.95f, 0.58f, 0f), "CountdownText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 35f), new Vector2(220f, 120f), string.Empty, 96, TextAnchor.MiddleCenter, bold: true);
 			Text roundBanner = CreateText(hudRoot, font, new Color(0.48f, 1f, 0.72f, 0f), "RoundBannerText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 136f), new Vector2(620f, 70f), string.Empty, 40, TextAnchor.MiddleCenter, bold: true);
 			Text mergeCelebration = CreateText(hudRoot, font, new Color(1f, 0.92f, 0.5f, 0f), "MergeCelebrationText", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 210f), new Vector2(720f, 76f), string.Empty, 52, TextAnchor.MiddleCenter, bold: true);
@@ -1927,7 +1919,7 @@ private void EnsureLight()
 			}
 		}
 	}
-    /// <summary>Preparation-only, run-scoped grade upgrade controls.</summary>
+    /// <summary>Run-scoped stat and summon-quality investments. Both remain available during combat unless a blocking choice or end state is active.</summary>
     public sealed class GradeUpgradeBarUI : MonoBehaviour
     {
         private static readonly CharacterGrade[] Grades =
@@ -1943,26 +1935,32 @@ private void EnsureLight()
         private Button summonGradeLuckButton;
         private Text summonGradeLuckLabel;
         private Image summonGradeLuckBody;
+        private Button summonGradeLuckInfoButton;
+        private GameObject summonGradeLuckInfoTooltip;
         private CanvasGroup canvasGroup;
         private bool subscribed;
+        private bool infoVisible;
+        private bool observedRound;
+        private int lastObservedRound;
 
         public static GradeUpgradeBarUI Create(Transform parent, Font font, DefenseGameController controller, GamePresentationConfig presentationConfig)
         {
+            UiSkinResources skin = presentationConfig != null ? presentationConfig.uiSkin : null;
             GameObject root = new GameObject("GradeUpgradeBar", typeof(RectTransform));
             root.transform.SetParent(parent, false);
             RectTransform rootRect = root.GetComponent<RectTransform>();
             rootRect.anchorMin = new Vector2(0.5f, 0f);
             rootRect.anchorMax = new Vector2(0.5f, 0f);
             rootRect.pivot = new Vector2(0.5f, 0.5f);
-            rootRect.anchoredPosition = new Vector2(0f, 445f);
-            rootRect.sizeDelta = new Vector2(960f, 142f);
+            rootRect.anchoredPosition = new Vector2(0f, 402f);
+            rootRect.sizeDelta = new Vector2(940f, 128f);
 
             Image background = root.AddComponent<Image>();
             background.color = new Color(0.035f, 0.08f, 0.20f, 0.88f);
             background.raycastTarget = false;
-            RuntimeUiSkinUtility.ApplyImageSkin(background, presentationConfig != null ? presentationConfig.uiSkin : null, "GradeUpgradeBar", false, true);
+            RuntimeUiSkinUtility.ApplyImageSkin(background, skin, "GradeUpgradeBar", false, true);
 
-            Text title = CreateText(root.transform, font, "GradeUpgradeTitle", new Vector2(0f, 32f), new Vector2(900f, 24f), "\ub4f1\uae09 \uac15\ud654  ·  \ud604\uc7ac \ub4f1\uae09 \uc720\ub2db \uc804\uccb4 \uc801\uc6a9", 17, new Color(0.72f, 0.91f, 1f));
+            Text title = CreateText(root.transform, font, "GradeUpgradeTitle", new Vector2(0f, 42f), new Vector2(900f, 22f), "\ub4f1\uae09 \uac15\ud654  \u00b7  \uc804\ud22c \uc911 \uc989\uc2dc \uc801\uc6a9", 16, new Color(0.72f, 0.91f, 1f));
             title.alignment = TextAnchor.MiddleCenter;
 
             Button[] buttons = new Button[Grades.Length];
@@ -1977,28 +1975,23 @@ private void EnsureLight()
                 rect.anchorMin = new Vector2(0.5f, 0.5f);
                 rect.anchorMax = new Vector2(0.5f, 0.5f);
                 rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.anchoredPosition = new Vector2(-390f + i * 156f, -12f);
-                rect.sizeDelta = new Vector2(146f, 58f);
+                rect.anchoredPosition = new Vector2(-375f + i * 150f, 5f);
+                rect.sizeDelta = new Vector2(140f, 54f);
                 Image body = buttonObject.GetComponent<Image>();
                 body.color = new Color(0.08f, 0.13f, 0.28f, 0.98f);
-                RuntimeUiSkinUtility.ApplyImageSkin(body, presentationConfig != null ? presentationConfig.uiSkin : null, "GradeUpgradeButton", true, true);
+                RuntimeUiSkinUtility.ApplyImageSkin(body, skin, "GradeUpgradeButton", true, true);
 
-                Text label = CreateText(buttonObject.transform, font, "Label", Vector2.zero, new Vector2(138f, 52f), string.Empty, 16, Color.white);
+                Text label = CreateText(buttonObject.transform, font, "Label", Vector2.zero, new Vector2(132f, 48f), string.Empty, 15, Color.white);
                 label.alignment = TextAnchor.MiddleCenter;
                 label.resizeTextForBestFit = true;
-                label.resizeTextMinSize = 12;
-                label.resizeTextMaxSize = 16;
-                Shadow shadow = label.gameObject.AddComponent<Shadow>();
-                shadow.effectColor = new Color(0f, 0f, 0f, 0.8f);
-                shadow.effectDistance = new Vector2(1f, -1f);
+                label.resizeTextMinSize = 11;
+                label.resizeTextMaxSize = 15;
+                AddTextShadow(label);
 
                 int capturedIndex = i;
                 buttonObject.GetComponent<Button>().onClick.AddListener(delegate
                 {
-                    if (controller != null)
-                    {
-                        controller.TryUpgradeGrade(Grades[capturedIndex]);
-                    }
+                    controller?.TryUpgradeGrade(Grades[capturedIndex]);
                 });
                 buttons[i] = buttonObject.GetComponent<Button>();
                 labels[i] = label;
@@ -2011,34 +2004,53 @@ private void EnsureLight()
             luckRect.anchorMin = new Vector2(0.5f, 0.5f);
             luckRect.anchorMax = new Vector2(0.5f, 0.5f);
             luckRect.pivot = new Vector2(0.5f, 0.5f);
-            luckRect.anchoredPosition = new Vector2(0f, -56f);
-            luckRect.sizeDelta = new Vector2(390f, 42f);
+            luckRect.anchoredPosition = new Vector2(-24f, -43f);
+            luckRect.sizeDelta = new Vector2(442f, 38f);
             Image luckBody = luckObject.GetComponent<Image>();
             luckBody.color = new Color(0.14f, 0.10f, 0.28f, 0.98f);
-            RuntimeUiSkinUtility.ApplyImageSkin(luckBody, presentationConfig != null ? presentationConfig.uiSkin : null, "GradeUpgradeButton", true, true);
-            Text luckLabel = CreateText(luckObject.transform, font, "Label", Vector2.zero, new Vector2(374f, 38f), string.Empty, 15, Color.white);
+            RuntimeUiSkinUtility.ApplyImageSkin(luckBody, skin, "GradeUpgradeButton", true, true);
+            Text luckLabel = CreateText(luckObject.transform, font, "Label", Vector2.zero, new Vector2(418f, 34f), string.Empty, 14, Color.white);
             luckLabel.alignment = TextAnchor.MiddleCenter;
             luckLabel.resizeTextForBestFit = true;
-            luckLabel.resizeTextMinSize = 12;
-            luckLabel.resizeTextMaxSize = 15;
-            Shadow luckShadow = luckLabel.gameObject.AddComponent<Shadow>();
-            luckShadow.effectColor = new Color(0f, 0f, 0f, 0.8f);
-            luckShadow.effectDistance = new Vector2(1f, -1f);
+            luckLabel.resizeTextMinSize = 11;
+            luckLabel.resizeTextMaxSize = 14;
+            AddTextShadow(luckLabel);
             luckObject.GetComponent<Button>().onClick.AddListener(delegate
             {
-                if (controller != null)
-                {
-                    controller.TryUpgradeSummonGradeLuck();
-                }
+                controller?.TryUpgradeSummonGradeLuck();
             });
 
+            GameObject infoObject = new GameObject("SummonGradeLuckInfoButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            infoObject.transform.SetParent(root.transform, false);
+            RectTransform infoRect = infoObject.GetComponent<RectTransform>();
+            infoRect.anchorMin = new Vector2(0.5f, 0.5f);
+            infoRect.anchorMax = new Vector2(0.5f, 0.5f);
+            infoRect.pivot = new Vector2(0.5f, 0.5f);
+            infoRect.anchoredPosition = new Vector2(228f, -43f);
+            infoRect.sizeDelta = new Vector2(38f, 38f);
+            Image infoBody = infoObject.GetComponent<Image>();
+            infoBody.color = new Color(0.16f, 0.54f, 0.82f, 0.98f);
+            RuntimeUiSkinUtility.ApplyImageSkin(infoBody, skin, "InfoButton", true, true);
+            Image infoIcon = CreateIcon(infoObject.transform, "Icon", new Vector2(28f, 28f));
+            if (!RuntimeUiSkinUtility.ApplyIconSkin(infoIcon, skin, "info"))
+            {
+                infoIcon.sprite = Resources.Load<Sprite>("UI/RollRoll/Common/inventory-minimi-itemrenderer-detail-info-button-icon");
+            }
+            if (infoIcon.sprite == null)
+            {
+                Text infoFallback = CreateText(infoObject.transform, font, "Fallback", Vector2.zero, new Vector2(28f, 28f), "i", 22, Color.white);
+                infoFallback.alignment = TextAnchor.MiddleCenter;
+            }
+
+            GameObject tooltip = CreateInfoTooltip(root.transform, font, skin);
             root.AddComponent<CanvasGroup>();
             GradeUpgradeBarUI ui = root.AddComponent<GradeUpgradeBarUI>();
-            ui.Configure(controller, buttons, labels, bodies, luckObject.GetComponent<Button>(), luckLabel, luckBody);
+            infoObject.GetComponent<Button>().onClick.AddListener(ui.ToggleInfoTooltip);
+            ui.Configure(controller, buttons, labels, bodies, luckObject.GetComponent<Button>(), luckLabel, luckBody, infoObject.GetComponent<Button>(), tooltip);
             return ui;
         }
 
-        public void Configure(DefenseGameController value, Button[] newButtons, Text[] newLabels, Image[] newBodies, Button newSummonGradeLuckButton, Text newSummonGradeLuckLabel, Image newSummonGradeLuckBody)
+        public void Configure(DefenseGameController value, Button[] newButtons, Text[] newLabels, Image[] newBodies, Button newSummonGradeLuckButton, Text newSummonGradeLuckLabel, Image newSummonGradeLuckBody, Button newSummonGradeLuckInfoButton, GameObject newSummonGradeLuckInfoTooltip)
         {
             Unsubscribe();
             controller = value;
@@ -2049,6 +2061,9 @@ private void EnsureLight()
             summonGradeLuckButton = newSummonGradeLuckButton;
             summonGradeLuckLabel = newSummonGradeLuckLabel;
             summonGradeLuckBody = newSummonGradeLuckBody;
+            summonGradeLuckInfoButton = newSummonGradeLuckInfoButton;
+            summonGradeLuckInfoTooltip = newSummonGradeLuckInfoTooltip;
+            SetInfoTooltipVisible(false);
             Subscribe();
             Refresh();
         }
@@ -2061,6 +2076,7 @@ private void EnsureLight()
 
         private void OnDisable()
         {
+            SetInfoTooltipVisible(false);
             Unsubscribe();
         }
 
@@ -2072,6 +2088,8 @@ private void EnsureLight()
             }
 
             controller.OnStateChanged += Refresh;
+            controller.OnGameOver += HideInfoTooltip;
+            controller.OnRunReset += HideInfoTooltip;
             subscribed = true;
         }
 
@@ -2084,7 +2102,28 @@ private void EnsureLight()
             }
 
             controller.OnStateChanged -= Refresh;
+            controller.OnGameOver -= HideInfoTooltip;
+            controller.OnRunReset -= HideInfoTooltip;
             subscribed = false;
+        }
+
+        private void ToggleInfoTooltip()
+        {
+            SetInfoTooltipVisible(!infoVisible);
+        }
+
+        private void HideInfoTooltip()
+        {
+            SetInfoTooltipVisible(false);
+        }
+
+        private void SetInfoTooltipVisible(bool visible)
+        {
+            infoVisible = visible;
+            if (summonGradeLuckInfoTooltip != null)
+            {
+                summonGradeLuckInfoTooltip.SetActive(visible);
+            }
         }
 
         private void Refresh()
@@ -2094,20 +2133,28 @@ private void EnsureLight()
                 return;
             }
 
-            bool isPreparation = !controller.IsRoundRunning;
+            int currentRound = controller.CurrentRound;
+            if (observedRound && currentRound < lastObservedRound)
+            {
+                HideInfoTooltip();
+            }
+            lastObservedRound = currentRound;
+            observedRound = true;
+
             if (canvasGroup != null)
             {
-                canvasGroup.alpha = isPreparation ? 1f : 0f;
-                canvasGroup.blocksRaycasts = isPreparation;
-                canvasGroup.interactable = isPreparation;
+                canvasGroup.alpha = 1f;
+                canvasGroup.blocksRaycasts = true;
+                canvasGroup.interactable = true;
             }
+
             for (int i = 0; i < Grades.Length && i < buttons.Length && i < labels.Length && i < bodies.Length; i++)
             {
                 CharacterGrade grade = Grades[i];
                 int level = controller.GetGradeUpgradeLevel(grade);
                 bool isMax = level >= DefenseGameController.GradeUpgradeMaximumLevel;
                 int cost = controller.GetGradeUpgradeCost(grade);
-                bool available = !isMax && !controller.IsRoundRunning && controller.Gold >= cost;
+                bool available = controller.CanUpgradeGrade(grade);
                 Color gradeColor = CharacterGradeUtility.GetColor(grade, Color.white);
                 buttons[i].interactable = available;
                 bodies[i].color = available
@@ -2125,16 +2172,71 @@ private void EnsureLight()
                 int level = controller.SummonGradeLuckLevel;
                 bool isMax = level >= DefenseGameController.SummonGradeLuckMaximumLevel;
                 int cost = controller.GetSummonGradeLuckCost();
-                bool available = !isMax && !controller.IsRoundRunning && controller.Gold >= cost;
+                bool available = controller.CanUpgradeSummonGradeLuck();
                 summonGradeLuckButton.interactable = available;
                 summonGradeLuckBody.color = available
                     ? new Color(0.30f, 0.20f, 0.56f, 0.98f)
                     : new Color(0.13f, 0.12f, 0.19f, 0.66f);
                 summonGradeLuckLabel.color = isMax ? new Color(0.94f, 0.82f, 1f) : (available ? Color.white : new Color(0.72f, 0.74f, 0.80f));
                 summonGradeLuckLabel.text = isMax
-                    ? "\uc18c\ud658 \ub4f1\uae09 \ud589\uc6b4  Lv.MAX  /  Epic+ +7%p"
-                    : "\uc18c\ud658 \ub4f1\uae09 \ud589\uc6b4  Lv." + level + "  /  Epic+ +" + level + "%p  \u2191 " + cost + "G";
+                    ? "\uace0\ub4f1\uae09 \ud655\ub960  Lv.MAX  /  Epic+ +7%p"
+                    : "\uace0\ub4f1\uae09 \ud655\ub960  Lv." + level + "  /  Epic+ +" + level + "%p  \u2191 " + cost + "G";
             }
+
+            if (summonGradeLuckInfoButton != null)
+            {
+                summonGradeLuckInfoButton.interactable = !controller.IsBlockingChoiceOpen && !controller.FateCardChoicePanelOpen;
+            }
+        }
+
+        private static GameObject CreateInfoTooltip(Transform parent, Font font, UiSkinResources skin)
+        {
+            GameObject tooltip = new GameObject("SummonGradeLuckInfoTooltip", typeof(RectTransform), typeof(Image));
+            tooltip.transform.SetParent(parent, false);
+            RectTransform rect = tooltip.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(0f, 150f);
+            rect.sizeDelta = new Vector2(570f, 154f);
+            Image body = tooltip.GetComponent<Image>();
+            body.color = new Color(0.04f, 0.10f, 0.25f, 0.97f);
+            body.raycastTarget = false;
+            RuntimeUiSkinUtility.ApplyImageSkin(body, skin, "InfoTooltip", false, true);
+
+            Text title = CreateText(tooltip.transform, font, "Title", new Vector2(0f, 49f), new Vector2(520f, 30f), "\uace0\ub4f1\uae09 \ud655\ub960 \uac15\ud654", 20, new Color(1f, 0.86f, 0.32f));
+            title.alignment = TextAnchor.MiddleCenter;
+            Text bodyText = CreateText(tooltip.transform, font, "Body", new Vector2(0f, -17f), new Vector2(520f, 86f), "\uc77c\ubc18 \uc18c\ud658\uc5d0\uc11c\ub9cc \uc801\uc6a9\n\ub808\ubca8\ub2f9 \uc5d0\ud53d \uc774\uc0c1 \ub4f1\uc7a5 \ud655\ub960 +1%p\n\uace0\ub4f1\uae09 \ub4f1\uc7a5 \ub2e8\uacc4\ubd80\ud130 \uc801\uc6a9\n\ud2b9\uc218 \uc18c\ud658\u00b7\uc0c1\uc810\u00b7\ub808\uc2dc\ud53c\u00b7\ubcf4\uc0c1 \uc18c\ud658\uc5d0\ub294 \ubbf8\uc801\uc6a9", 15, new Color(0.88f, 0.94f, 1f));
+            bodyText.alignment = TextAnchor.MiddleCenter;
+            bodyText.resizeTextForBestFit = true;
+            bodyText.resizeTextMinSize = 12;
+            bodyText.resizeTextMaxSize = 15;
+            tooltip.SetActive(false);
+            return tooltip;
+        }
+
+        private static Image CreateIcon(Transform parent, string name, Vector2 size)
+        {
+            GameObject iconObject = new GameObject(name, typeof(RectTransform), typeof(Image));
+            iconObject.transform.SetParent(parent, false);
+            RectTransform rect = iconObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = size;
+            Image icon = iconObject.GetComponent<Image>();
+            icon.color = Color.white;
+            icon.raycastTarget = false;
+            icon.preserveAspect = true;
+            return icon;
+        }
+
+        private static void AddTextShadow(Text text)
+        {
+            Shadow shadow = text.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.8f);
+            shadow.effectDistance = new Vector2(1f, -1f);
         }
 
         private static Text CreateText(Transform parent, Font font, string name, Vector2 position, Vector2 size, string value, int fontSize, Color color)

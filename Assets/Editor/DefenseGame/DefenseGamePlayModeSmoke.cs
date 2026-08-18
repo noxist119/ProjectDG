@@ -315,7 +315,8 @@ namespace DefenseGame.Editor
             bool boardCapacityPacingValid = ValidateBoardCapacityPacing(out string boardCapacityPacingSummary);
             bool pass1DGradeRulesValid = ValidatePass1DGradeUpgradeRules(controller);
             bool pass1DPressureValid = ValidatePass1DPressureRules();
-            bool gradeUpgradeBarUiValid = ValidateGradeUpgradeBarUi(controller);
+            bool gradeUpgradeBarUiValid = ValidatePass2NCombatEconomyUi(controller);
+            bool pass2NCombatEconomyUiValid = gradeUpgradeBarUiValid;
             bool pass2MSummonGradeLuckValid = ValidatePass2MSummonGradeLuck(controller);
             bool pass1EMilestoneValid = ValidatePass1EMilestoneRules(controller, out string pass1EMilestoneSummary);
             if (!pass1DGradeRulesValid || !pass1DPressureValid || !gradeUpgradeBarUiValid || !pass1EMilestoneValid)
@@ -325,6 +326,10 @@ namespace DefenseGame.Editor
             if (!pass2MSummonGradeLuckValid)
             {
                 notes.Add("Pass 2M summon grade luck validation failed.");
+            }
+            if (!pass2NCombatEconomyUiValid)
+            {
+                notes.Add("Pass 2N combat economy HUD visibility, combat purchase, or Info tooltip validation failed.");
             }
             if (!screenSpaceCombatHudValid || !dragTransactionSafetyValid || !dragCombatSuspensionValid || !boardCapacityPacingValid)
             {
@@ -864,7 +869,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -935,6 +940,7 @@ namespace DefenseGame.Editor
                 boardCapacityPacingSummary = boardCapacityPacingSummary,
                 gradeUpgradeBarUiValid = gradeUpgradeBarUiValid,
                 pass2MSummonGradeLuckValid = pass2MSummonGradeLuckValid,
+                pass2NCombatEconomyUiValid = pass2NCombatEconomyUiValid,
                 pass1EMilestoneValid = pass1EMilestoneValid,
                 pass1EMilestoneSummary = pass1EMilestoneSummary,
                 pass2BPreparationSkipValid = pass2BPreparationSkipValid,
@@ -1522,13 +1528,21 @@ namespace DefenseGame.Editor
                                 controller.GetGradeUpgradeLevel(CharacterGrade.Normal) == DefenseGameController.GradeUpgradeMaximumLevel;
 
                 roundRunningField.SetValue(rounds, true);
-                bool combatBlocks = !controller.CanUpgradeGrade(CharacterGrade.Rare) && !controller.TryUpgradeGrade(CharacterGrade.Rare);
+                goldField.SetValue(controller, 10000);
+                int rareCost = controller.GetGradeUpgradeCost(CharacterGrade.Rare);
+                int goldBeforeCombatUpgrade = controller.Gold;
+                bool combatUpgradeAppliesImmediately = controller.CanUpgradeGrade(CharacterGrade.Rare) &&
+                                                     controller.TryUpgradeGrade(CharacterGrade.Rare) &&
+                                                     controller.GetGradeUpgradeLevel(CharacterGrade.Rare) == 1 &&
+                                                     controller.Gold == goldBeforeCombatUpgrade - rareCost &&
+                                                     Approximately(rare.EffectiveAttackPower, 21.6f) &&
+                                                     Approximately(rare.MaxHealth, 105f);
                 roundRunningField.SetValue(rounds, false);
 
                 controller.ResetRunForRetry();
                 bool resetClears = controller.GetGradeUpgradeLevel(CharacterGrade.Normal) == 0 &&
                                    controller.GetGradeUpgradeLevel(CharacterGrade.Rare) == 0;
-                return firstPurchase && futureApplied && maxStops && combatBlocks && resetClears;
+                return firstPurchase && futureApplied && maxStops && combatUpgradeAppliesImmediately && resetClears;
             }
             finally
             {
@@ -1616,7 +1630,7 @@ namespace DefenseGame.Editor
                 UnityEngine.Object.DestroyImmediate(resultObject);
             }
         }
-        private static bool ValidateGradeUpgradeBarUi(DefenseGameController controller)
+        private static bool ValidatePass2NCombatEconomyUi(DefenseGameController controller)
         {
             GameObject root = UnityEngine.Object.FindObjectsOfType<Transform>(true)
                 .FirstOrDefault(transform => transform != null && transform.name == "GradeUpgradeBar")?.gameObject;
@@ -1624,35 +1638,54 @@ namespace DefenseGame.Editor
             Button[] gradeButtons = root != null
                 ? root.GetComponentsInChildren<Button>(true).Where(button => button != null && button.name.StartsWith("GradeUpgrade_")).ToArray()
                 : Array.Empty<Button>();
+            Button luckButton = root != null ? root.GetComponentsInChildren<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonGradeLuckUpgrade") : null;
+            Button infoButton = root != null ? root.GetComponentsInChildren<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonGradeLuckInfoButton") : null;
+            Transform tooltip = root != null ? root.transform.Find("SummonGradeLuckInfoTooltip") : null;
+            bool baseHudRemoved = !UnityEngine.Object.FindObjectsOfType<Transform>(true).Any(transform => transform != null &&
+                (transform.name == "HintText" || transform.name == "UltimateRecipeHudPanel"));
+
             const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
             FieldInfo roundField = typeof(DefenseGameController).GetField("roundManager", Flags);
             FieldInfo roundRunningField = typeof(RoundManager).GetField("<IsRoundRunning>k__BackingField", Flags);
+            FieldInfo goldField = typeof(DefenseGameController).GetField("<Gold>k__BackingField", Flags);
             MethodInfo notify = typeof(DefenseGameController).GetMethod("NotifyStateChanged", Flags);
             RoundManager rounds = controller != null && roundField != null ? roundField.GetValue(controller) as RoundManager : null;
-            if (controller == null || canvasGroup == null || gradeButtons.Length != 6 || rounds == null || roundRunningField == null || notify == null)
+            if (controller == null || canvasGroup == null || gradeButtons.Length != 6 || luckButton == null || infoButton == null || tooltip == null ||
+                rounds == null || roundRunningField == null || goldField == null || notify == null)
             {
                 return false;
             }
 
             bool originalRunning = (bool)roundRunningField.GetValue(rounds);
+            int originalGold = controller.Gold;
             try
             {
+                goldField.SetValue(controller, 10000);
                 roundRunningField.SetValue(rounds, false);
                 notify.Invoke(controller, null);
-                bool preparationVisible = Approximately(canvasGroup.alpha, 1f) && canvasGroup.blocksRaycasts && canvasGroup.interactable;
+                bool preparationVisible = Approximately(canvasGroup.alpha, 1f) && canvasGroup.blocksRaycasts && canvasGroup.interactable &&
+                                          gradeButtons.All(button => button.interactable) && luckButton.interactable && infoButton.interactable;
 
                 roundRunningField.SetValue(rounds, true);
                 notify.Invoke(controller, null);
-                bool combatHidden = Approximately(canvasGroup.alpha, 0f) && !canvasGroup.blocksRaycasts && !canvasGroup.interactable;
+                bool combatVisibleAndInteractive = Approximately(canvasGroup.alpha, 1f) && canvasGroup.blocksRaycasts && canvasGroup.interactable &&
+                                                  gradeButtons.All(button => button.interactable) && luckButton.interactable && infoButton.interactable;
 
-                roundRunningField.SetValue(rounds, false);
-                notify.Invoke(controller, null);
-                bool restored = Approximately(canvasGroup.alpha, 1f) && canvasGroup.blocksRaycasts && canvasGroup.interactable;
-                return preparationVisible && combatHidden && restored;
+                int luckGoldBefore = controller.Gold;
+                luckButton.onClick.Invoke();
+                bool combatLuckPurchase = controller.SummonGradeLuckLevel == 1 && controller.Gold == luckGoldBefore - 50;
+
+                infoButton.onClick.Invoke();
+                bool tooltipOpens = tooltip.gameObject.activeSelf;
+                controller.ResetRunForRetry();
+                bool tooltipClosesOnReset = !tooltip.gameObject.activeSelf && controller.SummonGradeLuckLevel == 0;
+
+                return baseHudRemoved && preparationVisible && combatVisibleAndInteractive && combatLuckPurchase && tooltipOpens && tooltipClosesOnReset;
             }
             finally
             {
                 roundRunningField.SetValue(rounds, originalRunning);
+                goldField.SetValue(controller, originalGold);
                 notify.Invoke(controller, null);
             }
         }
@@ -2524,6 +2557,7 @@ namespace DefenseGame.Editor
             public string boardCapacityPacingSummary;
             public bool gradeUpgradeBarUiValid;
             public bool pass2MSummonGradeLuckValid;
+            public bool pass2NCombatEconomyUiValid;
             public bool pass1EMilestoneValid;
             public string pass1EMilestoneSummary;
             public bool pass2BPreparationSkipValid;

@@ -603,6 +603,7 @@ namespace DefenseGame
         public event System.Action<int> OnRoundCompleted;
         public event System.Action<int> OnYahtzeeTicketMilestoneCleared;
         public event System.Action OnGameOver;
+        public event System.Action OnRunReset;
         public event System.Action OnLuckySummonChoiceRequested;
         public event System.Action<string, Color, float> OnBannerRequested;
         public event System.Action<CombatGameMode> OnCombatModeChanged;
@@ -629,7 +630,7 @@ namespace DefenseGame
         public bool CanUpgradeSummonGradeLuck()
         {
             int cost = GetSummonGradeLuckCost();
-            return !IsRoundRunning && cost > 0 && Gold >= cost;
+            return IsCombatEconomyUpgradeAvailable() && cost > 0 && Gold >= cost;
         }
 
         public bool TryUpgradeSummonGradeLuck()
@@ -691,7 +692,16 @@ namespace DefenseGame
         public bool CanUpgradeGrade(CharacterGrade grade)
         {
             int cost = GetGradeUpgradeCost(grade);
-            return !IsRoundRunning && cost > 0 && Gold >= cost;
+            return IsCombatEconomyUpgradeAvailable() && cost > 0 && Gold >= cost;
+        }
+
+        /// <summary>
+        /// Economy upgrades remain available during active combat, but never through a blocking choice or end-of-run state.
+        /// </summary>
+        private bool IsCombatEconomyUpgradeAvailable()
+        {
+            return !gameOverRaised && defeatAdjudicationRoutine == null && defeatFinalizeRoutine == null &&
+                   !fateCardChoicePanelOpen && !IsBlockingChoiceOpen;
         }
 
         public bool TryUpgradeGrade(CharacterGrade grade)
@@ -1359,6 +1369,7 @@ namespace DefenseGame
             LastMergeResult = null;
             gameOverRaised = false;
             ResetRunStats();
+            OnRunReset?.Invoke();
             ResetRunContentRandom();
             OnBannerRequested?.Invoke(
                 dailyFateCupEnabled ? DailyFateCupRules.TodayLabel : "새 판 준비",
@@ -1398,6 +1409,7 @@ namespace DefenseGame
             LastMergeResult = null;
             gameOverRaised = false;
             ResetRunStats();
+            OnRunReset?.Invoke();
             OnBannerRequested?.Invoke("아웃게임으로 이동", new Color(0.52f, 0.82f, 1f), 1.8f);
             NotifyStateChanged();
         }
