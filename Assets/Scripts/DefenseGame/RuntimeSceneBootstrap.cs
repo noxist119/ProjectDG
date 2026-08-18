@@ -915,14 +915,14 @@ private void EnsureLight()
 			fateNormalBanLabel.resizeTextMaxSize = 22;
 			fateForceShopLabel.resizeTextMaxSize = 1;
 			Text fatePanelReopenLabel;
-			Button fatePanelReopenButton = CreateButton(hudRoot, font, "FatePanelReopenButton", "계약", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-42f, 356f), new Vector2(154f, 48f), new Color(0.4f, 0.21f, 0.85f, 0.98f), new Color(1f, 0.98f, 0.94f, 1f), null, out fatePanelReopenLabel);
+			Button fatePanelReopenButton = CreateButton(hudRoot, font, "FatePanelReopenButton", "\uc6b4\uba85 \uce74\ub4dc\n\uaebc\ub0b4\uae30", new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-150f, 478f), new Vector2(238f, 82f), new Color(0.4f, 0.21f, 0.85f, 0.98f), new Color(1f, 0.98f, 0.94f, 1f), null, out fatePanelReopenLabel);
 			fatePanelReopenLabel.fontSize = 18;
 			fatePanelReopenLabel.resizeTextForBestFit = true;
 			fatePanelReopenLabel.resizeTextMinSize = 13;
 			fatePanelReopenLabel.resizeTextMaxSize = 18;
 			RectTransform fateEntryRect = ((Component)(object)fatePanelReopenButton).GetComponent<RectTransform>();
-			fateEntryRect.sizeDelta = new Vector2(250f, 84f);
-			fateEntryRect.anchoredPosition = new Vector2(-80f, 356f);
+			fateEntryRect.sizeDelta = new Vector2(238f, 82f);
+			fateEntryRect.anchoredPosition = new Vector2(-150f, 478f);
 			fatePanelReopenLabel.fontSize = 28;
 			fatePanelReopenLabel.resizeTextMinSize = 22;
 			fatePanelReopenLabel.resizeTextMaxSize = 28;
@@ -1952,15 +1952,15 @@ private void EnsureLight()
             rootRect.anchorMin = new Vector2(0.5f, 0f);
             rootRect.anchorMax = new Vector2(0.5f, 0f);
             rootRect.pivot = new Vector2(0.5f, 0.5f);
-            rootRect.anchoredPosition = new Vector2(0f, 402f);
-            rootRect.sizeDelta = new Vector2(940f, 128f);
+            rootRect.anchoredPosition = new Vector2(0f, 330f);
+            rootRect.sizeDelta = new Vector2(850f, 214f);
 
             Image background = root.AddComponent<Image>();
             background.color = new Color(0.035f, 0.08f, 0.20f, 0.88f);
             background.raycastTarget = false;
             RuntimeUiSkinUtility.ApplyImageSkin(background, skin, "GradeUpgradeBar", false, true);
 
-            Text title = CreateText(root.transform, font, "GradeUpgradeTitle", new Vector2(0f, 42f), new Vector2(900f, 22f), "\ub4f1\uae09 \uac15\ud654  \u00b7  \uc804\ud22c \uc911 \uc989\uc2dc \uc801\uc6a9", 16, new Color(0.72f, 0.91f, 1f));
+            Text title = CreateText(root.transform, font, "GradeUpgradeTitle", new Vector2(0f, 96f), new Vector2(810f, 22f), "\ub4f1\uae09 \uac15\ud654  \u00b7  \uc804\ud22c \uc911 \uc989\uc2dc \uc801\uc6a9", 16, new Color(0.72f, 0.91f, 1f));
             title.alignment = TextAnchor.MiddleCenter;
 
             Button[] buttons = new Button[Grades.Length];
@@ -1975,13 +1975,13 @@ private void EnsureLight()
                 rect.anchorMin = new Vector2(0.5f, 0.5f);
                 rect.anchorMax = new Vector2(0.5f, 0.5f);
                 rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.anchoredPosition = new Vector2(-375f + i * 150f, 5f);
-                rect.sizeDelta = new Vector2(140f, 54f);
+                rect.anchoredPosition = new Vector2(-310f + i * 124f, -68f);
+                rect.sizeDelta = new Vector2(116f, 58f);
                 Image body = buttonObject.GetComponent<Image>();
                 body.color = new Color(0.08f, 0.13f, 0.28f, 0.98f);
                 RuntimeUiSkinUtility.ApplyImageSkin(body, skin, "GradeUpgradeButton", true, true);
 
-                Text label = CreateText(buttonObject.transform, font, "Label", Vector2.zero, new Vector2(132f, 48f), string.Empty, 15, Color.white);
+                Text label = CreateText(buttonObject.transform, font, "Label", Vector2.zero, new Vector2(108f, 52f), string.Empty, 15, Color.white);
                 label.alignment = TextAnchor.MiddleCenter;
                 label.resizeTextForBestFit = true;
                 label.resizeTextMinSize = 11;
@@ -2004,16 +2004,16 @@ private void EnsureLight()
             luckRect.anchorMin = new Vector2(0.5f, 0.5f);
             luckRect.anchorMax = new Vector2(0.5f, 0.5f);
             luckRect.pivot = new Vector2(0.5f, 0.5f);
-            luckRect.anchoredPosition = new Vector2(-24f, -43f);
-            luckRect.sizeDelta = new Vector2(442f, 38f);
+            luckRect.anchoredPosition = new Vector2(-130f, 36f);
+            luckRect.sizeDelta = new Vector2(350f, 84f);
             Image luckBody = luckObject.GetComponent<Image>();
             luckBody.color = new Color(0.14f, 0.10f, 0.28f, 0.98f);
             RuntimeUiSkinUtility.ApplyImageSkin(luckBody, skin, "GradeUpgradeButton", true, true);
-            Text luckLabel = CreateText(luckObject.transform, font, "Label", Vector2.zero, new Vector2(418f, 34f), string.Empty, 14, Color.white);
+            Text luckLabel = CreateText(luckObject.transform, font, "Label", Vector2.zero, new Vector2(304f, 72f), string.Empty, 17, Color.white);
             luckLabel.alignment = TextAnchor.MiddleCenter;
             luckLabel.resizeTextForBestFit = true;
-            luckLabel.resizeTextMinSize = 11;
-            luckLabel.resizeTextMaxSize = 14;
+            luckLabel.resizeTextMinSize = 13;
+            luckLabel.resizeTextMaxSize = 17;
             AddTextShadow(luckLabel);
             luckObject.GetComponent<Button>().onClick.AddListener(delegate
             {
@@ -2026,8 +2026,8 @@ private void EnsureLight()
             infoRect.anchorMin = new Vector2(0.5f, 0.5f);
             infoRect.anchorMax = new Vector2(0.5f, 0.5f);
             infoRect.pivot = new Vector2(0.5f, 0.5f);
-            infoRect.anchoredPosition = new Vector2(228f, -43f);
-            infoRect.sizeDelta = new Vector2(38f, 38f);
+            infoRect.anchoredPosition = new Vector2(24f, 54f);
+            infoRect.sizeDelta = new Vector2(34f, 34f);
             Image infoBody = infoObject.GetComponent<Image>();
             infoBody.color = new Color(0.16f, 0.54f, 0.82f, 0.98f);
             RuntimeUiSkinUtility.ApplyImageSkin(infoBody, skin, "InfoButton", true, true);
@@ -2179,8 +2179,8 @@ private void EnsureLight()
                     : new Color(0.13f, 0.12f, 0.19f, 0.66f);
                 summonGradeLuckLabel.color = isMax ? new Color(0.94f, 0.82f, 1f) : (available ? Color.white : new Color(0.72f, 0.74f, 0.80f));
                 summonGradeLuckLabel.text = isMax
-                    ? "\uace0\ub4f1\uae09 \ud655\ub960  Lv.MAX  /  Epic+ +7%p"
-                    : "\uace0\ub4f1\uae09 \ud655\ub960  Lv." + level + "  /  Epic+ +" + level + "%p  \u2191 " + cost + "G";
+                    ? "\uace0\ub4f1\uae09 \ud655\ub960\nLv.MAX  |  Epic+ +7%p"
+                    : "\uace0\ub4f1\uae09 \ud655\ub960\nLv." + level + "  |  Epic+ +" + level + "%p\n" + cost + " GOLD";
             }
 
             if (summonGradeLuckInfoButton != null)
@@ -2197,7 +2197,7 @@ private void EnsureLight()
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(0f, 150f);
+            rect.anchoredPosition = new Vector2(-88f, 168f);
             rect.sizeDelta = new Vector2(570f, 154f);
             Image body = tooltip.GetComponent<Image>();
             body.color = new Color(0.04f, 0.10f, 0.25f, 0.97f);
