@@ -859,7 +859,7 @@ private void EnsureLight()
 			luckySummonProgress.resizeTextMaxSize = 17;
 			((Component)(object)luckySummonBadge).gameObject.SetActive(value: false);
 			Text ultimateRecipeHud = null;
-			Image buildReadoutPanel = CreatePanel(hudRoot, "BuildReadoutPanel", new Vector2(0f, 592f), new Vector2(920f, 96f), new Color(0.04f, 0.08f, 0.24f, 0.78f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
+			Image buildReadoutPanel = CreatePanel(hudRoot, "BuildReadoutPanel", new Vector2(0f, 630f), new Vector2(920f, 96f), new Color(0.04f, 0.08f, 0.24f, 0.78f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), rounded: true, shadow: true);
 			Text synergyInsight = CreateBuildInsightCell(((Component)(object)buildReadoutPanel).transform, font, "DangerInsight", "위험", new Vector2(-292f, 0f), new Color(1f, 0.48f, 0.3f));
 			Text recipeInsight = CreateBuildInsightCell(((Component)(object)buildReadoutPanel).transform, font, "ActionInsight", "추천 행동", Vector2.zero, new Color(0.36f, 0.92f, 1f));
 			Text tileInsight = CreateBuildInsightCell(((Component)(object)buildReadoutPanel).transform, font, "DealerInsight", "핵심 딜러", new Vector2(292f, 0f), new Color(1f, 0.76f, 0.26f));
@@ -1952,7 +1952,7 @@ private void EnsureLight()
             rootRect.anchorMin = new Vector2(0.5f, 0f);
             rootRect.anchorMax = new Vector2(0.5f, 0f);
             rootRect.pivot = new Vector2(0.5f, 0.5f);
-            rootRect.anchoredPosition = new Vector2(0f, 330f);
+            rootRect.anchoredPosition = new Vector2(0f, 470f);
             rootRect.sizeDelta = new Vector2(850f, 214f);
 
             Image background = root.AddComponent<Image>();
@@ -2004,13 +2004,14 @@ private void EnsureLight()
             luckRect.anchorMin = new Vector2(0.5f, 0.5f);
             luckRect.anchorMax = new Vector2(0.5f, 0.5f);
             luckRect.pivot = new Vector2(0.5f, 0.5f);
-            luckRect.anchoredPosition = new Vector2(-130f, 36f);
+            luckRect.anchoredPosition = new Vector2(-230f, 36f);
             luckRect.sizeDelta = new Vector2(350f, 84f);
             Image luckBody = luckObject.GetComponent<Image>();
             luckBody.color = new Color(0.14f, 0.10f, 0.28f, 0.98f);
             RuntimeUiSkinUtility.ApplyImageSkin(luckBody, skin, "GradeUpgradeButton", true, true);
             Text luckLabel = CreateText(luckObject.transform, font, "Label", Vector2.zero, new Vector2(304f, 72f), string.Empty, 17, Color.white);
             luckLabel.alignment = TextAnchor.MiddleCenter;
+            luckLabel.supportRichText = true;
             luckLabel.resizeTextForBestFit = true;
             luckLabel.resizeTextMinSize = 13;
             luckLabel.resizeTextMaxSize = 17;
@@ -2026,7 +2027,7 @@ private void EnsureLight()
             infoRect.anchorMin = new Vector2(0.5f, 0.5f);
             infoRect.anchorMax = new Vector2(0.5f, 0.5f);
             infoRect.pivot = new Vector2(0.5f, 0.5f);
-            infoRect.anchoredPosition = new Vector2(24f, 54f);
+            infoRect.anchoredPosition = new Vector2(-80f, 54f);
             infoRect.sizeDelta = new Vector2(34f, 34f);
             Image infoBody = infoObject.GetComponent<Image>();
             infoBody.color = new Color(0.16f, 0.54f, 0.82f, 0.98f);
@@ -2179,8 +2180,8 @@ private void EnsureLight()
                     : new Color(0.13f, 0.12f, 0.19f, 0.66f);
                 summonGradeLuckLabel.color = isMax ? new Color(0.94f, 0.82f, 1f) : (available ? Color.white : new Color(0.72f, 0.74f, 0.80f));
                 summonGradeLuckLabel.text = isMax
-                    ? "\uace0\ub4f1\uae09 \ud655\ub960\nLv.MAX  |  Epic+ +7%p"
-                    : "\uace0\ub4f1\uae09 \ud655\ub960\nLv." + level + "  |  Epic+ +" + level + "%p\n" + cost + " GOLD";
+                    ? "\uace0\ub4f1\uae09 \ud655\ub960\nLv.MAX  |  Epic+ +<color=#FFD84A>7</color>%p"
+                    : "\uace0\ub4f1\uae09 \ud655\ub960\nLv.<color=#FFD84A>" + level + "</color>  |  Epic+ +<color=#FFD84A>" + level + "</color>%p\n<color=#FFD84A>" + cost + "</color> GOLD";
             }
 
             if (summonGradeLuckInfoButton != null)
@@ -2198,19 +2199,17 @@ private void EnsureLight()
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = new Vector2(-88f, 168f);
-            rect.sizeDelta = new Vector2(570f, 154f);
+            rect.sizeDelta = new Vector2(620f, 210f);
             Image body = tooltip.GetComponent<Image>();
             body.color = new Color(0.04f, 0.10f, 0.25f, 0.97f);
             body.raycastTarget = false;
             RuntimeUiSkinUtility.ApplyImageSkin(body, skin, "InfoTooltip", false, true);
 
-            Text title = CreateText(tooltip.transform, font, "Title", new Vector2(0f, 49f), new Vector2(520f, 30f), "\uace0\ub4f1\uae09 \ud655\ub960 \uac15\ud654", 20, new Color(1f, 0.86f, 0.32f));
+            Text title = CreateText(tooltip.transform, font, "Title", new Vector2(0f, 73f), new Vector2(570f, 38f), "\uace0\ub4f1\uae09 \ud655\ub960 \uac15\ud654", 23, new Color(1f, 0.86f, 0.32f));
             title.alignment = TextAnchor.MiddleCenter;
-            Text bodyText = CreateText(tooltip.transform, font, "Body", new Vector2(0f, -17f), new Vector2(520f, 86f), "\uc77c\ubc18 \uc18c\ud658\uc5d0\uc11c\ub9cc \uc801\uc6a9\n\ub808\ubca8\ub2f9 \uc5d0\ud53d \uc774\uc0c1 \ub4f1\uc7a5 \ud655\ub960 +1%p\n\uace0\ub4f1\uae09 \ub4f1\uc7a5 \ub2e8\uacc4\ubd80\ud130 \uc801\uc6a9\n\ud2b9\uc218 \uc18c\ud658\u00b7\uc0c1\uc810\u00b7\ub808\uc2dc\ud53c\u00b7\ubcf4\uc0c1 \uc18c\ud658\uc5d0\ub294 \ubbf8\uc801\uc6a9", 15, new Color(0.88f, 0.94f, 1f));
+            Text bodyText = CreateText(tooltip.transform, font, "Body", new Vector2(0f, -24f), new Vector2(570f, 126f), "\uc77c\ubc18 \uc18c\ud658\uc5d0\uc11c\ub9cc \uc801\uc6a9\n\ub808\ubca8\ub2f9 \uc5d0\ud53d \uc774\uc0c1 \ub4f1\uc7a5 \ud655\ub960 +1%p\n\uace0\ub4f1\uae09 \ub4f1\uc7a5 \ub2e8\uacc4\ubd80\ud130 \uc801\uc6a9\n\ud2b9\uc218 \uc18c\ud658\u00b7\uc0c1\uc810\u00b7\ub808\uc2dc\ud53c\u00b7\ubcf4\uc0c1 \uc18c\ud658\uc5d0\ub294 \ubbf8\uc801\uc6a9", 20, new Color(0.88f, 0.94f, 1f));
             bodyText.alignment = TextAnchor.MiddleCenter;
-            bodyText.resizeTextForBestFit = true;
-            bodyText.resizeTextMinSize = 12;
-            bodyText.resizeTextMaxSize = 15;
+            bodyText.resizeTextForBestFit = false;
             tooltip.SetActive(false);
             return tooltip;
         }

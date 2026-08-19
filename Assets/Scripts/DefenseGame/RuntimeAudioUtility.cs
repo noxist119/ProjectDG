@@ -20,6 +20,15 @@ namespace DefenseGame
         private static readonly Dictionary<string, AudioClip> ClipCache = new Dictionary<string, AudioClip>();
         private static readonly Dictionary<string, float> LastPlayedTimes = new Dictionary<string, float>();
         private static AudioSource sfxSource;
+        // Smoke-observable request counts verify success feedback routing without adding audio assets.
+        public static int ButtonPlayRequestCount { get; private set; }
+        public static int DiceAppearPlayRequestCount { get; private set; }
+
+        public static void ResetPlayRequestCountsForSmoke()
+        {
+            ButtonPlayRequestCount = 0;
+            DiceAppearPlayRequestCount = 0;
+        }
 
         // Static Unity object references can survive editor play-session transitions
         // when domain reload is disabled. Each session starts with fresh handles.
@@ -29,10 +38,20 @@ namespace DefenseGame
             ClipCache.Clear();
             LastPlayedTimes.Clear();
             sfxSource = null;
+            ResetPlayRequestCountsForSmoke();
         }
 
-        public static void PlayButton() => Play(ButtonClip, 0.72f, 0.035f);
-        public static void PlayDiceAppear() => Play(DiceAppearClip, 0.82f, 0.06f);
+        public static void PlayButton()
+        {
+            ButtonPlayRequestCount++;
+            Play(ButtonClip, 0.72f, 0.035f);
+        }
+
+        public static void PlayDiceAppear()
+        {
+            DiceAppearPlayRequestCount++;
+            Play(DiceAppearClip, 0.82f, 0.06f);
+        }
         public static void PlayReroll() => Play(RerollClip, 0.78f, 0.08f);
         public static void PlayMatching() => Play(MatchingClip, 0.64f, 0.45f);
         public static void PlayVictory() => Play(VictoryClip, 0.82f, 0.60f);

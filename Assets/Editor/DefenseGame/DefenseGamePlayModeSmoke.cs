@@ -315,9 +315,10 @@ namespace DefenseGame.Editor
             bool boardCapacityPacingValid = ValidateBoardCapacityPacing(out string boardCapacityPacingSummary);
             bool pass1DGradeRulesValid = ValidatePass1DGradeUpgradeRules(controller);
             bool pass1DPressureValid = ValidatePass1DPressureRules();
-            bool pass2OCombatHudLayoutValid = ValidatePass2OCombatHudLayout(controller);
-            bool gradeUpgradeBarUiValid = pass2OCombatHudLayoutValid;
-            bool pass2NCombatEconomyUiValid = pass2OCombatHudLayoutValid;
+            bool pass2PCombatHudFeedbackPolishValid = ValidatePass2PCombatHudFeedbackPolish(controller);
+            bool pass2OCombatHudLayoutValid = pass2PCombatHudFeedbackPolishValid;
+            bool gradeUpgradeBarUiValid = pass2PCombatHudFeedbackPolishValid;
+            bool pass2NCombatEconomyUiValid = pass2PCombatHudFeedbackPolishValid;
             bool pass2MSummonGradeLuckValid = ValidatePass2MSummonGradeLuck(controller);
             bool pass1EMilestoneValid = ValidatePass1EMilestoneRules(controller, out string pass1EMilestoneSummary);
             if (!pass1DGradeRulesValid || !pass1DPressureValid || !gradeUpgradeBarUiValid || !pass1EMilestoneValid)
@@ -870,7 +871,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -943,6 +944,7 @@ namespace DefenseGame.Editor
                 pass2MSummonGradeLuckValid = pass2MSummonGradeLuckValid,
                 pass2NCombatEconomyUiValid = pass2NCombatEconomyUiValid,
                 pass2OCombatHudLayoutValid = pass2OCombatHudLayoutValid,
+                pass2PCombatHudFeedbackPolishValid = pass2PCombatHudFeedbackPolishValid,
                 pass1EMilestoneValid = pass1EMilestoneValid,
                 pass1EMilestoneSummary = pass1EMilestoneSummary,
                 pass2BPreparationSkipValid = pass2BPreparationSkipValid,
@@ -1632,11 +1634,12 @@ namespace DefenseGame.Editor
                 UnityEngine.Object.DestroyImmediate(resultObject);
             }
         }
-        private static bool ValidatePass2OCombatHudLayout(DefenseGameController controller)
+        private static bool ValidatePass2PCombatHudFeedbackPolish(DefenseGameController controller)
         {
             GameObject root = UnityEngine.Object.FindObjectsOfType<Transform>(true)
                 .FirstOrDefault(transform => transform != null && transform.name == "GradeUpgradeBar")?.gameObject;
             CanvasGroup canvasGroup = root != null ? root.GetComponent<CanvasGroup>() : null;
+            RectTransform rootRect = root != null ? root.GetComponent<RectTransform>() : null;
             Button[] gradeButtons = root != null
                 ? root.GetComponentsInChildren<Button>(true).Where(button => button != null && button.name.StartsWith("GradeUpgrade_")).ToArray()
                 : Array.Empty<Button>();
@@ -1644,7 +1647,13 @@ namespace DefenseGame.Editor
             Button infoButton = root != null ? root.GetComponentsInChildren<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonGradeLuckInfoButton") : null;
             Transform tooltip = root != null ? root.transform.Find("SummonGradeLuckInfoTooltip") : null;
             RectTransform luckRect = luckButton != null ? luckButton.GetComponent<RectTransform>() : null;
+            RectTransform infoRect = infoButton != null ? infoButton.GetComponent<RectTransform>() : null;
             Text luckLabel = luckButton != null ? luckButton.GetComponentInChildren<Text>(true) : null;
+            Text tooltipTitle = tooltip != null ? tooltip.Find("Title")?.GetComponent<Text>() : null;
+            Text tooltipBody = tooltip != null ? tooltip.Find("Body")?.GetComponent<Text>() : null;
+            RectTransform tooltipRect = tooltip != null ? tooltip.GetComponent<RectTransform>() : null;
+            RectTransform buildReadoutRect = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                .FirstOrDefault(transform => transform != null && transform.name == "BuildReadoutPanel")?.GetComponent<RectTransform>();
             Button fateEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
                 .FirstOrDefault(button => button != null && button.name == "FatePanelReopenButton");
             RectTransform fateEntryRect = fateEntryButton != null ? fateEntryButton.GetComponent<RectTransform>() : null;
@@ -1657,8 +1666,9 @@ namespace DefenseGame.Editor
             FieldInfo goldField = typeof(DefenseGameController).GetField("<Gold>k__BackingField", Flags);
             MethodInfo notify = typeof(DefenseGameController).GetMethod("NotifyStateChanged", Flags);
             RoundManager rounds = controller != null && roundField != null ? roundField.GetValue(controller) as RoundManager : null;
-            if (controller == null || canvasGroup == null || gradeButtons.Length != 6 || luckButton == null || luckRect == null || luckLabel == null || infoButton == null || tooltip == null || fateEntryButton == null || fateEntryRect == null ||
-                rounds == null || roundRunningField == null || goldField == null || notify == null)
+            if (controller == null || canvasGroup == null || rootRect == null || gradeButtons.Length != 6 || luckButton == null || luckRect == null ||
+                luckLabel == null || infoButton == null || infoRect == null || tooltip == null || tooltipRect == null || tooltipTitle == null || tooltipBody == null ||
+                buildReadoutRect == null || fateEntryButton == null || fateEntryRect == null || rounds == null || roundRunningField == null || goldField == null || notify == null)
             {
                 return false;
             }
@@ -1667,45 +1677,68 @@ namespace DefenseGame.Editor
             int originalGold = controller.Gold;
             try
             {
+                controller.ResetRunForRetry();
                 goldField.SetValue(controller, 10000);
                 roundRunningField.SetValue(rounds, false);
                 notify.Invoke(controller, null);
+
+                bool exactLayout = Approximately(buildReadoutRect.anchoredPosition.y, 630f) &&
+                                   Approximately(rootRect.anchoredPosition.x, 0f) && Approximately(rootRect.anchoredPosition.y, 470f) &&
+                                   Approximately(luckRect.anchoredPosition.x, -230f) && Approximately(infoRect.anchoredPosition.x, -80f);
                 bool preparationVisible = root.activeInHierarchy && luckButton.gameObject.activeInHierarchy &&
                                           Approximately(canvasGroup.alpha, 1f) && canvasGroup.blocksRaycasts && canvasGroup.interactable &&
                                           gradeButtons.All(button => button.interactable) && luckButton.interactable && infoButton.interactable;
+                bool tooltipReadable = tooltipTitle.fontSize == 23 && tooltipBody.fontSize == 20 &&
+                                       !tooltipTitle.resizeTextForBestFit && !tooltipBody.resizeTextForBestFit &&
+                                       tooltipRect.sizeDelta.x >= 620f && tooltipRect.sizeDelta.y >= 210f &&
+                                       tooltipTitle.rectTransform.sizeDelta.y >= 38f && tooltipBody.rectTransform.sizeDelta.y >= 126f;
+                bool initialNumericEmphasis = luckLabel.supportRichText &&
+                                              luckLabel.text.Contains("<color=#FFD84A>0</color>") &&
+                                              luckLabel.text.Contains("<color=#FFD84A>50</color> GOLD");
 
-                goldField.SetValue(controller, 0);
-                notify.Invoke(controller, null);
-                bool visibleWithInsufficientGold = luckButton.gameObject.activeInHierarchy && !luckButton.interactable;
-
-                goldField.SetValue(controller, 10000);
-                notify.Invoke(controller, null);
+                infoButton.onClick.Invoke();
+                bool tooltipOpens = tooltip.gameObject.activeSelf;
+                infoButton.onClick.Invoke();
+                bool tooltipCloses = !tooltip.gameObject.activeSelf;
 
                 roundRunningField.SetValue(rounds, true);
                 notify.Invoke(controller, null);
                 bool combatVisibleAndInteractive = Approximately(canvasGroup.alpha, 1f) && canvasGroup.blocksRaycasts && canvasGroup.interactable &&
                                                   gradeButtons.All(button => button.interactable) && luckButton.interactable && infoButton.interactable;
 
+                RuntimeAudioUtility.ResetPlayRequestCountsForSmoke();
+                int gradeGoldBefore = controller.Gold;
+                gradeButtons[0].onClick.Invoke();
+                bool gradeSuccessAudio = controller.GetGradeUpgradeLevel(CharacterGrade.Normal) == 1 &&
+                                         controller.Gold == gradeGoldBefore - DefenseGameController.ResolveGradeUpgradeCost(CharacterGrade.Normal, 0) &&
+                                         RuntimeAudioUtility.ButtonPlayRequestCount == 1 && RuntimeAudioUtility.DiceAppearPlayRequestCount == 1;
+                goldField.SetValue(controller, 0);
+                notify.Invoke(controller, null);
+                gradeButtons[0].onClick.Invoke();
+                bool gradeRejectSilent = RuntimeAudioUtility.ButtonPlayRequestCount == 1 && RuntimeAudioUtility.DiceAppearPlayRequestCount == 1;
+
+                controller.ResetRunForRetry();
+                goldField.SetValue(controller, 10000);
+                roundRunningField.SetValue(rounds, true);
+                notify.Invoke(controller, null);
+                RuntimeAudioUtility.ResetPlayRequestCountsForSmoke();
                 int luckGoldBefore = controller.Gold;
                 luckButton.onClick.Invoke();
-                bool combatLuckPurchase = controller.SummonGradeLuckLevel == 1 && controller.Gold == luckGoldBefore - 50 &&
-                                          luckLabel.text.Contains("Lv.1") && luckLabel.text.Contains("100 GOLD");
+                bool luckSuccessAudio = controller.SummonGradeLuckLevel == 1 && controller.Gold == luckGoldBefore - 50 &&
+                                        RuntimeAudioUtility.ButtonPlayRequestCount == 1 && RuntimeAudioUtility.DiceAppearPlayRequestCount == 0;
+                bool updatedNumericEmphasis = luckLabel.text.Contains("<color=#FFD84A>1</color>") &&
+                                              luckLabel.text.Contains("<color=#FFD84A>100</color> GOLD");
                 bool fateDoesNotOverlapEconomy = !HasMajorRectOverlap(fateEntryRect, luckRect) &&
                                                   gradeButtons.All(button => !HasMajorRectOverlap(fateEntryRect, button.GetComponent<RectTransform>()));
                 bool fateIndependentAction = fateEntryButton.gameObject != root && fateEntryButton.transform.parent != root.transform;
 
-                infoButton.onClick.Invoke();
-                bool tooltipOpens = tooltip.gameObject.activeSelf;
-                controller.ResetRunForRetry();
-                bool tooltipClosesOnReset = !tooltip.gameObject.activeSelf && controller.SummonGradeLuckLevel == 0;
-
-                return baseHudRemoved && preparationVisible && visibleWithInsufficientGold && combatVisibleAndInteractive &&
-                       luckRect.sizeDelta.x >= 340f && luckRect.sizeDelta.y >= 80f &&
-                       luckLabel.text.Contains("\uace0\ub4f1\uae09 \ud655\ub960") && combatLuckPurchase &&
-                       fateDoesNotOverlapEconomy && fateIndependentAction && tooltipOpens && tooltipClosesOnReset;
+                return baseHudRemoved && exactLayout && preparationVisible && tooltipReadable && initialNumericEmphasis && tooltipOpens && tooltipCloses &&
+                       combatVisibleAndInteractive && gradeSuccessAudio && gradeRejectSilent && luckSuccessAudio && updatedNumericEmphasis &&
+                       fateDoesNotOverlapEconomy && fateIndependentAction;
             }
             finally
             {
+                controller.ResetRunForRetry();
                 roundRunningField.SetValue(rounds, originalRunning);
                 goldField.SetValue(controller, originalGold);
                 notify.Invoke(controller, null);
@@ -2599,6 +2632,7 @@ namespace DefenseGame.Editor
             public bool pass2MSummonGradeLuckValid;
             public bool pass2NCombatEconomyUiValid;
             public bool pass2OCombatHudLayoutValid;
+            public bool pass2PCombatHudFeedbackPolishValid;
             public bool pass1EMilestoneValid;
             public string pass1EMilestoneSummary;
             public bool pass2BPreparationSkipValid;

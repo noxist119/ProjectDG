@@ -643,6 +643,7 @@ namespace DefenseGame
             int cost = GetSummonGradeLuckCost();
             Gold -= cost;
             summonGradeLuckLevel = Mathf.Min(SummonGradeLuckMaxLevel, summonGradeLuckLevel + 1);
+            RuntimeAudioUtility.PlayButton();
             OnBannerRequested?.Invoke("\uc18c\ud658 \ub4f1\uae09 \ud589\uc6b4 Lv." + SummonGradeLuckLevel + "  Epic+ +" + SummonGradeLuckLevel + "%p", new Color(0.74f, 0.62f, 1f), 1.8f);
             NotifyStateChanged();
             return true;
@@ -729,6 +730,8 @@ namespace DefenseGame
             }
 
             string gradeName = CharacterGradeUtility.GetDisplayName(grade);
+            RuntimeAudioUtility.PlayButton();
+            RuntimeAudioUtility.PlayDiceAppear();
             OnBannerRequested?.Invoke(gradeName + " \uac15\ud654 Lv." + level + "  \uacf5\uaca9\ub825 +" + (level * 8) + "% / \uccb4\ub825 +" + (level * 5) + "%", CharacterGradeUtility.GetColor(grade, Color.white), 1.8f);
             NotifyStateChanged();
             return true;
