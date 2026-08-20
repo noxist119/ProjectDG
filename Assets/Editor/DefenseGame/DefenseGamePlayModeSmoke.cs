@@ -316,6 +316,10 @@ namespace DefenseGame.Editor
             bool pass1DGradeRulesValid = ValidatePass1DGradeUpgradeRules(controller);
             bool pass1DPressureValid = ValidatePass1DPressureRules();
             bool pass2PCombatHudFeedbackPolishValid = ValidatePass2PCombatHudFeedbackPolish(controller);
+            bool pass2PPostRoundNoActionValid = ValidatePass2PPostRoundNoActionProgression(controller, out string pass2PPostRoundNoActionSummary);
+            bool pass2PRunLifecycleValid = ValidatePass2PRunLifecycle(controller, out string pass2PRunLifecycleSummary);
+            bool pass2PMenuPauseLifecycleValid = ValidatePass2PMenuPauseLifecycle(controller, out string pass2PMenuPauseLifecycleSummary);
+            bool topFullBleedBackdropValid = ValidateTopFullBleedBackdrop();
             bool pass2OCombatHudLayoutValid = pass2PCombatHudFeedbackPolishValid;
             bool gradeUpgradeBarUiValid = pass2PCombatHudFeedbackPolishValid;
             bool pass2NCombatEconomyUiValid = pass2PCombatHudFeedbackPolishValid;
@@ -332,6 +336,10 @@ namespace DefenseGame.Editor
             if (!pass2NCombatEconomyUiValid)
             {
                 notes.Add("Pass 2N/2O combat economy HUD layout, combat purchase, or Info tooltip validation failed.");
+            }
+            if (!pass2PPostRoundNoActionValid || !pass2PRunLifecycleValid || !pass2PMenuPauseLifecycleValid || !topFullBleedBackdropValid)
+            {
+                notes.Add("Pass 2P post-round/UI lifecycle validation failed. postRound=" + pass2PPostRoundNoActionSummary + ", rng=" + pass2PRunLifecycleSummary + ", pause=" + pass2PMenuPauseLifecycleSummary + ", topBleed=" + topFullBleedBackdropValid);
             }
             if (!screenSpaceCombatHudValid || !dragTransactionSafetyValid || !dragCombatSuspensionValid || !boardCapacityPacingValid)
             {
@@ -871,7 +879,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -945,6 +953,13 @@ namespace DefenseGame.Editor
                 pass2NCombatEconomyUiValid = pass2NCombatEconomyUiValid,
                 pass2OCombatHudLayoutValid = pass2OCombatHudLayoutValid,
                 pass2PCombatHudFeedbackPolishValid = pass2PCombatHudFeedbackPolishValid,
+                pass2PPostRoundNoActionValid = pass2PPostRoundNoActionValid,
+                pass2PPostRoundNoActionSummary = pass2PPostRoundNoActionSummary,
+                pass2PRunLifecycleValid = pass2PRunLifecycleValid,
+                pass2PRunLifecycleSummary = pass2PRunLifecycleSummary,
+                pass2PMenuPauseLifecycleValid = pass2PMenuPauseLifecycleValid,
+                pass2PMenuPauseLifecycleSummary = pass2PMenuPauseLifecycleSummary,
+                topFullBleedBackdropValid = topFullBleedBackdropValid,
                 pass1EMilestoneValid = pass1EMilestoneValid,
                 pass1EMilestoneSummary = pass1EMilestoneSummary,
                 pass2BPreparationSkipValid = pass2BPreparationSkipValid,
@@ -1742,6 +1757,258 @@ namespace DefenseGame.Editor
                 roundRunningField.SetValue(rounds, originalRunning);
                 goldField.SetValue(controller, originalGold);
                 notify.Invoke(controller, null);
+            }
+        }
+        private static bool ValidateTopFullBleedBackdrop()
+        {
+            Image backdrop = UnityEngine.Object.FindObjectsOfType<Image>(true)
+                .FirstOrDefault(image => image != null && image.name == "TopFullBleedBackdrop");
+            RectTransform rect = backdrop != null ? backdrop.rectTransform : null;
+            return rect != null && Approximately(rect.anchorMin, new Vector2(0f, 1f)) &&
+                   Approximately(rect.anchorMax, new Vector2(1f, 1f)) &&
+                   rect.sizeDelta.y >= 160f && backdrop.color.a >= 0.99f && !backdrop.raycastTarget;
+        }
+
+        private static bool CompleteRoundThroughResultContinue(DefenseGameController controller, RoundManager rounds, Button resultContinueButton, int expectedRound)
+        {
+            if (controller == null || rounds == null || resultContinueButton == null || !controller.IsRoundRunning || controller.CurrentRound != expectedRound)
+            {
+                return false;
+            }
+
+            rounds.CompleteCurrentRoundForDebug();
+            resultContinueButton.onClick.Invoke();
+            return !controller.IsRoundRunning && controller.CurrentRound == expectedRound;
+        }
+
+        private static bool ValidatePass2PPostRoundNoActionProgression(DefenseGameController controller, out string summary)
+        {
+            RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
+            Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
+            Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "BattleButton");
+            Button resultContinueButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "ResultContinueButton");
+            GameObject forecastOverlay = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                .FirstOrDefault(transform => transform != null && transform.name == "BossForecastBetOverlay")?.gameObject;
+            Button forecastChoice = forecastOverlay != null
+                ? forecastOverlay.GetComponentsInChildren<Button>(true).FirstOrDefault(button => button != null && button.name == "BossForecastChoice_0")
+                : null;
+            CanvasGroup forecastCanvasGroup = forecastOverlay != null ? forecastOverlay.GetComponent<CanvasGroup>() : null;
+            if (controller == null || rounds == null || lobbyNavigationButton == null || lobbyEntryButton == null || battleButton == null ||
+                resultContinueButton == null || forecastOverlay == null || forecastChoice == null || forecastCanvasGroup == null)
+            {
+                summary = "ui_reference_missing";
+                return false;
+            }
+
+            int postR3PlayerSummons = 0;
+            Action<CharacterDefinition> playerSummonHandler = definition => postR3PlayerSummons++;
+            controller.OnPlayerSummoned += playerSummonHandler;
+            try
+            {
+                controller.TrySetDailyFateCupEnabled(false);
+                controller.TrySetCombatMode(CombatGameMode.Overdrive);
+                controller.ResetRunForRetry();
+                lobbyNavigationButton.onClick.Invoke();
+                lobbyEntryButton.onClick.Invoke();
+
+                battleButton.onClick.Invoke();
+                bool r1Started = controller.CurrentRound == 1 && controller.IsRoundRunning;
+                bool r1Completed = CompleteRoundThroughResultContinue(controller, rounds, resultContinueButton, 1);
+                bool r1Ready = r1Completed && controller.BlockingChoiceReason == "None" && battleButton.interactable;
+
+                battleButton.onClick.Invoke();
+                bool r2Started = controller.CurrentRound == 2 && controller.IsRoundRunning;
+                bool r2Completed = CompleteRoundThroughResultContinue(controller, rounds, resultContinueButton, 2);
+                bool r2Ready = r2Completed && controller.BlockingChoiceReason == "None" && battleButton.interactable;
+
+                battleButton.onClick.Invoke();
+                bool r3Started = controller.CurrentRound == 3 && controller.IsRoundRunning;
+                bool r3Completed = CompleteRoundThroughResultContinue(controller, rounds, resultContinueButton, 3);
+                int boardCountBeforeForecast = controller.BoardUnitCount;
+                bool forecastBlocks = r3Completed && !controller.IsRoundRunning && controller.CurrentRound == 3 &&
+                                      controller.CanChooseBossForecastBet && controller.BlockingChoiceReason == "BossForecast";
+                bool forecastVisible = forecastBlocks && forecastOverlay.activeInHierarchy && forecastCanvasGroup.alpha > 0f &&
+                                       forecastCanvasGroup.blocksRaycasts && forecastCanvasGroup.interactable && forecastChoice.interactable;
+
+                forecastChoice.onClick.Invoke();
+                bool forecastResolved = !controller.CanChooseBossForecastBet && controller.BlockingChoiceReason == "None" && battleButton.interactable;
+                battleButton.onClick.Invoke();
+                int boardCountAfterForecast = controller.BoardUnitCount;
+                bool r4StartedWithoutAction = forecastResolved && controller.CurrentRound == 4 && controller.IsRoundRunning &&
+                                               postR3PlayerSummons == 0;
+
+                bool r4Completed = CompleteRoundThroughResultContinue(controller, rounds, resultContinueButton, 4);
+                string r4Blocker = controller.BlockingChoiceReason;
+                bool r4Ready = r4Completed && r4Blocker == "None" && battleButton.interactable;
+                battleButton.onClick.Invoke();
+                bool r5StartedWithoutAction = r4Ready && controller.CurrentRound == 5 && controller.IsRoundRunning && postR3PlayerSummons == 0;
+
+                summary = "r1=" + r1Started + "/" + r1Ready +
+                          ", r2=" + r2Started + "/" + r2Ready +
+                          ", r3=" + r3Started + "/" + forecastVisible + "/" + forecastResolved +
+                          ", r4=" + r4StartedWithoutAction + "/" + r4Completed + "/blocker=" + r4Blocker +
+                          ", r5=" + r5StartedWithoutAction + ", boardBeforeForecast=" + boardCountBeforeForecast + ", boardAfterForecast=" + boardCountAfterForecast + ", postR3PlayerSummons=" + postR3PlayerSummons;
+                return r1Started && r1Ready && r2Started && r2Ready && r3Started && forecastVisible && forecastResolved &&
+                       r4StartedWithoutAction && r4Completed && r4Ready && r5StartedWithoutAction && postR3PlayerSummons == 0;
+            }
+            finally
+            {
+                controller.OnPlayerSummoned -= playerSummonHandler;
+                controller.ResetRunForRetry();
+                lobbyNavigationButton.onClick.Invoke();
+            }
+        }
+
+        private static int[] ReadSummonRandomPrefix(DefenseGameController controller)
+        {
+            return new[]
+            {
+                controller.RunContentRandom.Range(RunContentRandomChannel.Summon, 0, 1000000, "smoke.lifecycle.0"),
+                controller.RunContentRandom.Range(RunContentRandomChannel.Summon, 0, 1000000, "smoke.lifecycle.1"),
+                controller.RunContentRandom.Range(RunContentRandomChannel.Summon, 0, 1000000, "smoke.lifecycle.2")
+            };
+        }
+
+        private static bool ValidatePass2PRunLifecycle(DefenseGameController controller, out string summary)
+        {
+            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo dailyField = typeof(DefenseGameController).GetField("dailyFateCupEnabled", Flags);
+            FieldInfo overrideEnabledField = typeof(DefenseGameController).GetField("runContentSeedOverrideEnabled", Flags);
+            FieldInfo overrideSeedField = typeof(DefenseGameController).GetField("runContentSeedOverride", Flags);
+            if (controller == null || dailyField == null || overrideEnabledField == null || overrideSeedField == null)
+            {
+                summary = "rng_reflection_missing";
+                return false;
+            }
+
+            bool originalDaily = (bool)dailyField.GetValue(controller);
+            bool originalOverrideEnabled = (bool)overrideEnabledField.GetValue(controller);
+            int originalOverrideSeed = (int)overrideSeedField.GetValue(controller);
+            try
+            {
+                dailyField.SetValue(controller, false);
+                controller.SetRunContentSeedOverride(null);
+                controller.ResetRunForRetry();
+                int ordinaryFirstSeed = controller.ActiveRunContentSeed;
+                int[] ordinaryFirst = ReadSummonRandomPrefix(controller);
+                controller.ResetRunForRetry();
+                int retrySeed = controller.ActiveRunContentSeed;
+                controller.ExitToOutgame();
+                int exitSeed = controller.ActiveRunContentSeed;
+                controller.ResetRunForRetry();
+                int newRunSeed = controller.ActiveRunContentSeed;
+
+                controller.SetRunContentSeedOverride(713579);
+                controller.ResetRunForRetry();
+                int[] overrideFirst = ReadSummonRandomPrefix(controller);
+                controller.ResetRunForRetry();
+                int[] overrideSecond = ReadSummonRandomPrefix(controller);
+
+                dailyField.SetValue(controller, true);
+                controller.SetRunContentSeedOverride(null);
+                controller.ResetRunForRetry();
+                int dailySeed = controller.ActiveRunContentSeed;
+                int[] dailyFirst = ReadSummonRandomPrefix(controller);
+                controller.ResetRunForRetry();
+                int[] dailySecond = ReadSummonRandomPrefix(controller);
+
+                bool ordinarySeedsFresh = ordinaryFirstSeed != 0 && retrySeed != 0 && exitSeed != 0 && newRunSeed != 0 &&
+                                          ordinaryFirstSeed != retrySeed && retrySeed != exitSeed && exitSeed != newRunSeed;
+                bool overrideDeterministic = overrideFirst.SequenceEqual(overrideSecond);
+                bool dailyDeterministic = dailySeed == controller.DailyFateCupSeed && dailyFirst.SequenceEqual(dailySecond);
+                summary = "ordinary=" + ordinaryFirstSeed + "/retry=" + retrySeed + "/exit=" + exitSeed + "/new=" + newRunSeed +
+                          ", override=" + overrideDeterministic + ", daily=" + dailyDeterministic + ", ordinaryPrefixDraws=" + ordinaryFirst.Length;
+                return ordinarySeedsFresh && overrideDeterministic && dailyDeterministic;
+            }
+            finally
+            {
+                dailyField.SetValue(controller, originalDaily);
+                controller.SetRunContentSeedOverride(originalOverrideEnabled ? originalOverrideSeed : (int?)null);
+                controller.ResetRunForRetry();
+            }
+        }
+
+        private static bool ValidatePass2PMenuPauseLifecycle(DefenseGameController controller, out string summary)
+        {
+            RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            Button optionsButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "OptionsButton");
+            GameObject optionsMenu = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                .FirstOrDefault(transform => transform != null && transform.name == "OptionsMenu")?.gameObject;
+            Button lobbyButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "LobbyButton");
+            GameObject exitOverlay = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                .FirstOrDefault(transform => transform != null && transform.name == "ExitConfirmOverlay")?.gameObject;
+            Button exitContinueButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "ExitConfirmContinueButton");
+            Button exitLeaveButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                .FirstOrDefault(button => button != null && button.name == "ExitConfirmLeaveButton");
+            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo baselineCapturedField = typeof(RoundManager).GetField("combatSpeedBaselineCaptured", Flags);
+            FieldInfo baselineTimeField = typeof(RoundManager).GetField("combatSpeedBaselineTimeScale", Flags);
+            FieldInfo baselineFixedField = typeof(RoundManager).GetField("combatSpeedBaselineFixedDeltaTime", Flags);
+            FieldInfo appliedTimeField = typeof(RoundManager).GetField("combatSpeedAppliedTimeScale", Flags);
+            if (controller == null || rounds == null || optionsButton == null || optionsMenu == null || lobbyButton == null || exitOverlay == null ||
+                exitContinueButton == null || exitLeaveButton == null || baselineCapturedField == null || baselineTimeField == null || baselineFixedField == null || appliedTimeField == null)
+            {
+                summary = "menu_pause_ui_missing";
+                return false;
+            }
+
+            float originalTimeScale = Time.timeScale;
+            float originalFixedDeltaTime = Time.fixedDeltaTime;
+            try
+            {
+                optionsMenu.SetActive(false);
+                Time.timeScale = 1f;
+                Time.fixedDeltaTime = 0.02f;
+                optionsButton.onClick.Invoke();
+                bool hamburgerOneX = optionsMenu.activeSelf && Approximately(Time.timeScale, 1f) && Approximately(Time.fixedDeltaTime, 0.02f);
+                optionsButton.onClick.Invoke();
+
+                Time.timeScale = 2f;
+                Time.fixedDeltaTime = 0.04f;
+                optionsButton.onClick.Invoke();
+                bool hamburgerTwoX = optionsMenu.activeSelf && Approximately(Time.timeScale, 2f) && Approximately(Time.fixedDeltaTime, 0.04f);
+                lobbyButton.onClick.Invoke();
+                bool pausedAtTwoX = exitOverlay.activeInHierarchy && Approximately(Time.timeScale, 0f);
+                exitContinueButton.onClick.Invoke();
+                bool continueRestoresTwoX = !exitOverlay.activeInHierarchy && Approximately(Time.timeScale, 2f) && Approximately(Time.fixedDeltaTime, 0.04f);
+
+                Time.timeScale = 1f;
+                Time.fixedDeltaTime = 0.02f;
+                optionsMenu.SetActive(true);
+                lobbyButton.onClick.Invoke();
+                bool pausedAtOneX = exitOverlay.activeInHierarchy && Approximately(Time.timeScale, 0f);
+                exitContinueButton.onClick.Invoke();
+                bool continueRestoresOneX = !exitOverlay.activeInHierarchy && Approximately(Time.timeScale, 1f) && Approximately(Time.fixedDeltaTime, 0.02f);
+
+                baselineCapturedField.SetValue(rounds, true);
+                baselineTimeField.SetValue(rounds, 1f);
+                baselineFixedField.SetValue(rounds, 0.02f);
+                appliedTimeField.SetValue(rounds, 2f);
+                Time.timeScale = 2f;
+                Time.fixedDeltaTime = 0.04f;
+                optionsMenu.SetActive(true);
+                lobbyButton.onClick.Invoke();
+                bool confirmPaused = exitOverlay.activeInHierarchy && Approximately(Time.timeScale, 0f);
+                exitLeaveButton.onClick.Invoke();
+                bool exitRestoresFreshRunTime = !exitOverlay.activeInHierarchy && Approximately(Time.timeScale, 1f) && Approximately(Time.fixedDeltaTime, 0.02f);
+
+                summary = "hamburger1=" + hamburgerOneX + ", hamburger2=" + hamburgerTwoX + ", continue1=" + continueRestoresOneX +
+                          ", continue2=" + continueRestoresTwoX + ", confirmPaused=" + confirmPaused + ", exitFresh=" + exitRestoresFreshRunTime;
+                return hamburgerOneX && hamburgerTwoX && pausedAtTwoX && continueRestoresTwoX && pausedAtOneX && continueRestoresOneX && confirmPaused && exitRestoresFreshRunTime;
+            }
+            finally
+            {
+                controller.SetCombatTimeAccelerationUiPaused(false);
+                Time.timeScale = originalTimeScale;
+                Time.fixedDeltaTime = originalFixedDeltaTime;
             }
         }
         private static bool HasMajorRectOverlap(RectTransform first, RectTransform second)
@@ -2633,6 +2900,13 @@ namespace DefenseGame.Editor
             public bool pass2NCombatEconomyUiValid;
             public bool pass2OCombatHudLayoutValid;
             public bool pass2PCombatHudFeedbackPolishValid;
+            public bool pass2PPostRoundNoActionValid;
+            public string pass2PPostRoundNoActionSummary;
+            public bool pass2PRunLifecycleValid;
+            public string pass2PRunLifecycleSummary;
+            public bool pass2PMenuPauseLifecycleValid;
+            public string pass2PMenuPauseLifecycleSummary;
+            public bool topFullBleedBackdropValid;
             public bool pass1EMilestoneValid;
             public string pass1EMilestoneSummary;
             public bool pass2BPreparationSkipValid;

@@ -1831,6 +1831,10 @@ namespace DefenseGame
                 {
                     augmentManager?.OpenPendingChoice();
                 }
+                else if (blockingChoiceReason == "BossForecast")
+                {
+                    OnBossForecastBetRequested?.Invoke();
+                }
 
                 RequestBanner("\uC120\uD0DD\uC744 \uC644\uB8CC\uD55C \uD6C4 \uB2E4\uC74C \uB77C\uC6B4\uB4DC\uB97C \uC2DC\uC791\uD558\uC138\uC694. (" + blockingChoiceReason + ")", new Color(0.52f, 0.90f, 1f), 2.0f);
                 return;

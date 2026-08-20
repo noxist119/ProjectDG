@@ -250,18 +250,32 @@ namespace DefenseGame
 
 		private void HandleStateChanged()
 		{
-			if (!gameObject.activeSelf)
+			if (gameController == null)
 			{
+				if (gameObject.activeSelf)
+				{
+					gameObject.SetActive(false);
+				}
 				return;
 			}
 
-			if (gameController == null || !gameController.CanChooseBossForecastBet)
+			if (gameController.CanChooseBossForecastBet)
+			{
+				if (!gameObject.activeSelf)
+				{
+					Open();
+				}
+				else
+				{
+					Refresh();
+				}
+				return;
+			}
+
+			if (gameObject.activeSelf)
 			{
 				gameObject.SetActive(false);
-				return;
 			}
-
-			Refresh();
 		}
 
 		private void Refresh()

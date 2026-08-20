@@ -777,6 +777,9 @@ private void EnsureLight()
 			scaler.matchWidthOrHeight = 0.84f;
 			canvasObject.AddComponent<GraphicRaycaster>();
 			canvasObject.AddComponent<RuntimeKoreanTextCleaner>();
+            Image topFullBleedBackdrop = CreatePanel(canvas.transform, "TopFullBleedBackdrop", Vector2.zero, new Vector2(0f, 160f), new Color(0.03f, 0.05f, 0.17f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), rounded: false, shadow: false);
+            topFullBleedBackdrop.raycastTarget = false;
+            topFullBleedBackdrop.transform.SetSiblingIndex(0);
 			Transform hudRoot = CreateSafeAreaRoot(canvas.transform);
 			Transform metaFlowRoot = CreateSafeAreaRoot(canvas.transform, "MetaFlowSafeAreaRoot");
 			Font font = RuntimeUiSkinUtility.ResolveFont(presentationConfig);
