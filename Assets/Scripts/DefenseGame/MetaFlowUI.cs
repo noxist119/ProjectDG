@@ -61,6 +61,7 @@ namespace DefenseGame
         private GameObject outgamePlaceholderOverlay;
         private GameObject seasonRankingOverlay;
         private GameObject exitConfirmOverlay;
+        private bool exitConfirmOwnsCombatPause;
         private GameObject shopOverlay;
         private GameObject shopPurchaseConfirmOverlay;
         private GameObject shopPurchaseResultOverlay;
@@ -1361,11 +1362,23 @@ namespace DefenseGame
                 return;
             }
 
+            if (!exitConfirmOwnsCombatPause)
+            {
+                gameController?.SetCombatTimeAccelerationUiPaused(true);
+                exitConfirmOwnsCombatPause = true;
+            }
+
             PlayOverlayEnter(exitConfirmOverlay, "ExitConfirmModal");
         }
 
         private void HideExitConfirm()
         {
+            if (exitConfirmOwnsCombatPause)
+            {
+                gameController?.SetCombatTimeAccelerationUiPaused(false);
+                exitConfirmOwnsCombatPause = false;
+            }
+
             if (exitConfirmOverlay != null)
             {
                 exitConfirmOverlay.SetActive(false);
@@ -1374,14 +1387,13 @@ namespace DefenseGame
 
         private void ConfirmExitToOutgame()
         {
+            HideExitConfirm();
             if (gameController != null)
             {
                 gameController.ExitToOutgame();
             }
 
-            HideExitConfirm();
-            HideResult();
-            HideLoadout();
+            HideResult();            HideLoadout();
             HideShop();
             HideOutgamePlaceholder();
             ShowLobby();

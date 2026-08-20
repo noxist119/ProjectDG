@@ -176,6 +176,7 @@ namespace DefenseGame
         private bool runContentSeedOverrideEnabled;
         private int runContentSeedOverride;
         private int generatedRunContentSeed;
+        private int normalRunSeedSequence;
         private readonly RunContentRandomService runContentRandom = new RunContentRandomService();
         private BossForecastBet bossForecastBet;
         private bool bossForecastBetResolved;
@@ -981,6 +982,7 @@ namespace DefenseGame
             if (boardManager == null) boardManager = GetComponent<DefenseBoardManager>();
             if (roundManager == null) roundManager = GetComponent<RoundManager>();
             ApplyCombatModeProfile();
+            ResetRunContentRandom();
         }
 
         private void OnEnable()
@@ -1385,6 +1387,7 @@ namespace DefenseGame
         {
             CancelPendingDefeatAdjudication();
             CancelPendingDefeatFinalization();
+            SetCombatTimeAccelerationUiPaused(false);
             if (roundManager != null)
             {
                 roundManager.ResetRunState();
@@ -1413,6 +1416,7 @@ namespace DefenseGame
             gameOverRaised = false;
             ResetRunStats();
             OnRunReset?.Invoke();
+            ResetRunContentRandom();
             OnBannerRequested?.Invoke("아웃게임으로 이동", new Color(0.52f, 0.82f, 1f), 1.8f);
             NotifyStateChanged();
         }
@@ -1511,6 +1515,7 @@ namespace DefenseGame
             PlayerPrefs.SetInt(CombatModePrefsKey, (int)currentCombatMode);
             PlayerPrefs.Save();
             ApplyCombatModeProfile();
+            ResetRunContentRandom();
             augmentManager?.RefreshCombatModeTuning();
             OnCombatModeChanged?.Invoke(currentCombatMode);
             RequestBanner(
@@ -1573,7 +1578,20 @@ namespace DefenseGame
         {
             if (!dailyFateCupEnabled && !runContentSeedOverrideEnabled)
             {
-                generatedRunContentSeed = unchecked(Environment.TickCount ^ (int)DateTime.UtcNow.Ticks);
+                int previousSeed = generatedRunContentSeed;
+                int sequenceMix = unchecked(++normalRunSeedSequence * 486187739);
+                int candidate = unchecked(Environment.TickCount ^ (int)DateTime.UtcNow.Ticks ^ sequenceMix);
+                if (candidate == 0)
+                {
+                    candidate = unchecked((int)0x6D2B79F5 ^ sequenceMix);
+                }
+
+                if (candidate == previousSeed)
+                {
+                    candidate = unchecked(candidate ^ (int)0x9E3779B9);
+                }
+
+                generatedRunContentSeed = candidate == 0 ? 1 : candidate;
             }
 
             int modeSalt = (int)currentCombatMode * 7919;

@@ -818,7 +818,6 @@ private void EnsureLight()
 			{
 				bool open = !((Component)(object)optionsMenu).gameObject.activeSelf;
 				((Component)(object)optionsMenu).gameObject.SetActive(open);
-				gameController.SetCombatTimeAccelerationUiPaused(open);
 			});
 			((Component)(object)optionsMenu).gameObject.SetActive(value: false);
 			Image mergeStrip = CreatePanel(hudRoot, "MergeResultStrip", new Vector2(-80f, -116f), new Vector2(865f, 30f), new Color(0.1f, 0.12f, 0.3f, 0.72f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: true);
