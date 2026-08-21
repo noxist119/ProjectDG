@@ -585,14 +585,13 @@ namespace DefenseGame
             string summonLabel = combatLocked
                 ? "\uC804\uD22C \uC911"
                 : luckyChoiceOpen ? "\uC120\uD0DD \uC911"
-                : luckySummonReady ? "\uD589\uC6B4 \uC18C\uD658"
+                : luckySummonReady ? "\ubd88\uc6b4 \ubcf4\uc815"
                 : canSummon ? "\uC18C\uD658"
 				: boardFull ? "\uBCF4\uB4DC \uAC00\uB4DD \uCC38" : "\uACE8\uB4DC \uBD80\uC871";
             SetText(summonButtonText, summonLabel);
             SetText(summonCostText, gameController.SummonCost + " GOLD");
-            bool showLuckLedger = gameController.CurrentRound <= 10 ||
-                luckySummonReady || gameController.LuckySummonProgressVisible ||
-                gameController.BadLuckInsuranceAvailable;
+            // Bad Luck Points intentionally stay out of the early HUD. They become visible only after the R11 eligibility gate.
+            bool showLuckLedger = luckySummonReady || gameController.LuckySummonProgressVisible;
             SetText(luckySummonProgressText, showLuckLedger ? gameController.LuckProtectionLedgerSummary : string.Empty);
             SetColor(luckySummonProgressText, luckySummonReady ? new Color(0.20f, 0.13f, 0.05f) : new Color(0.94f, 1f, 0.78f));
             if (luckySummonProgressBadge != null)

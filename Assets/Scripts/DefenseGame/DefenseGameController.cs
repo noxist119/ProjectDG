@@ -149,6 +149,9 @@ namespace DefenseGame
         private const int EarlyRunRequiredRoundCount = 10;
         private const int RunClipMaxEvents = 6;
         private const int BossForecastPreparationCompletedRound = 3;
+        private const int DefaultBadLuckVisibleThreshold = 15;
+        private const int DefaultBadLuckReadyThreshold = 20;
+        private const int DefaultLuckySummonEarliestRound = 11;
         private const int GradeUpgradeMaxLevel = 10;
         private const int SummonGradeLuckMaxLevel = 7;
         private readonly Dictionary<CharacterGrade, int> gradeUpgradeLevels = new Dictionary<CharacterGrade, int>();
@@ -178,6 +181,8 @@ namespace DefenseGame
         private int generatedRunContentSeed;
         private int normalRunSeedSequence;
         private readonly RunContentRandomService runContentRandom = new RunContentRandomService();
+        [Header("Retired Feature Gates")]
+        [SerializeField] private bool enableBossForecast = false;
         private BossForecastBet bossForecastBet;
         private bool bossForecastBetResolved;
         private bool bossForecastRequestRaised;
@@ -217,11 +222,11 @@ namespace DefenseGame
         [SerializeField] private int earlyCrisisRound = 5;
         [SerializeField] private int earlyBossPrepRewardRound = 4;
         [SerializeField] private int earlyBossPrepGoldReward = 0;
-        [Header("Lucky Summon Comeback")]
+        [Header("Bad Luck Point Protection")]
         [SerializeField] private bool enableLuckySummonComeback = true;
-        [SerializeField] private int luckySummonVisibleStreak = 3;
-        [SerializeField] private int luckySummonNormalStreakThreshold = 7;
-        [SerializeField] private int luckySummonEarliestRound = 4;
+        [SerializeField] private int luckySummonVisibleStreak = DefaultBadLuckVisibleThreshold;
+        [SerializeField] private int luckySummonNormalStreakThreshold = DefaultBadLuckReadyThreshold;
+        [SerializeField] private int luckySummonEarliestRound = DefaultLuckySummonEarliestRound;
         [SerializeField] [Range(1f, 3f)] private float luckySummonSafeCostMultiplier = 1.5f;
         [SerializeField] [Range(0f, 1f)] private float luckySummonJackpotEpicChance = 0.25f;
         [SerializeField] [Range(0f, 1f)] private float luckySummonJackpotRefundRate = 0.50f;
@@ -415,6 +420,7 @@ namespace DefenseGame
         private bool luckySummonReady;
         private bool luckySummonConsumed;
         private bool luckySummonChoiceOpen;
+        private int luckySummonFirstReadyRound = -1;
         private string badLuckInsuranceReason = "초반 소환 보험 대기";
         private float currentRoundTileDamage;
         private float currentRoundBossTileDamage;
@@ -777,9 +783,9 @@ namespace DefenseGame
         {
             return completedRound == BossForecastPreparationCompletedRound && !isRoundRunning;
         }
-        public bool CanChooseBossForecastBet => bossForecastBet == BossForecastBet.None && !bossForecastBetResolved &&
+        public bool CanChooseBossForecastBet => enableBossForecast && bossForecastBet == BossForecastBet.None && !bossForecastBetResolved &&
             IsBossForecastPreparationRound(CurrentRound, IsRoundRunning);
-        public int BossForecastPreferredShopRoleIndex => bossForecastPreferredShopRoleIndex;
+        public int BossForecastPreferredShopRoleIndex => enableBossForecast ? bossForecastPreferredShopRoleIndex : -1;
         public int RunTotalPlayerSummons => Mathf.Max(0, earlySummonAttempts);
         public int RunTotalMerges => Mathf.Max(0, runTotalMergeCount);
         public bool FirstBossPreparationRewardTriggered => firstBossSummonRushBonusGranted;
@@ -862,12 +868,18 @@ namespace DefenseGame
         public string EarlyRunActionSummary => BuildEarlyRunActionSummary();
         public bool BadLuckInsuranceAvailable => badLuckInsuranceOfferPending;
         public string BadLuckInsuranceReason => badLuckInsuranceReason;
+        // Kept as a compatibility surface for existing telemetry; this is now a Bad Luck Point total, not a consecutive-normal streak.
         public int LuckySummonNormalStreak => Mathf.Max(0, luckySummonNormalStreak);
+        public int BadLuckPoints => LuckySummonNormalStreak;
         public int LuckySummonThreshold => Mathf.Max(1, luckySummonNormalStreakThreshold);
+        public int LuckySummonVisibleThreshold => Mathf.Max(1, luckySummonVisibleStreak);
+        public int LuckySummonEarliestRound => Mathf.Max(1, luckySummonEarliestRound);
+        public int LuckySummonFirstReadyRound => luckySummonFirstReadyRound;
+        public bool LuckySummonConsumed => luckySummonConsumed;
         public bool LuckySummonProgressVisible => enableLuckySummonComeback && !luckySummonConsumed &&
-            (LuckySummonNormalStreak >= Mathf.Max(1, luckySummonVisibleStreak) || LuckySummonReady);
+            CurrentRound >= LuckySummonEarliestRound && BadLuckPoints >= LuckySummonVisibleThreshold;
         public bool LuckySummonReady => enableLuckySummonComeback && !luckySummonConsumed &&
-            (luckySummonReady || LuckySummonNormalStreak >= LuckySummonThreshold && GetSummonRateRound() >= Mathf.Max(4, luckySummonEarliestRound));
+            (luckySummonReady || BadLuckPoints >= LuckySummonThreshold && CurrentRound >= LuckySummonEarliestRound);
         public bool LuckySummonChoiceOpen => luckySummonChoiceOpen;
         public NextRoundMilestone NextRoundMilestone => ResolveNextRoundMilestone();
         public string PreparationRecommendedAction => BuildPreparationRecommendedAction(NextRoundMilestone);
@@ -1320,16 +1332,16 @@ namespace DefenseGame
         private void RefreshLuckySummonReadiness()
         {
             if (!enableLuckySummonComeback || luckySummonConsumed || luckySummonReady ||
-                luckySummonNormalStreak < LuckySummonThreshold ||
-                GetSummonRateRound() < Mathf.Max(4, luckySummonEarliestRound))
+                BadLuckPoints < LuckySummonThreshold || CurrentRound < LuckySummonEarliestRound)
             {
                 return;
             }
 
             luckySummonReady = true;
+            luckySummonFirstReadyRound = luckySummonFirstReadyRound < 0 ? CurrentRound : luckySummonFirstReadyRound;
             badLuckInsuranceOfferPending = false;
-            AddRunHighlightCard("\uD589\uC6B4 \uB204\uC801", "\uC77C\uBC18 " + luckySummonNormalStreak + "\uD68C \uC5F0\uC18D / \uD589\uC6B4 \uC18C\uD658 \uC900\uBE44");
-            OnBannerRequested?.Invoke("\uD589\uC6B4 \uC18C\uD658 \uC900\uBE44! \uB2E4\uC74C \uC18C\uD658\uC5D0\uC11C \uC138 \uAC00\uC9C0 \uC8FC\uC0AC\uC704 \uC911 \uD558\uB098\uB97C \uC120\uD0DD\uD558\uC138\uC694.", new Color(0.72f, 0.90f, 0.38f), 2.6f);
+            AddRunHighlightCard("\uBD88\uC6B4 \uBCF4\uC815", "\uBD88\uC6B4 \uC810\uC218 " + BadLuckPoints + " / \uD2B9\uBCC4 \uC18C\uD658 \uC900\uBE44");
+            OnBannerRequested?.Invoke("\uB0AE\uC740 \uB4F1\uAE09\uC774 \uC624\uB798 \uC774\uC5B4\uC84C\uC2B5\uB2C8\uB2E4. \uD2B9\uBCC4 \uC18C\uD658\uC774 \uC900\uBE44\uB410\uC5B4\uC694.", new Color(0.72f, 0.90f, 0.38f), 2.6f);
         }
 
         public void ClearBoardForProfileChange()
@@ -1601,7 +1613,7 @@ namespace DefenseGame
 
         private void RequestBossForecastBetIfNeeded(int completedRound)
         {
-            if (completedRound != CurrentRound ||
+            if (!enableBossForecast || completedRound != CurrentRound ||
                 !IsBossForecastPreparationRound(completedRound, IsRoundRunning) ||
                 bossForecastRequestRaised ||
                 !CanChooseBossForecastBet)
@@ -1615,7 +1627,7 @@ namespace DefenseGame
 
         public bool ConsumeBossForecastPreferredShopRole()
         {
-            if (bossForecastPreferredShopRoleIndex < 0)
+            if (!enableBossForecast || bossForecastPreferredShopRoleIndex < 0)
             {
                 return false;
             }
@@ -1690,31 +1702,31 @@ namespace DefenseGame
         {
             if (!enableLuckySummonComeback)
             {
-                return "운 보정 OFF";
+                return "\ubd88\uc6b4 \ubcf4\uc815 OFF";
             }
 
             if (LuckySummonReady)
             {
-                return "운 보정 READY  ·  합성/레어/승부 중 선택";
+                return "\ubd88\uc6b4 \ubcf4\uc815 READY  ·  \ub2e4\uc74c \uc18c\ud658\uc5d0\uc11c \ud2b9\ubcc4 \uc18c\ud658 \uc120\ud0dd";
             }
 
             if (luckySummonConsumed)
             {
-                return "운 보정 사용 완료  ·  이번 판 대박 기록됨";
+                return "\ubd88\uc6b4 \ubcf4\uc815 \uc0ac\uc6a9 \uc644\ub8cc  ·  \uc774\ubc88 \ud310 1\ud68c";
             }
 
-            if (badLuckInsuranceOfferPending)
+            if (CurrentRound < LuckySummonEarliestRound)
             {
-                return "운 보정  보험 상점 대기  ·  " + BadLuckInsuranceReason;
+                return "\ud2b9\ubcc4 \uc18c\ud658\uc740 ROUND " + LuckySummonEarliestRound + "\ubd80\ud130 \uc900\ube44\ub429\ub2c8\ub2e4.";
             }
 
-            return "운 보정 " + LuckySummonNormalStreak + "/" + LuckySummonThreshold +
-                "  ·  일반 연속 시 다음 소환 3갈래 확정";
+            return "\ubd88\uc6b4 \ubcf4\uc815 " + BadLuckPoints + "/" + LuckySummonThreshold +
+                "  ·  \ub0ae\uc740 \ub4f1\uae09 \ub204\uc801 \uc2dc \ud2b9\ubcc4 \uc18c\ud658";
         }
 
         private void ResolveBossForecastBet(int round, bool bossRound)
         {
-            if (bossForecastBetResolved || !bossRound || round < 10)
+            if (!enableBossForecast || bossForecastBetResolved || !bossRound || round < 10)
             {
                 return;
             }
@@ -1805,10 +1817,6 @@ namespace DefenseGame
                 return "RunShop";
             }
 
-            if (tacticalMissionSystem != null && tacticalMissionSystem.IsChoicePanelOpen)
-            {
-                return "TacticalMission";
-            }
 
             if (luckySummonChoiceOpen)
             {
@@ -1839,6 +1847,8 @@ namespace DefenseGame
                 RequestBanner("\uC120\uD0DD\uC744 \uC644\uB8CC\uD55C \uD6C4 \uB2E4\uC74C \uB77C\uC6B4\uB4DC\uB97C \uC2DC\uC791\uD558\uC138\uC694. (" + blockingChoiceReason + ")", new Color(0.52f, 0.90f, 1f), 2.0f);
                 return;
             }
+
+            tacticalMissionSystem?.CloseChoicePanelForCombat();
 
             if (CurrentRound <= 0)
             {
@@ -4844,6 +4854,7 @@ namespace DefenseGame
             luckySummonReady = false;
             luckySummonConsumed = false;
             luckySummonChoiceOpen = false;
+            luckySummonFirstReadyRound = -1;
             bossForecastBet = BossForecastBet.None;
             bossForecastBetResolved = false;
             bossForecastRequestRaised = false;
@@ -5172,15 +5183,26 @@ namespace DefenseGame
                 return;
             }
 
-            if ((int)summon.grade >= (int)CharacterGrade.Rare)
+            // Only this paid player-direct summon path calls this method. Free, mission, shop, fate, merge and Lucky results do not alter Bad Luck Points.
+            if (summon.grade == CharacterGrade.Normal)
+            {
+                luckySummonNormalStreak++;
+            }
+            else if (summon.grade == CharacterGrade.Rare)
+            {
+                luckySummonNormalStreak = Mathf.Max(0, luckySummonNormalStreak - 2);
+            }
+            else
             {
                 luckySummonNormalStreak = 0;
-                luckySummonReady = false;
-                luckySummonChoiceOpen = false;
-                return;
             }
 
-            luckySummonNormalStreak++;
+            if (BadLuckPoints < LuckySummonThreshold)
+            {
+                luckySummonReady = false;
+                luckySummonChoiceOpen = false;
+            }
+
             RefreshLuckySummonReadiness();
         }
         private void RegisterMergeExcitement(MergeResultInfo mergeResult)

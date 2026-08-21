@@ -390,21 +390,20 @@ namespace DefenseGame.Editor
                                                   !TacticalMissionSystem.IsLastStandGambitConditionMet(7, 2, 2, 4);
             if (!tacticalMissionRiskRewardValid)
             {
-                notes.Add("전술 미션 초기 전략 분기 또는 배수의 진 조건(HP 7 포함/HP 0·3회 소환 실패) 검증에 실패했습니다.");
+                notes.Add("Tactical Contract conditions regressed.");
             }
 
-            bool tacticalMissionChoiceValid = tacticalMissionSystem != null &&
-                                               tacticalMissionSystem.MissionOfferCount == 3 &&
-                                               !tacticalMissionSystem.HasActiveMissionSelection &&
-                                               tacticalMissionSystem.TrySelectMission(1) &&
-                                               tacticalMissionSystem.HasActiveMissionSelection &&
-                                               tacticalMissionSystem.MissionOfferCount == 0 &&
-                                               !tacticalMissionSystem.TrySelectMission(0);
+            bool tacticalMissionChoiceValid = ValidatePass2QOptionalTacticalContract(controller, tacticalMissionSystem, out string tacticalContractSummary);
             if (!tacticalMissionChoiceValid)
             {
-                notes.Add("전술 미션은 3개 제안 중 하나만 선택해 추적해야 합니다.");
+                notes.Add("Optional Tactical Contract flow validation failed. " + tacticalContractSummary);
             }
 
+            bool pass2QBadLuckPointsValid = ValidatePass2QBadLuckPoints(controller, out string badLuckPointsSummary);
+            if (!pass2QBadLuckPointsValid)
+            {
+                notes.Add("Bad Luck Point validation failed. " + badLuckPointsSummary);
+            }
             OutgameProgressionSystem smokeProgression = OutgameProgressionSystem.Active;
             bool roundDiamondRewardValid = smokeProgression != null &&
                                             smokeProgression.ResolveRoundClearDiamondReward(1) == 2 &&
@@ -503,14 +502,12 @@ namespace DefenseGame.Editor
                 .FirstOrDefault(rect => rect != null && rect.name == "BossForecastBetOverlay");
             int bossForecastChoices = UnityEngine.Object.FindObjectsOfType<Button>(true)
                 .Count(button => button != null && button.name.StartsWith("BossForecastChoice_", StringComparison.Ordinal));
-            bool bossForecastUiValid = controller != null &&
-                                       bossForecastOverlay != null &&
-                                       bossForecastChoices == 3;
+            bool bossForecastUiValid = controller != null && bossForecastOverlay != null && bossForecastChoices == 3 &&
+                                       !bossForecastOverlay.gameObject.activeInHierarchy && !controller.CanChooseBossForecastBet;
             if (!bossForecastUiValid)
             {
-                notes.Add("R10 보스 예고 베팅 팝업 또는 3개 전략 선택지가 유효하지 않습니다.");
+                notes.Add("Retired Boss Forecast overlay did not remain inactive.");
             }
-
             Button lobbyShopButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
                 .FirstOrDefault(button => button != null && button.name == "OutgameNavShop");
             bool outgameShopValid = lobbyShopButton != null;
@@ -879,7 +876,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -921,6 +918,8 @@ namespace DefenseGame.Editor
                 playerDirectSummonIsolationValid = playerDirectSummonIsolationValid,
                 tacticalMissionRiskRewardValid = tacticalMissionRiskRewardValid,
                 tacticalMissionChoiceValid = tacticalMissionChoiceValid,
+                pass2QBadLuckPointsValid = pass2QBadLuckPointsValid,
+                pass2QBadLuckPointsSummary = badLuckPointsSummary,
                 roundDiamondRewardValid = roundDiamondRewardValid,
                 bannerBurstQueueValid = bannerBurstQueueValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
@@ -1784,22 +1783,12 @@ namespace DefenseGame.Editor
         private static bool ValidatePass2PPostRoundNoActionProgression(DefenseGameController controller, out string summary)
         {
             RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
-            Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
-            Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                .FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
-            Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                .FirstOrDefault(button => button != null && button.name == "BattleButton");
-            Button resultContinueButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                .FirstOrDefault(button => button != null && button.name == "ResultContinueButton");
-            GameObject forecastOverlay = UnityEngine.Object.FindObjectsOfType<Transform>(true)
-                .FirstOrDefault(transform => transform != null && transform.name == "BossForecastBetOverlay")?.gameObject;
-            Button forecastChoice = forecastOverlay != null
-                ? forecastOverlay.GetComponentsInChildren<Button>(true).FirstOrDefault(button => button != null && button.name == "BossForecastChoice_0")
-                : null;
-            CanvasGroup forecastCanvasGroup = forecastOverlay != null ? forecastOverlay.GetComponent<CanvasGroup>() : null;
-            if (controller == null || rounds == null || lobbyNavigationButton == null || lobbyEntryButton == null || battleButton == null ||
-                resultContinueButton == null || forecastOverlay == null || forecastChoice == null || forecastCanvasGroup == null)
+            Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
+            Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
+            Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
+            Button resultContinueButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "ResultContinueButton");
+            GameObject forecastOverlay = UnityEngine.Object.FindObjectsOfType<Transform>(true).FirstOrDefault(transform => transform != null && transform.name == "BossForecastBetOverlay")?.gameObject;
+            if (controller == null || rounds == null || lobbyNavigationButton == null || lobbyEntryButton == null || battleButton == null || resultContinueButton == null || forecastOverlay == null)
             {
                 summary = "ui_reference_missing";
                 return false;
@@ -1815,46 +1804,27 @@ namespace DefenseGame.Editor
                 controller.ResetRunForRetry();
                 lobbyNavigationButton.onClick.Invoke();
                 lobbyEntryButton.onClick.Invoke();
-
                 battleButton.onClick.Invoke();
                 bool r1Started = controller.CurrentRound == 1 && controller.IsRoundRunning;
                 bool r1Completed = CompleteRoundThroughResultContinue(controller, rounds, resultContinueButton, 1);
                 bool r1Ready = r1Completed && controller.BlockingChoiceReason == "None" && battleButton.interactable;
-
                 battleButton.onClick.Invoke();
                 bool r2Started = controller.CurrentRound == 2 && controller.IsRoundRunning;
                 bool r2Completed = CompleteRoundThroughResultContinue(controller, rounds, resultContinueButton, 2);
                 bool r2Ready = r2Completed && controller.BlockingChoiceReason == "None" && battleButton.interactable;
-
                 battleButton.onClick.Invoke();
                 bool r3Started = controller.CurrentRound == 3 && controller.IsRoundRunning;
                 bool r3Completed = CompleteRoundThroughResultContinue(controller, rounds, resultContinueButton, 3);
-                int boardCountBeforeForecast = controller.BoardUnitCount;
-                bool forecastBlocks = r3Completed && !controller.IsRoundRunning && controller.CurrentRound == 3 &&
-                                      controller.CanChooseBossForecastBet && controller.BlockingChoiceReason == "BossForecast";
-                bool forecastVisible = forecastBlocks && forecastOverlay.activeInHierarchy && forecastCanvasGroup.alpha > 0f &&
-                                       forecastCanvasGroup.blocksRaycasts && forecastCanvasGroup.interactable && forecastChoice.interactable;
-
-                forecastChoice.onClick.Invoke();
-                bool forecastResolved = !controller.CanChooseBossForecastBet && controller.BlockingChoiceReason == "None" && battleButton.interactable;
+                bool forecastRetired = r3Completed && !controller.IsRoundRunning && controller.CurrentRound == 3 && !controller.CanChooseBossForecastBet && controller.BlockingChoiceReason != "BossForecast" && !forecastOverlay.activeInHierarchy && battleButton.interactable;
                 battleButton.onClick.Invoke();
-                int boardCountAfterForecast = controller.BoardUnitCount;
-                bool r4StartedWithoutAction = forecastResolved && controller.CurrentRound == 4 && controller.IsRoundRunning &&
-                                               postR3PlayerSummons == 0;
-
+                bool r4StartedWithoutAction = forecastRetired && controller.CurrentRound == 4 && controller.IsRoundRunning && postR3PlayerSummons == 0;
                 bool r4Completed = CompleteRoundThroughResultContinue(controller, rounds, resultContinueButton, 4);
                 string r4Blocker = controller.BlockingChoiceReason;
                 bool r4Ready = r4Completed && r4Blocker == "None" && battleButton.interactable;
                 battleButton.onClick.Invoke();
                 bool r5StartedWithoutAction = r4Ready && controller.CurrentRound == 5 && controller.IsRoundRunning && postR3PlayerSummons == 0;
-
-                summary = "r1=" + r1Started + "/" + r1Ready +
-                          ", r2=" + r2Started + "/" + r2Ready +
-                          ", r3=" + r3Started + "/" + forecastVisible + "/" + forecastResolved +
-                          ", r4=" + r4StartedWithoutAction + "/" + r4Completed + "/blocker=" + r4Blocker +
-                          ", r5=" + r5StartedWithoutAction + ", boardBeforeForecast=" + boardCountBeforeForecast + ", boardAfterForecast=" + boardCountAfterForecast + ", postR3PlayerSummons=" + postR3PlayerSummons;
-                return r1Started && r1Ready && r2Started && r2Ready && r3Started && forecastVisible && forecastResolved &&
-                       r4StartedWithoutAction && r4Completed && r4Ready && r5StartedWithoutAction && postR3PlayerSummons == 0;
+                summary = "r1=" + r1Started + "/" + r1Ready + ", r2=" + r2Started + "/" + r2Ready + ", r3=" + r3Started + "/forecastRetired=" + forecastRetired + ", r4=" + r4StartedWithoutAction + "/" + r4Completed + "/blocker=" + r4Blocker + ", r5=" + r5StartedWithoutAction + ", postR3PlayerSummons=" + postR3PlayerSummons;
+                return r1Started && r1Ready && r2Started && r2Ready && r3Started && forecastRetired && r4StartedWithoutAction && r4Completed && r4Ready && r5StartedWithoutAction && postR3PlayerSummons == 0;
             }
             finally
             {
@@ -1863,7 +1833,6 @@ namespace DefenseGame.Editor
                 lobbyNavigationButton.onClick.Invoke();
             }
         }
-
         private static int[] ReadSummonRandomPrefix(DefenseGameController controller)
         {
             return new[]
@@ -2440,12 +2409,9 @@ namespace DefenseGame.Editor
         private static bool ValidateInitialPreparationBattleStartUiPath(DefenseGameController controller, out string summary)
         {
             RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
-            Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                .FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
-            Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                .FirstOrDefault(button => button != null && button.name == "BattleButton");
-            Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
-                .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
+            Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
+            Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
+            Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
             MethodInfo requestForecast = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
@@ -2460,16 +2426,9 @@ namespace DefenseGame.Editor
             {
                 controller.ResetRunForRetry();
                 lobbyNavigationButton.onClick.Invoke();
-                bool lobbyHiddenHud = controller.BoardUnitCount == 0 &&
-                                      !controller.IsRoundRunning &&
-                                      !battleButton.gameObject.activeInHierarchy;
-
+                bool lobbyHiddenHud = controller.BoardUnitCount == 0 && !controller.IsRoundRunning && !battleButton.gameObject.activeInHierarchy;
                 lobbyEntryButton.onClick.Invoke();
-                bool zeroSummonReady = controller.BoardUnitCount == 0 &&
-                                       !controller.IsRoundRunning &&
-                                       controller.BlockingChoiceReason == "None" &&
-                                       battleButton.gameObject.activeInHierarchy &&
-                                       battleButton.interactable;
+                bool zeroSummonReady = controller.BoardUnitCount == 0 && !controller.IsRoundRunning && controller.BlockingChoiceReason == "None" && battleButton.gameObject.activeInHierarchy && battleButton.interactable;
                 battleButton.onClick.Invoke();
                 bool zeroSummonStarts = zeroSummonReady && controller.IsRoundRunning && controller.BoardUnitCount == 0;
 
@@ -2484,34 +2443,15 @@ namespace DefenseGame.Editor
                 controller.ResetRunForRetry();
                 lobbyNavigationButton.onClick.Invoke();
                 lobbyEntryButton.onClick.Invoke();
-                bool retryZeroSummonReady = controller.BoardUnitCount == 0 &&
-                                            !controller.IsRoundRunning &&
-                                            controller.BlockingChoiceReason == "None" &&
-                                            battleButton.interactable;
-                battleButton.onClick.Invoke();
-                bool retryZeroSummonStarts = retryZeroSummonReady && controller.IsRoundRunning && controller.BoardUnitCount == 0;
-
-                controller.ResetRunForRetry();
-                lobbyNavigationButton.onClick.Invoke();
-                lobbyEntryButton.onClick.Invoke();
                 currentRoundField.SetValue(rounds, 3);
                 requestForecast.Invoke(controller, new object[] { 3 });
-                // Production round completion raises the choice request before its final
-                // state refresh. Reproduce that completed lifecycle before checking the HUD.
                 notifyStateChanged.Invoke(controller, null);
-                bool blockingChoicePreventsStart = controller.BlockingChoiceReason == "BossForecast" &&
-                                                   !battleButton.interactable;
+                bool retiredForecastDoesNotBlock = !controller.CanChooseBossForecastBet && controller.BlockingChoiceReason != "BossForecast" && battleButton.interactable;
                 battleButton.onClick.Invoke();
-                blockingChoicePreventsStart &= !controller.IsRoundRunning;
+                retiredForecastDoesNotBlock &= controller.IsRoundRunning;
 
-                summary = "lobbyHudHidden=" + lobbyHiddenHud +
-                          ", zeroReady=" + zeroSummonReady +
-                          ", zeroStarts=" + zeroSummonStarts +
-                          ", normalStarts=" + normalSummonStarts +
-                          ", retryZeroStarts=" + retryZeroSummonStarts +
-                          ", choiceBlocks=" + blockingChoicePreventsStart;
-                return lobbyHiddenHud && zeroSummonStarts && normalSummonStarts &&
-                       retryZeroSummonStarts && blockingChoicePreventsStart;
+                summary = "lobbyHudHidden=" + lobbyHiddenHud + ", zeroReady=" + zeroSummonReady + ", zeroStarts=" + zeroSummonStarts + ", normalStarts=" + normalSummonStarts + ", retiredForecast=" + retiredForecastDoesNotBlock;
+                return lobbyHiddenHud && zeroSummonStarts && normalSummonStarts && retiredForecastDoesNotBlock;
             }
             finally
             {
@@ -2525,7 +2465,6 @@ namespace DefenseGame.Editor
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
             MethodInfo requestForecast = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
-            MethodInfo notifyStateChanged = typeof(DefenseGameController).GetMethod("NotifyStateChanged", flags);
             if (controller == null || rounds == null || currentRoundField == null || requestForecast == null)
             {
                 summary = "reflection_target_missing";
@@ -2535,11 +2474,9 @@ namespace DefenseGame.Editor
             try
             {
                 controller.ResetRunForRetry();
-                bool zeroSummonStarts = controller.BoardUnitCount == 0 &&
-                                       controller.BlockingChoiceReason == "None";
+                bool zeroSummonStarts = controller.BoardUnitCount == 0 && controller.BlockingChoiceReason == "None";
                 controller.StartRound();
                 zeroSummonStarts &= controller.IsRoundRunning;
-
                 rounds.CompleteCurrentRoundForDebug();
                 bool laterNoActionStarts = !controller.IsRoundRunning && controller.BlockingChoiceReason == "None";
                 controller.StartRound();
@@ -2549,11 +2486,7 @@ namespace DefenseGame.Editor
                 bool initialSummon = controller.TrySummon();
                 controller.StartRound();
                 rounds.CompleteCurrentRoundForDebug();
-                CharacterGrade upgradedGrade = new[]
-                {
-                    CharacterGrade.Normal, CharacterGrade.Rare, CharacterGrade.Epic,
-                    CharacterGrade.Legendary, CharacterGrade.Mythic, CharacterGrade.Transcendent
-                }.FirstOrDefault(grade => controller.CountUnitsOfGrade(grade) > 0);
+                CharacterGrade upgradedGrade = new[] { CharacterGrade.Normal, CharacterGrade.Rare, CharacterGrade.Epic, CharacterGrade.Legendary, CharacterGrade.Mythic, CharacterGrade.Transcendent }.FirstOrDefault(grade => controller.CountUnitsOfGrade(grade) > 0);
                 bool upgraded = initialSummon && controller.TryUpgradeGrade(upgradedGrade);
                 controller.StartRound();
                 bool upgradeOnlyStarts = upgraded && controller.IsRoundRunning;
@@ -2562,16 +2495,9 @@ namespace DefenseGame.Editor
                 currentRoundField.SetValue(rounds, 3);
                 requestForecast.Invoke(controller, new object[] { 3 });
                 controller.StartRound();
-                bool realChoiceBlocks = !controller.IsRoundRunning && controller.BlockingChoiceReason == "BossForecast";
-                bool choiceResolved = controller.TryChooseBossForecastBet(BossForecastBet.Supply);
-                controller.StartRound();
-                bool resolvedChoiceStarts = choiceResolved && controller.IsRoundRunning;
-
-                summary = "zero=" + zeroSummonStarts + ", later=" + laterNoActionStarts +
-                          ", upgrade=" + upgradeOnlyStarts + ", blocks=" + realChoiceBlocks +
-                          ", resolved=" + resolvedChoiceStarts;
-                return zeroSummonStarts && laterNoActionStarts && upgradeOnlyStarts &&
-                       realChoiceBlocks && resolvedChoiceStarts;
+                bool retiredForecastStarts = controller.IsRoundRunning && !controller.CanChooseBossForecastBet && controller.BlockingChoiceReason != "BossForecast";
+                summary = "zero=" + zeroSummonStarts + ", later=" + laterNoActionStarts + ", upgrade=" + upgradeOnlyStarts + ", retiredForecast=" + retiredForecastStarts;
+                return zeroSummonStarts && laterNoActionStarts && upgradeOnlyStarts && retiredForecastStarts;
             }
             finally
             {
@@ -2580,59 +2506,152 @@ namespace DefenseGame.Editor
         }
         private static bool ValidateBossForecastTimingAndShopBias(DefenseGameController controller, out string summary)
         {
-            RunShopSystem shop = UnityEngine.Object.FindObjectOfType<RunShopSystem>();
             RoundManager roundManager = UnityEngine.Object.FindObjectOfType<RoundManager>();
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             FieldInfo roundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
             MethodInfo request = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
-            MethodInfo buildOffers = typeof(RunShopSystem).GetMethod("BuildOffers", flags);
-            FieldInfo dailyField = typeof(DefenseGameController).GetField("dailyFateCupEnabled", flags);
-            if (controller == null || shop == null || roundManager == null || roundField == null || request == null || buildOffers == null || dailyField == null)
+            if (controller == null || roundManager == null || roundField == null || request == null)
             {
                 summary = "reflection_target_missing";
                 return false;
             }
 
             int originalRound = (int)roundField.GetValue(roundManager);
-            bool originalDaily = (bool)dailyField.GetValue(controller);
             int requests = 0;
             Action requestHandler = () => requests++;
             controller.OnBossForecastBetRequested += requestHandler;
             try
             {
-                roundField.SetValue(roundManager, 1);
-                request.Invoke(controller, new object[] { 1 });
-                bool noEarlyRequest = requests == 0 && !controller.CanChooseBossForecastBet &&
-                                      !DefenseGameController.IsBossForecastPreparationRound(1, false) &&
-                                      !DefenseGameController.IsBossForecastPreparationRound(3, true);
-
+                controller.ResetRunForRetry();
                 roundField.SetValue(roundManager, 3);
                 request.Invoke(controller, new object[] { 3 });
-                request.Invoke(controller, new object[] { 3 });
-                bool requestedOnceAtPreparation = requests == 1 && controller.CanChooseBossForecastBet;
-                bool choiceApplied = controller.TryChooseBossForecastBet(BossForecastBet.Supply) &&
-                                     controller.BossForecastPreferredShopRoleIndex == 0;
-
-                dailyField.SetValue(controller, true);
-                buildOffers.Invoke(shop, new object[] { 4, false, true, false, false });
-                bool recoveryPreserved = controller.BossForecastPreferredShopRoleIndex == 0;
-                buildOffers.Invoke(shop, new object[] { 11, true, false, false, true });
-                bool firstEligibleConsumed = controller.BossForecastPreferredShopRoleIndex < 0;
-                buildOffers.Invoke(shop, new object[] { 19, true, false, false, true });
-                bool laterShopUnbiased = controller.BossForecastPreferredShopRoleIndex < 0;
-
-                summary = "early=" + noEarlyRequest + ", r4=" + requestedOnceAtPreparation + ", choice=" + choiceApplied + ", recovery=" + recoveryPreserved + ", consumed=" + firstEligibleConsumed + ", later=" + laterShopUnbiased;
-                return noEarlyRequest && requestedOnceAtPreparation && choiceApplied && recoveryPreserved && firstEligibleConsumed && laterShopUnbiased;
+                bool noR3Request = requests == 0 && !controller.CanChooseBossForecastBet && controller.BlockingChoiceReason != "BossForecast" && controller.BossForecastPreferredShopRoleIndex < 0 && !controller.TryChooseBossForecastBet(BossForecastBet.Supply);
+                summary = "retired=" + noR3Request + ", requests=" + requests + ", shopRole=" + controller.BossForecastPreferredShopRoleIndex;
+                return noR3Request;
             }
             finally
             {
                 controller.OnBossForecastBetRequested -= requestHandler;
-                dailyField.SetValue(controller, originalDaily);
                 roundField.SetValue(roundManager, originalRound);
                 controller.ResetRunForRetry();
             }
         }
+        private static bool ValidatePass2QOptionalTacticalContract(DefenseGameController controller, TacticalMissionSystem tacticalMissionSystem, out string summary)
+        {
+            Button summaryButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "MissionSummaryButton");
+            Button closeButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "MissionCloseButton");
+            Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
+            Button optionButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "MissionOption_0");
+            if (controller == null || tacticalMissionSystem == null || summaryButton == null || closeButton == null || battleButton == null || optionButton == null)
+            {
+                summary = "ui_reference_missing";
+                return false;
+            }
 
+            try
+            {
+                controller.ResetRunForRetry();
+                bool offersPersist = tacticalMissionSystem.MissionOfferCount == 3 && !tacticalMissionSystem.HasActiveMissionSelection && !tacticalMissionSystem.IsChoicePanelOpen && battleButton.interactable;
+                summaryButton.onClick.Invoke();
+                bool openedByPlayer = tacticalMissionSystem.IsChoicePanelOpen;
+                closeButton.onClick.Invoke();
+                bool closedLater = !tacticalMissionSystem.IsChoicePanelOpen && !tacticalMissionSystem.HasActiveMissionSelection && tacticalMissionSystem.MissionOfferCount == 3 && battleButton.interactable;
+                summaryButton.onClick.Invoke();
+                optionButton.onClick.Invoke();
+                bool selected = tacticalMissionSystem.HasActiveMissionSelection && !tacticalMissionSystem.IsChoicePanelOpen && battleButton.interactable;
+                summary = "offers=" + offersPersist + ", opened=" + openedByPlayer + ", later=" + closedLater + ", selected=" + selected;
+                return offersPersist && openedByPlayer && closedLater && selected;
+            }
+            finally
+            {
+                controller.ResetRunForRetry();
+            }
+        }
+
+        private static bool ValidatePass2QBadLuckPoints(DefenseGameController controller, out string summary)
+        {
+            RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            Button summonButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonButton");
+            LuckySummonChoiceUI luckyUi = UnityEngine.Object.FindObjectsOfType<LuckySummonChoiceUI>(true).FirstOrDefault(candidate => candidate != null && ReferenceEquals(typeof(LuckySummonChoiceUI).GetField("gameController", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(candidate), controller));
+            GameObject luckyOverlay = luckyUi != null ? luckyUi.gameObject : null;
+            Button luckyChoice = luckyOverlay != null
+                ? luckyOverlay.GetComponentsInChildren<Button>(true).FirstOrDefault(button => button != null && button.name == "LuckySummonChoice0")
+                : null;
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            MethodInfo track = typeof(DefenseGameController).GetMethod("TrackLuckySummonStreak", flags);
+            MethodInfo refresh = typeof(DefenseGameController).GetMethod("RefreshLuckySummonReadiness", flags);
+            FieldInfo points = typeof(DefenseGameController).GetField("luckySummonNormalStreak", flags);
+            FieldInfo ready = typeof(DefenseGameController).GetField("luckySummonReady", flags);
+            FieldInfo consumed = typeof(DefenseGameController).GetField("luckySummonConsumed", flags);
+            FieldInfo choiceOpen = typeof(DefenseGameController).GetField("luckySummonChoiceOpen", flags);
+            FieldInfo roundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
+            if (controller == null || rounds == null || summonButton == null || luckyChoice == null || luckyOverlay == null || track == null || refresh == null || points == null || ready == null || consumed == null || choiceOpen == null || roundField == null)
+            {
+                summary = "reflection_or_ui_missing";
+                return false;
+            }
+
+            try
+            {
+                controller.ResetRunForRetry();
+                CharacterDefinition normal = new CharacterDefinition { grade = CharacterGrade.Normal };
+                CharacterDefinition rare = new CharacterDefinition { grade = CharacterGrade.Rare };
+                CharacterDefinition epic = new CharacterDefinition { grade = CharacterGrade.Epic };
+                track.Invoke(controller, new object[] { normal, 1 });
+                bool normalOne = controller.BadLuckPoints == 1;
+                track.Invoke(controller, new object[] { normal, 1 });
+                bool normalTwo = controller.BadLuckPoints == 2;
+                track.Invoke(controller, new object[] { rare, 1 });
+                bool rareToZero = controller.BadLuckPoints == 0;
+                points.SetValue(controller, 16);
+                track.Invoke(controller, new object[] { rare, 11 });
+                bool rareMinusTwo = controller.BadLuckPoints == 14;
+                points.SetValue(controller, 19);
+                track.Invoke(controller, new object[] { normal, 11 });
+                bool normalToTwenty = controller.BadLuckPoints == 20;
+                track.Invoke(controller, new object[] { epic, 11 });
+                bool epicResets = controller.BadLuckPoints == 0;
+
+                points.SetValue(controller, 20);
+                ready.SetValue(controller, false);
+                consumed.SetValue(controller, false);
+                choiceOpen.SetValue(controller, false);
+                roundField.SetValue(rounds, 10);
+                refresh.Invoke(controller, null);
+                bool r10Hidden = !controller.LuckySummonReady && !controller.LuckySummonProgressVisible;
+                roundField.SetValue(rounds, 11);
+                points.SetValue(controller, 14);
+                refresh.Invoke(controller, null);
+                bool r11BelowVisible = !controller.LuckySummonReady && !controller.LuckySummonProgressVisible;
+                points.SetValue(controller, 15);
+                refresh.Invoke(controller, null);
+                bool r11Visible = !controller.LuckySummonReady && controller.LuckySummonProgressVisible;
+                points.SetValue(controller, 20);
+                refresh.Invoke(controller, null);
+                bool r11Ready = controller.LuckySummonReady && controller.LuckySummonProgressVisible && !luckyOverlay.activeInHierarchy;
+
+                int beforeFree = controller.BadLuckPoints;
+                bool missionSupportGranted = controller.TryGrantMissionSupportUnit();
+                bool gradeGrant = controller.TryGrantRandomUnitByGrade(CharacterGrade.Rare, RunContentRandomChannel.Fate, "smoke.pass2q.free");
+                bool freeIsolation = missionSupportGranted && gradeGrant && controller.BadLuckPoints == beforeFree;
+                controller.AddGold(1000);
+                int goldBeforeLucky = controller.Gold;
+                int boardBeforeLucky = controller.BoardUnitCount;
+                summonButton.onClick.Invoke();
+                bool luckyChoiceState = controller.LuckySummonChoiceOpen;
+                bool luckyOverlayState = luckyOverlay.activeSelf;
+                bool luckyNormalNotConsumed = controller.Gold == goldBeforeLucky && controller.BoardUnitCount == boardBeforeLucky;
+                bool playerDrivenOpen = luckyChoiceState && luckyOverlayState && luckyNormalNotConsumed;
+                luckyChoice.onClick.Invoke();
+                bool resolvedOnce = controller.LuckySummonConsumed && controller.BadLuckPoints == 0 && !controller.LuckySummonReady && !controller.LuckySummonChoiceOpen;
+                summary = "n1=" + normalOne + ", n2=" + normalTwo + ", rare0=" + rareToZero + ", rare-2=" + rareMinusTwo + ", n20=" + normalToTwenty + ", epic0=" + epicResets + ", r10=" + r10Hidden + ", r11<15=" + r11BelowVisible + ", r11=15=" + r11Visible + ", r11=20=" + r11Ready + ", free=" + freeIsolation + ", open=" + playerDrivenOpen + "(choice=" + luckyChoiceState + ", overlay=" + luckyOverlayState + ", untouched=" + luckyNormalNotConsumed + "), resolve=" + resolvedOnce;
+                return normalOne && normalTwo && rareToZero && rareMinusTwo && normalToTwenty && epicResets && r10Hidden && r11BelowVisible && r11Visible && r11Ready && freeIsolation && playerDrivenOpen && resolvedOnce;
+            }
+            finally
+            {
+                controller.ResetRunForRetry();
+            }
+        }
         private static bool ValidateChoiceSchedule(out string summary)
         {
             RunShopSystem shop = UnityEngine.Object.FindObjectOfType<RunShopSystem>();
@@ -2868,6 +2887,8 @@ namespace DefenseGame.Editor
             public bool playerDirectSummonIsolationValid;
             public bool tacticalMissionRiskRewardValid;
             public bool tacticalMissionChoiceValid;
+            public bool pass2QBadLuckPointsValid;
+            public string pass2QBadLuckPointsSummary;
             public bool roundDiamondRewardValid;
             public bool bannerBurstQueueValid;
             public bool earlyMiniShopChoicesValid;

@@ -241,13 +241,14 @@ namespace DefenseGame
             {
                 summaryButton.onClick.RemoveListener(TogglePanel);
                 summaryButton.onClick.AddListener(TogglePanel);
-                SetChildText(summaryButton.transform, "MissionOpenHint", "\uc5f4\uae30");
+                SetChildText(summaryButton.transform, "MissionOpenHint", "\ubcf4\uae30");
             }
 
             if (closeButton != null)
             {
                 closeButton.onClick.RemoveListener(ClosePanel);
                 closeButton.onClick.AddListener(ClosePanel);
+                SetChildText(closeButton.transform, "Text", "\ub098\uc911\uc5d0");
             }
 
             if (optionButtons == null)
@@ -1221,11 +1222,8 @@ namespace DefenseGame
 
             if (offerRefreshQueued || (!missionSelected && activeMissions.Count == 0))
             {
+                // Offers persist until the player actively accepts one. Preparation only refreshes the contract badge; it never interrupts with a modal.
                 RefillMissions();
-                if (activeMissions.Count > 0)
-                {
-                    SetPanelOpen(true);
-                }
             }
 
             // LastStand never grants a support unit. This clears only stale runtime state from earlier versions.
@@ -1268,6 +1266,13 @@ namespace DefenseGame
             SetPanelOpen(false);
         }
 
+        // Combat may begin while the optional contract panel is visible through an external/UI action.
+        // It is never a progression blocker, so close it without mutating the offers or selection.
+        public void CloseChoicePanelForCombat()
+        {
+            SetPanelOpen(false);
+        }
+
         private void SetPanelOpen(bool open)
         {
             if (panelRoot != null)
@@ -1291,17 +1296,17 @@ namespace DefenseGame
 
             if (missionSelected && activeMissions.Count == 1)
             {
-                summaryText.text = "\uc9c4\ud589 \uc911  " + activeMissions[0].title;
+                summaryText.text = "\uc804\uc220 \uacc4\uc57d \uc9c4\ud589 \uc911  " + activeMissions[0].title;
                 summaryText.color = activeMissions[0].accentColor;
             }
             else if (activeMissions.Count > 0)
             {
-                summaryText.text = "\uc804\uc220 \ubbf8\uc158 \uc120\ud0dd";
+                summaryText.text = "\uc804\uc220 \uacc4\uc57d  ·  \uc0c8 \uacc4\uc57d " + activeMissions.Count + "\uac1c";
                 summaryText.color = Color.white;
             }
             else
             {
-                summaryText.text = "\uc804\uc220 \ubbf8\uc158 \ub300\uae30";
+                summaryText.text = "\uc804\uc220 \uacc4\uc57d \ub300\uae30";
                 summaryText.color = Color.white;
             }
         }
@@ -1309,7 +1314,7 @@ namespace DefenseGame
         {
             if (panelHeaderText != null)
             {
-                panelHeaderText.text = "\uc804\uc220 \ubbf8\uc158 \uc120\ud0dd";
+                panelHeaderText.text = "\uc804\uc220 \uacc4\uc57d \uc120\ud0dd";
             }
 
             if (activeCardRoot != null)
@@ -1319,7 +1324,7 @@ namespace DefenseGame
                 if (showActiveCard)
                 {
                     MissionInstance active = activeMissions[0];
-                    SetText(activeTitleText, "\uc9c4\ud589 \uc911  " + active.title);
+                    SetText(activeTitleText, "\uc804\uc220 \uacc4\uc57d \uc9c4\ud589 \uc911  " + active.title);
                     SetText(activeDescriptionText, active.description);
                     SetText(activeProgressText, GetProgressText(active));
                 }

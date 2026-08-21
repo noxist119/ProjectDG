@@ -104,16 +104,24 @@ namespace DefenseGame
 
 		private void HandleStateChanged()
 		{
-			if (base.gameObject.activeSelf)
+			if (gameController == null || !gameController.LuckySummonChoiceOpen)
 			{
-				if (gameController == null || !gameController.LuckySummonChoiceOpen)
+				if (base.gameObject.activeSelf)
 				{
 					base.gameObject.SetActive(value: false);
 				}
-				else
-				{
-					Refresh();
-				}
+				return;
+			}
+
+			// The controller event is the source of truth. This also recovers safely if
+			// an overlay was inactive when a state refresh arrives after a player summon.
+			if (!base.gameObject.activeSelf)
+			{
+				Open();
+			}
+			else
+			{
+				Refresh();
 			}
 		}
 
@@ -123,11 +131,11 @@ namespace DefenseGame
 			{
 				if ((Object)(object)titleText != null)
 				{
-					titleText.text = "\uc5f0\uc18d \uc77c\ubc18 \ubcf4\uc0c1! \ud2b9\ubcc4 \uc18c\ud658";
+					titleText.text = "\ubd88\uc6b4 \ubcf4\uc815 READY! \ud2b9\ubcc4 \uc18c\ud658";
 				}
 				if ((Object)(object)instructionText != null)
 				{
-					instructionText.text = "\uc77c\ubc18 \ub4f1\uae09\uc774 \uc5f0\uc18d\uc73c\ub85c \ub098\uc640 \ud2b9\ubcc4 \uc18c\ud658\uc774 \uc5f4\ub838\uc2b5\ub2c8\ub2e4.\n\ud604\uc7ac " + gameController.LuckySummonNormalStreak + "\ud68c \uc5f0\uc18d \u00b7 \uc544\ub798 1\uac1c\ub97c \uace0\ub974\uc138\uc694. \u00b7 \ud55c \ud310 1\ud68c";
+					instructionText.text = "\ub0ae\uc740 \ub4f1\uae09\uc774 \uc624\ub798 \uc774\uc5b4\uc84c\uc2b5\ub2c8\ub2e4. \ud2b9\ubcc4 \uc18c\ud658\uc744 \uc120\ud0dd\ud558\uc138\uc694.\n\ud604 \ubd88\uc6b4 \uc810\uc218 " + gameController.BadLuckPoints + " \u00b7 \ud55c \ud310 1\ud68c";
 				}
 				SetChoice(0, LuckySummonChoice.MergeLink, "\ud569\uc131 \uc7ac\ub8cc \ubcf4\ucda9\n\n\ud604\uc7ac \ubcf4\ub4dc\uc5d0\uc11c\n\ud569\uc131\uc5d0 \uac00\uc7a5 \uac00\uae4c\uc6b4 \uc720\ub2db 1\uae30\n\n");
 				SetChoice(1, LuckySummonChoice.SafeRare, "\ub808\uc5b4 \uc774\uc0c1 \ud655\uc815\n\n\ub808\uc5b4 \uc774\uc0c1 \uc720\ub2db\n1\uae30 \ud655\uc815 \uc18c\ud658\n\n");
