@@ -43,4 +43,25 @@ Read-only runtime telemetry is available through `BadLuckPoints`, `LuckySummonVi
 - Bad Luck Point transitions, R10/R11 gates, free-grant isolation, and player-driven Lucky selection.
 - Existing smoke and runtime error checks remain active.
 
-Gameplay balance change: **NONE**.
+## Final Validation
+
+- Exact SHA tested: `c698e9db7d8fa1e947cde4cc5783068271bc3a37` (`Pass 2Q - Final Validation`)
+- Full Unity PlayMode Smoke: **PASS**
+- `runtimeErrors`: **0**
+
+### Actual Smoke Results
+
+- Tactical Contract optional flow: **PASS** (`tacticalMissionRiskRewardValid=true`, `tacticalMissionChoiceValid=true`). The checked player flow is: offers persist, the player opens the summary, chooses **나중에**, and can later select a contract; it never blocks battle start.
+- R3 -> R4 no-action: **PASS** — `r3=True/forecastRetired=True, r4=True/True/blocker=None, postR3PlayerSummons=0`.
+- Boss Forecast retired: **PASS** — `retired=True, requests=0, shopRole=-1`.
+- Bad Luck Point transitions: **PASS** — `n1=True, n2=True, rare0=True, rare-2=True, n20=True, epic0=True`.
+- R10/R11 gate: **PASS** — `r10=True, r11<15=True, r11=15=True, r11=20=True, firstReadyR11=True`.
+- Player-driven Lucky Summon: **PASS** — `open=True(choice=True, overlay=True, untouched=True), resolve=True`. The normal summon press opens the choice panel without spending Gold or changing the board; resolution consumes the one ready use.
+- Free-grant isolation: **PASS** — `free=True`.
+
+## Balance / Availability Note
+
+- Enemy stats and counts are unchanged.
+- Summon probability and economy tables are unchanged.
+- Boss Forecast player-support availability is intentionally removed.
+- No compensating handout was added.

@@ -1329,8 +1329,19 @@ namespace DefenseGame
             return selected != null ? ApplyFateSummonIntervention(selected) : null;
         }
 
+        private void RecordLuckySummonFirstReadyRound()
+        {
+            if (!enableLuckySummonComeback || luckySummonConsumed || luckySummonFirstReadyRound >= 0 ||
+                BadLuckPoints < LuckySummonThreshold || CurrentRound < LuckySummonEarliestRound)
+            {
+                return;
+            }
+
+            luckySummonFirstReadyRound = CurrentRound;
+        }
         private void RefreshLuckySummonReadiness()
         {
+            RecordLuckySummonFirstReadyRound();
             if (!enableLuckySummonComeback || luckySummonConsumed || luckySummonReady ||
                 BadLuckPoints < LuckySummonThreshold || CurrentRound < LuckySummonEarliestRound)
             {
@@ -1338,7 +1349,6 @@ namespace DefenseGame
             }
 
             luckySummonReady = true;
-            luckySummonFirstReadyRound = luckySummonFirstReadyRound < 0 ? CurrentRound : luckySummonFirstReadyRound;
             badLuckInsuranceOfferPending = false;
             AddRunHighlightCard("\uBD88\uC6B4 \uBCF4\uC815", "\uBD88\uC6B4 \uC810\uC218 " + BadLuckPoints + " / \uD2B9\uBCC4 \uC18C\uD658 \uC900\uBE44");
             OnBannerRequested?.Invoke("\uB0AE\uC740 \uB4F1\uAE09\uC774 \uC624\uB798 \uC774\uC5B4\uC84C\uC2B5\uB2C8\uB2E4. \uD2B9\uBCC4 \uC18C\uD658\uC774 \uC900\uBE44\uB410\uC5B4\uC694.", new Color(0.72f, 0.90f, 0.38f), 2.6f);
@@ -4282,6 +4292,9 @@ namespace DefenseGame
 
         private void HandleRoundStateChanged(int round, bool bossRound, bool running)
         {
+            // The point threshold may have been reached before R11. Record the actual
+            // first eligible round here without opening the player-driven choice modal.
+            RefreshLuckySummonReadiness();
             fateCardChoicePanelOpen = false;
             if (running)
             {

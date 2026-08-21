@@ -2584,8 +2584,10 @@ namespace DefenseGame.Editor
             FieldInfo ready = typeof(DefenseGameController).GetField("luckySummonReady", flags);
             FieldInfo consumed = typeof(DefenseGameController).GetField("luckySummonConsumed", flags);
             FieldInfo choiceOpen = typeof(DefenseGameController).GetField("luckySummonChoiceOpen", flags);
+            FieldInfo firstReadyRound = typeof(DefenseGameController).GetField("luckySummonFirstReadyRound", flags);
+            MethodInfo handleRoundStateChanged = typeof(DefenseGameController).GetMethod("HandleRoundStateChanged", flags);
             FieldInfo roundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
-            if (controller == null || rounds == null || summonButton == null || luckyChoice == null || luckyOverlay == null || track == null || refresh == null || points == null || ready == null || consumed == null || choiceOpen == null || roundField == null)
+            if (controller == null || rounds == null || summonButton == null || luckyChoice == null || luckyOverlay == null || track == null || refresh == null || points == null || ready == null || consumed == null || choiceOpen == null || firstReadyRound == null || handleRoundStateChanged == null || roundField == null)
             {
                 summary = "reflection_or_ui_missing";
                 return false;
@@ -2618,7 +2620,7 @@ namespace DefenseGame.Editor
                 choiceOpen.SetValue(controller, false);
                 roundField.SetValue(rounds, 10);
                 refresh.Invoke(controller, null);
-                bool r10Hidden = !controller.LuckySummonReady && !controller.LuckySummonProgressVisible;
+                bool r10Hidden = !controller.LuckySummonReady && !controller.LuckySummonProgressVisible && controller.LuckySummonFirstReadyRound < 0;
                 roundField.SetValue(rounds, 11);
                 points.SetValue(controller, 14);
                 refresh.Invoke(controller, null);
@@ -2627,8 +2629,9 @@ namespace DefenseGame.Editor
                 refresh.Invoke(controller, null);
                 bool r11Visible = !controller.LuckySummonReady && controller.LuckySummonProgressVisible;
                 points.SetValue(controller, 20);
-                refresh.Invoke(controller, null);
+                handleRoundStateChanged.Invoke(controller, new object[] { 11, false, true });
                 bool r11Ready = controller.LuckySummonReady && controller.LuckySummonProgressVisible && !luckyOverlay.activeInHierarchy;
+                bool firstReadyAtR11 = controller.LuckySummonFirstReadyRound == 11 && !controller.LuckySummonChoiceOpen;
 
                 int beforeFree = controller.BadLuckPoints;
                 bool missionSupportGranted = controller.TryGrantMissionSupportUnit();
@@ -2644,8 +2647,8 @@ namespace DefenseGame.Editor
                 bool playerDrivenOpen = luckyChoiceState && luckyOverlayState && luckyNormalNotConsumed;
                 luckyChoice.onClick.Invoke();
                 bool resolvedOnce = controller.LuckySummonConsumed && controller.BadLuckPoints == 0 && !controller.LuckySummonReady && !controller.LuckySummonChoiceOpen;
-                summary = "n1=" + normalOne + ", n2=" + normalTwo + ", rare0=" + rareToZero + ", rare-2=" + rareMinusTwo + ", n20=" + normalToTwenty + ", epic0=" + epicResets + ", r10=" + r10Hidden + ", r11<15=" + r11BelowVisible + ", r11=15=" + r11Visible + ", r11=20=" + r11Ready + ", free=" + freeIsolation + ", open=" + playerDrivenOpen + "(choice=" + luckyChoiceState + ", overlay=" + luckyOverlayState + ", untouched=" + luckyNormalNotConsumed + "), resolve=" + resolvedOnce;
-                return normalOne && normalTwo && rareToZero && rareMinusTwo && normalToTwenty && epicResets && r10Hidden && r11BelowVisible && r11Visible && r11Ready && freeIsolation && playerDrivenOpen && resolvedOnce;
+                summary = "n1=" + normalOne + ", n2=" + normalTwo + ", rare0=" + rareToZero + ", rare-2=" + rareMinusTwo + ", n20=" + normalToTwenty + ", epic0=" + epicResets + ", r10=" + r10Hidden + ", r11<15=" + r11BelowVisible + ", r11=15=" + r11Visible + ", r11=20=" + r11Ready + ", firstReadyR11=" + firstReadyAtR11 + ", free=" + freeIsolation + ", open=" + playerDrivenOpen + "(choice=" + luckyChoiceState + ", overlay=" + luckyOverlayState + ", untouched=" + luckyNormalNotConsumed + "), resolve=" + resolvedOnce;
+                return normalOne && normalTwo && rareToZero && rareMinusTwo && normalToTwenty && epicResets && r10Hidden && r11BelowVisible && r11Visible && r11Ready && firstReadyAtR11 && freeIsolation && playerDrivenOpen && resolvedOnce;
             }
             finally
             {
