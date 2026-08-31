@@ -89,7 +89,8 @@ namespace DefenseGame
         [SerializeField] private Text completionToastRewardText;
 
         private const int MaxMissionOffers = 3;
-        private const float CompletionToastDuration = 2.4f;
+        private const float CompletionToastHoldDuration = 3f;
+        private const float CompletionToastFadeDuration = 0.22f;
 
         // Before selection this contains the three offers; after selection it contains one active mission.
         private readonly List<MissionInstance> activeMissions = new List<MissionInstance>();
@@ -114,7 +115,6 @@ namespace DefenseGame
         private bool resolvingMission;
         private int pendingMissionSupportSummons;
         private bool runStarted;
-        private bool completionToastAwaitingChoice;
 
         public int PendingMissionSupportSummons => pendingMissionSupportSummons;
         public bool HasInitialStrategyFork => HasOfferedMission(MissionKind.PerfectDefense) && HasOfferedMission(MissionKind.SummonSprint) && HasOfferedMission(MissionKind.LastStandGambit);
@@ -230,7 +230,6 @@ namespace DefenseGame
             missionCursor = 0;
             completedMissionCount = 0;
             toastTimer = 0f;
-            completionToastAwaitingChoice = false;
             resolvingMission = false;
             pendingMissionSupportSummons = 0;
             runStarted = false;
@@ -1145,6 +1144,7 @@ namespace DefenseGame
             missionSelected = false;
             offerRefreshQueued = true;
             recentlyExpiredKeys[mission.Key] = (gameController != null ? gameController.CurrentRound : 0) + 3;
+            ShowFailureToast();
 
             if (gameController != null)
             {
@@ -1243,7 +1243,6 @@ namespace DefenseGame
             }
 
             SetPanelOpen(true);
-            HideCompletionToast();
             RefreshUi();
             return panelRoot != null && panelRoot.activeSelf;
         }
@@ -1623,18 +1622,21 @@ namespace DefenseGame
             {
                 return;
             }
-
-            completionToastAwaitingChoice = true;
             ShowToast("\uBBF8\uC158 \uC644\uB8CC! \uBCF4\uC0C1 \uD68D\uB4DD", string.Empty);
         }
 
+
+        private void ShowFailureToast()
+        {
+            ShowToast("\uBBF8\uC158 \uC2E4\uD328", string.Empty);
+        }
 
         private void ShowToast(string title, string reward)
         {
             SetText(completionToastTitleText, title);
             SetText(completionToastRewardText, reward);
             completionToastRoot.SetActive(true);
-            toastTimer = CompletionToastDuration;
+            toastTimer = CompletionToastHoldDuration + CompletionToastFadeDuration;
 
             if (completionToastGroup != null)
             {
@@ -1654,28 +1656,15 @@ namespace DefenseGame
             {
                 return;
             }
-
-            if (completionToastAwaitingChoice)
-            {
-                return;
-            }
-
             toastTimer -= Time.unscaledDeltaTime;
-            float normalized = Mathf.Clamp01(toastTimer / CompletionToastDuration);
-            float alpha = Mathf.Min(Mathf.Clamp01((CompletionToastDuration - toastTimer) / 0.18f), Mathf.Clamp01(normalized / 0.2f));
+            float alpha = toastTimer <= CompletionToastFadeDuration
+                ? Mathf.Clamp01(toastTimer / CompletionToastFadeDuration)
+                : 1f;
 
             if (completionToastGroup != null)
             {
                 completionToastGroup.alpha = alpha;
             }
-
-            RectTransform rect = completionToastRoot.GetComponent<RectTransform>();
-            if (rect != null)
-            {
-                float pop = Mathf.Sin((1f - normalized) * Mathf.PI);
-                rect.localScale = Vector3.one * Mathf.Lerp(0.98f, 1.08f, pop);
-            }
-
             if (toastTimer <= 0f)
             {
                 HideCompletionToast();
@@ -1685,7 +1674,6 @@ namespace DefenseGame
         private void HideCompletionToast()
         {
             toastTimer = 0f;
-            completionToastAwaitingChoice = false;
             if (completionToastGroup != null)
             {
                 completionToastGroup.alpha = 0f;

@@ -400,6 +400,11 @@ namespace DefenseGame.Editor
                 notes.Add("Optional Tactical Contract flow validation failed. " + tacticalContractSummary);
             }
 
+            bool pass2WMissionToastValid = ValidatePass2WMissionToast(tacticalMissionSystem, out string missionToastSummary);
+            if (!pass2WMissionToastValid)
+            {
+                notes.Add("Pass 2W Mission Toast validation failed. " + missionToastSummary);
+            }
             bool pass2QBadLuckPointsValid = ValidatePass2QBadLuckPoints(controller, out string badLuckPointsSummary);
             if (!pass2QBadLuckPointsValid)
             {
@@ -877,7 +882,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && pass2WMissionToastValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -919,6 +924,8 @@ namespace DefenseGame.Editor
                 playerDirectSummonIsolationValid = playerDirectSummonIsolationValid,
                 tacticalMissionRiskRewardValid = tacticalMissionRiskRewardValid,
                 tacticalMissionChoiceValid = tacticalMissionChoiceValid,
+                pass2WMissionToastValid = pass2WMissionToastValid,
+                pass2WMissionToastSummary = missionToastSummary,
                 pass2QBadLuckPointsValid = pass2QBadLuckPointsValid,
                 pass2QBadLuckPointsSummary = badLuckPointsSummary,
                 roundDiamondRewardValid = roundDiamondRewardValid,
@@ -2537,6 +2544,44 @@ namespace DefenseGame.Editor
                 controller.ResetRunForRetry();
             }
         }
+        private static bool ValidatePass2WMissionToast(TacticalMissionSystem tacticalMissionSystem, out string summary)
+        {
+            GameObject toastRoot = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                .Select(candidate => candidate != null ? candidate.gameObject : null)
+                .FirstOrDefault(candidate => candidate != null && candidate.name == "MissionCompletionToast");
+            Text title = UnityEngine.Object.FindObjectsOfType<Text>(true)
+                .FirstOrDefault(candidate => candidate != null && candidate.name == "MissionToastTitle");
+            CanvasGroup group = toastRoot != null ? toastRoot.GetComponent<CanvasGroup>() : null;
+            RectTransform titleRect = title != null ? title.GetComponent<RectTransform>() : null;
+            MethodInfo showToast = typeof(TacticalMissionSystem).GetMethod("ShowToast", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo updateToast = typeof(TacticalMissionSystem).GetMethod("UpdateCompletionToast", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo toastTimer = typeof(TacticalMissionSystem).GetField("toastTimer", BindingFlags.Instance | BindingFlags.NonPublic);
+            bool iconRemoved = toastRoot != null && toastRoot.transform.Find("MissionToastIcon") == null && toastRoot.transform.Find("MissionToastIconSlot") == null;
+            bool centered = title != null && title.alignment == TextAnchor.MiddleCenter && titleRect != null &&
+                            Approximately(titleRect.anchorMin, new Vector2(0.5f, 0.5f)) &&
+                            Approximately(titleRect.anchorMax, new Vector2(0.5f, 0.5f)) &&
+                            Approximately(titleRect.pivot, new Vector2(0.5f, 0.5f));
+            bool nonBlocking = group != null && !group.interactable && !group.blocksRaycasts;
+            bool lifecycle = false;
+            bool shown = false;
+            bool fading = false;
+            bool hidden = false;
+            if (tacticalMissionSystem != null && toastRoot != null && title != null && group != null && showToast != null && updateToast != null && toastTimer != null)
+            {
+                showToast.Invoke(tacticalMissionSystem, new object[] { "\uBBF8\uC158 \uC2E4\uD328", string.Empty });
+                shown = toastRoot.activeSelf && title.text == "\uBBF8\uC158 \uC2E4\uD328" && Mathf.Approximately(group.alpha, 1f);
+                toastTimer.SetValue(tacticalMissionSystem, 0.21f);
+                updateToast.Invoke(tacticalMissionSystem, null);
+                fading = group.alpha > 0f && group.alpha < 1f;
+                toastTimer.SetValue(tacticalMissionSystem, 0f);
+                updateToast.Invoke(tacticalMissionSystem, null);
+                hidden = !toastRoot.activeSelf;
+                lifecycle = shown && fading && hidden;
+            }
+
+            summary = "iconRemoved=" + iconRemoved + ", centered=" + centered + ", nonBlocking=" + nonBlocking + ", shown=" + shown + ", fading=" + fading + ", hidden=" + hidden + ", lifecycle=" + lifecycle;
+            return iconRemoved && centered && nonBlocking && lifecycle;
+        }
         private static bool ValidatePass2QOptionalTacticalContract(DefenseGameController controller, TacticalMissionSystem tacticalMissionSystem, out string summary)
         {
             Button summaryButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "MissionSummaryButton");
@@ -2891,6 +2936,8 @@ namespace DefenseGame.Editor
             public bool playerDirectSummonIsolationValid;
             public bool tacticalMissionRiskRewardValid;
             public bool tacticalMissionChoiceValid;
+            public bool pass2WMissionToastValid;
+            public string pass2WMissionToastSummary;
             public bool pass2QBadLuckPointsValid;
             public string pass2QBadLuckPointsSummary;
             public bool roundDiamondRewardValid;

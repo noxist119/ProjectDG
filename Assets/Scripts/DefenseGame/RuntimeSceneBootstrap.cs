@@ -1442,14 +1442,11 @@ private void EnsureLight()
 				toastGroup.alpha = 0f;
 				toastGroup.interactable = false;
 				toastGroup.blocksRaycasts = false;
-				CreatePanel(((Component)(object)toast).transform, "MissionToastGlow", Vector2.zero, new Vector2(-20f, -18f), new Color(0.28f, 1f, 0.76f, 0.24f), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), rounded: true, shadow: false);
-				CreatePanel(((Component)(object)toast).transform, "MissionToastIconSlot", new Vector2(38f, 0f), new Vector2(68f, 68f), new Color(1f, 0.76f, 0.24f, 0.95f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), rounded: true, shadow: false);
-				CreateSkinIcon(((Component)(object)toast).transform, "MissionToastIcon", "mission", new Vector2(38f, 0f), new Vector2(46f, 46f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), Color.white);
-				Text toastTitle = CreateText(((Component)(object)toast).transform, font, Color.white, "MissionToastTitle", new Vector2(0f, 1f), Vector2.one, new Vector2(0f, 1f), new Vector2(92f, -24f), new Vector2(-120f, 42f), "미션 완료!", 31, TextAnchor.MiddleLeft, bold: true);
-				Text toastReward = CreateText(((Component)(object)toast).transform, font, new Color(1f, 0.9f, 0.42f), "MissionToastReward", new Vector2(0f, 0f), Vector2.one, new Vector2(0f, 0f), new Vector2(92f, 22f), new Vector2(-120f, 38f), "+보상", 23, TextAnchor.MiddleLeft, bold: true);
-				((Component)(object)toast).gameObject.SetActive(value: false);
+                CreatePanel(((Component)(object)toast).transform, "MissionToastGlow", Vector2.zero, new Vector2(-20f, -18f), new Color(0.28f, 1f, 0.76f, 0.24f), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), rounded: true, shadow: false);
+                Text toastTitle = CreateText(((Component)(object)toast).transform, font, Color.white, "MissionToastTitle", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(320f, 58f), "\uBBF8\uC158 \uC644\uB8CC!", 27, TextAnchor.MiddleCenter, bold: true);
+                ((Component)(object)toast).gameObject.SetActive(value: false);
 				root.SetActive(value: false);
-				missionSystem.Configure(gameController, boardManager, summaryButton, summaryText, root, header, ((Component)(object)activeCard).gameObject, activeTitle, activeDescription, activeProgress, optionButtons, optionTitles, optionDescriptions, optionRewards, optionAccents, closeButton, ((Component)(object)toast).gameObject, toastGroup, toastTitle, toastReward);
+				missionSystem.Configure(gameController, boardManager, summaryButton, summaryText, root, header, ((Component)(object)activeCard).gameObject, activeTitle, activeDescription, activeProgress, optionButtons, optionTitles, optionDescriptions, optionRewards, optionAccents, closeButton, ((Component)(object)toast).gameObject, toastGroup, toastTitle, null);
 			}
 		}
 

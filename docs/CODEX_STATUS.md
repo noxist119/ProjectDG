@@ -1,7 +1,7 @@
 # CODEX STATUS
 
-- Latest completed pass: Pass 2V — Tactical Mission Settlement & Choice Flow.
-- Change: The initial `LastStandGambit` / `배수의 진` contract now settles at the end of R2, matching its player-facing condition. Completion is recorded before payout, so the R2 reward is granted once and cannot be repeated at R3. The small non-blocking Tactical Contract HUD state displays `미션 완료! 보상 획득` below the contract HUD until the next contract-selection panel actually opens.
-- Choice flow: Round result remains first. Result Continue queues the next Tactical Contract only after higher-priority choices clear. An Augment choice opens first when pending; its close event then opens the Tactical Contract selector. Without Augment/Shop blocking it, Continue opens the selector directly. The Tactical Contract overlay is not pre-opened behind the result or augment panels.
-- Verification: `dotnet build Assembly-CSharp.csproj --no-restore` PASS (0 warnings, 0 errors). Unity PlayMode Smoke PASS with `runtimeErrors: 0`; existing UI-button smoke paths for battle start, result lifecycle, optional Tactical Contract flow, and no-action progression remain PASS.
+- Latest completed pass: Pass 2W — Mission Toast Polish & Failure Contract Flow.
+- Change: Mission completion and failure now use the same compact, non-blocking Tactical Contract toast below the contract HUD. The ticket icon and its reserved space were removed; the single message is horizontally and vertically centered. Both `미션 완료! 보상 획득` and `미션 실패` remain visible for 3.0 seconds, then fade through the CanvasGroup and deactivate without consuming input.
+- Choice flow: Completing or failing a Tactical Contract clears the current contract and queues the next offer through the existing post-result flow. Result Continue keeps Augment ahead of Tactical Contract; after the Augment closes, the Tactical Contract selector opens. With no higher-priority choice, Continue opens it directly. No mission panel is pre-opened behind result or choice panels.
+- Verification: `dotnet build Assembly-CSharp.csproj --no-restore` PASS (0 warnings, 0 errors). Unity PlayMode Smoke PASS with `runtimeErrors: 0`. Pass 2W toast regression: icon removed, centered text, non-blocking CanvasGroup, failure-toast show/fade/hide lifecycle all PASS.
 - Next task: Start the next user-requested ProjectDG pass.
