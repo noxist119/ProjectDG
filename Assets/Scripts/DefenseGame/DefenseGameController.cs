@@ -805,6 +805,18 @@ namespace DefenseGame
         public string CombatModeDisplayName => ActiveCombatModeProfile.displayName;
         public bool IsCombatInteractionLocked => IsRoundRunning && CurrentRound > 0 && roundManager != null && roundManager.CurrentRoundSpawnedCount > 0 && !FateCombatEditingActive;
         public bool IsBossRound => roundManager != null && roundManager.IsBossRound;
+        public string GetBossDisplayNameForRound(int round)
+        {
+            if (round <= 0 || round % 10 != 0 || monsterDatabase == null)
+            {
+                return string.Empty;
+            }
+
+            MonsterDefinition boss = monsterDatabase.GetBossForRound(round);
+            return boss != null && !string.IsNullOrWhiteSpace(boss.displayName)
+                ? boss.displayName
+                : string.Empty;
+        }
         public bool IsMidBossRound => roundManager != null && roundManager.IsMidBossRound;
         public bool IsCurrentRoundHorde => roundManager != null && roundManager.IsCurrentRoundHorde;
         public int NextBossRound => roundManager != null ? roundManager.GetNextBossRound(CurrentRound) : 10;

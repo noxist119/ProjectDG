@@ -1962,14 +1962,18 @@ namespace DefenseGame
 
         private void ShowBossWarning(int round)
         {
+            string bossName = gameController != null ? gameController.GetBossDisplayNameForRound(round) : string.Empty;
             if (bossWarningPanel == null)
             {
-                HandleBannerRequested("BOSS ROUND " + round, new Color(1f, 0.34f, 0.25f), 2.4f);
+                string fallbackMessage = string.IsNullOrEmpty(bossName)
+                    ? "BOSS ROUND " + round
+                    : "BOSS ROUND " + round + " \u00b7 " + bossName;
+                HandleBannerRequested(fallbackMessage, new Color(1f, 0.34f, 0.25f), 2.4f);
                 return;
             }
 
-            SetText(bossWarningTitleText, "보스 등장!");
-            SetText(bossWarningSubText, "ROUND " + round + "  |  보스 타일과 군중제어 배치를 확인하세요");
+            SetText(bossWarningTitleText, string.IsNullOrEmpty(bossName) ? "\uBCF4\uC2A4 \uB4F1\uC7A5!" : bossName);
+            SetText(bossWarningSubText, "ROUND " + round + "  |  \uBCF4\uC2A4 \uB4F1\uC7A5!");
 
             bossWarningTimer = BossWarningDuration;
             bossWarningPanel.SetActive(true);
