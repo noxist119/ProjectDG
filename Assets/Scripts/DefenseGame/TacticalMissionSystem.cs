@@ -114,6 +114,7 @@ namespace DefenseGame
         private bool resolvingMission;
         private int pendingMissionSupportSummons;
         private bool runStarted;
+        private bool completionToastAwaitingChoice;
 
         public int PendingMissionSupportSummons => pendingMissionSupportSummons;
         public bool HasInitialStrategyFork => HasOfferedMission(MissionKind.PerfectDefense) && HasOfferedMission(MissionKind.SummonSprint) && HasOfferedMission(MissionKind.LastStandGambit);
@@ -121,6 +122,7 @@ namespace DefenseGame
         public bool IsChoicePanelOpen => !missionSelected && panelRoot != null && panelRoot.activeSelf;
         public int MissionOfferCount => missionSelected ? 0 : activeMissions.Count;
         public int CompletedMissionCount => completedMissionCount;
+        public bool HasPendingMissionOffers => !missionSelected && activeMissions.Count > 0;
 
         // Read-only automation/telemetry surface. This deliberately exposes broad intent,
         // rather than the private MissionKind enum, so external test policies remain stable
@@ -228,6 +230,7 @@ namespace DefenseGame
             missionCursor = 0;
             completedMissionCount = 0;
             toastTimer = 0f;
+            completionToastAwaitingChoice = false;
             resolvingMission = false;
             pendingMissionSupportSummons = 0;
             runStarted = false;
@@ -523,7 +526,8 @@ namespace DefenseGame
                     mission.goldReward = initialOffer ? 12 : Mathf.Clamp(Mathf.RoundToInt(mission.target * summonCost * 0.38f), 10, 42);
                     break;
                 case MissionKind.LastStandGambit:
-                    mission.targetRound = 3;
+                    // This initial contract settles at the end of R2, as its player-facing condition states.
+                    mission.targetRound = 2;
                     mission.target = 2;
                     mission.secondaryTarget = 7;
                     mission.goldReward = 18;
@@ -864,7 +868,7 @@ namespace DefenseGame
                 case MissionKind.SummonSprint:
                     return $"R{mission.targetRound}\uae4c\uc9c0 \uc9c1\uc811 \uc18c\ud658\uc744 {mission.target}\ud68c \uc644\ub8cc\ud558\uc138\uc694.";
                 case MissionKind.LastStandGambit:
-                    return $"R{Mathf.Max(1, mission.targetRound - 1)} \uc885\ub8cc \uc804\uae4c\uc9c0 HP 1~7, \uc9c1\uc811 \uc18c\ud658 2\ud68c \uc774\ud558, \ubcf4\ub4dc \uc720\ub2db 2\uae30 \uc774\ud558\ub97c \uc720\uc9c0\ud558\uc138\uc694.";
+                    return $"R{mission.targetRound} \uc885\ub8cc \uc804\uae4c\uc9c0 HP 1~7, \uc9c1\uc811 \uc18c\ud658 2\ud68c \uc774\ud558, \ubcf4\ub4dc \uc720\ub2db 2\uae30 \uc774\ud558\ub97c \uc720\uc9c0\ud558\uc138\uc694.";
                 case MissionKind.EmptySlotDiscipline:
                     return $"R{mission.targetRound} \uc885\ub8cc \ud6c4 \ube48 \uc2ac\ub86f\uc744 {mission.target}\uce78 \uc774\uc0c1 \ub0a8\uae30\uc138\uc694.";
                 case MissionKind.RareUpgrade:
@@ -1230,6 +1234,19 @@ namespace DefenseGame
             pendingMissionSupportSummons = 0;
             RefreshUi();
         }
+        // Called by DefenseGameController only after Result Continue and every higher-priority choice has closed.
+        public bool TryOpenQueuedMissionChoice()
+        {
+            if (gameController == null || gameController.IsRoundRunning || missionSelected || activeMissions.Count == 0 || IsChoicePanelOpen)
+            {
+                return false;
+            }
+
+            SetPanelOpen(true);
+            HideCompletionToast();
+            RefreshUi();
+            return panelRoot != null && panelRoot.activeSelf;
+        }
         private void HandleMonsterKilled(MonsterUnit monster)
         {
             totalKills++;
@@ -1383,7 +1400,7 @@ namespace DefenseGame
                 case MissionKind.SummonSprint:
                     return Mathf.Min(totalSummons - mission.startSummons, mission.target) + " / " + mission.target + " 소환" + deadline;
                 case MissionKind.LastStandGambit:
-                    return "HP " + gameController.Life + " / 7 이하 | 소환 " + Mathf.Max(0, totalSummons - mission.startSummons) + " / 2 | 유닛 " + gameController.BoardUnitCount + " / 2 | R3까지";
+                    return "HP " + gameController.Life + " / 7 \uC774\uD558 | \uC18C\uD658 " + Mathf.Max(0, totalSummons - mission.startSummons) + " / 2 | \uC720\uB2DB " + gameController.BoardUnitCount + " / 2 | R" + mission.targetRound + "\uAE4C\uC9C0";
                 case MissionKind.EmptySlotDiscipline:
                     return gameController.EmptySlotCount + " / " + mission.target + " 빈칸" + deadline;
                 case MissionKind.RareUpgrade:
@@ -1415,7 +1432,7 @@ namespace DefenseGame
 
         public static bool IsLastStandGambitConditionMet(int life, int summonsSinceMissionStart, int boardUnitCount, int currentRound)
         {
-            return life > 0 && life <= 7 && currentRound <= 3 && summonsSinceMissionStart <= 2 && boardUnitCount <= 2;
+            return life > 0 && life <= 7 && currentRound <= 2 && summonsSinceMissionStart <= 2 && boardUnitCount <= 2;
         }
 
         private bool HasOfferedMission(MissionKind kind)
@@ -1607,7 +1624,8 @@ namespace DefenseGame
                 return;
             }
 
-            ShowToast("미션 완료!", rewardSummary);
+            completionToastAwaitingChoice = true;
+            ShowToast("\uBBF8\uC158 \uC644\uB8CC! \uBCF4\uC0C1 \uD68D\uB4DD", string.Empty);
         }
 
 
@@ -1637,6 +1655,11 @@ namespace DefenseGame
                 return;
             }
 
+            if (completionToastAwaitingChoice)
+            {
+                return;
+            }
+
             toastTimer -= Time.unscaledDeltaTime;
             float normalized = Mathf.Clamp01(toastTimer / CompletionToastDuration);
             float alpha = Mathf.Min(Mathf.Clamp01((CompletionToastDuration - toastTimer) / 0.18f), Mathf.Clamp01(normalized / 0.2f));
@@ -1662,6 +1685,7 @@ namespace DefenseGame
         private void HideCompletionToast()
         {
             toastTimer = 0f;
+            completionToastAwaitingChoice = false;
             if (completionToastGroup != null)
             {
                 completionToastGroup.alpha = 0f;

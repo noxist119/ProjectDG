@@ -608,6 +608,7 @@ namespace DefenseGame
         public event System.Action<int> OnRoundShopPhase;
         public event System.Action<int> OnRoundAugmentChoicePhase;
         public event System.Action<int> OnRoundCompleted;
+        private bool tacticalMissionChoicePending;
         public event System.Action<int> OnYahtzeeTicketMilestoneCleared;
         public event System.Action OnGameOver;
         public event System.Action OnRunReset;
@@ -1512,7 +1513,18 @@ namespace DefenseGame
 
         public void RegisterAugmentManager(AugmentManager manager)
         {
+            if (augmentManager != null)
+            {
+                augmentManager.OnChoiceClosed -= HandleAugmentChoiceClosed;
+            }
+
             augmentManager = manager;
+            if (augmentManager != null)
+            {
+                augmentManager.OnChoiceClosed -= HandleAugmentChoiceClosed;
+                augmentManager.OnChoiceClosed += HandleAugmentChoiceClosed;
+            }
+
             augmentManager?.RefreshCombatModeTuning();
         }
 
@@ -4590,7 +4602,35 @@ namespace DefenseGame
             pendingPostRoundChoiceRound = -1;
             OnRoundShopPhase?.Invoke(round);
             OnRoundAugmentChoicePhase?.Invoke(round);
+            tacticalMissionChoicePending = tacticalMissionSystem != null && tacticalMissionSystem.HasPendingMissionOffers;
+            TryOpenQueuedTacticalMissionChoice();
             NotifyStateChanged();
+        }
+
+        private void HandleAugmentChoiceClosed()
+        {
+            TryOpenQueuedTacticalMissionChoice();
+        }
+
+        private void TryOpenQueuedTacticalMissionChoice()
+        {
+            if (!tacticalMissionChoicePending || IsRoundRunning || tacticalMissionSystem == null)
+            {
+                return;
+            }
+
+            // Result Continue is the only queue entry. Augments retain priority and the
+            // mission overlay is never activated behind another blocking choice.
+            if ((augmentManager != null && (augmentManager.IsChoiceOpen || augmentManager.HasPendingChoice)) ||
+                (runShopSystem != null && runShopSystem.IsPanelOpen))
+            {
+                return;
+            }
+
+            if (tacticalMissionSystem.TryOpenQueuedMissionChoice())
+            {
+                tacticalMissionChoicePending = false;
+            }
         }
 
         private void HandleDamageDealt(DefenderUnit source, MonsterUnit target, float damage, bool critical)
@@ -4922,6 +4962,7 @@ namespace DefenseGame
             fateCardUsed = false;
             fateCardChoicesInitialized = false;
             pendingPostRoundChoiceRound = -1;
+            tacticalMissionChoicePending = false;
             fateCardLastTitle = "미사용";
             fateCardLastDetail = "운명 카드 대기";
             fateCardLastDebt = 0;

@@ -384,7 +384,8 @@ namespace DefenseGame.Editor
             TacticalMissionSystem tacticalMissionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
             bool tacticalMissionRiskRewardValid = tacticalMissionSystem != null &&
                                                   tacticalMissionSystem.HasInitialStrategyFork &&
-                                                  TacticalMissionSystem.IsLastStandGambitConditionMet(7, 2, 2, 3) &&
+                                                  TacticalMissionSystem.IsLastStandGambitConditionMet(7, 2, 2, 2) &&
+                                                  !TacticalMissionSystem.IsLastStandGambitConditionMet(7, 2, 2, 3) &&
                                                   !TacticalMissionSystem.IsLastStandGambitConditionMet(0, 0, 0, 1) &&
                                                   !TacticalMissionSystem.IsLastStandGambitConditionMet(7, 3, 2, 2) &&
                                                   !TacticalMissionSystem.IsLastStandGambitConditionMet(7, 2, 2, 4);

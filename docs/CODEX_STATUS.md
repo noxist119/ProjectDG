@@ -1,6 +1,7 @@
 # CODEX STATUS
 
-- Latest completed pass: Pass 2S — Boss Display Name Cleanup.
-- Change: Major-boss roster definitions now normalize technical prefab names into player-facing `displayName` values during `MonsterDatabase` creation. `Boss_Golem` is `골렘 군주`; `Boss_Leon` is `사자왕 레온`; `Boss_Magician` is `신비의 마법사`. IDs, prefab names, and roster source IDs remain unchanged. Pass 2R's HUD lookup continues to display the resolved `displayName`.
-- Unity verification: PlayMode Smoke PASS (`runtimeErrors: 0`). Actual Overdrive R10 batch: 3/3 runs reached R10, 3 boss attempts, first boss damage at 1.63s / 2.02s / 1.96s; runtime errors 0, technical failures 0, softlocks 0.
+- Latest completed pass: Pass 2V — Tactical Mission Settlement & Choice Flow.
+- Change: The initial `LastStandGambit` / `배수의 진` contract now settles at the end of R2, matching its player-facing condition. Completion is recorded before payout, so the R2 reward is granted once and cannot be repeated at R3. The small non-blocking Tactical Contract HUD state displays `미션 완료! 보상 획득` below the contract HUD until the next contract-selection panel actually opens.
+- Choice flow: Round result remains first. Result Continue queues the next Tactical Contract only after higher-priority choices clear. An Augment choice opens first when pending; its close event then opens the Tactical Contract selector. Without Augment/Shop blocking it, Continue opens the selector directly. The Tactical Contract overlay is not pre-opened behind the result or augment panels.
+- Verification: `dotnet build Assembly-CSharp.csproj --no-restore` PASS (0 warnings, 0 errors). Unity PlayMode Smoke PASS with `runtimeErrors: 0`; existing UI-button smoke paths for battle start, result lifecycle, optional Tactical Contract flow, and no-action progression remain PASS.
 - Next task: Start the next user-requested ProjectDG pass.

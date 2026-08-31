@@ -1437,7 +1437,7 @@ private void EnsureLight()
 					optionRewards[i] = CreateText(((Component)(object)optionButtons[i]).transform, font, new Color(1f, 0.88f, 0.38f), "Reward", new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 0f), new Vector2(132f, 12f), new Vector2(-260f, 34f), "\ubcf4\uc0c1", 24, TextAnchor.MiddleLeft, bold: true);
 					CreateText(((Component)(object)optionButtons[i]).transform, font, new Color(0.45f, 1f, 0.68f), "PickLabel", new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-26f, 0f), new Vector2(92f, 36f), "선택", 21, TextAnchor.MiddleRight, bold: true);
 				}
-				Image toast = CreatePanel(hudRoot, "MissionCompletionToast", new Vector2(0f, -228f), new Vector2(620f, 126f), new Color(0.05f, 0.15f, 0.32f, 0.96f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), rounded: true, shadow: true);
+				Image toast = CreatePanel(hudRoot, "MissionCompletionToast", new Vector2(22f, -226f), new Vector2(350f, 64f), new Color(0.05f, 0.15f, 0.32f, 0.96f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), rounded: true, shadow: true);
 				CanvasGroup toastGroup = ((Component)(object)toast).gameObject.AddComponent<CanvasGroup>();
 				toastGroup.alpha = 0f;
 				toastGroup.interactable = false;
