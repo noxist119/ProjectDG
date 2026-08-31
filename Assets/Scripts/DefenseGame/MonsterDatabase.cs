@@ -1640,7 +1640,7 @@ namespace DefenseGame
             MonsterDefinition definition = new MonsterDefinition();
             string baseId = ResolveRosterBaseId(entry, threatLevel, index);
             definition.id = ResolveRosterId(baseId, grade, variantIndex);
-            definition.displayName = ResolveRosterDisplayName(entry, definition.id, grade, variantIndex);
+            definition.displayName = ResolveRosterDisplayName(entry, definition.id, threatLevel, grade, variantIndex);
             definition.description = BuildRosterDescription(definition.displayName, threatLevel, role);
             definition.grade = grade;
             definition.role = role;
@@ -1757,7 +1757,7 @@ namespace DefenseGame
             return variantIndex <= 0 ? baseId : $"{baseId}_g{(int)grade:D2}";
         }
 
-        private string ResolveRosterDisplayName(MonsterPresentationOverride entry, string fallbackId, CharacterGrade grade, int variantIndex)
+        private string ResolveRosterDisplayName(MonsterPresentationOverride entry, string fallbackId, MonsterThreatLevel threatLevel, CharacterGrade grade, int variantIndex)
         {
             string baseName;
             if (!string.IsNullOrWhiteSpace(entry.displayName))
@@ -1773,9 +1773,38 @@ namespace DefenseGame
                 baseName = fallbackId;
             }
 
+            if (threatLevel == MonsterThreatLevel.Boss)
+            {
+                baseName = ResolveBossPlayerDisplayName(baseName);
+            }
+
             return variantIndex <= 0 ? baseName : $"{baseName} {CharacterGradeUtility.GetDisplayName(grade)}";
         }
 
+        private string ResolveBossPlayerDisplayName(string candidate)
+        {
+            if (string.Equals(candidate, "Boss_Golem", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "\uACE8\uB818 \uAD70\uC8FC";
+            }
+
+            if (string.Equals(candidate, "Boss_Leon", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "\uC0AC\uC790\uC655 \uB808\uC628";
+            }
+
+            if (string.Equals(candidate, "Boss_Magician", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "\uC2E0\uBE44\uC758 \uB9C8\uBC95\uC0AC";
+            }
+
+            if (!string.IsNullOrWhiteSpace(candidate) && candidate.StartsWith("Boss_", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "\uCE68\uACF5\uC758 \uAD70\uC8FC";
+            }
+
+            return string.IsNullOrWhiteSpace(candidate) ? "\uC815\uCCB4\uBD88\uBA85\uC758 \uBCF4\uC2A4" : candidate;
+        }
         private string BuildRosterDescription(string displayName, MonsterThreatLevel threatLevel, MonsterRole role)
         {
             if (threatLevel == MonsterThreatLevel.Boss)

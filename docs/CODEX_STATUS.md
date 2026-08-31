@@ -1,6 +1,6 @@
 # CODEX STATUS
 
-- Latest completed pass: Pass 2R — Major Boss Arrival Feedback.
-- Change: Boss warning titles now use `DefenseGameController.GetBossDisplayNameForRound(round)`. R10 resolves to `Gatebreaker Rhogar`; the subtitle is `ROUND 10  |  보스 등장!`. The fallback banner also includes the name when available.
-- Unity verification: PlayMode Smoke PASS (`runtimeErrors: 0`). Actual Overdrive R10 batch: 3/3 runs reached R10; boss first-damage telemetry was 1.66s, 1.70s, and 1.78s, confirming normal boss spawn and combat entry; `runtimeErrorRunCount: 0`, no technical failures or softlocks.
+- Latest completed pass: Pass 2S — Boss Display Name Cleanup.
+- Change: Major-boss roster definitions now normalize technical prefab names into player-facing `displayName` values during `MonsterDatabase` creation. `Boss_Golem` is `골렘 군주`; `Boss_Leon` is `사자왕 레온`; `Boss_Magician` is `신비의 마법사`. IDs, prefab names, and roster source IDs remain unchanged. Pass 2R's HUD lookup continues to display the resolved `displayName`.
+- Unity verification: PlayMode Smoke PASS (`runtimeErrors: 0`). Actual Overdrive R10 batch: 3/3 runs reached R10, 3 boss attempts, first boss damage at 1.63s / 2.02s / 1.96s; runtime errors 0, technical failures 0, softlocks 0.
 - Next task: Start the next user-requested ProjectDG pass.
