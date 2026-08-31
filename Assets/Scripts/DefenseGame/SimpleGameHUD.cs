@@ -91,8 +91,8 @@ namespace DefenseGame
         private const float BossWarningDuration = 3.4f;
         private const int MaxPostRoundBannerQueue = 4;
         private const float PostRoundBannerBurstWindow = 0.2f;
-        private const float OpeningTutorialDuration = 10f;
-        private const float OpeningTutorialStageDuration = OpeningTutorialDuration / 4f;
+        private const float OpeningGuidanceStageDuration = 1.5f;
+        private const float OpeningGuidanceFadeDuration = 0.22f;
         private const float DefeatCinematicDuration = DefenseGameController.DefeatSlowMotionDurationRealtime;
         private const float DefeatCinematicFadeOutDuration = 0.25f;
         private const float FatePanelClosedYOffset = 226f;
@@ -107,16 +107,12 @@ namespace DefenseGame
         public int PendingPostRoundBannerCount => postRoundBannerQueue.Count;
         public string CurrentRoundBannerMessage => roundBannerText != null ? roundBannerText.text : string.Empty;
 
-        [Header("Opening Tutorial")]
-        [SerializeField] private bool enableOpeningTutorial = true;
-
-        private float openingTutorialStartTime = -1f;
-        private int openingTutorialStage = -1;
-        private bool openingTutorialCompleted;
-        private Graphic openingTutorialGraphic;
-        private Color openingTutorialOriginalColor;
-        private RectTransform openingTutorialRect;
-        private Vector3 openingTutorialOriginalScale = Vector3.one;
+        [Header("Opening Guidance")]
+        [SerializeField] private bool enableOpeningGuidance = true;
+        private float openingGuidanceElapsed;
+        private int openingGuidanceStage = -1;
+        private bool openingGuidanceShownForRun;
+        private bool openingGuidanceActive;
         private DefenderUnit selectedUnit;
         private DefenderUnit pendingSellConfirmUnit;
         private float pendingSellConfirmExpireTime;
@@ -305,7 +301,7 @@ namespace DefenseGame
             WireUnitSellButton();
             WireFatePanelControls();
             InitializeFatePanelMotionIfNeeded();
-            ResetOpeningTutorial();
+            ResetOpeningGuidanceForNewRun();
             Subscribe();
             Refresh();
         }
@@ -323,7 +319,7 @@ namespace DefenseGame
 
         private void OnDisable()
         {
-            RestoreOpeningTutorialTarget();
+            HideOpeningGuidance();
             ResetUltimateReadyVisuals();
             if (defeatCinematicActive)
             {
@@ -338,7 +334,7 @@ namespace DefenseGame
             UpdateRoundBanner();
             UpdateMergeCelebration();
             UpdateBossWarning();
-            UpdateOpeningTutorial();
+            UpdateOpeningGuidance();
             UpdateSellConfirmationTimer();
             UpdateDefeatCinematic();
             UpdateUltimateReadyEmphasis();
@@ -370,7 +366,6 @@ namespace DefenseGame
             }
 
             RefreshDynamicState();
-            ApplyOpeningTutorialHint();
         }
 
         private void RefreshLifeProgressFill()
@@ -421,6 +416,8 @@ namespace DefenseGame
             gameController.OnRoundStarted += HandleRoundStarted;
             gameController.OnGameOver -= HandleGameOver;
             gameController.OnGameOver += HandleGameOver;
+            gameController.OnRunReset -= HandleRunReset;
+            gameController.OnRunReset += HandleRunReset;
             if (boardManager != null)
             {
                 boardManager.OnSelectedUnitChanged -= HandleSelectedUnitChanged;
@@ -438,6 +435,7 @@ namespace DefenseGame
                 gameController.OnBannerRequested -= HandleBannerRequested;
                 gameController.OnRoundStarted -= HandleRoundStarted;
                 gameController.OnGameOver -= HandleGameOver;
+                gameController.OnRunReset -= HandleRunReset;
             }
 
             if (boardManager != null)
@@ -1442,7 +1440,7 @@ namespace DefenseGame
 
         private void UpdateBossWarning()
         {
-            if (bossWarningPanel == null)
+            if (openingGuidanceActive || bossWarningPanel == null)
             {
                 return;
             }
@@ -1482,178 +1480,171 @@ namespace DefenseGame
             }
         }
 
-        private void ResetOpeningTutorial()
+        public void BeginOpeningGuidance()
         {
-            RestoreOpeningTutorialTarget();
-            openingTutorialStartTime = Time.unscaledTime;
-            openingTutorialStage = -1;
-            openingTutorialCompleted = false;
+            if (!enableOpeningGuidance || openingGuidanceShownForRun || openingGuidanceActive ||
+                gameController == null || gameController.IsRoundRunning || gameController.CurrentRound > 0 || bossWarningPanel == null)
+            {
+                return;
+            }
+
+            openingGuidanceShownForRun = true;
+            openingGuidanceActive = true;
+            openingGuidanceElapsed = 0f;
+            openingGuidanceStage = -1;
+            ShowOpeningGuidanceStage(0);
         }
 
-        private void UpdateOpeningTutorial()
+        private void ResetOpeningGuidanceForNewRun()
         {
-            if (!enableOpeningTutorial || openingTutorialCompleted || gameController == null)
-            {
-                return;
-            }
-
-            if (openingTutorialStartTime < 0f)
-            {
-                openingTutorialStartTime = Time.unscaledTime;
-            }
-
-            if (gameController.CurrentRound > 1)
-            {
-                CompleteOpeningTutorial();
-                return;
-            }
-
-            float elapsed = Time.unscaledTime - openingTutorialStartTime;
-            if (elapsed >= OpeningTutorialDuration)
-            {
-                CompleteOpeningTutorial();
-                return;
-            }
-
-            int timedStage = Mathf.Clamp(Mathf.FloorToInt(elapsed / OpeningTutorialStageDuration), 0, 3);
-            int actionStage = gameController.LastMergeResult.HasValue ? 3 :
-                gameController.CurrentRound > 0 ? 2 :
-                gameController.BoardUnitCount > 0 ? 1 : 0;
-            int stage = Mathf.Max(timedStage, actionStage);
-            Transform target = GetOpeningTutorialTarget(stage);
-            string message = GetOpeningTutorialMessage(stage);
-
-            if (openingTutorialStage != stage)
-            {
-                openingTutorialStage = stage;
-                HandleBannerRequested(message, new Color(1f, 0.88f, 0.22f), 2.2f);
-            }
-
-            PulseOpeningTutorialTarget(target);
-            SetText(hintText, message);
+            HideOpeningGuidance();
+            openingGuidanceShownForRun = false;
+            openingGuidanceStage = -1;
+            openingGuidanceElapsed = 0f;
         }
 
-        private void ApplyOpeningTutorialHint()
+        private void HandleRunReset()
         {
-            if (!enableOpeningTutorial || openingTutorialCompleted || openingTutorialStage < 0)
+            ResetOpeningGuidanceForNewRun();
+        }
+
+        private void UpdateOpeningGuidance()
+        {
+            if (!openingGuidanceActive || bossWarningPanel == null)
             {
                 return;
             }
 
-            SetText(hintText, GetOpeningTutorialMessage(openingTutorialStage));
+            openingGuidanceElapsed += Time.unscaledDeltaTime;
+            int stage = Mathf.Clamp(Mathf.FloorToInt(openingGuidanceElapsed / OpeningGuidanceStageDuration), 0, 2);
+            if (stage != openingGuidanceStage && openingGuidanceElapsed < OpeningGuidanceStageDuration * 3f)
+            {
+                ShowOpeningGuidanceStage(stage);
+            }
+
+            float fadeStart = OpeningGuidanceStageDuration * 3f;
+            if (openingGuidanceElapsed >= fadeStart)
+            {
+                float alpha = Mathf.Clamp01((fadeStart + OpeningGuidanceFadeDuration - openingGuidanceElapsed) / OpeningGuidanceFadeDuration);
+                if (bossWarningCanvasGroup != null)
+                {
+                    bossWarningCanvasGroup.alpha = alpha;
+                }
+
+                if (openingGuidanceElapsed >= fadeStart + OpeningGuidanceFadeDuration)
+                {
+                    HideOpeningGuidance();
+                }
+            }
         }
 
-        private Transform GetOpeningTutorialTarget(int stage)
+        private void ShowOpeningGuidanceStage(int stage)
         {
-            switch (stage)
+            string title;
+            string subtitle;
+            switch (Mathf.Clamp(stage, 0, 2))
             {
                 case 0:
-                    return summonButton != null ? summonButton.transform : null;
+                    title = "\uBC29\uC5B4\uC120 \uB3CC\uD30C \uC8FC\uC758!";
+                    subtitle = string.Empty;
+                    break;
                 case 1:
-                    return battleButton != null ? battleButton.transform : null;
-                case 2:
-                    return normalMergeText != null && normalMergeText.transform.parent != null
-                        ? normalMergeText.transform.parent
-                        : normalMergeText != null ? normalMergeText.transform : null;
+                    title = "\uBAAC\uC2A4\uD130\uAC00 \uC544\uB798 \uB05D\uC5D0 \uB3C4\uB2EC\uD558\uBA74";
+                    subtitle = "HP\uAC00 \uAC10\uC18C\uD569\uB2C8\uB2E4";
+                    break;
                 default:
-                    if (recipeInsightText != null && recipeInsightText.transform.parent != null)
-                    {
-                        return recipeInsightText.transform.parent;
-                    }
+                    title = "\uC218\uD638\uC790\uB97C \uC18C\uD658\uD574";
+                    subtitle = "\uB9C9\uC544\uB0B4\uC138\uC694!";
+                    break;
+            }
 
-                    if (bossRoundHudText != null && bossRoundHudText.transform.parent != null)
-                    {
-                        return bossRoundHudText.transform.parent;
-                    }
+            openingGuidanceStage = Mathf.Clamp(stage, 0, 2);
+            ApplyWarningLayout(openingGuidance: true, hasSubtitle: !string.IsNullOrEmpty(subtitle));
+            SetText(bossWarningTitleText, title);
+            SetText(bossWarningSubText, subtitle);
+            bossWarningTimer = 0f;
+            bossWarningPanel.SetActive(true);
+            if (bossWarningCanvasGroup != null)
+            {
+                bossWarningCanvasGroup.alpha = 1f;
+            }
 
-                    return mergeResultText != null && mergeResultText.transform.parent != null
-                        ? mergeResultText.transform.parent
-                        : mergeResultText != null ? mergeResultText.transform : null;
+            RectTransform rect = bossWarningPanel.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.localScale = Vector3.one;
             }
         }
 
-        private string GetOpeningTutorialMessage(int stage)
+        private void HideOpeningGuidance()
         {
-            switch (stage)
+            if (!openingGuidanceActive)
             {
-                case 0:
-                    return "1. 소환한다  새 유닛을 뽑으세요";
-                case 1:
-                    return "2. 막는다  라운드를 눌러 막으세요";
-                case 2:
-                    return "3. 합친다  같은 등급 3개면 합성";
-                default:
-                    return "4. 더 센 게 나온다  합성 결과로 등급 상승";
-            }
-        }
-
-        private void PulseOpeningTutorialTarget(Transform target)
-        {
-            if (target == null)
-            {
-                RestoreOpeningTutorialTarget();
                 return;
             }
 
-            Graphic graphic = target.GetComponent<Graphic>();
-            if (graphic == null)
+            openingGuidanceActive = false;
+            openingGuidanceElapsed = 0f;
+            openingGuidanceStage = -1;
+            if (bossWarningCanvasGroup != null)
             {
-                graphic = target.GetComponentInChildren<Graphic>();
+                bossWarningCanvasGroup.alpha = 0f;
             }
 
-            if (graphic == null)
+            if (bossWarningPanel != null && bossWarningPanel.activeSelf)
             {
-                RestoreOpeningTutorialTarget();
-                return;
-            }
-
-            if (openingTutorialGraphic != graphic)
-            {
-                RestoreOpeningTutorialTarget();
-                openingTutorialGraphic = graphic;
-                openingTutorialOriginalColor = graphic.color;
-                openingTutorialRect = target.GetComponent<RectTransform>();
-                openingTutorialOriginalScale = openingTutorialRect != null ? openingTutorialRect.localScale : Vector3.one;
-            }
-
-            float pulse = 0.35f + Mathf.PingPong(Time.unscaledTime * 3.2f, 0.55f);
-            Color highlight = new Color(1f, 0.88f, 0.18f, openingTutorialOriginalColor.a);
-            openingTutorialGraphic.color = Color.Lerp(openingTutorialOriginalColor, highlight, pulse);
-
-            if (openingTutorialRect != null)
-            {
-                openingTutorialRect.localScale = openingTutorialOriginalScale * Mathf.Lerp(1f, 1.07f, pulse);
+                bossWarningPanel.SetActive(false);
             }
         }
 
-        private void CompleteOpeningTutorial()
+        private void ApplyWarningLayout(bool openingGuidance, bool hasSubtitle)
         {
-            openingTutorialCompleted = true;
-            openingTutorialStage = -1;
-            RestoreOpeningTutorialTarget();
-            SetText(hintText, hintMessage);
-        }
-
-        private void RestoreOpeningTutorialTarget()
-        {
-            if (openingTutorialGraphic != null)
+            if (bossWarningTitleText != null)
             {
-                openingTutorialGraphic.color = openingTutorialOriginalColor;
-                openingTutorialGraphic = null;
+                RectTransform titleRect = bossWarningTitleText.GetComponent<RectTransform>();
+                if (titleRect != null)
+                {
+                    titleRect.anchorMin = new Vector2(0.5f, 0.5f);
+                    titleRect.anchorMax = new Vector2(0.5f, 0.5f);
+                    titleRect.pivot = new Vector2(0.5f, 0.5f);
+                    titleRect.anchoredPosition = openingGuidance ? new Vector2(0f, hasSubtitle ? 28f : 0f) : new Vector2(0f, 16f);
+                    titleRect.sizeDelta = openingGuidance ? new Vector2(680f, 62f) : new Vector2(560f, 72f);
+                }
+
+                bossWarningTitleText.alignment = TextAnchor.MiddleCenter;
             }
 
-            if (openingTutorialRect != null)
+            if (bossWarningSubText != null)
             {
-                openingTutorialRect.localScale = openingTutorialOriginalScale;
-                openingTutorialRect = null;
+                bossWarningSubText.gameObject.SetActive(!openingGuidance || hasSubtitle);
+                RectTransform subtitleRect = bossWarningSubText.GetComponent<RectTransform>();
+                if (subtitleRect != null)
+                {
+                    if (openingGuidance)
+                    {
+                        subtitleRect.anchorMin = new Vector2(0.5f, 0.5f);
+                        subtitleRect.anchorMax = new Vector2(0.5f, 0.5f);
+                        subtitleRect.pivot = new Vector2(0.5f, 0.5f);
+                        subtitleRect.anchoredPosition = new Vector2(0f, -30f);
+                        subtitleRect.sizeDelta = new Vector2(620f, 42f);
+                    }
+                    else
+                    {
+                        subtitleRect.anchorMin = new Vector2(0.5f, 0f);
+                        subtitleRect.anchorMax = new Vector2(0.5f, 0f);
+                        subtitleRect.pivot = new Vector2(0.5f, 0f);
+                        subtitleRect.anchoredPosition = new Vector2(0f, 42f);
+                        subtitleRect.sizeDelta = new Vector2(620f, 36f);
+                    }
+                }
+
+                bossWarningSubText.alignment = TextAnchor.MiddleCenter;
             }
         }
-
-
         private void HandleGameOver()
         {
             ClearPostRoundBannerQueue();
-            CompleteOpeningTutorial();
+            HideOpeningGuidance();
             if (unitSellPanel != null)
             {
                 unitSellPanel.SetActive(false);
@@ -1972,6 +1963,10 @@ namespace DefenseGame
                 return;
             }
 
+            openingGuidanceActive = false;
+            openingGuidanceElapsed = 0f;
+            openingGuidanceStage = -1;
+            ApplyWarningLayout(openingGuidance: false, hasSubtitle: true);
             SetText(bossWarningTitleText, string.IsNullOrEmpty(bossName) ? "\uBCF4\uC2A4 \uB4F1\uC7A5!" : bossName);
             SetText(bossWarningSubText, "ROUND " + round + "  |  \uBCF4\uC2A4 \uB4F1\uC7A5!");
 

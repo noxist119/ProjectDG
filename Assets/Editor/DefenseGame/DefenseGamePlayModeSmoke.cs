@@ -405,6 +405,13 @@ namespace DefenseGame.Editor
             {
                 notes.Add("Pass 2W Mission Toast validation failed. " + missionToastSummary);
             }
+
+            SimpleGameHUD openingGuidanceHud = UnityEngine.Object.FindObjectOfType<SimpleGameHUD>();
+            bool pass2UOpeningGuidanceValid = ValidatePass2UOpeningGuidance(controller, openingGuidanceHud, out string openingGuidanceSummary);
+            if (!pass2UOpeningGuidanceValid)
+            {
+                notes.Add("Pass 2U Opening Guidance validation failed. " + openingGuidanceSummary);
+            }
             bool pass2QBadLuckPointsValid = ValidatePass2QBadLuckPoints(controller, out string badLuckPointsSummary);
             if (!pass2QBadLuckPointsValid)
             {
@@ -882,7 +889,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && pass2WMissionToastValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && pass2WMissionToastValid && pass2UOpeningGuidanceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -926,6 +933,8 @@ namespace DefenseGame.Editor
                 tacticalMissionChoiceValid = tacticalMissionChoiceValid,
                 pass2WMissionToastValid = pass2WMissionToastValid,
                 pass2WMissionToastSummary = missionToastSummary,
+                pass2UOpeningGuidanceValid = pass2UOpeningGuidanceValid,
+                pass2UOpeningGuidanceSummary = openingGuidanceSummary,
                 pass2QBadLuckPointsValid = pass2QBadLuckPointsValid,
                 pass2QBadLuckPointsSummary = badLuckPointsSummary,
                 roundDiamondRewardValid = roundDiamondRewardValid,
@@ -2420,11 +2429,13 @@ namespace DefenseGame.Editor
             Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
             Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
             Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
+            GameObject openingGuidancePanel = UnityEngine.Object.FindObjectsOfType<Transform>(true).Select(candidate => candidate != null ? candidate.gameObject : null).FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningPanel");
+            Text openingGuidanceTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningTitle");
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
             MethodInfo requestForecast = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
             MethodInfo notifyStateChanged = typeof(DefenseGameController).GetMethod("NotifyStateChanged", flags);
-            if (controller == null || rounds == null || lobbyEntryButton == null || battleButton == null || lobbyNavigationButton == null || currentRoundField == null || requestForecast == null || notifyStateChanged == null)
+            if (controller == null || rounds == null || lobbyEntryButton == null || battleButton == null || lobbyNavigationButton == null || openingGuidancePanel == null || openingGuidanceTitle == null || currentRoundField == null || requestForecast == null || notifyStateChanged == null)
             {
                 summary = "ui_or_reflection_target_missing";
                 return false;
@@ -2436,6 +2447,7 @@ namespace DefenseGame.Editor
                 lobbyNavigationButton.onClick.Invoke();
                 bool lobbyHiddenHud = controller.BoardUnitCount == 0 && !controller.IsRoundRunning && !battleButton.gameObject.activeInHierarchy;
                 lobbyEntryButton.onClick.Invoke();
+                bool openingGuidanceStarts = openingGuidancePanel.activeSelf && openingGuidanceTitle.text == "\uBC29\uC5B4\uC120 \uB3CC\uD30C \uC8FC\uC758!";
                 bool zeroSummonReady = controller.BoardUnitCount == 0 && !controller.IsRoundRunning && controller.BlockingChoiceReason == "None" && battleButton.gameObject.activeInHierarchy && battleButton.interactable;
                 battleButton.onClick.Invoke();
                 bool zeroSummonStarts = zeroSummonReady && controller.IsRoundRunning && controller.BoardUnitCount == 0;
@@ -2458,8 +2470,8 @@ namespace DefenseGame.Editor
                 battleButton.onClick.Invoke();
                 retiredForecastDoesNotBlock &= controller.IsRoundRunning;
 
-                summary = "lobbyHudHidden=" + lobbyHiddenHud + ", zeroReady=" + zeroSummonReady + ", zeroStarts=" + zeroSummonStarts + ", normalStarts=" + normalSummonStarts + ", retiredForecast=" + retiredForecastDoesNotBlock;
-                return lobbyHiddenHud && zeroSummonStarts && normalSummonStarts && retiredForecastDoesNotBlock;
+                summary = "lobbyHudHidden=" + lobbyHiddenHud + ", openingGuidance=" + openingGuidanceStarts + ", zeroReady=" + zeroSummonReady + ", zeroStarts=" + zeroSummonStarts + ", normalStarts=" + normalSummonStarts + ", retiredForecast=" + retiredForecastDoesNotBlock;
+                return lobbyHiddenHud && openingGuidanceStarts && zeroSummonStarts && normalSummonStarts && retiredForecastDoesNotBlock;
             }
             finally
             {
@@ -2541,6 +2553,60 @@ namespace DefenseGame.Editor
             {
                 controller.OnBossForecastBetRequested -= requestHandler;
                 roundField.SetValue(roundManager, originalRound);
+                controller.ResetRunForRetry();
+            }
+        }
+        private static bool ValidatePass2UOpeningGuidance(DefenseGameController controller, SimpleGameHUD simpleHud, out string summary)
+        {
+            GameObject warningPanel = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                .Select(candidate => candidate != null ? candidate.gameObject : null)
+                .FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningPanel");
+            Text title = UnityEngine.Object.FindObjectsOfType<Text>(true)
+                .FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningTitle");
+            Text subtitle = UnityEngine.Object.FindObjectsOfType<Text>(true)
+                .FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningSub");
+            CanvasGroup group = warningPanel != null ? warningPanel.GetComponent<CanvasGroup>() : null;
+            Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
+            Button summonButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonButton");
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            MethodInfo updateGuidance = typeof(SimpleGameHUD).GetMethod("UpdateOpeningGuidance", flags);
+            FieldInfo elapsed = typeof(SimpleGameHUD).GetField("openingGuidanceElapsed", flags);
+            FieldInfo active = typeof(SimpleGameHUD).GetField("openingGuidanceActive", flags);
+
+            if (controller == null || simpleHud == null || warningPanel == null || title == null || subtitle == null || group == null || battleButton == null || summonButton == null || updateGuidance == null || elapsed == null || active == null)
+            {
+                summary = "ui_reference_missing";
+                return false;
+            }
+
+            try
+            {
+                controller.ResetRunForRetry();
+                simpleHud.BeginOpeningGuidance();
+                bool stageOne = warningPanel.activeSelf && title.text == "\uBC29\uC5B4\uC120 \uB3CC\uD30C \uC8FC\uC758!" && !subtitle.gameObject.activeSelf;
+
+                elapsed.SetValue(simpleHud, 1.51f);
+                updateGuidance.Invoke(simpleHud, null);
+                bool stageTwo = title.text == "\uBAAC\uC2A4\uD130\uAC00 \uC544\uB798 \uB05D\uC5D0 \uB3C4\uB2EC\uD558\uBA74" && subtitle.gameObject.activeSelf && subtitle.text == "HP\uAC00 \uAC10\uC18C\uD569\uB2C8\uB2E4";
+
+                elapsed.SetValue(simpleHud, 3.01f);
+                updateGuidance.Invoke(simpleHud, null);
+                bool stageThree = title.text == "\uC218\uD638\uC790\uB97C \uC18C\uD658\uD574" && subtitle.text == "\uB9C9\uC544\uB0B4\uC138\uC694!";
+
+                elapsed.SetValue(simpleHud, 4.61f);
+                updateGuidance.Invoke(simpleHud, null);
+                bool fading = warningPanel.activeSelf && group.alpha >= 0f && group.alpha < 1f;
+
+                elapsed.SetValue(simpleHud, 4.80f);
+                updateGuidance.Invoke(simpleHud, null);
+                bool hidden = !warningPanel.activeSelf && !(bool)active.GetValue(simpleHud);
+                bool centered = title.alignment == TextAnchor.MiddleCenter && subtitle.alignment == TextAnchor.MiddleCenter;
+                bool nonBlocking = !group.interactable && !group.blocksRaycasts && battleButton.interactable && summonButton.interactable;
+                summary = "stage1=" + stageOne + ", stage2=" + stageTwo + ", stage3=" + stageThree + ", fading=" + fading + ", hidden=" + hidden + ", centered=" + centered + ", nonBlocking=" + nonBlocking;
+                return stageOne && stageTwo && stageThree && fading && hidden && centered && nonBlocking;
+            }
+            finally
+            {
                 controller.ResetRunForRetry();
             }
         }
@@ -2938,6 +3004,8 @@ namespace DefenseGame.Editor
             public bool tacticalMissionChoiceValid;
             public bool pass2WMissionToastValid;
             public string pass2WMissionToastSummary;
+            public bool pass2UOpeningGuidanceValid;
+            public string pass2UOpeningGuidanceSummary;
             public bool pass2QBadLuckPointsValid;
             public string pass2QBadLuckPointsSummary;
             public bool roundDiamondRewardValid;

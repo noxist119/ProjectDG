@@ -1268,7 +1268,6 @@ namespace DefenseGame
 
 
             SetGameplayHudVisible(true);
-            gameController.RequestBanner("\uC900\uBE44\uAC00 \uB05D\uB098\uBA74 \uB2E4\uC74C \uB77C\uC6B4\uB4DC\uB97C \uB20C\uB7EC \uC804\uD22C\uB97C \uC2DC\uC791\uD558\uC138\uC694.", new Color(0.72f, 0.86f, 0.58f), 3.0f);
         }
 
         private void HandleBattlePressed()
@@ -2656,6 +2655,11 @@ namespace DefenseGame
             if (gameplayHudRoot != null)
             {
                 gameplayHudRoot.SetActive(visible);
+            }
+
+            if (visible)
+            {
+                GetComponent<SimpleGameHUD>()?.BeginOpeningGuidance();
             }
         }
 

@@ -1,7 +1,7 @@
 # CODEX STATUS
 
-- Latest completed pass: Pass 2W — Mission Toast Polish & Failure Contract Flow.
-- Change: Mission completion and failure now use the same compact, non-blocking Tactical Contract toast below the contract HUD. The ticket icon and its reserved space were removed; the single message is horizontally and vertically centered. Both `미션 완료! 보상 획득` and `미션 실패` remain visible for 3.0 seconds, then fade through the CanvasGroup and deactivate without consuming input.
-- Choice flow: Completing or failing a Tactical Contract clears the current contract and queues the next offer through the existing post-result flow. Result Continue keeps Augment ahead of Tactical Contract; after the Augment closes, the Tactical Contract selector opens. With no higher-priority choice, Continue opens it directly. No mission panel is pre-opened behind result or choice panels.
-- Verification: `dotnet build Assembly-CSharp.csproj --no-restore` PASS (0 warnings, 0 errors). Unity PlayMode Smoke PASS with `runtimeErrors: 0`. Pass 2W toast regression: icon removed, centered text, non-blocking CanvasGroup, failure-toast show/fade/hide lifecycle all PASS.
+- Latest completed pass: Pass 2U — Opening HUD Guidance.
+- Change: The old generic opening banner/tutorial text no longer appears. Entering the battlefield through the Lobby Battle button now starts one non-blocking, boss-warning-style center panel per run: `방어선 돌파 주의!` for 1.5 seconds, `몬스터가 아래 끝에 도달하면 / HP가 감소합니다` for the next 1.5 seconds, and `수호자를 소환해 / 막아내세요!` for the final 1.5 seconds. The same panel is centered, then fades out over 0.22 seconds and deactivates. Boss warnings restore their normal layout and remain isolated from the opening sequence.
+- Input: The opening panel CanvasGroup remains non-interactable and does not block raycasts; Battle and Summon remain usable while it is displayed.
+- Verification: `dotnet build Assembly-CSharp.csproj --no-restore` PASS (0 warnings, 0 errors). Unity PlayMode Smoke PASS with `runtimeErrors: 0`. The actual LobbyBattleButton UI path started the opening guidance, and the Pass 2U lifecycle regression verified all three stages, centered copy, fade/hide, and non-blocking input.
 - Next task: Start the next user-requested ProjectDG pass.
