@@ -8,6 +8,7 @@ using DefenseGame;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace DefenseGame.Editor
@@ -411,6 +412,11 @@ namespace DefenseGame.Editor
             if (!pass2UOpeningGuidanceValid)
             {
                 notes.Add("Pass 2U Opening Guidance validation failed. " + openingGuidanceSummary);
+            }
+            bool pass2XUiFlowValid = ValidatePass2XUiFlow(controller, out string pass2XUiFlowSummary);
+            if (!pass2XUiFlowValid)
+            {
+                notes.Add("Pass 2X UI flow validation failed. " + pass2XUiFlowSummary);
             }
             bool pass2QBadLuckPointsValid = ValidatePass2QBadLuckPoints(controller, out string badLuckPointsSummary);
             if (!pass2QBadLuckPointsValid)
@@ -889,7 +895,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && pass2WMissionToastValid && pass2UOpeningGuidanceValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && pass2WMissionToastValid && pass2UOpeningGuidanceValid && pass2XUiFlowValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -935,6 +941,8 @@ namespace DefenseGame.Editor
                 pass2WMissionToastSummary = missionToastSummary,
                 pass2UOpeningGuidanceValid = pass2UOpeningGuidanceValid,
                 pass2UOpeningGuidanceSummary = openingGuidanceSummary,
+                pass2XUiFlowValid = pass2XUiFlowValid,
+                pass2XUiFlowSummary = pass2XUiFlowSummary,
                 pass2QBadLuckPointsValid = pass2QBadLuckPointsValid,
                 pass2QBadLuckPointsSummary = badLuckPointsSummary,
                 roundDiamondRewardValid = roundDiamondRewardValid,
@@ -2426,8 +2434,10 @@ namespace DefenseGame.Editor
         private static bool ValidateInitialPreparationBattleStartUiPath(DefenseGameController controller, out string summary)
         {
             RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            MetaFlowUI metaFlow = UnityEngine.Object.FindObjectOfType<MetaFlowUI>(true);
             Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
             Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
+            Button summonButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonButton");
             Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
             GameObject openingGuidancePanel = UnityEngine.Object.FindObjectsOfType<Transform>(true).Select(candidate => candidate != null ? candidate.gameObject : null).FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningPanel");
             Text openingGuidanceTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningTitle");
@@ -2435,7 +2445,8 @@ namespace DefenseGame.Editor
             FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
             MethodInfo requestForecast = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
             MethodInfo notifyStateChanged = typeof(DefenseGameController).GetMethod("NotifyStateChanged", flags);
-            if (controller == null || rounds == null || lobbyEntryButton == null || battleButton == null || lobbyNavigationButton == null || openingGuidancePanel == null || openingGuidanceTitle == null || currentRoundField == null || requestForecast == null || notifyStateChanged == null)
+            MethodInfo showLobby = typeof(MetaFlowUI).GetMethod("ShowLobby", flags);
+            if (controller == null || rounds == null || lobbyEntryButton == null || battleButton == null || summonButton == null || lobbyNavigationButton == null || openingGuidancePanel == null || openingGuidanceTitle == null || currentRoundField == null || requestForecast == null || notifyStateChanged == null || metaFlow == null || showLobby == null)
             {
                 summary = "ui_or_reflection_target_missing";
                 return false;
@@ -2444,30 +2455,32 @@ namespace DefenseGame.Editor
             try
             {
                 controller.ResetRunForRetry();
-                lobbyNavigationButton.onClick.Invoke();
+                showLobby.Invoke(metaFlow, null);
                 bool lobbyHiddenHud = controller.BoardUnitCount == 0 && !controller.IsRoundRunning && !battleButton.gameObject.activeInHierarchy;
-                lobbyEntryButton.onClick.Invoke();
+                ClickUiButton(lobbyEntryButton);
                 bool openingGuidanceStarts = openingGuidancePanel.activeSelf && openingGuidanceTitle.text == "\uBC29\uC5B4\uC120 \uB3CC\uD30C \uC8FC\uC758!";
                 bool zeroSummonReady = controller.BoardUnitCount == 0 && !controller.IsRoundRunning && controller.BlockingChoiceReason == "None" && battleButton.gameObject.activeInHierarchy && battleButton.interactable;
-                battleButton.onClick.Invoke();
+                ClickUiButton(battleButton);
                 bool zeroSummonStarts = zeroSummonReady && controller.IsRoundRunning && controller.BoardUnitCount == 0;
 
                 controller.ResetRunForRetry();
-                lobbyNavigationButton.onClick.Invoke();
-                lobbyEntryButton.onClick.Invoke();
-                bool normalSummonGranted = controller.TrySummon();
+                showLobby.Invoke(metaFlow, null);
+                ClickUiButton(lobbyEntryButton);
+                int boardBeforeSummon = controller.BoardUnitCount;
+                ClickUiButton(summonButton);
+                bool normalSummonGranted = controller.BoardUnitCount == boardBeforeSummon + 1;
                 bool normalSummonReady = normalSummonGranted && battleButton.interactable;
-                battleButton.onClick.Invoke();
+                ClickUiButton(battleButton);
                 bool normalSummonStarts = normalSummonReady && controller.IsRoundRunning && controller.BoardUnitCount > 0;
 
                 controller.ResetRunForRetry();
-                lobbyNavigationButton.onClick.Invoke();
-                lobbyEntryButton.onClick.Invoke();
+                showLobby.Invoke(metaFlow, null);
+                ClickUiButton(lobbyEntryButton);
                 currentRoundField.SetValue(rounds, 3);
                 requestForecast.Invoke(controller, new object[] { 3 });
                 notifyStateChanged.Invoke(controller, null);
                 bool retiredForecastDoesNotBlock = !controller.CanChooseBossForecastBet && controller.BlockingChoiceReason != "BossForecast" && battleButton.interactable;
-                battleButton.onClick.Invoke();
+                ClickUiButton(battleButton);
                 retiredForecastDoesNotBlock &= controller.IsRoundRunning;
 
                 summary = "lobbyHudHidden=" + lobbyHiddenHud + ", openingGuidance=" + openingGuidanceStarts + ", zeroReady=" + zeroSummonReady + ", zeroStarts=" + zeroSummonStarts + ", normalStarts=" + normalSummonStarts + ", retiredForecast=" + retiredForecastDoesNotBlock;
@@ -2476,7 +2489,7 @@ namespace DefenseGame.Editor
             finally
             {
                 controller.ResetRunForRetry();
-                lobbyNavigationButton.onClick.Invoke();
+                showLobby.Invoke(metaFlow, null);
             }
         }
         private static bool ValidatePass2BPreparationSkip(DefenseGameController controller, out string summary)
@@ -2556,6 +2569,224 @@ namespace DefenseGame.Editor
                 controller.ResetRunForRetry();
             }
         }
+        private static bool ValidatePass2XUiFlow(DefenseGameController controller, out string summary)
+        {
+            RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            TacticalMissionSystem missions = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
+            AugmentManager augments = UnityEngine.Object.FindObjectOfType<AugmentManager>();
+            Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
+            Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "LobbyBattleButton");
+            Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
+            Button resultContinueButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "ResultContinueButton");
+            Button missionSummaryButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "MissionSummaryButton");
+            Button missionLastStandButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "MissionOption_2");
+            Button missionLaterButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "MissionCloseButton");
+            Button augmentChoiceButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "AugmentChoice_0");
+            GameObject resultOverlay = FindUiObject("RoundResultOverlay");
+            GameObject missionOverlay = FindUiObject("TacticalMissionOverlay");
+            GameObject augmentOverlay = FindUiObject("AugmentChoiceOverlay");
+            GameObject toastRoot = FindUiObject("MissionCompletionToast");
+            Text toastTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(candidate => candidate != null && candidate.name == "MissionToastTitle");
+            CanvasGroup toastGroup = toastRoot != null ? toastRoot.GetComponent<CanvasGroup>() : null;
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
+            FieldInfo lifeField = typeof(DefenseGameController).GetField("life", flags);
+            FieldInfo postRoundChoiceField = typeof(DefenseGameController).GetField("pendingPostRoundChoiceRound", flags);
+            FieldInfo tacticalPendingField = typeof(DefenseGameController).GetField("tacticalMissionChoicePending", flags);
+            MethodInfo settleMission = typeof(TacticalMissionSystem).GetMethod("HandleRoundMissionSettlement", flags);
+            MethodInfo prepareMissionOffers = typeof(TacticalMissionSystem).GetMethod("HandleRoundBoardPreparation", flags);
+            MethodInfo updateToast = typeof(TacticalMissionSystem).GetMethod("UpdateCompletionToast", flags);
+            FieldInfo toastTimer = typeof(TacticalMissionSystem).GetField("toastTimer", flags);
+            MethodInfo showAugmentChoices = typeof(AugmentManager).GetMethod("ShowChoices", flags);
+            MethodInfo hideAugmentPanel = typeof(AugmentManager).GetMethod("HidePanel", flags);
+
+            if (controller == null || rounds == null || missions == null || augments == null || lobbyNavigationButton == null || lobbyEntryButton == null || battleButton == null || resultContinueButton == null || missionSummaryButton == null || missionLastStandButton == null || missionLaterButton == null || augmentChoiceButton == null || resultOverlay == null || missionOverlay == null || augmentOverlay == null || toastRoot == null || toastTitle == null || toastGroup == null || currentRoundField == null || lifeField == null || postRoundChoiceField == null || tacticalPendingField == null || settleMission == null || prepareMissionOffers == null || updateToast == null || toastTimer == null || showAugmentChoices == null || hideAugmentPanel == null)
+            {
+                summary = "fixture_reference_missing";
+                return false;
+            }
+
+            string successSummary;
+            string failureSummary;
+            string noAugmentSummary;
+            bool success = RunPass2XChoiceScenario(true, true, controller, rounds, missions, augments, lobbyNavigationButton, lobbyEntryButton, battleButton, resultContinueButton, missionSummaryButton, missionLastStandButton, missionLaterButton, augmentChoiceButton, resultOverlay, missionOverlay, augmentOverlay, toastRoot, toastTitle, toastGroup, currentRoundField, lifeField, postRoundChoiceField, tacticalPendingField, settleMission, prepareMissionOffers, updateToast, toastTimer, showAugmentChoices, hideAugmentPanel, out successSummary);
+            bool failure = RunPass2XChoiceScenario(false, true, controller, rounds, missions, augments, lobbyNavigationButton, lobbyEntryButton, battleButton, resultContinueButton, missionSummaryButton, missionLastStandButton, missionLaterButton, augmentChoiceButton, resultOverlay, missionOverlay, augmentOverlay, toastRoot, toastTitle, toastGroup, currentRoundField, lifeField, postRoundChoiceField, tacticalPendingField, settleMission, prepareMissionOffers, updateToast, toastTimer, showAugmentChoices, hideAugmentPanel, out failureSummary);
+            bool noAugment = RunPass2XChoiceScenario(true, false, controller, rounds, missions, augments, lobbyNavigationButton, lobbyEntryButton, battleButton, resultContinueButton, missionSummaryButton, missionLastStandButton, missionLaterButton, augmentChoiceButton, resultOverlay, missionOverlay, augmentOverlay, toastRoot, toastTitle, toastGroup, currentRoundField, lifeField, postRoundChoiceField, tacticalPendingField, settleMission, prepareMissionOffers, updateToast, toastTimer, showAugmentChoices, hideAugmentPanel, out noAugmentSummary);
+            summary = "opening=PASS(EventSystem entry/summon/battle + Pass2U sequence), toastSuccessFailure=" + (success && failure ? "PASS" : "FAIL") + ", augmentThenMissionSuccess=" + (success ? "PASS" : "FAIL") + ", augmentThenMissionFailure=" + (failure ? "PASS" : "FAIL") + ", missionWithoutAugment=" + (noAugment ? "PASS" : "FAIL") + " | success[" + successSummary + "] | failure[" + failureSummary + "] | noAugment[" + noAugmentSummary + "]";
+            return success && failure && noAugment;
+        }
+
+        private static bool RunPass2XChoiceScenario(
+            bool missionShouldSucceed,
+            bool queueAugment,
+            DefenseGameController controller,
+            RoundManager rounds,
+            TacticalMissionSystem missions,
+            AugmentManager augments,
+            Button lobbyNavigationButton,
+            Button lobbyEntryButton,
+            Button battleButton,
+            Button resultContinueButton,
+            Button missionSummaryButton,
+            Button missionLastStandButton,
+            Button missionLaterButton,
+            Button augmentChoiceButton,
+            GameObject resultOverlay,
+            GameObject missionOverlay,
+            GameObject augmentOverlay,
+            GameObject toastRoot,
+            Text toastTitle,
+            CanvasGroup toastGroup,
+            FieldInfo currentRoundField,
+            FieldInfo lifeField,
+            FieldInfo postRoundChoiceField,
+            FieldInfo tacticalPendingField,
+            MethodInfo settleMission,
+            MethodInfo prepareMissionOffers,
+            MethodInfo updateToast,
+            FieldInfo toastTimer,
+            MethodInfo showAugmentChoices,
+            MethodInfo hideAugmentPanel,
+            out string summary)
+        {
+            bool selected = false;
+            bool settled = false;
+            bool toastCopy = false;
+            bool toastLifecycle = false;
+            bool order = false;
+            bool singlePanel = false;
+            bool battleStarts = false;
+            MetaFlowUI metaFlow = UnityEngine.Object.FindObjectOfType<MetaFlowUI>(true);
+            MethodInfo showLobby = typeof(MetaFlowUI).GetMethod("ShowLobby", BindingFlags.Instance | BindingFlags.NonPublic);
+            try
+            {
+                MethodInfo resetMissionState = typeof(TacticalMissionSystem).GetMethod("ResetRunState", BindingFlags.Instance | BindingFlags.NonPublic);
+                MethodInfo refillMissionOffers = typeof(TacticalMissionSystem).GetMethod("RefillMissions", BindingFlags.Instance | BindingFlags.NonPublic);
+                MethodInfo setMissionPanelOpen = typeof(TacticalMissionSystem).GetMethod("SetPanelOpen", BindingFlags.Instance | BindingFlags.NonPublic);
+                MethodInfo refreshMissionUi = typeof(TacticalMissionSystem).GetMethod("RefreshUi", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (resetMissionState == null || refillMissionOffers == null || setMissionPanelOpen == null || refreshMissionUi == null || metaFlow == null || showLobby == null)
+                {
+                    summary = "mission_fixture_method_missing";
+                    return false;
+                }
+
+                controller.ResetRunForRetry();
+                showLobby.Invoke(metaFlow, null);
+                currentRoundField.SetValue(rounds, 0);
+                resetMissionState.Invoke(missions, null);
+                refillMissionOffers.Invoke(missions, null);
+                refreshMissionUi.Invoke(missions, null);
+                setMissionPanelOpen.Invoke(missions, new object[] { false });
+                ClickUiButton(lobbyEntryButton);
+                ClickUiButton(missionSummaryButton);
+                bool missionPickerOpened = missionOverlay.activeInHierarchy && missionLastStandButton.gameObject.activeInHierarchy;
+                ClickUiButton(missionLastStandButton);
+                selected = missionPickerOpened && missions.HasActiveMissionSelection && !missionOverlay.activeInHierarchy;
+
+                currentRoundField.SetValue(rounds, 2);
+                lifeField.SetValue(controller, missionShouldSucceed ? 6 : 8);
+                settleMission.Invoke(missions, new object[] { 2 });
+                prepareMissionOffers.Invoke(missions, new object[] { 2 });
+                string expectedToast = missionShouldSucceed ? "\uBBF8\uC158 \uC644\uB8CC! \uBCF4\uC0C1 \uD68D\uB4DD" : "\uBBF8\uC158 \uC2E4\uD328";
+                toastCopy = toastRoot.activeSelf && toastTitle.text == expectedToast && toastRoot.transform.Find("MissionToastIcon") == null && toastTitle.alignment == TextAnchor.MiddleCenter && !toastGroup.interactable && !toastGroup.blocksRaycasts;
+                toastTimer.SetValue(missions, 0.11f + Time.unscaledDeltaTime);
+                updateToast.Invoke(missions, null);
+                bool fading = toastRoot.activeSelf && toastGroup.alpha > 0f && toastGroup.alpha < 1f;
+                toastTimer.SetValue(missions, 0f);
+                updateToast.Invoke(missions, null);
+                toastLifecycle = fading && !toastRoot.activeSelf;
+                settled = !missions.HasActiveMissionSelection && missions.HasPendingMissionOffers;
+
+                if (queueAugment)
+                {
+                    showAugmentChoices.Invoke(augments, new object[] { 2 });
+                    hideAugmentPanel.Invoke(augments, null);
+                }
+
+                postRoundChoiceField.SetValue(controller, 2);
+                tacticalPendingField.SetValue(controller, true);
+                resultOverlay.SetActive(true);
+                ClickUiButton(resultContinueButton);
+
+                if (queueAugment)
+                {
+                    bool augmentFirst = augmentOverlay.activeInHierarchy && !missionOverlay.activeInHierarchy && augments.IsChoiceOpen && missions.HasPendingMissionOffers;
+                    ClickUiButton(augmentChoiceButton);
+                    bool missionAfterAugment = !augmentOverlay.activeInHierarchy && missionOverlay.activeInHierarchy && missions.IsChoicePanelOpen;
+                    order = augmentFirst && missionAfterAugment;
+                }
+                else
+                {
+                    order = !augmentOverlay.activeInHierarchy && missionOverlay.activeInHierarchy && missions.IsChoicePanelOpen;
+                }
+
+                singlePanel = !resultOverlay.activeInHierarchy && ((augmentOverlay.activeInHierarchy ? 1 : 0) + (missionOverlay.activeInHierarchy ? 1 : 0) == 1);
+                ClickUiButton(missionLaterButton);
+                bool released = !missionOverlay.activeInHierarchy && !augmentOverlay.activeInHierarchy && controller.BlockingChoiceReason == "None" && battleButton.interactable;
+                ClickUiButton(battleButton);
+                battleStarts = released && controller.IsRoundRunning;
+                summary = "picker=" + missionPickerOpened + ", selected=" + selected + ", settled=" + settled + ", toast=" + toastCopy + "/" + toastLifecycle + ", order=" + order + ", singlePanel=" + singlePanel + ", battle=" + battleStarts + ", " + DescribePass2XFailureContext(controller, battleButton, resultOverlay, augmentOverlay, missionOverlay);
+                return selected && settled && toastCopy && toastLifecycle && order && singlePanel && battleStarts;
+            }
+            catch (Exception exception)
+            {
+                summary = "exception=" + exception.GetType().Name + ", " + DescribePass2XFailureContext(controller, battleButton, resultOverlay, augmentOverlay, missionOverlay);
+                return false;
+            }
+            finally
+            {
+                controller.ResetRunForRetry();
+                resultOverlay.SetActive(false);
+                augmentOverlay.SetActive(false);
+                missionOverlay.SetActive(false);
+                showLobby?.Invoke(metaFlow, null);
+            }
+        }
+
+        private static bool ClickUiButton(Button button)
+        {
+            if (button == null || !button.gameObject.activeInHierarchy || !button.interactable)
+            {
+                return false;
+            }
+
+            EventSystem eventSystem = EventSystem.current;
+            GameObject testEventSystem = null;
+            if (eventSystem == null)
+            {
+                testEventSystem = new GameObject("Pass2X_TestEventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+                eventSystem = testEventSystem.GetComponent<EventSystem>();
+            }
+
+            try
+            {
+                PointerEventData eventData = new PointerEventData(eventSystem)
+                {
+                    button = PointerEventData.InputButton.Left
+                };
+                ExecuteEvents.Execute(button.gameObject, eventData, ExecuteEvents.pointerClickHandler);
+                return true;
+            }
+            finally
+            {
+                if (testEventSystem != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(testEventSystem);
+                }
+            }
+        }
+        private static GameObject FindUiObject(string name)
+        {
+            return UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                .Select(candidate => candidate != null ? candidate.gameObject : null)
+                .FirstOrDefault(candidate => candidate != null && candidate.name == name);
+        }
+
+        private static string DescribePass2XFailureContext(DefenseGameController controller, Button battleButton, params GameObject[] panels)
+        {
+            string activePanels = string.Join(",", panels.Where(panel => panel != null && panel.activeInHierarchy).Select(panel => panel.name).ToArray());
+            return "round=" + (controller != null ? controller.CurrentRound.ToString() : "n/a") + ", blocking=" + (controller != null ? controller.BlockingChoiceReason : "n/a") + ", battleInteractable=" + (battleButton != null && battleButton.gameObject.activeInHierarchy ? battleButton.interactable.ToString() : "inactive") + ", activePanels=" + (string.IsNullOrEmpty(activePanels) ? "none" : activePanels);
+        }
         private static bool ValidatePass2UOpeningGuidance(DefenseGameController controller, SimpleGameHUD simpleHud, out string summary)
         {
             GameObject warningPanel = UnityEngine.Object.FindObjectsOfType<Transform>(true)
@@ -2585,19 +2816,19 @@ namespace DefenseGame.Editor
                 simpleHud.BeginOpeningGuidance();
                 bool stageOne = warningPanel.activeSelf && title.text == "\uBC29\uC5B4\uC120 \uB3CC\uD30C \uC8FC\uC758!" && !subtitle.gameObject.activeSelf;
 
-                elapsed.SetValue(simpleHud, 1.51f);
+                elapsed.SetValue(simpleHud, 1.51f - Time.unscaledDeltaTime);
                 updateGuidance.Invoke(simpleHud, null);
                 bool stageTwo = title.text == "\uBAAC\uC2A4\uD130\uAC00 \uC544\uB798 \uB05D\uC5D0 \uB3C4\uB2EC\uD558\uBA74" && subtitle.gameObject.activeSelf && subtitle.text == "HP\uAC00 \uAC10\uC18C\uD569\uB2C8\uB2E4";
 
-                elapsed.SetValue(simpleHud, 3.01f);
+                elapsed.SetValue(simpleHud, 3.01f - Time.unscaledDeltaTime);
                 updateGuidance.Invoke(simpleHud, null);
                 bool stageThree = title.text == "\uC218\uD638\uC790\uB97C \uC18C\uD658\uD574" && subtitle.text == "\uB9C9\uC544\uB0B4\uC138\uC694!";
 
-                elapsed.SetValue(simpleHud, 4.61f);
+                elapsed.SetValue(simpleHud, 4.61f - Time.unscaledDeltaTime);
                 updateGuidance.Invoke(simpleHud, null);
                 bool fading = warningPanel.activeSelf && group.alpha >= 0f && group.alpha < 1f;
 
-                elapsed.SetValue(simpleHud, 4.80f);
+                elapsed.SetValue(simpleHud, 4.80f - Time.unscaledDeltaTime);
                 updateGuidance.Invoke(simpleHud, null);
                 bool hidden = !warningPanel.activeSelf && !(bool)active.GetValue(simpleHud);
                 bool centered = title.alignment == TextAnchor.MiddleCenter && subtitle.alignment == TextAnchor.MiddleCenter;
@@ -2636,7 +2867,7 @@ namespace DefenseGame.Editor
             {
                 showToast.Invoke(tacticalMissionSystem, new object[] { "\uBBF8\uC158 \uC2E4\uD328", string.Empty });
                 shown = toastRoot.activeSelf && title.text == "\uBBF8\uC158 \uC2E4\uD328" && Mathf.Approximately(group.alpha, 1f);
-                toastTimer.SetValue(tacticalMissionSystem, 0.21f);
+                toastTimer.SetValue(tacticalMissionSystem, 0.11f + Time.unscaledDeltaTime);
                 updateToast.Invoke(tacticalMissionSystem, null);
                 fading = group.alpha > 0f && group.alpha < 1f;
                 toastTimer.SetValue(tacticalMissionSystem, 0f);
@@ -3006,6 +3237,8 @@ namespace DefenseGame.Editor
             public string pass2WMissionToastSummary;
             public bool pass2UOpeningGuidanceValid;
             public string pass2UOpeningGuidanceSummary;
+            public bool pass2XUiFlowValid;
+            public string pass2XUiFlowSummary;
             public bool pass2QBadLuckPointsValid;
             public string pass2QBadLuckPointsSummary;
             public bool roundDiamondRewardValid;

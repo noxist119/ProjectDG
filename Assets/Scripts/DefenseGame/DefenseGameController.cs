@@ -4586,6 +4586,11 @@ namespace DefenseGame
             }
         }
 
+        public void NotifyUiStateChanged()
+        {
+            NotifyStateChanged();
+        }
+
         private void NotifyStateChanged()
         {
             OnStateChanged?.Invoke();

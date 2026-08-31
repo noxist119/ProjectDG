@@ -1280,6 +1280,7 @@ namespace DefenseGame
         private void ClosePanel()
         {
             SetPanelOpen(false);
+            gameController?.NotifyUiStateChanged();
         }
 
         // Combat may begin while the optional contract panel is visible through an external/UI action.
