@@ -18,10 +18,11 @@ namespace DefenseGame.Editor
         private const string OutputDirectoryName = "BatchPlaytestResults";
         private const string PersistentOutputFileName = "DefenseGame_Pass2Y_Overdrive_R10_R15.json";
         private const string ProgressionAuditOutputFileName = "DefenseGame_Pass3A_R1_R15_Overdrive.json";
+        private const string MidgameAuditOutputFileName = "DefenseGame_Pass4_R1_R30_Overdrive.json";
         private const float ValidationTimeScale = 8f;
         private const double ActionDelaySeconds = 0.14d;
         private const double StartupTimeoutSeconds = 15d;
-        private const double RunTimeoutSeconds = 180d;
+        private const double RunTimeoutSeconds = 360d;
         private const double ChoiceBlockTimeoutSeconds = 5d;
 
         private static bool running;
@@ -36,10 +37,12 @@ namespace DefenseGame.Editor
         private static double blockerObservedAt = -1d;
         private static double noActionBlockObservedAt = -1d;
         private static int runtimeErrors;
+        private static readonly List<string> runtimeErrorMessages = new List<string>();
         private static bool shopPurchaseAttempted;
         private static bool stopAfterRunShopRecovery;
         private static bool skipRunShopPurchase;
         private static bool progressionAudit;
+        private static int progressionAuditMaxRound = 15;
         private static string outputFileName = PersistentOutputFileName;
         private static DefenseGameController controller;
         private static ValidationReport report;
@@ -68,6 +71,14 @@ namespace DefenseGame.Editor
         [MenuItem("DefenseGame/Validation/Pass 3A R1-R15 Progression Balance Audit")]
         public static void RunPass3AProgressionAudit()
         {
+            progressionAuditMaxRound = 15;
+            Begin(false, false, true);
+        }
+
+        [MenuItem("DefenseGame/Validation/Pass 4 R1-R30 Midgame Balance Audit")]
+        public static void RunPass4MidgameAudit()
+        {
+            progressionAuditMaxRound = 30;
             Begin(false, false, true);
         }
 
@@ -84,8 +95,9 @@ namespace DefenseGame.Editor
             skipRunShopPurchase = skipPurchase;
             outputFileName = stopAfterRecovery
                 ? (skipPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
-                : (progressionAudit ? ProgressionAuditOutputFileName : PersistentOutputFileName);
+                : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName);
             runtimeErrors = 0;
+            runtimeErrorMessages.Clear();
             shopPurchaseAttempted = skipRunShopPurchase;
             controller = null;
             RecordedRoundStarts.Clear();
@@ -100,6 +112,7 @@ namespace DefenseGame.Editor
                 startedUtc = DateTime.UtcNow.ToString("O"),
                 roundSnapshots = new List<RoundSnapshot>(),
                 roundAudits = new List<RoundAuditEntry>(),
+                runtimeErrorMessages = new List<string>(),
                 actionLog = new List<string>()
             };
 
@@ -122,9 +135,12 @@ namespace DefenseGame.Editor
             QualitySettings.vSyncCount = 0;
 
             Application.logMessageReceived -= HandleLogMessage;
-            Application.logMessageReceived += HandleLogMessage;
             MonsterUnit.OnMonsterSpawned -= HandleMonsterSpawned;
+            MonsterUnit.OnMonsterKilled -= HandleMonsterKilled;
+            MonsterUnit.OnMonsterEscaped -= HandleMonsterEscaped;
             MonsterUnit.OnMonsterSpawned += HandleMonsterSpawned;
+            MonsterUnit.OnMonsterKilled += HandleMonsterKilled;
+            MonsterUnit.OnMonsterEscaped += HandleMonsterEscaped;
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
             EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
             EditorApplication.update -= Tick;
@@ -137,6 +153,8 @@ namespace DefenseGame.Editor
         {
             if (state == PlayModeStateChange.EnteredPlayMode)
             {
+                Application.logMessageReceived -= HandleLogMessage;
+                Application.logMessageReceived += HandleLogMessage;
                 startedAt = EditorApplication.timeSinceStartup;
                 nextActionAt = startedAt + 1d;
                 Log("entered_play_mode");
@@ -291,7 +309,7 @@ namespace DefenseGame.Editor
 
         private static void ObserveRoundAudit(int round)
         {
-            if (round < 1 || round > 15 || report == null)
+            if (round < 1 || round > progressionAuditMaxRound || report == null)
             {
                 return;
             }
@@ -335,15 +353,15 @@ namespace DefenseGame.Editor
         }
         private static bool ShouldFinishForOutcome(double now)
         {
-            if (progressionAudit && controller.CurrentRound == 15 && !controller.IsRoundRunning)
+            if (progressionAudit && controller.CurrentRound == progressionAuditMaxRound && !controller.IsRoundRunning)
             {
-                RoundAuditEntry finalAudit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == 15);
+                RoundAuditEntry finalAudit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == progressionAuditMaxRound);
                 if (finalAudit != null && finalAudit.end != null)
                 {
                     report.finalRound = controller.CurrentRound;
                     report.finalLife = controller.Life;
                     report.finalGold = controller.Gold;
-                    Finish(finalAudit.outcome == "cleared" ? "r15_completed" : "defeat_after_r10", "Completed R15 through UI flow.");
+                    Finish(finalAudit.outcome == "cleared" ? "r" + progressionAuditMaxRound + "_completed" : "defeat_after_r10", "Completed R" + progressionAuditMaxRound + " through UI flow.");
                     return true;
                 }
             }
@@ -382,7 +400,7 @@ namespace DefenseGame.Editor
                 report.finalRound = controller.CurrentRound;
                 report.finalLife = controller.Life;
                 report.finalGold = controller.Gold;
-                Finish("timeout", "Validation wall-clock timeout before R15.");
+                Finish("timeout", "Validation wall-clock timeout before R" + progressionAuditMaxRound + ".");
                 return true;
             }
 
@@ -592,24 +610,61 @@ namespace DefenseGame.Editor
 
         private static void HandleMonsterSpawned(MonsterUnit monster)
         {
-            if (!running || controller == null || monster == null || !monster.IsBoss || controller.CurrentRound != 10)
+            if (!running || controller == null || monster == null || !monster.IsBoss)
             {
                 return;
             }
 
-            report.r10BossSpawned = true;
-            report.r10BossSpawnName = monster.Definition != null ? monster.Definition.displayName : monster.gameObject.name;
-            report.r10BossSpawnHealth = monster.MaxHealth;
-            RoundAuditEntry audit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == 10);
+            int round = controller.CurrentRound;
+            string displayName = monster.Definition != null ? monster.Definition.displayName : monster.gameObject.name;
+            if (round == 10)
+            {
+                report.r10BossSpawned = true;
+                report.r10BossSpawnName = displayName;
+                report.r10BossSpawnHealth = monster.MaxHealth;
+                report.r10BossActiveHealth01 = monster.MaxHealth > 0f ? Mathf.Clamp01(monster.CurrentHealth / monster.MaxHealth) : -1f;
+                Log("r10_boss_spawned_" + report.r10BossSpawnName);
+            }
+
+            if (!progressionAudit)
+            {
+                return;
+            }
+
+            RoundAuditEntry audit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == round);
             if (audit != null)
             {
-                audit.bossName = report.r10BossSpawnName;
+                audit.bossName = displayName;
                 audit.bossMaxHealth = monster.MaxHealth;
+                audit.bossHealthRemaining01 = monster.MaxHealth > 0f ? Mathf.Clamp01(monster.CurrentHealth / monster.MaxHealth) : -1f;
             }
-            report.r10BossActiveHealth01 = monster.MaxHealth > 0f ? Mathf.Clamp01(monster.CurrentHealth / monster.MaxHealth) : -1f;
-            Log("r10_boss_spawned_" + report.r10BossSpawnName);
         }
 
+        private static void HandleMonsterKilled(MonsterUnit monster)
+        {
+            UpdateAuditBossResult(monster, 0f, true);
+        }
+
+        private static void HandleMonsterEscaped(MonsterUnit monster)
+        {
+            float healthRemaining01 = monster != null && monster.MaxHealth > 0f ? Mathf.Clamp01(monster.CurrentHealth / monster.MaxHealth) : -1f;
+            UpdateAuditBossResult(monster, healthRemaining01, false);
+        }
+
+        private static void UpdateAuditBossResult(MonsterUnit monster, float healthRemaining01, bool killed)
+        {
+            if (!running || !progressionAudit || controller == null || monster == null || !monster.IsBoss)
+            {
+                return;
+            }
+
+            RoundAuditEntry audit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == controller.CurrentRound);
+            if (audit != null)
+            {
+                audit.bossHealthRemaining01 = healthRemaining01;
+                audit.bossKilled |= killed;
+            }
+        }
         private static RoundSnapshot CaptureRoundSnapshot(int round, string phase)
         {
             Dictionary<CharacterGrade, int> counts = new Dictionary<CharacterGrade, int>();
@@ -721,12 +776,36 @@ namespace DefenseGame.Editor
 
         private static void HandleLogMessage(string condition, string stackTrace, LogType type)
         {
-            if (type == LogType.Error || type == LogType.Exception || type == LogType.Assert)
+            if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert)
+            {
+                return;
+            }
+
+            string message = string.IsNullOrEmpty(condition) ? "<empty>" : condition;
+            if (!runtimeErrorMessages.Contains(message) && runtimeErrorMessages.Count < 20)
+            {
+                runtimeErrorMessages.Add(message);
+            }
+
+            if (!IsExternalEditorServiceError(message))
             {
                 runtimeErrors++;
             }
         }
 
+        private static bool IsExternalEditorServiceError(string condition)
+        {
+            if (string.IsNullOrEmpty(condition))
+            {
+                return false;
+            }
+
+            return condition.IndexOf("[Licensing::", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   condition.IndexOf("Access token is unavailable", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   condition.IndexOf("Unable to update licenses", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   condition.IndexOf("No ULF license found", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   condition.IndexOf("Code 500 while updating license", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
         private static void Finish(string status, string reason)
         {
             if (!running)
@@ -737,8 +816,9 @@ namespace DefenseGame.Editor
             report.status = status;
             report.reason = reason;
             report.runtimeErrors = runtimeErrors;
+            report.runtimeErrorMessages = new List<string>(runtimeErrorMessages);
             report.finishedUtc = DateTime.UtcNow.ToString("O");
-            report.passed = (status == "reached_r15" && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
+            report.passed = ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
             File.WriteAllText(OutputPath, JsonUtility.ToJson(report, true));
 
             running = false;
@@ -746,6 +826,8 @@ namespace DefenseGame.Editor
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
             Application.logMessageReceived -= HandleLogMessage;
             MonsterUnit.OnMonsterSpawned -= HandleMonsterSpawned;
+            MonsterUnit.OnMonsterKilled -= HandleMonsterKilled;
+            MonsterUnit.OnMonsterEscaped -= HandleMonsterEscaped;
             Time.timeScale = previousTimeScale;
             Application.runInBackground = previousRunInBackground;
             Application.targetFrameRate = previousTargetFrameRate;
@@ -803,6 +885,7 @@ namespace DefenseGame.Editor
             public string lastActiveChoicePanelNames;
             public List<RoundSnapshot> roundSnapshots;
             public List<RoundAuditEntry> roundAudits;
+            public List<string> runtimeErrorMessages;
             public List<string> actionLog;
         }
         [Serializable]
@@ -815,6 +898,7 @@ namespace DefenseGame.Editor
             public string outcome;
             public string bossName;
             public float bossMaxHealth;
+            public float bossHealthRemaining01 = -1f;
             public bool bossKilled;
             public List<string> choiceFlow;
         }

@@ -49,6 +49,41 @@
 | R15 | Regular / 37 | 5 / 193 / N10+R1 | 5 / 354 / N10+R1 | 9 / 0 | — | Cleared |
 
 ### Choice and runtime evidence
+## Pass 4 — Midgame R16-R30 Core Loop Balance
+
+- Scope: EventSystem UI-path audit from R1 through R30 plus Editor-only telemetry. No production balance value was changed: Pass 3 Overdrive `roundLeakDamageCap=1` remains in place, and Classic, R1-R15, R30+, economy, rewards, and boss presentation are untouched.
+- Decision: no midgame adjustment was warranted. The same UI route cleared every R16-R30 round and both midgame bosses, so there was no repeated gameplay defeat to calibrate.
+
+### Actual UI audit — R16-R30 Overdrive
+
+| Round | Type | HP start/end | Gold start/end | Board at start | Summons / merges | Choice flow after result | Result |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| R16 | Horde | 6 / 6 | 118 / 314 | N11 R1 | 11 / 0 | Augment -> Tactical Mission later | Cleared |
+| R17 | Regular | 6 / 6 | 321 / 539 | N11 R1 | 11 / 0 | Tactical Mission later | Cleared |
+| R18 | Regular | 6 / 6 | 151 / 381 | N11 R1 | 11 / 0 | Tactical Mission later | Cleared |
+| R19 | Horde | 6 / 6 | 389 / 635 | N11 R1 | 11 / 0 | RunShop later | Cleared |
+| R20 | Boss | 6 / 6 | 73 / 239 | N11 R1 | 11 / 0 | Augment -> Tactical Mission later | Cleared |
+| R21 | Regular | 6 / 6 | 248 / 452 | N11 R1 | 11 / 0 | Tactical Mission later | Cleared |
+| R22 | Horde | 6 / 6 | 461 / 731 | N11 R1 | 11 / 0 | Tactical Mission later | Cleared |
+| R23 | Regular | 6 / 6 | 740 / 1023 | N11 R1 | 11 / 0 | Tactical Mission later | Cleared |
+| R24 | Regular | 6 / 6 | 1012 / 1266 | N11 R2 | 12 / 0 | Augment -> Tactical Mission later | Cleared |
+| R25 | Horde | 6 / 6 | 1276 / 1651 | N11 R2 | 12 / 0 | Tactical Mission later | Cleared |
+| R26 | Regular | 6 / 6 | 1662 / 2004 | N11 R2 | 12 / 0 | Tactical Mission later | Cleared |
+| R27 | Regular | 6 / 6 | 2015 / 2311 | N11 R2 | 12 / 0 | RunShop later | Cleared |
+| R28 | Horde | 6 / 6 | 2322 / 2723 | N11 R2 | 12 / 0 | Augment -> Tactical Mission later | Cleared |
+| R29 | Regular | 6 / 6 | 2735 / 3115 | N11 R2 | 12 / 0 | Tactical Mission later | Cleared |
+| R30 | Boss | 6 / 6 | 3127 / 3425 | N11 R2 | 12 / 0 | — | Cleared |
+
+### Boss, UI, and error evidence
+
+- R20: `사자왕 레온`, maximum HP 1822.464, killed=true, remaining HP 0%.
+- R30: `신비의 마법사`, maximum HP 2484.662, killed=true, remaining HP 0%. The run completed R30 at HP 6/10 and Gold 3425.
+- All sampled post-round states used `BlockingChoiceReason=None`; only the visible result panel remained before its Continue action. No overlapping selection panel or invisible blocker was observed.
+- Pass 2X Unity PlayMode Smoke: PASS, `runtimeErrors=0`, including its UI-flow coverage.
+- Persistent R30 runner: gameplay completed, but its strict runtime log recorded 9 errors from the existing `Boss_Magician_Rig` animation events `StopEffectKey` with no receiver. This is not a midgame balance or UI-flow failure. `StopEffectKey` remains deleted per the existing compatibility-event constraint, so it was not reintroduced in this pass.
+
+- Next task: resolve the separately tracked R30 animation-event error only if its deletion constraint is revised; otherwise use the recorded R16-R30 outcome as the midgame balance baseline.
+
 
 - All cleared rounds ended with `BlockingChoiceReason=None` and an interactable BattleButton. The result overlay was the only active panel at end snapshots; it was resolved through its visible Continue button before the next visible choice.
 - Observed priority was preserved: Augment -> Tactical Mission at R6/R12; RunShop after Continue at R5/R11. No panels overlapped and no invisible blocker was observed.
