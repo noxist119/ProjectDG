@@ -189,7 +189,7 @@ namespace DefenseGame
                 regularAttackMultiplier = 0.70f,
                 bossHealthMultiplier = 0.72f,
                 bossAttackMultiplier = 0.70f,
-                roundLeakDamageCap = 2,
+                roundLeakDamageCap = 1,
                 firstAugmentChoiceRound = 6,
                 augmentChoiceInterval = 4,
                 rareHeroAugmentUnlockRound = 5,
