@@ -16,7 +16,7 @@ namespace DefenseGame.Editor
     {
         private const string ScenePath = "Assets/Scenes/DG.unity";
         private const string OutputDirectoryName = "BatchPlaytestResults";
-        private const string OutputFileName = "DefenseGame_Pass2Y_Overdrive_R10_R15.json";
+        private const string PersistentOutputFileName = "DefenseGame_Pass2Y_Overdrive_R10_R15.json";
         private const float ValidationTimeScale = 8f;
         private const double ActionDelaySeconds = 0.14d;
         private const double StartupTimeoutSeconds = 15d;
@@ -36,14 +36,34 @@ namespace DefenseGame.Editor
         private static double noActionBlockObservedAt = -1d;
         private static int runtimeErrors;
         private static bool shopPurchaseAttempted;
+        private static bool stopAfterRunShopRecovery;
+        private static bool skipRunShopPurchase;
+        private static string outputFileName = PersistentOutputFileName;
         private static DefenseGameController controller;
         private static ValidationReport report;
         private static readonly HashSet<int> RecordedRoundStarts = new HashSet<int>();
 
-        private static string OutputPath => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, OutputFileName));
+        private static string OutputPath => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, outputFileName));
 
         [MenuItem("DefenseGame/Validation/Pass 2Y Persistent Overdrive R10-R15 UI Flow")]
         public static void Run()
+        {
+            Begin(false, false);
+        }
+
+        [MenuItem("DefenseGame/Validation/Pass 2Z RunShop Purchase Recovery UI Flow")]
+        public static void RunShopPurchaseRecovery()
+        {
+            Begin(true, false);
+        }
+
+        [MenuItem("DefenseGame/Validation/Pass 2Z RunShop Later Recovery UI Flow")]
+        public static void RunShopLaterRecovery()
+        {
+            Begin(true, true);
+        }
+
+        private static void Begin(bool stopAfterRecovery, bool skipPurchase)
         {
             if (running)
             {
@@ -51,8 +71,13 @@ namespace DefenseGame.Editor
             }
 
             running = true;
+            stopAfterRunShopRecovery = stopAfterRecovery;
+            skipRunShopPurchase = skipPurchase;
+            outputFileName = stopAfterRecovery
+                ? (skipPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
+                : PersistentOutputFileName;
             runtimeErrors = 0;
-            shopPurchaseAttempted = false;
+            shopPurchaseAttempted = skipRunShopPurchase;
             controller = null;
             RecordedRoundStarts.Clear();
             blockerObservedAt = -1d;
@@ -61,6 +86,7 @@ namespace DefenseGame.Editor
             {
                 status = "running",
                 validationMode = "EventSystem UI clicks only; no StartRound/debug round jump/reward fixture",
+                runShopScenario = stopAfterRecovery ? (skipPurchase ? "later" : "purchase_then_close") : "persistent",
                 validationTimeScale = ValidationTimeScale,
                 startedUtc = DateTime.UtcNow.ToString("O"),
                 roundSnapshots = new List<RoundSnapshot>(),
@@ -246,6 +272,16 @@ namespace DefenseGame.Editor
 
         private static bool ShouldFinishForOutcome(double now)
         {
+            if (stopAfterRunShopRecovery && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && controller.CurrentRound >= 5 && controller.IsRoundRunning)
+            {
+                report.r5StartedAfterRunShop = true;
+                report.finalRound = controller.CurrentRound;
+                report.finalLife = controller.Life;
+                report.finalGold = controller.Gold;
+                Finish("r4_shop_recovered", "RunShop was resolved through visible UI and BattleButton started R5.");
+                return true;
+            }
+
             if (controller.CurrentRound >= 15 && controller.IsRoundRunning)
             {
                 report.r15Reached = true;
@@ -308,6 +344,11 @@ namespace DefenseGame.Editor
                 return;
             }
 
+            // A RunShop modal owns the post-result choice state. If a delayed Result overlay
+            // is still animating behind it, resolve the actual open choice first.
+            if (TryResolveChoice("AugmentChoiceOverlay", "AugmentChoice_")) return;
+            if (TryResolveRunShop()) return;
+
             GameObject resultOverlay = FindObject("RoundResultOverlay");
             if (resultOverlay != null && resultOverlay.activeInHierarchy)
             {
@@ -323,9 +364,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            if (TryResolveChoice("AugmentChoiceOverlay", "AugmentChoice_")) return;
             if (TryResolveTacticalMission()) return;
-            if (TryResolveRunShop()) return;
             if (TryResolveChoice("LuckySummonChoiceOverlay", "LuckySummonChoice")) return;
             if (TryResolveChoice("Fate", "Fate")) return;
 
@@ -388,6 +427,11 @@ namespace DefenseGame.Editor
                 return false;
             }
 
+            if (controller.CurrentRound == 4)
+            {
+                report.r4RunShopSeen = true;
+            }
+
             if (!shopPurchaseAttempted)
             {
                 Button offer = overlay.GetComponentsInChildren<Button>(true)
@@ -395,6 +439,7 @@ namespace DefenseGame.Editor
                 shopPurchaseAttempted = true;
                 if (Click(offer))
                 {
+                    if (controller.CurrentRound == 4) report.r4RunShopPurchaseClicked = true;
                     Log("clicked_choice_" + offer.name + "_r" + controller.CurrentRound);
                     return true;
                 }
@@ -403,6 +448,7 @@ namespace DefenseGame.Editor
             Button close = FindButton("RunShopCloseButton");
             if (Click(close))
             {
+                if (controller.CurrentRound == 4) report.r4RunShopCloseClicked = true;
                 Log("clicked_run_shop_close_r" + controller.CurrentRound);
                 return true;
             }
@@ -603,7 +649,7 @@ namespace DefenseGame.Editor
             report.reason = reason;
             report.runtimeErrors = runtimeErrors;
             report.finishedUtc = DateTime.UtcNow.ToString("O");
-            report.passed = status == "reached_r15" && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && !report.invisibleBlockerObserved && runtimeErrors == 0;
+            report.passed = (status == "reached_r15" && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
             File.WriteAllText(OutputPath, JsonUtility.ToJson(report, true));
 
             running = false;
@@ -630,6 +676,7 @@ namespace DefenseGame.Editor
             public string status;
             public string reason;
             public string validationMode;
+            public string runShopScenario;
             public float validationTimeScale;
             public string startedUtc;
             public string finishedUtc;
@@ -654,6 +701,10 @@ namespace DefenseGame.Editor
             public bool r11StartedAfterR10;
             public bool r15Reached;
             public bool invisibleBlockerObserved;
+            public bool r4RunShopSeen;
+            public bool r4RunShopPurchaseClicked;
+            public bool r4RunShopCloseClicked;
+            public bool r5StartedAfterRunShop;
             public int finalRound;
             public int finalLife;
             public int finalGold;

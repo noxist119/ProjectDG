@@ -2235,12 +2235,21 @@ namespace DefenseGame
 
         private void SetOpen(bool open)
         {
+            bool visibilityChanged = panelRoot != null && panelRoot.activeSelf != open;
             if (panelRoot != null)
             {
                 panelRoot.SetActive(open);
             }
 
             UpdateReopenButton();
+
+            // SimpleGameHUD derives BattleButton.interactable from BlockingChoiceReason during
+            // the controller state refresh. Closing or reopening this modal therefore must
+            // publish its visibility transition immediately instead of leaving a stale lock.
+            if (visibilityChanged)
+            {
+                gameController?.NotifyUiStateChanged();
+            }
         }
 
         private void Close()
