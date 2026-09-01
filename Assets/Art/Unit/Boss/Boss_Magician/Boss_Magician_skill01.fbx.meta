@@ -81,20 +81,6 @@ ModelImporter:
         floatParameter: 0
         intParameter: 0
         messageOptions: 0
-      - time: 0.9
-        functionName: StopEffectKey
-        data: Effect_Boss_Magician_Skill01_Hand_L
-        objectReferenceParameter: {fileID: 418729838135710773, guid: 334eb0815741d7a4ea16cb336d3b6b1e, type: 3}
-        floatParameter: 0
-        intParameter: 0
-        messageOptions: 0
-      - time: 0.9
-        functionName: StopEffectKey
-        data: Effect_Boss_Magician_Skill01_Hand_R
-        objectReferenceParameter: {fileID: 473028393774969547, guid: 2188a507c08af734397434ca6c826bfd, type: 3}
-        floatParameter: 0
-        intParameter: 0
-        messageOptions: 0
       - time: 0.5733333
         functionName: SkillHit
         data: Effect_Boss_Magician_Skill01_Hand_R

@@ -1,6 +1,6 @@
 # CODEX STATUS
 
-- Latest completed pass: Pass 2Y — Persistent R10–R15 PlayMode Validation rerun.
+- Latest completed pass: Pass 5 — Boss Stability and Choice Progression Finalization.
 - Pass 2Z prerequisite: RunShop state changes now publish the Controller UI refresh, so a closed RunShop cannot leave BattleButton stale-disabled. No RunShop content, price, reward, or balance value changed.
 - Pass 2Y actual Overdrive result: PASS. The Editor-only persistent runner used only EventSystem clicks on visible Battle, result Continue, Shop, Tactical Mission, Augment, and other choice buttons; no direct `StartRound`, debug keys, round jump, reward grant, or production balance change was used. R4 RunShop purchase resolved and the next BattleButton click started R5.
 - R10 record: start HP 1/10, 8 Gold, 11 board units (all Normal), 10 player summons, 0 merges. Boss warning title and spawned display name were both `골렘 군주`; spawn HP was 4,700. The boss was actually cleared, remaining boss HP was 0%, the result Continue was clicked, and R11 started.
@@ -49,6 +49,18 @@
 | R15 | Regular / 37 | 5 / 193 / N10+R1 | 5 / 354 / N10+R1 | 9 / 0 | — | Cleared |
 
 ### Choice and runtime evidence
+- All cleared rounds ended with `BlockingChoiceReason=None` and an interactable BattleButton. The result overlay was the only active panel at end snapshots; it was resolved through its visible Continue button before the next visible choice.
+- Observed priority was preserved: Augment -> Tactical Mission at R6/R12; RunShop after Continue at R5/R11. No panels overlapped and no invisible blocker was observed.
+- `runtimeErrors=0`. The audit used EventSystem clicks only; it did not call `StartRound`, use F8/F9, jump rounds, or grant rewards/resources.
+
+### Result and interpretation
+
+- R10: boss warning/spawn name `골렘 군주`, max HP 4,700, actual kill=true; Continue was clicked and R11 began.
+- R15: started and cleared at HP 5/10, Gold 193 -> 354, rather than entering the boss sequence at HP 1.
+- Direct early failure mechanism before the adjustment was repeated combat leak damage, not an economy/choice-flow lock. The one-point cap preserves every wave, pack, and monster while leaving enough HP for real growth decisions.
+
+- Next task: monitor R16+ separately before changing any later-round or boss tuning.
+
 ## Pass 4 — Midgame R16-R30 Core Loop Balance
 
 - Scope: EventSystem UI-path audit from R1 through R30 plus Editor-only telemetry. No production balance value was changed: Pass 3 Overdrive `roundLeakDamageCap=1` remains in place, and Classic, R1-R15, R30+, economy, rewards, and boss presentation are untouched.
@@ -84,15 +96,13 @@
 
 - Next task: resolve the separately tracked R30 animation-event error only if its deletion constraint is revised; otherwise use the recorded R16-R30 outcome as the midgame balance baseline.
 
+## Pass 5 — Boss Stability and Choice Progression Finalization
 
-- All cleared rounds ended with `BlockingChoiceReason=None` and an interactable BattleButton. The result overlay was the only active panel at end snapshots; it was resolved through its visible Continue button before the next visible choice.
-- Observed priority was preserved: Augment -> Tactical Mission at R6/R12; RunShop after Continue at R5/R11. No panels overlapped and no invisible blocker was observed.
-- `runtimeErrors=0`. The audit used EventSystem clicks only; it did not call `StartRound`, use F8/F9, jump rounds, or grant rewards/resources.
+- Root cause fixed: StopEffectKey was an orphaned AnimationEvent in the source FBX importer metadata for Boss_Magician_skill01 (2), skill02 (1), and skill03 (2). The five event entries were removed from the animation source metadata. No receiver method or compatibility component was recreated.
+- Actual EventSystem UI run: selected a Tactical Mission at R2, clicked the real Normal merge card and completed one merge, then observed the selected mission settle as failed at R3 and resolved the following Tactical Mission offer with its visible Later button. Augment choices were selected at R6/R12/R16/R20/R24/R28. RunShop was visibly closed with Later at R11/R19/R27; BattleButton then started the next rounds.
+- Boss results: R10 골렘 군주 (4700 HP), R20 사자왕 레온 (1822.464 HP), and R30 신비의 마법사 (2484.662 HP) each showed their warning title, spawned, were killed, and completed their result Continue flow. The run completed R30 at HP 2/10 and Gold 2758.
+- Validation: persistent UI runner PASS, runtimeErrors=0, StopEffectKey log hits=0, no invisible blocker, and no overlapping/hidden choice panel observed. Pass 2X Unity PlayMode Smoke PASS with runtimeErrors=0.
+- Gameplay balance, rewards, economy, spawns, and difficulty: unchanged.
 
-### Result and interpretation
-
-- R10: boss warning/spawn name `골렘 군주`, max HP 4,700, actual kill=true; Continue was clicked and R11 began.
-- R15: started and cleared at HP 5/10, Gold 193 -> 354, rather than entering the boss sequence at HP 1.
-- Direct early failure mechanism before the adjustment was repeated combat leak damage, not an economy/choice-flow lock. The one-point cap preserves every wave, pack, and monster while leaving enough HP for real growth decisions.
-
-- Next task: monitor R16+ separately before changing any later-round or boss tuning.
+- Latest completed pass: Pass 5 — Boss Stability and Choice Progression Finalization.
+- Next task: Start the next user-requested ProjectDG pass.

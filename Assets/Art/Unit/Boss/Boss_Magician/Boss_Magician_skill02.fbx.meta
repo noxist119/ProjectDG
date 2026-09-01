@@ -60,13 +60,6 @@ ModelImporter:
       bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
       curves: []
       events:
-      - time: 0
-        functionName: StopEffectKey
-        data: Effect_Boss_Magician_Skill02_Hand_R
-        objectReferenceParameter: {fileID: 8245614000245403596, guid: 864475a04a5abe8489eae1213da65fbf, type: 3}
-        floatParameter: 0
-        intParameter: 0
-        messageOptions: 0
       - time: 0.14922959
         functionName: PlayEffectKey
         data: Effect_Boss_Magician_Skill02_Hand_L

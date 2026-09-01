@@ -19,6 +19,7 @@ namespace DefenseGame.Editor
         private const string PersistentOutputFileName = "DefenseGame_Pass2Y_Overdrive_R10_R15.json";
         private const string ProgressionAuditOutputFileName = "DefenseGame_Pass3A_R1_R15_Overdrive.json";
         private const string MidgameAuditOutputFileName = "DefenseGame_Pass4_R1_R30_Overdrive.json";
+        private const string Pass5OutputFileName = "DefenseGame_Pass5_R1_R30_Overdrive.json";
         private const float ValidationTimeScale = 8f;
         private const double ActionDelaySeconds = 0.14d;
         private const double StartupTimeoutSeconds = 15d;
@@ -42,6 +43,9 @@ namespace DefenseGame.Editor
         private static bool stopAfterRunShopRecovery;
         private static bool skipRunShopPurchase;
         private static bool progressionAudit;
+        private static bool pass5Validation;
+        private static bool pass5MissionWasActive;
+        private static int pass5CompletedMissionCountAtSelection;
         private static int progressionAuditMaxRound = 15;
         private static string outputFileName = PersistentOutputFileName;
         private static DefenseGameController controller;
@@ -78,6 +82,15 @@ namespace DefenseGame.Editor
         [MenuItem("DefenseGame/Validation/Pass 4 R1-R30 Midgame Balance Audit")]
         public static void RunPass4MidgameAudit()
         {
+            pass5Validation = false;
+            progressionAuditMaxRound = 30;
+            Begin(false, false, true);
+        }
+
+        [MenuItem("DefenseGame/Validation/Pass 5 Boss Stability and Choice Progression")]
+        public static void RunPass5BossStabilityAndChoiceProgression()
+        {
+            pass5Validation = true;
             progressionAuditMaxRound = 30;
             Begin(false, false, true);
         }
@@ -95,9 +108,11 @@ namespace DefenseGame.Editor
             skipRunShopPurchase = skipPurchase;
             outputFileName = stopAfterRecovery
                 ? (skipPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
-                : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName);
+                : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName));
             runtimeErrors = 0;
             runtimeErrorMessages.Clear();
+            pass5MissionWasActive = false;
+            pass5CompletedMissionCountAtSelection = 0;
             shopPurchaseAttempted = skipRunShopPurchase;
             controller = null;
             RecordedRoundStarts.Clear();
@@ -209,6 +224,7 @@ namespace DefenseGame.Editor
             {
                 ObserveRoundAudit(round);
             }
+            ObservePass5MissionSettlement();
             if (controller.IsRoundRunning && round >= 10 && round <= 15 && RecordedRoundStarts.Add(round))
             {
                 report.roundSnapshots.Add(CaptureRoundSnapshot(round, "round_started"));
@@ -219,6 +235,18 @@ namespace DefenseGame.Editor
             {
                 report.r10Start = CaptureRoundSnapshot(10, "r10_start");
                 report.r10BossKillCountAtStart = controller.RunBossKillCount;
+            }
+
+            if (progressionAudit && round % 10 == 0 && controller.IsRoundRunning)
+            {
+                GameObject warningPanel = FindObject("BossWarningPanel");
+                Text warningTitle = FindText("BossWarningTitle");
+                RoundAuditEntry bossAudit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == round);
+                if (warningPanel != null && warningPanel.activeInHierarchy && warningTitle != null && bossAudit != null)
+                {
+                    bossAudit.bossWarningSeen = true;
+                    bossAudit.bossWarningTitle = warningTitle.text ?? string.Empty;
+                }
             }
 
             if (round == 10 && controller.IsRoundRunning)
@@ -304,6 +332,33 @@ namespace DefenseGame.Editor
             else
             {
                 noActionBlockObservedAt = -1d;
+            }
+        }
+
+        private static void ObservePass5MissionSettlement()
+        {
+            if (!pass5Validation || report == null || !report.tacticalMissionSelectedByUi)
+            {
+                return;
+            }
+
+            TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
+            if (missionSystem == null)
+            {
+                return;
+            }
+
+            if (missionSystem.HasActiveMissionSelection)
+            {
+                pass5MissionWasActive = true;
+                return;
+            }
+
+            if (pass5MissionWasActive && !report.tacticalMissionSettlementObserved)
+            {
+                report.tacticalMissionSettlementObserved = true;
+                report.tacticalMissionSettlementResult = missionSystem.CompletedMissionCount > pass5CompletedMissionCountAtSelection ? "completed" : "failed";
+                Log("mission_settlement_" + report.tacticalMissionSettlementResult + "_r" + controller.CurrentRound);
             }
         }
 
@@ -490,6 +545,17 @@ namespace DefenseGame.Editor
                 Log("clicked_summon_r" + controller.CurrentRound);
             }
 
+            if (pass5Validation && !report.actualUiMergeCompleted && controller.CountUnitsOfGrade(CharacterGrade.Normal) >= 3)
+            {
+                int mergesBefore = controller.RunTotalMerges;
+                Button normalMerge = FindButton("NormalGradeCard");
+                if (Click(normalMerge) && controller.RunTotalMerges > mergesBefore)
+                {
+                    report.actualUiMergeCompleted = true;
+                    Log("clicked_normal_merge_r" + controller.CurrentRound);
+                }
+            }
+
             Button normalUpgrade = FindButton("GradeUpgrade_Normal");
             if (normalUpgrade != null && normalUpgrade.gameObject.activeInHierarchy && normalUpgrade.interactable && controller.BoardUnitCount > 0)
             {
@@ -506,9 +572,27 @@ namespace DefenseGame.Editor
                 return false;
             }
 
+            if (pass5Validation && !report.tacticalMissionSelectedByUi)
+            {
+                Button option = FindButton("MissionOption_0");
+                if (Click(option))
+                {
+                    TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
+                    report.tacticalMissionSelectedByUi = true;
+                    pass5CompletedMissionCountAtSelection = missionSystem != null ? missionSystem.CompletedMissionCount : 0;
+                    RecordChoiceFlow("TacticalMission:Select");
+                    Log("clicked_mission_select_r" + controller.CurrentRound);
+                }
+                return true;
+            }
+
             Button laterButton = FindButton("MissionCloseButton");
             if (Click(laterButton))
             {
+                if (pass5Validation && report.tacticalMissionSettlementObserved)
+                {
+                    report.nextTacticalMissionOfferResolvedByUi = true;
+                }
                 RecordChoiceFlow("TacticalMission:Later");
                 Log("clicked_mission_later_r" + controller.CurrentRound);
             }
@@ -871,6 +955,11 @@ namespace DefenseGame.Editor
             public bool r10ContinueClicked;
             public bool r11StartedAfterR10;
             public bool r15Reached;
+            public bool actualUiMergeCompleted;
+            public bool tacticalMissionSelectedByUi;
+            public bool tacticalMissionSettlementObserved;
+            public string tacticalMissionSettlementResult;
+            public bool nextTacticalMissionOfferResolvedByUi;
             public bool invisibleBlockerObserved;
             public bool r4RunShopSeen;
             public bool r4RunShopPurchaseClicked;
@@ -899,6 +988,8 @@ namespace DefenseGame.Editor
             public string bossName;
             public float bossMaxHealth;
             public float bossHealthRemaining01 = -1f;
+            public bool bossWarningSeen;
+            public string bossWarningTitle;
             public bool bossKilled;
             public List<string> choiceFlow;
         }
