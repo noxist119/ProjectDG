@@ -17,6 +17,7 @@ namespace DefenseGame.Editor
         private const string ScenePath = "Assets/Scenes/DG.unity";
         private const string OutputDirectoryName = "BatchPlaytestResults";
         private const string PersistentOutputFileName = "DefenseGame_Pass2Y_Overdrive_R10_R15.json";
+        private const string ProgressionAuditOutputFileName = "DefenseGame_Pass3A_R1_R15_Overdrive.json";
         private const float ValidationTimeScale = 8f;
         private const double ActionDelaySeconds = 0.14d;
         private const double StartupTimeoutSeconds = 15d;
@@ -38,6 +39,7 @@ namespace DefenseGame.Editor
         private static bool shopPurchaseAttempted;
         private static bool stopAfterRunShopRecovery;
         private static bool skipRunShopPurchase;
+        private static bool progressionAudit;
         private static string outputFileName = PersistentOutputFileName;
         private static DefenseGameController controller;
         private static ValidationReport report;
@@ -48,22 +50,28 @@ namespace DefenseGame.Editor
         [MenuItem("DefenseGame/Validation/Pass 2Y Persistent Overdrive R10-R15 UI Flow")]
         public static void Run()
         {
-            Begin(false, false);
+            Begin(false, false, false);
         }
 
         [MenuItem("DefenseGame/Validation/Pass 2Z RunShop Purchase Recovery UI Flow")]
         public static void RunShopPurchaseRecovery()
         {
-            Begin(true, false);
+            Begin(true, false, false);
         }
 
         [MenuItem("DefenseGame/Validation/Pass 2Z RunShop Later Recovery UI Flow")]
         public static void RunShopLaterRecovery()
         {
-            Begin(true, true);
+            Begin(true, true, false);
         }
 
-        private static void Begin(bool stopAfterRecovery, bool skipPurchase)
+        [MenuItem("DefenseGame/Validation/Pass 3A R1-R15 Progression Balance Audit")]
+        public static void RunPass3AProgressionAudit()
+        {
+            Begin(false, false, true);
+        }
+
+        private static void Begin(bool stopAfterRecovery, bool skipPurchase, bool audit)
         {
             if (running)
             {
@@ -71,11 +79,12 @@ namespace DefenseGame.Editor
             }
 
             running = true;
+            progressionAudit = audit;
             stopAfterRunShopRecovery = stopAfterRecovery;
             skipRunShopPurchase = skipPurchase;
             outputFileName = stopAfterRecovery
                 ? (skipPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
-                : PersistentOutputFileName;
+                : (progressionAudit ? ProgressionAuditOutputFileName : PersistentOutputFileName);
             runtimeErrors = 0;
             shopPurchaseAttempted = skipRunShopPurchase;
             controller = null;
@@ -90,6 +99,7 @@ namespace DefenseGame.Editor
                 validationTimeScale = ValidationTimeScale,
                 startedUtc = DateTime.UtcNow.ToString("O"),
                 roundSnapshots = new List<RoundSnapshot>(),
+                roundAudits = new List<RoundAuditEntry>(),
                 actionLog = new List<string>()
             };
 
@@ -177,6 +187,10 @@ namespace DefenseGame.Editor
         private static void ObserveRuntimeState(double now)
         {
             int round = controller.CurrentRound;
+            if (progressionAudit)
+            {
+                ObserveRoundAudit(round);
+            }
             if (controller.IsRoundRunning && round >= 10 && round <= 15 && RecordedRoundStarts.Add(round))
             {
                 report.roundSnapshots.Add(CaptureRoundSnapshot(round, "round_started"));
@@ -213,6 +227,11 @@ namespace DefenseGame.Editor
                 report.r10EndLife = controller.Life;
                 report.r10EndGold = controller.Gold;
                 report.r10BossHealthRemaining01 = report.r10BossCleared ? 0f : report.r10BossActiveHealth01;
+                RoundAuditEntry audit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == 10);
+                if (audit != null)
+                {
+                    audit.bossKilled = report.r10BossCleared;
+                }
                 Log("r10_result_" + (report.r10BossCleared ? "clear" : "not_clear"));
             }
 
@@ -270,8 +289,65 @@ namespace DefenseGame.Editor
             }
         }
 
+        private static void ObserveRoundAudit(int round)
+        {
+            if (round < 1 || round > 15 || report == null)
+            {
+                return;
+            }
+
+            RoundAuditEntry audit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == round);
+            if (controller.IsRoundRunning)
+            {
+                if (audit == null)
+                {
+                    audit = new RoundAuditEntry
+                    {
+                        round = round,
+                        kind = round % 10 == 0 ? "boss" : (controller.IsCurrentRoundHorde ? "horde" : "regular"),
+                        start = CaptureRoundSnapshot(round, "start"),
+                        choiceFlow = new List<string>()
+                    };
+                    report.roundAudits.Add(audit);
+                }
+                return;
+            }
+
+            if (audit != null && audit.end == null)
+            {
+                audit.end = CaptureRoundSnapshot(round, "end");
+                audit.outcome = controller.Life > 0 ? "cleared" : "defeat";
+            }
+        }
+
+        private static void RecordChoiceFlow(string action)
+        {
+            if (!progressionAudit || report == null || controller == null || string.IsNullOrEmpty(action))
+            {
+                return;
+            }
+
+            RoundAuditEntry audit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == controller.CurrentRound);
+            if (audit != null && audit.choiceFlow != null)
+            {
+                audit.choiceFlow.Add(action);
+            }
+        }
         private static bool ShouldFinishForOutcome(double now)
         {
+            if (progressionAudit && controller.CurrentRound == 15 && !controller.IsRoundRunning)
+            {
+                RoundAuditEntry finalAudit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == 15);
+                if (finalAudit != null && finalAudit.end != null)
+                {
+                    report.finalRound = controller.CurrentRound;
+                    report.finalLife = controller.Life;
+                    report.finalGold = controller.Gold;
+                    Finish(finalAudit.outcome == "cleared" ? "r15_completed" : "defeat_after_r10", "Completed R15 through UI flow.");
+                    return true;
+                }
+            }
+
             if (stopAfterRunShopRecovery && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && controller.CurrentRound >= 5 && controller.IsRoundRunning)
             {
                 report.r5StartedAfterRunShop = true;
@@ -282,7 +358,7 @@ namespace DefenseGame.Editor
                 return true;
             }
 
-            if (controller.CurrentRound >= 15 && controller.IsRoundRunning)
+            if (!progressionAudit && controller.CurrentRound >= 15 && controller.IsRoundRunning)
             {
                 report.r15Reached = true;
                 report.finalRound = controller.CurrentRound;
@@ -359,6 +435,7 @@ namespace DefenseGame.Editor
                     {
                         report.r10ContinueClicked = true;
                     }
+                    RecordChoiceFlow("ResultContinue");
                     Log("clicked_result_continue_r" + controller.CurrentRound);
                     return;
                 }
@@ -414,6 +491,7 @@ namespace DefenseGame.Editor
             Button laterButton = FindButton("MissionCloseButton");
             if (Click(laterButton))
             {
+                RecordChoiceFlow("TacticalMission:Later");
                 Log("clicked_mission_later_r" + controller.CurrentRound);
             }
             return true;
@@ -440,6 +518,7 @@ namespace DefenseGame.Editor
                 if (Click(offer))
                 {
                     if (controller.CurrentRound == 4) report.r4RunShopPurchaseClicked = true;
+                    RecordChoiceFlow("RunShop:Purchase");
                     Log("clicked_choice_" + offer.name + "_r" + controller.CurrentRound);
                     return true;
                 }
@@ -449,6 +528,7 @@ namespace DefenseGame.Editor
             if (Click(close))
             {
                 if (controller.CurrentRound == 4) report.r4RunShopCloseClicked = true;
+                RecordChoiceFlow("RunShop:Later");
                 Log("clicked_run_shop_close_r" + controller.CurrentRound);
                 return true;
             }
@@ -472,6 +552,7 @@ namespace DefenseGame.Editor
                 return false;
             }
 
+            RecordChoiceFlow(overlayNameFragment + ":" + button.name);
             Log("clicked_choice_" + button.name + "_r" + controller.CurrentRound);
             return true;
         }
@@ -519,6 +600,12 @@ namespace DefenseGame.Editor
             report.r10BossSpawned = true;
             report.r10BossSpawnName = monster.Definition != null ? monster.Definition.displayName : monster.gameObject.name;
             report.r10BossSpawnHealth = monster.MaxHealth;
+            RoundAuditEntry audit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == 10);
+            if (audit != null)
+            {
+                audit.bossName = report.r10BossSpawnName;
+                audit.bossMaxHealth = monster.MaxHealth;
+            }
             report.r10BossActiveHealth01 = monster.MaxHealth > 0f ? Mathf.Clamp01(monster.CurrentHealth / monster.MaxHealth) : -1f;
             Log("r10_boss_spawned_" + report.r10BossSpawnName);
         }
@@ -555,7 +642,9 @@ namespace DefenseGame.Editor
                 merges = controller.RunTotalMerges,
                 blockingChoiceReason = controller.BlockingChoiceReason,
                 targetCount = controller.RoundTargetCount,
-                horde = controller.IsCurrentRoundHorde
+                horde = controller.IsCurrentRoundHorde,
+                battleButtonInteractable = IsInteractable("BattleButton"),
+                activeChoicePanels = DescribeActiveChoicePanels()
             };
         }
 
@@ -713,9 +802,22 @@ namespace DefenseGame.Editor
             public bool lastBattleButtonInteractable;
             public string lastActiveChoicePanelNames;
             public List<RoundSnapshot> roundSnapshots;
+            public List<RoundAuditEntry> roundAudits;
             public List<string> actionLog;
         }
-
+        [Serializable]
+        private sealed class RoundAuditEntry
+        {
+            public int round;
+            public string kind;
+            public RoundSnapshot start;
+            public RoundSnapshot end;
+            public string outcome;
+            public string bossName;
+            public float bossMaxHealth;
+            public bool bossKilled;
+            public List<string> choiceFlow;
+        }
         [Serializable]
         private sealed class RoundSnapshot
         {
@@ -735,6 +837,8 @@ namespace DefenseGame.Editor
             public string blockingChoiceReason;
             public int targetCount;
             public bool horde;
+            public bool battleButtonInteractable;
+            public string activeChoicePanels;
         }
     }
 }
