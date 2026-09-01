@@ -1,6 +1,6 @@
 # CODEX STATUS
 
-- Latest completed pass: Pass 5 — Boss Stability and Choice Progression Finalization.
+- Latest completed pass: Pass 6 — Gold to Power Progression Finalization.
 - Pass 2Z prerequisite: RunShop state changes now publish the Controller UI refresh, so a closed RunShop cannot leave BattleButton stale-disabled. No RunShop content, price, reward, or balance value changed.
 - Pass 2Y actual Overdrive result: PASS. The Editor-only persistent runner used only EventSystem clicks on visible Battle, result Continue, Shop, Tactical Mission, Augment, and other choice buttons; no direct `StartRound`, debug keys, round jump, reward grant, or production balance change was used. R4 RunShop purchase resolved and the next BattleButton click started R5.
 - R10 record: start HP 1/10, 8 Gold, 11 board units (all Normal), 10 player summons, 0 merges. Boss warning title and spawned display name were both `골렘 군주`; spawn HP was 4,700. The boss was actually cleared, remaining boss HP was 0%, the result Continue was clicked, and R11 started.
@@ -104,5 +104,23 @@
 - Validation: persistent UI runner PASS, runtimeErrors=0, StopEffectKey log hits=0, no invisible blocker, and no overlapping/hidden choice panel observed. Pass 2X Unity PlayMode Smoke PASS with runtimeErrors=0.
 - Gameplay balance, rewards, economy, spawns, and difficulty: unchanged.
 
-- Latest completed pass: Pass 5 — Boss Stability and Choice Progression Finalization.
+- Latest completed pass: Pass 6 — Gold to Power Progression Finalization.
+- Next task: Start the next user-requested ProjectDG pass.
+
+## Pass 6 — Gold to Power Progression Finalization
+
+- Scope: actual EventSystem UI-path R1-R30 validation, then one evidence-based revalidation. No production economy, reward, spawn, combat, or UI balance value was changed.
+- Baseline evidence: Pass 5 completed R30 at 2 HP and 2,758 Gold with board N9/R4/E0, 14 summons, and 1 merge. This showed that the standard conservative action policy left late Gold unused rather than that an existing power sink was unavailable.
+- First Pass 6 UI spending probe: four consecutive free merge-card clicks after R10 reduced the board from 11 units to 4. That run reached R15 but was defeated at 0 HP / 110 Gold. The direct failure mechanism was lost board coverage after the repeated merges, not insufficient Gold or a blocked UI flow.
+- Final actual UI revalidation: preserved the board and spent Gold through the existing grade-upgrade buttons first. It made 27 grade-upgrade purchases and 1 high-grade-chance purchase; the existing RunShop offer was also bought through its visible button at R5. R30 finished at 2 HP and 273 Gold with N9/R2/E2 (13 units), 14 player summons, and 0 merges.
+
+| Record | R30 HP / Gold | R30 board | Summons / merges | Post-R10 Gold-to-power actions |
+| --- | --- | --- | --- | --- |
+| Pass 5 baseline | 2 / 2,758 | N9/R4/E0 | 14 / 1 | No dedicated post-R10 spending pass |
+| Pass 6 final | 2 / 273 | N9/R2/E2 | 14 / 0 | 27 grade upgrades + 1 high-grade chance upgrade |
+
+- Boss record: R20 was cleared with its displayed boss title and 0% remaining HP (max 1,822.464). R30 was cleared with its displayed boss title and 0% remaining HP (max 2,484.662). R10 warning/spawn was shown at 4,700 max HP; the recorded R10 boss health remaining was 11%, while the round completed and R11 began.
+- Validation: runtimeErrors=0, no Invisible Blocker observed, and existing Pass 2X Unity PlayMode Smoke PASS (opening guidance, mission toast, augment-to-mission ordering, single-panel flow, and visible battle progression).
+- Economy conclusion: no numeric production adjustment is justified by this evidence. Existing grade upgrades and high-grade chance investment are functional Gold sinks when selected through the visible UI; lowering or raising economy values would be speculative. The only code addition is the Editor-only Pass 6 validation path that exercises those real buttons.
+
 - Next task: Start the next user-requested ProjectDG pass.

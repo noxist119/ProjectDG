@@ -20,6 +20,7 @@ namespace DefenseGame.Editor
         private const string ProgressionAuditOutputFileName = "DefenseGame_Pass3A_R1_R15_Overdrive.json";
         private const string MidgameAuditOutputFileName = "DefenseGame_Pass4_R1_R30_Overdrive.json";
         private const string Pass5OutputFileName = "DefenseGame_Pass5_R1_R30_Overdrive.json";
+        private const string Pass6OutputFileName = "DefenseGame_Pass6_R1_R30_Overdrive.json";
         private const float ValidationTimeScale = 8f;
         private const double ActionDelaySeconds = 0.14d;
         private const double StartupTimeoutSeconds = 15d;
@@ -44,6 +45,7 @@ namespace DefenseGame.Editor
         private static bool skipRunShopPurchase;
         private static bool progressionAudit;
         private static bool pass5Validation;
+        private static bool pass6EconomyValidation;
         private static bool pass5MissionWasActive;
         private static int pass5CompletedMissionCountAtSelection;
         private static int progressionAuditMaxRound = 15;
@@ -57,24 +59,32 @@ namespace DefenseGame.Editor
         [MenuItem("DefenseGame/Validation/Pass 2Y Persistent Overdrive R10-R15 UI Flow")]
         public static void Run()
         {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
             Begin(false, false, false);
         }
 
         [MenuItem("DefenseGame/Validation/Pass 2Z RunShop Purchase Recovery UI Flow")]
         public static void RunShopPurchaseRecovery()
         {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
             Begin(true, false, false);
         }
 
         [MenuItem("DefenseGame/Validation/Pass 2Z RunShop Later Recovery UI Flow")]
         public static void RunShopLaterRecovery()
         {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
             Begin(true, true, false);
         }
 
         [MenuItem("DefenseGame/Validation/Pass 3A R1-R15 Progression Balance Audit")]
         public static void RunPass3AProgressionAudit()
         {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
             progressionAuditMaxRound = 15;
             Begin(false, false, true);
         }
@@ -83,6 +93,7 @@ namespace DefenseGame.Editor
         public static void RunPass4MidgameAudit()
         {
             pass5Validation = false;
+            pass6EconomyValidation = false;
             progressionAuditMaxRound = 30;
             Begin(false, false, true);
         }
@@ -91,6 +102,16 @@ namespace DefenseGame.Editor
         public static void RunPass5BossStabilityAndChoiceProgression()
         {
             pass5Validation = true;
+            pass6EconomyValidation = false;
+            progressionAuditMaxRound = 30;
+            Begin(false, false, true);
+        }
+
+        [MenuItem("DefenseGame/Validation/Pass 6 Gold to Power Progression")]
+        public static void RunPass6GoldToPowerProgression()
+        {
+            pass5Validation = false;
+            pass6EconomyValidation = true;
             progressionAuditMaxRound = 30;
             Begin(false, false, true);
         }
@@ -108,7 +129,7 @@ namespace DefenseGame.Editor
             skipRunShopPurchase = skipPurchase;
             outputFileName = stopAfterRecovery
                 ? (skipPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
-                : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName));
+                : (pass6EconomyValidation ? Pass6OutputFileName : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName)));
             runtimeErrors = 0;
             runtimeErrorMessages.Clear();
             pass5MissionWasActive = false;
@@ -527,11 +548,84 @@ namespace DefenseGame.Editor
                 return;
             }
 
+            if (pass6EconomyValidation && TrySpendGoldThroughVisibleUi())
+            {
+                return;
+            }
+
             PrepareUsingOnlyUiClicks();
             if (Click(battleButton))
             {
                 Log("clicked_battle_r" + (controller.CurrentRound + 1));
             }
+        }
+
+        private static bool TrySpendGoldThroughVisibleUi()
+        {
+            if (controller == null || controller.IsRoundRunning || controller.CurrentRound < 10)
+            {
+                return false;
+            }
+
+            CharacterGrade[] spendingOrder = { CharacterGrade.Normal, CharacterGrade.Rare, CharacterGrade.Epic, CharacterGrade.Legendary, CharacterGrade.Mythic };
+            for (int i = 0; i < spendingOrder.Length; i++)
+            {
+                CharacterGrade grade = spendingOrder[i];
+                if (!controller.CanUpgradeGrade(grade))
+                {
+                    continue;
+                }
+
+                int previousLevel = controller.GetGradeUpgradeLevel(grade);
+                Button upgrade = FindButton("GradeUpgrade_" + grade);
+                if (Click(upgrade) && controller.GetGradeUpgradeLevel(grade) > previousLevel)
+                {
+                    report.actualUiGradeUpgradeSpendCount++;
+                    Log("pass6_clicked_grade_upgrade_" + grade + "_r" + controller.CurrentRound);
+                    return true;
+                }
+            }
+
+            if (controller.CanUpgradeSummonGradeLuck())
+            {
+                int previousLuck = controller.SummonGradeLuckLevel;
+                Button luck = FindButton("SummonGradeLuckUpgrade");
+                if (Click(luck) && controller.SummonGradeLuckLevel > previousLuck)
+                {
+                    report.actualUiLuckUpgradeSpendCount++;
+                    Log("pass6_clicked_grade_luck_r" + controller.CurrentRound);
+                    return true;
+                }
+            }
+
+            Button summon = FindButton("SummonButton");
+            if (controller.BoardUnitCount < 8 && controller.EmptySlotCount > 0 && Click(summon))
+            {
+                report.actualUiSummonSpendCount++;
+                Log("pass6_clicked_summon_r" + controller.CurrentRound);
+                return true;
+            }
+
+            return false;
+        }
+        private static bool TryMergeGradeThroughVisibleUi(CharacterGrade grade)
+        {
+            if (controller == null || controller.CountUnitsOfGrade(grade) < 3)
+            {
+                return false;
+            }
+
+            int mergesBefore = controller.RunTotalMerges;
+            Button merge = FindButton(grade + "GradeCard");
+            if (!Click(merge) || controller.RunTotalMerges <= mergesBefore)
+            {
+                return false;
+            }
+
+            report.actualUiMergeCompleted = true;
+            report.actualUiMergeSpendCount++;
+            Log("pass6_clicked_merge_" + grade + "_r" + controller.CurrentRound);
+            return true;
         }
 
         private static void PrepareUsingOnlyUiClicks()
@@ -620,6 +714,7 @@ namespace DefenseGame.Editor
                 if (Click(offer))
                 {
                     if (controller.CurrentRound == 4) report.r4RunShopPurchaseClicked = true;
+                    report.actualUiRunShopPurchaseCompleted = true;
                     RecordChoiceFlow("RunShop:Purchase");
                     Log("clicked_choice_" + offer.name + "_r" + controller.CurrentRound);
                     return true;
@@ -956,6 +1051,11 @@ namespace DefenseGame.Editor
             public bool r11StartedAfterR10;
             public bool r15Reached;
             public bool actualUiMergeCompleted;
+            public int actualUiMergeSpendCount;
+            public int actualUiSummonSpendCount;
+            public int actualUiGradeUpgradeSpendCount;
+            public int actualUiLuckUpgradeSpendCount;
+            public bool actualUiRunShopPurchaseCompleted;
             public bool tacticalMissionSelectedByUi;
             public bool tacticalMissionSettlementObserved;
             public string tacticalMissionSettlementResult;
