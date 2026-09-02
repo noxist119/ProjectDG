@@ -166,30 +166,63 @@ namespace DefenseGame
 			targetMana01 = ((maxMana > 0f) ? Mathf.Clamp01(mana / maxMana) : 0f);
 		}
 
-		public void ShowDamage(float amount, bool critical, bool healing)
-		{
-			if (!(canvas == null))
-			{
-				FloatingTextMotion motion = FloatingTextMotion.Spawn(base.transform, healing ? "HealPopup" : "DamagePopup");
-				RectTransform rect = motion.CachedRectTransform;
-				rect.anchoredPosition = new Vector2(Random.Range(-18f, 18f), 22f);
-				rect.sizeDelta = new Vector2(160f, 28f);
-				rect.localScale = Vector3.one;
-				rect.localRotation = Quaternion.identity;
-				Text popup = motion.TargetText;
-				popup.font = RuntimeFontProvider.GetDefaultFont();
-				popup.alignment = TextAnchor.MiddleCenter;
-				popup.fontSize = (critical ? 24 : 18);
-				popup.fontStyle = (critical ? FontStyle.Bold : FontStyle.Normal);
-				popup.resizeTextForBestFit = false;
-				((Graphic)popup).raycastTarget = false;
-				popup.text = (healing ? ("+" + Mathf.RoundToInt(amount)) : Mathf.RoundToInt(amount).ToString());
-				((Graphic)popup).color = (healing ? new Color(0.4f, 1f, 0.65f, 1f) : (critical ? new Color(1f, 0.85f, 0.25f, 1f) : Color.white));
-				motion.Initialize(new Vector2(Random.Range(-8f, 8f), 58f), 0.75f);
-			}
-		}
+        public void ShowDamage(float amount, bool critical, bool healing)
+        {
+            if (canvas == null || ownerTransform == null)
+            {
+                return;
+            }
 
-		public void ShowStatus(string message, Color color, float duration = 0.9f)
+            Vector3 capturedWorldPoint = ownerTransform.position + Vector3.up * Mathf.Max(0.9f, anchorLift * 0.8f);
+            if (!SharedFloatingCombatCanvas.TryConvertWorldPointToCanvasPoint(canvas, capturedWorldPoint, out Vector2 canvasPoint))
+            {
+                return;
+            }
+
+            // Popups live on the shared combat canvas instead of the target HUD. They therefore finish
+            // their animation even when the damage event destroys the monster in the same frame.
+            FloatingTextMotion motion = FloatingTextMotion.Spawn(canvas.transform, healing ? "HealPopup" : "DamagePopup");
+            RectTransform rect = motion.CachedRectTransform;
+            float horizontalWobble = ((Time.frameCount * 17) % 37) - 18f;
+            rect.anchoredPosition = canvasPoint + new Vector2(horizontalWobble, 24f);
+            rect.sizeDelta = new Vector2(236f, 72f);
+            rect.localScale = Vector3.one;
+            rect.localRotation = Quaternion.identity;
+
+            Text popup = motion.TargetText;
+            popup.font = RuntimeFontProvider.GetCombatNumberFont();
+            popup.alignment = TextAnchor.MiddleCenter;
+            popup.fontSize = healing ? 34 : (critical ? 48 : 36);
+            popup.fontStyle = FontStyle.Bold;
+            popup.resizeTextForBestFit = false;
+            popup.horizontalOverflow = HorizontalWrapMode.Overflow;
+            popup.verticalOverflow = VerticalWrapMode.Overflow;
+            popup.raycastTarget = false;
+            popup.text = healing ? "+" + Mathf.RoundToInt(amount) : Mathf.RoundToInt(amount).ToString();
+            popup.color = healing
+                ? new Color(0.30f, 1f, 0.48f, 1f)
+                : critical ? new Color(1f, 0.18f, 0.22f, 1f) : Color.white;
+
+            Outline outline = popup.GetComponent<Outline>();
+            if (outline == null)
+            {
+                outline = popup.gameObject.AddComponent<Outline>();
+            }
+            outline.effectColor = new Color(0.04f, 0.02f, 0.08f, 0.94f);
+            outline.effectDistance = new Vector2(1.6f, -1.6f);
+
+            Shadow shadow = popup.GetComponent<Shadow>();
+            if (shadow == null)
+            {
+                shadow = popup.gameObject.AddComponent<Shadow>();
+            }
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.72f);
+            shadow.effectDistance = new Vector2(2.4f, -2.4f);
+
+            motion.InitializeDamage(new Vector2(horizontalWobble * 0.16f, critical ? 92f : 74f), 0.72f, 0.08f, 0.12f, 0.75f, critical ? 1.42f : 1.32f);
+        }
+
+        public void ShowStatus(string message, Color color, float duration = 0.9f)
 		{
 			if (!(canvas == null) && !string.IsNullOrWhiteSpace(message))
 			{

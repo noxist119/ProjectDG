@@ -108,7 +108,8 @@ namespace DefenseGame
         private int totalFinalMerges;
         private int totalKills;
         private int totalBossKills;
-        private int missionCursor;
+        private int missionCursor; // Legacy save field; the active draft now uses the Mission RNG channel.
+        private string lastOfferSignature = string.Empty;
         private int completedMissionCount;
         private float toastTimer;
         private bool subscribed;
@@ -117,7 +118,8 @@ namespace DefenseGame
         private bool runStarted;
 
         public int PendingMissionSupportSummons => pendingMissionSupportSummons;
-        public bool HasInitialStrategyFork => HasOfferedMission(MissionKind.PerfectDefense) && HasOfferedMission(MissionKind.SummonSprint) && HasOfferedMission(MissionKind.LastStandGambit);
+        // Compatibility surface for older smoke callers: this now means an opening three-choice draft exists, not a fixed trio.
+        public bool HasInitialStrategyFork => !missionSelected && gameController != null && gameController.CurrentRound <= 0 && activeMissions.Count == MaxMissionOffers;
         public bool HasActiveMissionSelection => missionSelected;
         public bool IsChoicePanelOpen => !missionSelected && panelRoot != null && panelRoot.activeSelf;
         public int MissionOfferCount => missionSelected ? 0 : activeMissions.Count;
@@ -228,6 +230,7 @@ namespace DefenseGame
             totalKills = 0;
             totalBossKills = 0;
             missionCursor = 0;
+            lastOfferSignature = string.Empty;
             completedMissionCount = 0;
             toastTimer = 0f;
             resolvingMission = false;
@@ -272,6 +275,7 @@ namespace DefenseGame
                 SetChildText(button.transform, "PickLabel", "\uc120\ud0dd");
             }
         }
+
         private void Subscribe()
         {
             if (subscribed || gameController == null)
@@ -323,56 +327,88 @@ namespace DefenseGame
             }
 
             ClearExpiredCooldowns();
-            bool initialOffers = completedMissionCount == 0 && gameController.CurrentRound <= 0;
-            if (initialOffers)
+            int round = gameController.CurrentRound;
+            int minimumValid = GetMissionBracketMinimum(round);
+            List<MissionKind> bracketPool = BuildCandidatePool(round);
+            List<MissionKind> eligible = new List<MissionKind>();
+            for (int i = 0; i < bracketPool.Count; i++)
             {
-                AddOffer(MissionKind.PerfectDefense, 0, true);
-                AddOffer(MissionKind.SummonSprint, 0, true);
-                AddOffer(MissionKind.LastStandGambit, 0, true);
+                if (IsMissionEligibleForOffer(bracketPool[i]))
+                {
+                    eligible.Add(bracketPool[i]);
+                }
+            }
+
+            // A bracket never borrows a late or early mission just to fill a row. The authored pools
+            // contain more than the stated minimum; this guard simply makes an infeasible state explicit.
+            if (eligible.Count < Mathf.Min(MaxMissionOffers, minimumValid))
+            {
                 offerRefreshQueued = false;
                 return;
             }
 
-            List<MissionKind> candidates = BuildCandidateOrder();
-            HashSet<string> usedCategories = new HashSet<string>();
-            int guard = 0;
-            while (activeMissions.Count < MaxMissionOffers && guard++ < candidates.Count * 3)
+            string signature = string.Empty;
+            for (int attempt = 0; attempt < 4; attempt++)
             {
-                MissionKind kind = candidates[Mathf.Abs(missionCursor++) % candidates.Count];
-                string category = GetMissionCategory(kind);
-                if (usedCategories.Contains(category) || !IsMissionEligibleForOffer(kind) || HasOfferedMission(kind))
+                activeMissions.Clear();
+                List<MissionKind> remaining = new List<MissionKind>(eligible);
+                HashSet<string> usedCategories = new HashSet<string>();
+                while (activeMissions.Count < MaxMissionOffers && remaining.Count > 0)
                 {
-                    continue;
+                    List<MissionKind> preferred = new List<MissionKind>();
+                    for (int i = 0; i < remaining.Count; i++)
+                    {
+                        if (!usedCategories.Contains(GetMissionCategory(remaining[i])))
+                        {
+                            preferred.Add(remaining[i]);
+                        }
+                    }
+
+                    List<MissionKind> source = preferred.Count > 0 ? preferred : remaining;
+                    int selectedIndex = gameController.RunContentRandom.Range(
+                        RunContentRandomChannel.Mission, 0, source.Count, "mission.draft.pick");
+                    MissionKind kind = source[selectedIndex];
+                    remaining.Remove(kind);
+                    usedCategories.Add(GetMissionCategory(kind));
+                    MissionInstance mission = CreateMission(kind, GetNextTier(kind));
+                    if (mission != null)
+                    {
+                        activeMissions.Add(mission);
+                        gameController.RunContentRandom.RecordOutcome(RunContentRandomChannel.Mission, "mission.offer", mission.kind.ToString());
+                    }
                 }
 
-                MissionInstance mission = CreateMission(kind, GetNextTier(kind));
-                if (mission == null || completedMissionKeys.Contains(mission.Key) || IsRecentlyExpired(mission.Key))
+                signature = BuildOfferSignature();
+                if (activeMissions.Count == MaxMissionOffers && signature != lastOfferSignature)
                 {
-                    continue;
+                    break;
                 }
-
-                activeMissions.Add(mission);
-                gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Mission, "mission.offer", mission.kind.ToString());
-                usedCategories.Add(category);
             }
 
-            for (int i = 0; activeMissions.Count < MaxMissionOffers && i < candidates.Count; i++)
+            if (activeMissions.Count == MaxMissionOffers)
             {
-                MissionKind kind = candidates[(missionCursor + i) % candidates.Count];
-                if (!IsMissionEligibleForOffer(kind) || HasOfferedMission(kind))
-                {
-                    continue;
-                }
-
-                MissionInstance mission = CreateMission(kind, GetNextTier(kind));
-                if (mission != null)
-                {
-                    activeMissions.Add(mission);
-                    gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Mission, "mission.offer", mission.kind.ToString());
-                }
+                lastOfferSignature = signature;
             }
-
             offerRefreshQueued = false;
+        }
+
+        private string BuildOfferSignature()
+        {
+            List<string> ids = new List<string>(activeMissions.Count);
+            for (int i = 0; i < activeMissions.Count; i++)
+            {
+                if (activeMissions[i] != null)
+                {
+                    ids.Add(activeMissions[i].kind.ToString());
+                }
+            }
+            ids.Sort(System.StringComparer.Ordinal);
+            return string.Join("|", ids.ToArray());
+        }
+
+        private int GetMissionBracketMinimum(int round)
+        {
+            return round < 10 ? 8 : round < 30 ? 10 : 8;
         }
 
         private void AddOffer(MissionKind kind, int tier, bool initial)
@@ -405,8 +441,7 @@ namespace DefenseGame
                 return false;
             }
 
-            bool initial = gameController.CurrentRound <= 0 &&
-                (selected.kind == MissionKind.PerfectDefense || selected.kind == MissionKind.SummonSprint || selected.kind == MissionKind.LastStandGambit);
+            bool initial = gameController.CurrentRound <= 0;
             ConfigureMissionForSelection(selected, initial);
             activeMissions.Clear();
             activeMissions.Add(selected);
@@ -418,26 +453,53 @@ namespace DefenseGame
             return true;
         }
 
-        private List<MissionKind> BuildCandidateOrder()
+        private static List<MissionKind> BuildCandidatePool(int round)
         {
+            if (round < 10)
+            {
+                return new List<MissionKind>
+                {
+                    MissionKind.PerfectDefense, MissionKind.SummonSprint, MissionKind.LastStandGambit,
+                    MissionKind.MergeRush, MissionKind.RoleCollector, MissionKind.LeanDefense,
+                    MissionKind.EmptySlotDiscipline, MissionKind.RareUpgrade, MissionKind.MonsterHunter,
+                    MissionKind.NoSummonHold, MissionKind.KillStreak, MissionKind.GoldReserve
+                };
+            }
+
+            if (round < 20)
+            {
+                return new List<MissionKind>
+                {
+                    MissionKind.PerfectDefense, MissionKind.SummonSprint, MissionKind.MergeRush,
+                    MissionKind.RoleCollector, MissionKind.LeanDefense, MissionKind.BossPreparation,
+                    MissionKind.EmptySlotDiscipline, MissionKind.RareUpgrade, MissionKind.LegendaryHunt,
+                    MissionKind.MonsterHunter, MissionKind.NoSummonHold, MissionKind.KillStreak,
+                    MissionKind.HighGradeForge, MissionKind.SpendDownGambit, MissionKind.GradeRainbow
+                };
+            }
+
+            if (round < 30)
+            {
+                return new List<MissionKind>
+                {
+                    MissionKind.PerfectDefense, MissionKind.MergeRush, MissionKind.RoleCollector,
+                    MissionKind.BossPreparation, MissionKind.RareUpgrade, MissionKind.LegendaryHunt,
+                    MissionKind.MonsterHunter, MissionKind.BossSlayer, MissionKind.NoSummonHold,
+                    MissionKind.KillStreak, MissionKind.HighGradeForge, MissionKind.SpendDownGambit,
+                    MissionKind.UltimateRecipeChase, MissionKind.GradeRainbow
+                };
+            }
+
             return new List<MissionKind>
             {
-                MissionKind.PerfectDefense,
-                MissionKind.SummonSprint,
-                MissionKind.GoldReserve,
-                MissionKind.MergeRush,
-                MissionKind.RoleCollector,
-                MissionKind.LeanDefense,
-                MissionKind.BossPreparation,
-                MissionKind.NoSummonHold,
-                MissionKind.HighGradeForge,
-                MissionKind.SpendDownGambit,
-                MissionKind.UltimateRecipeChase,
-                MissionKind.GradeRainbow
+                MissionKind.BossPreparation, MissionKind.LegendaryHunt, MissionKind.MonsterHunter,
+                MissionKind.BossSlayer, MissionKind.NoSummonHold, MissionKind.KillStreak,
+                MissionKind.HighGradeForge, MissionKind.SpendDownGambit, MissionKind.UltimateRecipeChase,
+                MissionKind.GradeRainbow, MissionKind.RoleCollector, MissionKind.MergeRush
             };
         }
 
-        private string GetMissionCategory(MissionKind kind)
+        private static string GetMissionCategory(MissionKind kind)
         {
             switch (kind)
             {
@@ -450,6 +512,38 @@ namespace DefenseGame
                 case MissionKind.LeanDefense: return "GREED";
                 default: return "BUILD";
             }
+        }
+
+        public static int GetDraftPoolCountForValidation(int round)
+        {
+            return BuildCandidatePool(round).Count;
+        }
+
+        // Editor smoke uses the same candidate pools and Mission-channel draw rule to check seed repeatability.
+        public static string[] BuildDraftForValidation(int round, RunContentRandomService random)
+        {
+            List<MissionKind> remaining = BuildCandidatePool(round);
+            List<string> result = new List<string>(MaxMissionOffers);
+            HashSet<string> categories = new HashSet<string>();
+            while (result.Count < MaxMissionOffers && remaining.Count > 0)
+            {
+                List<MissionKind> preferred = new List<MissionKind>();
+                for (int index = 0; index < remaining.Count; index++)
+                {
+                    if (!categories.Contains(GetMissionCategory(remaining[index])))
+                    {
+                        preferred.Add(remaining[index]);
+                    }
+                }
+
+                List<MissionKind> source = preferred.Count > 0 ? preferred : remaining;
+                int selected = random.Range(RunContentRandomChannel.Mission, 0, source.Count, "mission.draft.pick");
+                MissionKind kind = source[selected];
+                remaining.Remove(kind);
+                categories.Add(GetMissionCategory(kind));
+                result.Add(kind.ToString());
+            }
+            return result.ToArray();
         }
 
         private bool IsMissionEligibleForOffer(MissionKind kind)
@@ -602,6 +696,7 @@ namespace DefenseGame
             mission.description = BuildConditionDescription(mission);
             mission.rewardText = BuildRewardText(mission);
         }
+
         private MissionInstance CreateMission(MissionKind kind, int tier)
         {
             int round = gameController != null ? gameController.CurrentRound : 0;
@@ -894,6 +989,7 @@ namespace DefenseGame
                     return string.IsNullOrEmpty(mission.description) ? string.Empty : mission.description;
             }
         }
+
         private void ApplyRewardPacing(MissionInstance mission)
         {
             if (mission == null)
@@ -906,6 +1002,7 @@ namespace DefenseGame
             mission.summonDiscount = 0f;
             mission.rewardText = BuildRewardText(mission);
         }
+
         private string BuildRewardText(MissionInstance mission)
         {
             if (mission == null)
@@ -977,6 +1074,7 @@ namespace DefenseGame
 
             RefreshUi();
         }
+
         private bool IsMissionComplete(MissionInstance mission, bool roundCompleted, int completedRound)
         {
             if (mission == null || gameController == null)
@@ -1030,6 +1128,7 @@ namespace DefenseGame
                     return false;
             }
         }
+
         private bool IsMissionExpired(MissionInstance mission, bool roundCompleted, int completedRound)
         {
             if (mission == null || mission.targetRound <= 0 || gameController == null)
@@ -1132,6 +1231,7 @@ namespace DefenseGame
             gameController.RequestBanner(banner, mission.color, 2.8f);
             RuntimeCameraShake.Request(0.055f, 0.18f);
         }
+
         private void ExpireMission(int index)
         {
             if (index < 0 || index >= activeMissions.Count)
@@ -1217,6 +1317,7 @@ namespace DefenseGame
             EvaluateMissions(true, round);
             RefreshUi();
         }
+
         private void HandleRoundBoardPreparation(int round)
         {
             if (gameController == null || gameController.IsRoundRunning)
@@ -1246,6 +1347,7 @@ namespace DefenseGame
             RefreshUi();
             return panelRoot != null && panelRoot.activeSelf;
         }
+
         private void HandleMonsterKilled(MonsterUnit monster)
         {
             totalKills++;
@@ -1327,6 +1429,7 @@ namespace DefenseGame
                 summaryText.color = Color.white;
             }
         }
+
         private void RefreshPanel()
         {
             if (panelHeaderText != null)
@@ -1375,6 +1478,7 @@ namespace DefenseGame
                 }
             }
         }
+
         private string GetProgressText(MissionInstance mission)
         {
             if (mission == null || gameController == null)
@@ -1447,6 +1551,7 @@ namespace DefenseGame
 
             return false;
         }
+
         private int CountDistinctRoles()
         {
             DefenderUnit[] defenders = boardManager != null ? boardManager.GetAliveDefenders() : new DefenderUnit[0];
@@ -1625,7 +1730,6 @@ namespace DefenseGame
             }
             ShowToast("\uBBF8\uC158 \uC644\uB8CC! \uBCF4\uC0C1 \uD68D\uB4DD", string.Empty);
         }
-
 
         private void ShowFailureToast()
         {

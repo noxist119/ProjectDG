@@ -113,7 +113,25 @@ namespace DefenseGame
 			scaler.matchWidthOrHeight = 0.84f;
 		}
 
-		public static bool TryGet(Transform target, out FloatingCombatUI ui)
+        public static bool TryConvertWorldPointToCanvasPoint(Canvas canvas, Vector3 worldPoint, out Vector2 canvasPoint)
+        {
+            canvasPoint = Vector2.zero;
+            if (canvas == null || !(canvas.transform is RectTransform root))
+            {
+                return false;
+            }
+
+            Camera worldCamera = WorldCamera;
+            if (worldCamera == null)
+            {
+                return false;
+            }
+
+            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(worldCamera, worldPoint);
+            return RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screenPoint, null, out canvasPoint);
+        }
+
+        public static bool TryGet(Transform target, out FloatingCombatUI ui)
 		{
 			ui = null;
 			if (target == null)

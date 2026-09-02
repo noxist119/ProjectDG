@@ -22,6 +22,7 @@ namespace DefenseGame
         private readonly Dictionary<CharacterGrade, int> gradeCounts = new Dictionary<CharacterGrade, int>();
         private readonly Dictionary<CharacterTag, int> tagCounts = new Dictionary<CharacterTag, int>();
         private readonly List<SynergyEntry> activeEntries = new List<SynergyEntry>();
+        private readonly List<SynergyEntry> nearEntries = new List<SynergyEntry>();
         private bool subscribed;
         private bool isExpanded;
 
@@ -30,6 +31,9 @@ namespace DefenseGame
             public string title;
             public string detail;
             public Color color;
+            public bool locked;
+            public int progress;
+            public int target;
         }
 
         public void Configure(
@@ -191,47 +195,200 @@ namespace DefenseGame
             gradeCounts.Clear();
             tagCounts.Clear();
             activeEntries.Clear();
+            nearEntries.Clear();
 
+            Dictionary<CharacterRole, HashSet<string>> distinctRoles = new Dictionary<CharacterRole, HashSet<string>>();
+            Dictionary<CharacterGrade, HashSet<string>> distinctGrades = new Dictionary<CharacterGrade, HashSet<string>>();
+            Dictionary<CharacterTag, HashSet<string>> distinctTags = new Dictionary<CharacterTag, HashSet<string>>();
+            HashSet<string> allyHealerIds = new HashSet<string>();
             Dictionary<DefenderUnit, UnitSynergyBonus> bonuses = new Dictionary<DefenderUnit, UnitSynergyBonus>();
+
             for (int i = 0; i < defenders.Length; i++)
             {
                 DefenderUnit defender = defenders[i];
-                if (defender == null)
+                CharacterDefinition definition = defender != null ? defender.Definition : null;
+                if (defender == null || definition == null)
                 {
                     continue;
                 }
 
                 bonuses[defender] = default;
-                Count(roleCounts, defender.Role);
-                Count(gradeCounts, defender.Grade);
-
-                List<CharacterTag> tags = CharacterTagUtility.ResolveTags(defender.Definition);
+                string characterId = string.IsNullOrEmpty(definition.id) ? "runtime_" + defender.GetInstanceID() : definition.id;
+                AddDistinct(distinctRoles, definition.role, characterId);
+                AddDistinct(distinctGrades, definition.grade, characterId);
+                List<CharacterTag> tags = CharacterTagUtility.ResolveTags(definition);
                 for (int tagIndex = 0; tagIndex < tags.Count; tagIndex++)
                 {
-                    Count(tagCounts, tags[tagIndex]);
+                    AddDistinct(distinctTags, tags[tagIndex], characterId);
+                }
+
+                if (HasActualAllyHeal(definition))
+                {
+                    allyHealerIds.Add(characterId);
                 }
             }
 
-            ApplyRoleSynergies(defenders, bonuses);
-            ApplyTagSynergies(defenders, bonuses);
-            ApplySpecialSynergies(defenders, bonuses);
+            CopyDistinctCounts(distinctRoles, roleCounts);
+            CopyDistinctCounts(distinctGrades, gradeCounts);
+            CopyDistinctCounts(distinctTags, tagCounts);
+            ApplyVarietySynergies(defenders, bonuses, allyHealerIds.Count);
 
             for (int i = 0; i < defenders.Length; i++)
             {
                 DefenderUnit defender = defenders[i];
-                if (defender == null)
+                if (defender != null)
                 {
-                    continue;
+                    defender.SetSynergyBonuses(bonuses.TryGetValue(defender, out UnitSynergyBonus bonus) ? bonus : default);
                 }
-
-                defender.SetSynergyBonuses(bonuses.TryGetValue(defender, out UnitSynergyBonus bonus) ? bonus : default);
             }
 
+            nearEntries.Sort((left, right) =>
+            {
+                float leftRatio = left.target > 0 ? (float)left.progress / left.target : 0f;
+                float rightRatio = right.target > 0 ? (float)right.progress / right.target : 0f;
+                return rightRatio.CompareTo(leftRatio);
+            });
             RefreshUi(defenders.Length);
             if (gameController != null)
             {
-                gameController.RecordSynergySnapshot(activeEntries.Count, activeEntries.Count > 0 ? activeEntries[0].title : "시너지 없음");
+                gameController.RecordSynergySnapshot(activeEntries.Count, activeEntries.Count > 0 ? activeEntries[0].title : "\uc2dc\ub108\uc9c0 \uc5c6\uc74c");
             }
+        }
+
+        private static void AddDistinct<TKey>(Dictionary<TKey, HashSet<string>> dictionary, TKey key, string characterId)
+        {
+            if (!dictionary.TryGetValue(key, out HashSet<string> ids))
+            {
+                ids = new HashSet<string>();
+                dictionary[key] = ids;
+            }
+            ids.Add(characterId);
+        }
+
+        private static void CopyDistinctCounts<TKey>(Dictionary<TKey, HashSet<string>> source, Dictionary<TKey, int> destination)
+        {
+            foreach (KeyValuePair<TKey, HashSet<string>> pair in source)
+            {
+                destination[pair.Key] = pair.Value.Count;
+            }
+        }
+
+        private static bool HasActualAllyHeal(CharacterDefinition definition)
+        {
+            if (definition == null || definition.skills == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < definition.skills.Count; i++)
+            {
+                SkillDefinition skill = definition.skills[i];
+                if (skill != null && skill.effectType == SkillEffectType.HealLowestAllies)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void ApplyVarietySynergies(DefenderUnit[] defenders, Dictionary<DefenderUnit, UnitSynergyBonus> bonuses, int allyHealerCount)
+        {
+            int vanguards = GetCount(roleCounts, CharacterRole.Vanguard);
+            if (vanguards >= 3)
+            {
+                ApplyToRole(defenders, bonuses, CharacterRole.Vanguard, new UnitSynergyBonus { maxHealthBonus = 0.24f, damageReductionBonus = 0.10f });
+                AddEntry("\uc0bc\uc911 \ubc29\ubcbd", "\uc11c\ub85c \ub2e4\ub978 \uc804\uc704 3\uc885: \uc804\uc704 \uccb4\ub825 +24%, \ubc1b\ub294 \ud53c\ud574 -10%", new Color(0.46f, 0.74f, 1f));
+            }
+            else AddNear("\uc0bc\uc911 \ubc29\ubcbd", vanguards, 3, "\uc11c\ub85c \ub2e4\ub978 \uc804\uc704", new Color(0.46f, 0.74f, 1f));
+
+            if (allyHealerCount >= 3)
+            {
+                ApplyToAll(defenders, bonuses, new UnitSynergyBonus { maxHealthBonus = 0.10f, manaRegenRateBonus = 0.025f });
+                AddEntry("\uc0dd\uba85 \uc21c\ud658", "\uc2e4\uc81c \uc544\uad70 \ud68c\ubcf5 \uc2a4\ud0ac 3\uc885: \uc804\uccb4 \uccb4\ub825 +10%, \ucd08\ub2f9 \ub9c8\ub098 +2.5%", new Color(0.34f, 1f, 0.58f));
+            }
+            else AddNear("\uc0dd\uba85 \uc21c\ud658", allyHealerCount, 3, "\uc544\uad70 \ud68c\ubcf5 \uc2a4\ud0ac \ubcf4\uc720\uc790", new Color(0.34f, 1f, 0.58f));
+
+            int lineage = HasGrade(CharacterGrade.Normal) && HasGrade(CharacterGrade.Rare) && HasGrade(CharacterGrade.Epic) && HasGrade(CharacterGrade.Legendary) ? 4 : CountGradeLineage();
+            if (lineage >= 4)
+            {
+                ApplyToAll(defenders, bonuses, new UnitSynergyBonus { attackPowerBonus = 0.12f, skillPowerBonus = 0.12f });
+                AddEntry("\ub4f1\uae09 \uacc4\ubcf4", "\uc77c\ubc18\u00b7\ub808\uc5b4\u00b7\uc5d0\ud53d\u00b7\uc804\uc124 1\uc885\uc529: \uc804\uccb4 \uacf5\uaca9\ub825, \uc2a4\ud0ac \uc704\ub825 +12%", new Color(1f, 0.78f, 0.30f));
+            }
+            else AddNear("\ub4f1\uae09 \uacc4\ubcf4", lineage, 4, "\ub2e4\ub978 \ub4f1\uae09", new Color(1f, 0.78f, 0.30f));
+
+            int rangers = GetCount(roleCounts, CharacterRole.Ranger);
+            int mages = GetCount(roleCounts, CharacterRole.Mage);
+            if (rangers >= 3 && mages >= 2)
+            {
+                ApplyToRole(defenders, bonuses, CharacterRole.Ranger, new UnitSynergyBonus { attackSpeedBonus = 0.12f });
+                ApplyToRole(defenders, bonuses, CharacterRole.Mage, new UnitSynergyBonus { skillPowerBonus = 0.18f });
+                AddEntry("\uc6d0\uc18c \ud3ec\ud654", "\uc11c\ub85c \ub2e4\ub978 \uc6d0\uac70\ub9ac 3 + \ub9c8\ubc95 2: \uacf5\uc18d +12%, \uc2a4\ud0ac \uc704\ub825 +18%", new Color(0.50f, 0.74f, 1f));
+            }
+            else AddNear("\uc6d0\uc18c \ud3ec\ud654", Mathf.Min(rangers, 3) + Mathf.Min(mages, 2), 5, "\uc6d0\uac70\ub9ac 3 + \ub9c8\ubc95 2", new Color(0.50f, 0.74f, 1f));
+
+            int assassins = GetCount(roleCounts, CharacterRole.Assassin);
+            int highGrades = CountHighGradeLineage();
+            if (assassins >= 3 && highGrades >= 1)
+            {
+                ApplyToRole(defenders, bonuses, CharacterRole.Assassin, new UnitSynergyBonus { critChanceBonus = 0.10f, bossDamageBonus = 0.16f });
+                AddEntry("\uc5b4\ub460\uc758 \uacfc\uad00", "\uc11c\ub85c \ub2e4\ub978 \uc554\uc0b4 3 + \uc804\uc124+ 1: \uce58\uba85 +10%, \ubcf4\uc2a4 \ud53c\ud574 +16%", new Color(1f, 0.34f, 0.56f));
+            }
+            else AddNear("\uc5b4\ub460\uc758 \uacfc\uad00", Mathf.Min(assassins, 3) + Mathf.Min(highGrades, 1), 4, "\uc554\uc0b4 3 + \uc804\uc124+ 1", new Color(1f, 0.34f, 0.56f));
+
+            int bestTagCount = 0;
+            foreach (KeyValuePair<CharacterTag, int> tag in tagCounts) bestTagCount = Mathf.Max(bestTagCount, tag.Value);
+            if (bestTagCount >= 5)
+            {
+                ApplyToAll(defenders, bonuses, new UnitSynergyBonus { attackSpeedBonus = 0.08f, damageReductionBonus = 0.06f });
+                AddEntry("\ud0dc\uadf8 \uacf5\uba85 MAX", "\uc11c\ub85c \ub2e4\ub978 \uac19\uc740 \ud0dc\uadf8 5\uc885: \uc804\uccb4 \uacf5\uc18d +8%, \ubc1b\ub294 \ud53c\ud574 -6%", new Color(0.72f, 0.60f, 1f));
+            }
+            else if (bestTagCount >= 3)
+            {
+                ApplyToAll(defenders, bonuses, new UnitSynergyBonus { attackSpeedBonus = 0.06f });
+                AddEntry("\ud0dc\uadf8 \uacf5\uba85", "\uc11c\ub85c \ub2e4\ub978 \uac19\uc740 \ud0dc\uadf8 3\uc885: \uc804\uccb4 \uacf5\uc18d +6%", new Color(0.72f, 0.60f, 1f));
+            }
+            else AddNear("\ud0dc\uadf8 \uacf5\uba85", bestTagCount, 3, "\uc11c\ub85c \ub2e4\ub978 \uac19\uc740 \ud0dc\uadf8", new Color(0.72f, 0.60f, 1f));
+
+            int roleVariety = roleCounts.Count;
+            if (roleVariety >= 5 && lineage >= 4)
+            {
+                ApplyToAll(defenders, bonuses, new UnitSynergyBonus { critChanceBonus = 0.06f, rangeBonus = 0.25f });
+                AddEntry("\ud504\ub9ac\uc998 \uc9c4\ud615", "\uc11c\ub85c \ub2e4\ub978 \uc5ed\ud560 5 + \ub4f1\uae09 4: \uc804\uccb4 \uce58\uba85 +6%, \uc0ac\uac70\ub9ac +0.25", new Color(1f, 0.92f, 0.42f));
+            }
+            else AddNear("\ud504\ub9ac\uc998 \uc9c4\ud615", Mathf.Min(roleVariety, 5) + Mathf.Min(lineage, 4), 9, "\uc5ed\ud560 5 + \ub4f1\uae09 4", new Color(1f, 0.92f, 0.42f));
+        }
+
+        private bool HasGrade(CharacterGrade grade) => GetCount(gradeCounts, grade) > 0;
+
+        private int CountGradeLineage()
+        {
+            int count = 0;
+            if (HasGrade(CharacterGrade.Normal)) count++;
+            if (HasGrade(CharacterGrade.Rare)) count++;
+            if (HasGrade(CharacterGrade.Epic)) count++;
+            if (HasGrade(CharacterGrade.Legendary)) count++;
+            return count;
+        }
+
+        private int CountHighGradeLineage()
+        {
+            int count = 0;
+            if (HasGrade(CharacterGrade.Legendary)) count++;
+            if (HasGrade(CharacterGrade.Mythic)) count++;
+            if (HasGrade(CharacterGrade.Transcendent)) count++;
+            return count;
+        }
+        private void AddNear(string title, int progress, int target, string requirement, Color color)
+        {
+            nearEntries.Add(new SynergyEntry
+            {
+                title = title + " " + progress + "/" + target,
+                detail = requirement + " \uc870\ud569\uc744 \ubaa8\uc73c\uba74 \ud65c\uc131\ud654\ub429\ub2c8\ub2e4.",
+                color = color,
+                locked = true,
+                progress = progress,
+                target = target
+            });
         }
 
         private void ApplyRoleSynergies(DefenderUnit[] defenders, Dictionary<DefenderUnit, UnitSynergyBonus> bonuses)
@@ -669,67 +826,57 @@ namespace DefenseGame
             if (summaryText != null)
             {
                 summaryText.text = defenderCount > 0
-                    ? "시너지 " + activeEntries.Count + "개 활성"
-                    : "시너지 대기중";
+                    ? "\uc2dc\ub108\uc9c0 " + activeEntries.Count + "\uac1c \ud65c\uc131"
+                    : "\uc2dc\ub108\uc9c0 \ub300\uae30\uc911";
                 summaryText.color = defenderCount > 0 ? Color.white : new Color(0.86f, 0.92f, 1f);
             }
 
             if (expandedHeaderText != null)
             {
                 expandedHeaderText.text = activeEntries.Count > 0
-                    ? "활성 시너지 " + activeEntries.Count
-                    : "시너지 가이드";
+                    ? "\ud65c\uc131 \uc2dc\ub108\uc9c0 " + activeEntries.Count + " | \ub2e4\uc74c \uc870\ud569"
+                    : "\ub2e4\uc74c \uc2dc\ub108\uc9c0 \uc870\ud569";
+            }
+
+            List<SynergyEntry> displayEntries = new List<SynergyEntry>(activeEntries);
+            int nearCount = Mathf.Min(3, nearEntries.Count);
+            for (int i = 0; i < nearCount; i++)
+            {
+                displayEntries.Add(nearEntries[i]);
             }
 
             int rowCount = titleTexts != null ? titleTexts.Length : 0;
-            int displayCount = Mathf.Min(activeEntries.Count, rowCount);
-            bool hasOverflow = activeEntries.Count > rowCount;
-
+            int displayCount = Mathf.Min(displayEntries.Count, rowCount);
+            bool hasOverflow = displayEntries.Count > rowCount;
             for (int i = 0; i < rowCount; i++)
             {
                 bool showOverflowRow = hasOverflow && i == rowCount - 1;
                 bool hasEntry = i < displayCount && !showOverflowRow;
-
+                SynergyEntry entry = hasEntry ? displayEntries[i] : null;
                 if (titleTexts[i] != null)
                 {
                     titleTexts[i].text = hasEntry
-                        ? activeEntries[i].title
-                        : showOverflowRow
-                            ? "+ " + (activeEntries.Count - (rowCount - 1)) + "개 더 있음"
-                            : i == 0
-                                ? "활성 시너지 없음"
-                                : string.Empty;
-                    titleTexts[i].color = hasEntry || showOverflowRow ? Color.white : new Color(0.75f, 0.80f, 0.90f);
+                        ? (entry.locked ? "\ub2e4\uc74c: " : string.Empty) + entry.title
+                        : showOverflowRow ? "+ " + (displayEntries.Count - (rowCount - 1)) + "\uac1c \ub354 \uc788\uc74c"
+                        : i == 0 ? "\ud65c\uc131 \uc2dc\ub108\uc9c0 \uc5c6\uc74c" : string.Empty;
+                    titleTexts[i].color = hasEntry && entry.locked ? new Color(0.76f, 0.84f, 0.96f) : hasEntry || showOverflowRow ? Color.white : new Color(0.75f, 0.80f, 0.90f);
                 }
-
                 if (detailTexts != null && i < detailTexts.Length && detailTexts[i] != null)
                 {
-                    detailTexts[i].text = hasEntry
-                        ? activeEntries[i].detail
-                        : showOverflowRow
-                            ? "배치가 더 다양해지면 추가 시너지가 표시됩니다."
-                            : i == 0
-                                ? "같은 역할 또는 같은 속성 태그를 2명 이상 모아보세요."
-                                : string.Empty;
-                    detailTexts[i].color = hasEntry || showOverflowRow ? new Color(0.84f, 0.91f, 1f) : new Color(0.58f, 0.66f, 0.84f);
+                    detailTexts[i].text = hasEntry ? entry.detail
+                        : showOverflowRow ? "\ub2e4\uc591\ud55c \uc218\ud638\uc790\ub97c \ub354 \ubc30\uce58\ud558\uba74 \ud45c\uc2dc\ub429\ub2c8\ub2e4."
+                        : i == 0 ? "\ubcf5\uc81c \uc720\ub2db\uc740 \uc2dc\ub108\uc9c0 \uc9c4\ud589\ub3c4\uc5d0 \ud3ec\ud568\ub418\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4." : string.Empty;
+                    detailTexts[i].color = hasEntry && entry.locked ? new Color(0.60f, 0.70f, 0.88f) : hasEntry || showOverflowRow ? new Color(0.84f, 0.91f, 1f) : new Color(0.58f, 0.66f, 0.84f);
                 }
-
                 if (accentImages != null && i < accentImages.Length && accentImages[i] != null)
                 {
-                    accentImages[i].color = hasEntry
-                        ? activeEntries[i].color
-                        : showOverflowRow
-                            ? new Color(1f, 0.76f, 0.28f, 0.92f)
-                            : new Color(0.42f, 0.48f, 0.64f, 0.62f);
+                    accentImages[i].color = hasEntry ? (entry.locked ? Color.Lerp(entry.color, Color.black, 0.35f) : entry.color)
+                        : showOverflowRow ? new Color(1f, 0.76f, 0.28f, 0.92f) : new Color(0.42f, 0.48f, 0.64f, 0.62f);
                 }
-
                 if (iconImages != null && i < iconImages.Length && iconImages[i] != null)
                 {
-                    iconImages[i].color = hasEntry
-                        ? Color.Lerp(activeEntries[i].color, Color.white, 0.38f)
-                        : showOverflowRow
-                            ? new Color(1f, 0.84f, 0.38f, 0.70f)
-                            : new Color(0.58f, 0.66f, 0.84f, 0.22f);
+                    iconImages[i].color = hasEntry ? Color.Lerp(entry.color, Color.white, entry.locked ? 0.10f : 0.38f)
+                        : showOverflowRow ? new Color(1f, 0.84f, 0.38f, 0.70f) : new Color(0.58f, 0.66f, 0.84f, 0.22f);
                 }
             }
         }

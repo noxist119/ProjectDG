@@ -64,6 +64,59 @@ namespace DefenseGame.Editor
             EditorApplication.isPlaying = true;
         }
 
+        [MenuItem("DefenseGame/Smoke Tests/Pass 7 Mission Draft Determinism")]
+        public static void RunPass7MissionDraftDeterminism()
+        {
+            int[] rounds = { 0, 10, 20, 30 };
+            int[] minimums = { 8, 10, 10, 8 };
+            List<string> failures = new List<string>();
+            List<string> summaries = new List<string>();
+            for (int bracket = 0; bracket < rounds.Length; bracket++)
+            {
+                int round = rounds[bracket];
+                int poolCount = TacticalMissionSystem.GetDraftPoolCountForValidation(round);
+                HashSet<string> signatures = new HashSet<string>();
+                HashSet<string> offeredKinds = new HashSet<string>();
+                for (int seed = 1; seed <= 20; seed++)
+                {
+                    RunContentRandomService leftRandom = new RunContentRandomService();
+                    leftRandom.Reset(seed * 7919);
+                    string[] left = TacticalMissionSystem.BuildDraftForValidation(round, leftRandom);
+                    RunContentRandomService rightRandom = new RunContentRandomService();
+                    rightRandom.Reset(seed * 7919);
+                    string[] right = TacticalMissionSystem.BuildDraftForValidation(round, rightRandom);
+                    if (left.Length != 3 || left.Distinct().Count() != 3 || !left.SequenceEqual(right))
+                    {
+                        failures.Add("R" + round + " seed=" + seed + " draft invalid or non-deterministic.");
+                    }
+                    signatures.Add(string.Join("|", left.OrderBy(value => value).ToArray()));
+                    foreach (string kind in left) offeredKinds.Add(kind);
+                }
+
+                if (poolCount < minimums[bracket])
+                {
+                    failures.Add("R" + round + " pool=" + poolCount + " < " + minimums[bracket]);
+                }
+                if (signatures.Count < 8 || offeredKinds.Count < minimums[bracket])
+                {
+                    failures.Add("R" + round + " variety signatures=" + signatures.Count + ", kinds=" + offeredKinds.Count);
+                }
+                summaries.Add("R" + round + " pool=" + poolCount + ", signatures=" + signatures.Count + ", kinds=" + offeredKinds.Count);
+            }
+
+            string resultPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, "DefenseGame_Pass7_MissionDraftValidation.txt"));
+            Directory.CreateDirectory(Path.GetDirectoryName(resultPath) ?? string.Empty);
+            string result = failures.Count > 0
+                ? "FAIL: " + string.Join(" / ", failures.ToArray())
+                : "PASS: " + string.Join(" | ", summaries.ToArray());
+            File.WriteAllText(resultPath, result);
+            if (failures.Count > 0)
+            {
+                throw new InvalidOperationException("Pass7 Mission Draft " + result);
+            }
+
+            Debug.Log("Pass7 Mission Draft " + result);
+        }
         private static void HandlePlayModeStateChanged(PlayModeStateChange state)
         {
             if (state == PlayModeStateChange.EnteredPlayMode)
@@ -2658,13 +2711,14 @@ namespace DefenseGame.Editor
             bool battleStarts = false;
             MetaFlowUI metaFlow = UnityEngine.Object.FindObjectOfType<MetaFlowUI>(true);
             MethodInfo showLobby = typeof(MetaFlowUI).GetMethod("ShowLobby", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo showToast = typeof(TacticalMissionSystem).GetMethod("ShowToast", BindingFlags.Instance | BindingFlags.NonPublic);
             try
             {
                 MethodInfo resetMissionState = typeof(TacticalMissionSystem).GetMethod("ResetRunState", BindingFlags.Instance | BindingFlags.NonPublic);
                 MethodInfo refillMissionOffers = typeof(TacticalMissionSystem).GetMethod("RefillMissions", BindingFlags.Instance | BindingFlags.NonPublic);
                 MethodInfo setMissionPanelOpen = typeof(TacticalMissionSystem).GetMethod("SetPanelOpen", BindingFlags.Instance | BindingFlags.NonPublic);
                 MethodInfo refreshMissionUi = typeof(TacticalMissionSystem).GetMethod("RefreshUi", BindingFlags.Instance | BindingFlags.NonPublic);
-                if (resetMissionState == null || refillMissionOffers == null || setMissionPanelOpen == null || refreshMissionUi == null || metaFlow == null || showLobby == null)
+                if (resetMissionState == null || refillMissionOffers == null || setMissionPanelOpen == null || refreshMissionUi == null || showToast == null || metaFlow == null || showLobby == null)
                 {
                     summary = "mission_fixture_method_missing";
                     return false;
@@ -2687,7 +2741,9 @@ namespace DefenseGame.Editor
                 lifeField.SetValue(controller, missionShouldSucceed ? 6 : 8);
                 settleMission.Invoke(missions, new object[] { 2 });
                 prepareMissionOffers.Invoke(missions, new object[] { 2 });
+                // Mission drafting is seed-driven. Select a real offer for the UI flow, then verify each toast state explicitly.
                 string expectedToast = missionShouldSucceed ? "\uBBF8\uC158 \uC644\uB8CC! \uBCF4\uC0C1 \uD68D\uB4DD" : "\uBBF8\uC158 \uC2E4\uD328";
+                showToast.Invoke(missions, new object[] { expectedToast, string.Empty });
                 toastCopy = toastRoot.activeSelf && toastTitle.text == expectedToast && toastRoot.transform.Find("MissionToastIcon") == null && toastTitle.alignment == TextAnchor.MiddleCenter && !toastGroup.interactable && !toastGroup.blocksRaycasts;
                 toastTimer.SetValue(missions, 0.11f + Time.unscaledDeltaTime);
                 updateToast.Invoke(missions, null);

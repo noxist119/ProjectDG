@@ -1564,6 +1564,7 @@ namespace DefenseGame
             SetText(bossWarningSubText, subtitle);
             bossWarningTimer = 0f;
             bossWarningPanel.SetActive(true);
+            EnsureOpeningGuidanceVisible();
             if (bossWarningCanvasGroup != null)
             {
                 bossWarningCanvasGroup.alpha = 1f;
@@ -1597,6 +1598,26 @@ namespace DefenseGame
             }
         }
 
+        private void EnsureOpeningGuidanceVisible()
+        {
+            if (bossWarningPanel == null)
+            {
+                return;
+            }
+
+            if (!bossWarningPanel.activeSelf)
+            {
+                bossWarningPanel.SetActive(true);
+            }
+
+            bossWarningPanel.transform.SetAsLastSibling();
+            if (bossWarningCanvasGroup != null)
+            {
+                bossWarningCanvasGroup.alpha = 1f;
+                bossWarningCanvasGroup.blocksRaycasts = false;
+                bossWarningCanvasGroup.interactable = false;
+            }
+        }
         private void ApplyWarningLayout(bool openingGuidance, bool hasSubtitle)
         {
             if (bossWarningTitleText != null)

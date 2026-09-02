@@ -124,3 +124,12 @@
 - Economy conclusion: no numeric production adjustment is justified by this evidence. Existing grade upgrades and high-grade chance investment are functional Gold sinks when selected through the visible UI; lowering or raising economy values would be speculative. The only code addition is the Editor-only Pass 6 validation path that exercises those real buttons.
 
 - Next task: Start the next user-requested ProjectDG pass.
+## Pass 7 — Run Variety, Synergy Depth & Combat Readability
+
+- Opening guidance now reasserts panel activation, alpha, non-blocking CanvasGroup, and final sibling order for each 1.5-second step. Unity P2U/P2X Smoke PASS, runtimeErrors=0.
+- Tactical Missions now use the deterministic Mission RNG channel with R0-R9/R10-R19/R20-R29/R30+ bracket pools, category preference, per-bracket fallback, and no consecutive identical three-card set.
+- Damage numbers are independent pooled shared-canvas popups: white normal, red critical, green healing, pop/settle/rise/fade, and kill-hit persistence.
+- Synergies now count distinct CharacterDefinition IDs. Added Triple Barrier, Life Cycle, Grade Lineage, Elemental Barrage, Shadow Crown, Tag Resonance, and Prism Formation; expanded panel shows active entries followed by closest locked progress.
+- Actual Overdrive EventSystem UI run reached R10 warning/spawn and R11, then ended in a recorded R12 gameplay defeat (not a UI lock); runtimeErrors=0. No monster, boss, economy, shop, or spawn values changed.
+- Full detail: `docs/Pass7RunVarietySynergyCombatReadability.md`.
+- Next task: use the Pass 7 R12 gameplay evidence to decide whether a separate balance pass is warranted.
