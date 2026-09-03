@@ -86,7 +86,7 @@ namespace DefenseGame.Editor
         public static void RunPass7MissionDraftDeterminism()
         {
             int[] rounds = { 0, 10, 20, 30 };
-            int[] minimums = { 12, 12, 12, 12 };
+            int[] minimums = { 11, 12, 12, 12 };
             List<string> failures = new List<string>();
             List<string> summaries = new List<string>();
             for (int bracket = 0; bracket < rounds.Length; bracket++)
@@ -597,6 +597,11 @@ namespace DefenseGame.Editor
             {
                 notes.Add("Pass 2U Opening Guidance validation failed. " + openingGuidanceSummary);
             }
+            bool pass9ContractValidityAndSynergyValid = ValidatePass9ContractValidityAndSynergy(out string pass9ContractValidityAndSynergySummary);
+            if (!pass9ContractValidityAndSynergyValid)
+            {
+                notes.Add("Pass 9 contract feasibility or synergy clarity validation failed. " + pass9ContractValidityAndSynergySummary);
+            }
             bool pass2XUiFlowValid = ValidatePass2XUiFlow(controller, out string pass2XUiFlowSummary);
             if (!pass2XUiFlowValid)
             {
@@ -1084,6 +1089,7 @@ namespace DefenseGame.Editor
             {
                 passed &= prefabResults[i].passed;
             }
+            passed &= pass9ContractValidityAndSynergyValid;
 
             return new SmokeReport
             {
@@ -3123,6 +3129,94 @@ namespace DefenseGame.Editor
             summary = "iconRemoved=" + iconRemoved + ", centered=" + centered + ", nonBlocking=" + nonBlocking + ", shown=" + shown + ", fading=" + fading + ", hidden=" + hidden + ", lifecycle=" + lifecycle;
             return iconRemoved && centered && nonBlocking && lifecycle;
         }
+
+        private static bool ValidatePass9ContractValidityAndSynergy(out string summary)
+        {
+            int[] rounds = { 0, 1, 2, 4, 5, 10, 20, 30 };
+            int[] gold = { 30, 40, 45, 60, 75, 110, 180, 260 };
+            int[] board = { 0, 2, 3, 5, 6, 7, 8, 9 };
+            int[] empty = { 10, 8, 7, 5, 4, 3, 2, 1 };
+            List<string> failures = new List<string>();
+            for (int state = 0; state < rounds.Length; state++)
+            {
+                for (int seed = 1; seed <= 10; seed++)
+                {
+                    RunContentRandomService random = new RunContentRandomService();
+                    random.Reset(rounds[state] * 1000 + seed);
+                    string[] draft = TacticalMissionSystem.BuildFeasibleDraftForValidation(rounds[state], gold[state], 10, board[state], empty[state], 10, random);
+                    if (draft.Length != 3 || draft.Distinct().Count() != 3)
+                    {
+                        failures.Add("R" + rounds[state] + " draft=" + draft.Length);
+                        continue;
+                    }
+                    for (int index = 0; index < draft.Length; index++)
+                    {
+                        if (rounds[state] < 10 && draft[index] == "NoSummonHold")
+                        {
+                            failures.Add("R" + rounds[state] + " exposed NoSummonHold");
+                        }
+                        if (!TacticalMissionSystem.IsMissionKindFeasibleForValidation(draft[index], rounds[state], gold[state], 10, board[state], empty[state], 10))
+                        {
+                            failures.Add("R" + rounds[state] + " infeasible=" + draft[index]);
+                        }
+                    }
+                }
+            }
+
+            bool summaryZero = BoardSynergySystem.FormatCollapsedSummaryForValidation() == "시너지 대기중";
+            bool summaryOne = BoardSynergySystem.FormatCollapsedSummaryForValidation("삼중 방벽") == "시너지 | 삼중 방벽 활성";
+            bool summaryTwo = BoardSynergySystem.FormatCollapsedSummaryForValidation("삼중 방벽", "탱크 공명") == "시너지 | 삼중 방벽 · 탱크 공명";
+            bool summaryThree = BoardSynergySystem.FormatCollapsedSummaryForValidation("삼중 방벽", "탱크 공명", "등급 공명") == "시너지 | 삼중 방벽 외 2개";
+            bool draftRefresh = ValidatePass9UnselectedDraftRefresh(out string refreshSummary);
+            summary = "draftStates=" + rounds.Length + ", failures=" + failures.Count + ", synergy=" + summaryZero + "/" + summaryOne + "/" + summaryTwo + "/" + summaryThree + ", refresh=" + draftRefresh + "(" + refreshSummary + ")" + (failures.Count > 0 ? " (" + string.Join(", ", failures.ToArray()) + ")" : string.Empty);
+            return failures.Count == 0 && summaryZero && summaryOne && summaryTwo && summaryThree && draftRefresh;
+        }
+
+        private static bool ValidatePass9UnselectedDraftRefresh(out string summary)
+        {
+            TacticalMissionSystem missions = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
+            DefenseGameController controller = UnityEngine.Object.FindObjectOfType<DefenseGameController>();
+            RoundManager rounds = UnityEngine.Object.FindObjectOfType<RoundManager>();
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            MethodInfo reset = typeof(TacticalMissionSystem).GetMethod("ResetRunState", flags);
+            MethodInfo refill = typeof(TacticalMissionSystem).GetMethod("RefillMissions", flags);
+            MethodInfo prepare = typeof(TacticalMissionSystem).GetMethod("HandleRoundBoardPreparation", flags);
+            FieldInfo activeField = typeof(TacticalMissionSystem).GetField("activeMissions", flags);
+            FieldInfo selectedField = typeof(TacticalMissionSystem).GetField("missionSelected", flags);
+            FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
+            if (missions == null || controller == null || rounds == null || reset == null || refill == null || prepare == null || activeField == null || selectedField == null || currentRoundField == null)
+            {
+                summary = "fixture_reference_missing";
+                return false;
+            }
+
+            try
+            {
+                controller.ResetRunForRetry();
+                currentRoundField.SetValue(rounds, 20);
+                reset.Invoke(missions, null);
+                refill.Invoke(missions, null);
+                IList firstDraft = activeField.GetValue(missions) as IList;
+                List<object> firstOffers = firstDraft != null ? firstDraft.Cast<object>().ToList() : new List<object>();
+                currentRoundField.SetValue(rounds, 21);
+                prepare.Invoke(missions, new object[] { 21 });
+                IList refreshedDraft = activeField.GetValue(missions) as IList;
+                bool replaced = refreshedDraft != null && refreshedDraft.Count == 3 && firstOffers.Count == 3 && refreshedDraft.Cast<object>().All(offer => !firstOffers.Contains(offer));
+                bool notSelected = !(bool)selectedField.GetValue(missions);
+                summary = "first=" + firstOffers.Count + ", refreshed=" + (refreshedDraft != null ? refreshedDraft.Count : 0) + ", replaced=" + replaced + ", selected=" + !notSelected;
+                return replaced && notSelected;
+            }
+            catch (Exception exception)
+            {
+                summary = "exception=" + exception.GetType().Name;
+                return false;
+            }
+            finally
+            {
+                controller.ResetRunForRetry();
+            }
+        }
+
         private static bool ValidatePass2QOptionalTacticalContract(DefenseGameController controller, TacticalMissionSystem tacticalMissionSystem, out string summary)
         {
             Button summaryButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "MissionSummaryButton");

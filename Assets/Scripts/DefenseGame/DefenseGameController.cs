@@ -4591,6 +4591,19 @@ namespace DefenseGame
             NotifyStateChanged();
         }
 
+        // All optional post-round choices report their visibility transition here. This is
+        // deliberately the single place that both advances a queued lower-priority choice
+        // and refreshes the HUD button, preventing a closed modal from leaving stale input.
+        public void NotifyPostRoundChoiceStateChanged()
+        {
+            if (!IsRoundRunning)
+            {
+                TryOpenQueuedTacticalMissionChoice();
+            }
+
+            NotifyStateChanged();
+        }
+
         private void NotifyStateChanged()
         {
             OnStateChanged?.Invoke();

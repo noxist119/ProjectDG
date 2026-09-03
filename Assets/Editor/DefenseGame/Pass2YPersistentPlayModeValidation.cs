@@ -53,6 +53,7 @@ namespace DefenseGame.Editor
         private static DefenseGameController controller;
         private static ValidationReport report;
         private static readonly HashSet<int> RecordedRoundStarts = new HashSet<int>();
+        private static bool pass9ChoiceFlowValidation;
 
         private static string OutputPath => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, outputFileName));
 
@@ -79,6 +80,24 @@ namespace DefenseGame.Editor
             pass6EconomyValidation = false;
             Begin(true, true, false);
         }
+        [MenuItem("DefenseGame/Validation/Pass 9 RunShop Purchase to Contract UI Flow")]
+        public static void RunPass9RunShopPurchaseToContract()
+        {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
+            pass9ChoiceFlowValidation = true;
+            Begin(true, false, false);
+        }
+
+        [MenuItem("DefenseGame/Validation/Pass 9 RunShop Later to Contract UI Flow")]
+        public static void RunPass9RunShopLaterToContract()
+        {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
+            pass9ChoiceFlowValidation = true;
+            Begin(true, true, false);
+        }
+
 
         [MenuItem("DefenseGame/Validation/Pass 3A R1-R15 Progression Balance Audit")]
         public static void RunPass3AProgressionAudit()
@@ -442,7 +461,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            if (stopAfterRunShopRecovery && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && controller.CurrentRound >= 5 && controller.IsRoundRunning)
+            if (stopAfterRunShopRecovery && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && (!pass9ChoiceFlowValidation || report.tacticalMissionSelectedByUi) && controller.CurrentRound >= 5 && controller.IsRoundRunning)
             {
                 report.r5StartedAfterRunShop = true;
                 report.finalRound = controller.CurrentRound;
@@ -666,7 +685,7 @@ namespace DefenseGame.Editor
                 return false;
             }
 
-            if (pass5Validation && !report.tacticalMissionSelectedByUi)
+            if ((pass5Validation || (pass9ChoiceFlowValidation && report.r4RunShopSeen)) && !report.tacticalMissionSelectedByUi)
             {
                 Button option = FindButton("MissionOption_0");
                 if (Click(option))
@@ -701,7 +720,7 @@ namespace DefenseGame.Editor
                 return false;
             }
 
-            if (controller.CurrentRound == 4)
+            if (controller.CurrentRound == 4 || pass9ChoiceFlowValidation)
             {
                 report.r4RunShopSeen = true;
             }
@@ -713,7 +732,7 @@ namespace DefenseGame.Editor
                 shopPurchaseAttempted = true;
                 if (Click(offer))
                 {
-                    if (controller.CurrentRound == 4) report.r4RunShopPurchaseClicked = true;
+                    if (controller.CurrentRound == 4 || pass9ChoiceFlowValidation) report.r4RunShopPurchaseClicked = true;
                     report.actualUiRunShopPurchaseCompleted = true;
                     RecordChoiceFlow("RunShop:Purchase");
                     Log("clicked_choice_" + offer.name + "_r" + controller.CurrentRound);
@@ -724,7 +743,7 @@ namespace DefenseGame.Editor
             Button close = FindButton("RunShopCloseButton");
             if (Click(close))
             {
-                if (controller.CurrentRound == 4) report.r4RunShopCloseClicked = true;
+                if (controller.CurrentRound == 4 || pass9ChoiceFlowValidation) report.r4RunShopCloseClicked = true;
                 RecordChoiceFlow("RunShop:Later");
                 Log("clicked_run_shop_close_r" + controller.CurrentRound);
                 return true;
@@ -997,7 +1016,7 @@ namespace DefenseGame.Editor
             report.runtimeErrors = runtimeErrors;
             report.runtimeErrorMessages = new List<string>(runtimeErrorMessages);
             report.finishedUtc = DateTime.UtcNow.ToString("O");
-            report.passed = ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
+            report.passed = ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && (!pass9ChoiceFlowValidation || report.tacticalMissionSelectedByUi) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
             File.WriteAllText(OutputPath, JsonUtility.ToJson(report, true));
 
             running = false;

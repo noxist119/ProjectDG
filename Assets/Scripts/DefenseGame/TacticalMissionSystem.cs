@@ -97,6 +97,9 @@ namespace DefenseGame
         private readonly List<MissionInstance> activeMissions = new List<MissionInstance>();
         private bool missionSelected;
         private bool offerRefreshQueued;
+        // Unselected offers belong to one preparation round only. A selected contract owns
+        // its deadline independently and is never replaced by this draft marker.
+        private int offersGeneratedForRound = int.MinValue;
         private readonly Dictionary<MissionKind, int> completedFamilyLevels = new Dictionary<MissionKind, int>();
         private readonly HashSet<string> completedMissionKeys = new HashSet<string>();
         private readonly Dictionary<string, int> recentlyExpiredKeys = new Dictionary<string, int>();
@@ -239,6 +242,7 @@ namespace DefenseGame
             runStarted = false;
             missionSelected = false;
             offerRefreshQueued = false;
+            offersGeneratedForRound = int.MinValue;
         }
 
         private void WireUi()
@@ -372,7 +376,10 @@ namespace DefenseGame
                     remaining.Remove(kind);
                     usedCategories.Add(GetMissionCategory(kind));
                     MissionInstance mission = CreateMission(kind, GetNextTier(kind));
-                    if (mission != null)
+                    // Generation has two gates: the pool gate above prevents obviously
+                    // invalid families, and this authored-card gate verifies its actual
+                    // target/deadline against the current board and economy.
+                    if (mission != null && IsMissionFeasibleForCurrentRun(mission))
                     {
                         activeMissions.Add(mission);
                         gameController.RunContentRandom.RecordOutcome(RunContentRandomChannel.Mission, "mission.offer", mission.kind.ToString());
@@ -389,6 +396,7 @@ namespace DefenseGame
             if (activeMissions.Count == MaxMissionOffers)
             {
                 lastOfferSignature = signature;
+                offersGeneratedForRound = round;
             }
             offerRefreshQueued = false;
         }
@@ -442,6 +450,18 @@ namespace DefenseGame
                 return false;
             }
 
+            // Board/economy can change while the optional overlay is open. Do not arm a
+            // card that became impossible after it was drafted; replace the whole draft.
+            if (!IsMissionFeasibleForCurrentRun(selected))
+            {
+                activeMissions.Clear();
+                offersGeneratedForRound = int.MinValue;
+                RefillMissions();
+                RefreshUi();
+                gameController?.NotifyPostRoundChoiceStateChanged();
+                return false;
+            }
+
             ArmSelectedMission(selected);
             activeMissions.Clear();
             activeMissions.Add(selected);
@@ -450,6 +470,7 @@ namespace DefenseGame
             offerRefreshQueued = false;
             SetPanelOpen(false);
             RefreshUi();
+            gameController?.NotifyPostRoundChoiceStateChanged();
             return true;
         }
 
@@ -462,7 +483,7 @@ namespace DefenseGame
                     MissionKind.PerfectDefense, MissionKind.SummonSprint, MissionKind.HighGradeForge,
                     MissionKind.MergeRush, MissionKind.RoleCollector, MissionKind.LeanDefense,
                     MissionKind.EmptySlotDiscipline, MissionKind.RareUpgrade, MissionKind.MonsterHunter,
-                    MissionKind.NoSummonHold, MissionKind.KillStreak, MissionKind.GoldReserve
+                    MissionKind.KillStreak, MissionKind.GoldReserve
                 };
             }
 
@@ -546,6 +567,71 @@ namespace DefenseGame
             return result.ToArray();
         }
 
+        // Pure validation surface for Smoke. It mirrors the pre-generation gate without
+        // constructing runtime units or spending resources.
+        public static string[] BuildFeasibleDraftForValidation(int round, int gold, int summonCost, int boardUnitCount, int emptySlotCount, int life, RunContentRandomService random)
+        {
+            List<MissionKind> remaining = BuildCandidatePool(round);
+            remaining.RemoveAll(kind => !IsMissionKindFeasibleForValidation(kind, round, gold, summonCost, boardUnitCount, emptySlotCount, life));
+            List<string> result = new List<string>(MaxMissionOffers);
+            HashSet<string> categories = new HashSet<string>();
+            while (result.Count < MaxMissionOffers && remaining.Count > 0)
+            {
+                List<MissionKind> preferred = remaining.FindAll(kind => !categories.Contains(GetMissionCategory(kind)));
+                List<MissionKind> source = preferred.Count > 0 ? preferred : remaining;
+                MissionKind selected = source[random.Range(RunContentRandomChannel.Mission, 0, source.Count, "mission.validation.pick")];
+                remaining.Remove(selected);
+                categories.Add(GetMissionCategory(selected));
+                result.Add(selected.ToString());
+            }
+            return result.ToArray();
+        }
+
+        public static bool IsMissionKindFeasibleForValidation(string missionKindName, int round, int gold, int summonCost, int boardUnitCount, int emptySlotCount, int life)
+        {
+            return System.Enum.TryParse(missionKindName, out MissionKind kind) &&
+                   IsMissionKindFeasibleForValidation(kind, round, gold, summonCost, boardUnitCount, emptySlotCount, life);
+        }
+
+        private static bool IsMissionKindFeasibleForValidation(MissionKind kind, int round, int gold, int summonCost, int boardUnitCount, int emptySlotCount, int life)
+        {
+            int affordableSummons = Mathf.Max(0, gold) / Mathf.Max(1, summonCost);
+            switch (kind)
+            {
+                case MissionKind.NoSummonHold:
+                    return round >= 10 && boardUnitCount >= 6;
+                case MissionKind.HighGradeForge:
+                    return round >= 5 && boardUnitCount + affordableSummons >= 3;
+                case MissionKind.PerfectDefense:
+                    return boardUnitCount + Mathf.Min(Mathf.Max(0, emptySlotCount), affordableSummons) >= 3;
+                case MissionKind.SummonSprint:
+                    return affordableSummons >= 3 && emptySlotCount > 0;
+                case MissionKind.MergeRush:
+                    return boardUnitCount >= 2 || affordableSummons >= 2;
+                case MissionKind.LeanDefense:
+                    return boardUnitCount >= 4;
+                case MissionKind.EmptySlotDiscipline:
+                    return boardUnitCount >= 2 && emptySlotCount + Mathf.Max(0, boardUnitCount - 1) >= 2;
+                case MissionKind.RareUpgrade:
+                    return boardUnitCount + affordableSummons >= 3;
+                case MissionKind.LegendaryHunt:
+                    return round >= 10 && boardUnitCount >= 4;
+                case MissionKind.MonsterHunter:
+                    return boardUnitCount > 0;
+                case MissionKind.KillStreak:
+                    return boardUnitCount >= 2 && life > 1;
+                case MissionKind.BossPreparation:
+                case MissionKind.BossSlayer:
+                    return boardUnitCount >= 3;
+                case MissionKind.UltimateRecipeChase:
+                    return round >= 20 && boardUnitCount >= 5;
+                case MissionKind.LastStandGambit:
+                    return round == 0 && life <= 7 && boardUnitCount <= 2;
+                default:
+                    return true;
+            }
+        }
+
         private bool IsMissionEligibleForOffer(MissionKind kind)
         {
             if (gameController == null)
@@ -554,6 +640,10 @@ namespace DefenseGame
             }
 
             int goldThreshold = Mathf.Max(30, gameController.SummonCost * 3);
+            if (!IsMissionKindFeasibleForValidation(kind, gameController.CurrentRound, gameController.Gold, gameController.SummonCost, gameController.BoardUnitCount, gameController.EmptySlotCount, gameController.Life))
+            {
+                return false;
+            }
             switch (kind)
             {
                 case MissionKind.GoldReserve:
@@ -569,8 +659,66 @@ namespace DefenseGame
                     return GetRoundsUntilNextBoss() >= 2 && CountUnitsAtLeast(CharacterGrade.Legendary) < 2;
                 case MissionKind.HighGradeForge:
                     return gameController.CurrentRound >= 5;
+                case MissionKind.NoSummonHold:
+                    return gameController.CurrentRound >= 10 && gameController.BoardUnitCount >= 6;
                 case MissionKind.UltimateRecipeChase:
                     return gameController.CurrentRound >= 20 && GetRoundsUntilNextBoss() >= 2 && boardManager != null && boardManager.HasAnyUltimateRecipeProgress();
+                default:
+                    return true;
+            }
+        }
+
+        private bool IsMissionFeasibleForCurrentRun(MissionInstance mission)
+        {
+            if (mission == null || gameController == null)
+            {
+                return false;
+            }
+
+            int round = gameController.CurrentRound;
+            int roundsRemaining = mission.targetRound - round;
+            if (mission.targetRound <= round || roundsRemaining <= 0 || mission.targetRound < mission.earliestCompleteRound)
+            {
+                return false;
+            }
+
+            int summonCost = Mathf.Max(1, gameController.SummonCost);
+            int affordableNow = Mathf.Max(0, gameController.Gold) / summonCost;
+            int conservativeFutureSummons = Mathf.Max(0, roundsRemaining - 1) * 2;
+            int availableSummons = affordableNow + conservativeFutureSummons;
+            int boardCount = Mathf.Max(0, gameController.BoardUnitCount);
+            int emptySlots = Mathf.Max(0, gameController.EmptySlotCount);
+            int potentialBoardCount = boardCount + Mathf.Min(emptySlots, availableSummons);
+
+            if (!IsMissionKindFeasibleForValidation(mission.kind, round, gameController.Gold, summonCost, boardCount, emptySlots, gameController.Life))
+            {
+                return false;
+            }
+
+            switch (mission.kind)
+            {
+                case MissionKind.PerfectDefense:
+                    return potentialBoardCount >= mission.target;
+                case MissionKind.SummonSprint:
+                    return availableSummons >= mission.target && emptySlots > 0;
+                case MissionKind.MergeRush:
+                    return boardCount >= mission.target * 2 || availableSummons >= mission.target * 2;
+                case MissionKind.EmptySlotDiscipline:
+                    return emptySlots + Mathf.Max(0, boardCount - 1) >= mission.target && (boardCount >= 2 || availableSummons >= 2);
+                case MissionKind.HighGradeForge:
+                    return roundsRemaining >= 3 && boardCount + availableSummons >= 3;
+                case MissionKind.RareUpgrade:
+                    return potentialBoardCount >= mission.target;
+                case MissionKind.LegendaryHunt:
+                    return roundsRemaining >= 4 && boardCount >= 4;
+                case MissionKind.MonsterHunter:
+                    return roundsRemaining >= 2 && boardCount > 0;
+                case MissionKind.KillStreak:
+                    return roundsRemaining >= 2 && boardCount >= 2 && gameController.Life > 1;
+                case MissionKind.GoldReserve:
+                    return gameController.Gold + roundsRemaining * Mathf.Max(summonCost * 2, 20) >= mission.target;
+                case MissionKind.NoSummonHold:
+                    return round >= 10 && boardCount >= 6;
                 default:
                     return true;
             }
@@ -1381,9 +1529,16 @@ namespace DefenseGame
                 return;
             }
 
+            bool refreshUnselectedDraft = !missionSelected && activeMissions.Count > 0 && offersGeneratedForRound < round;
+            if (refreshUnselectedDraft)
+            {
+                activeMissions.Clear();
+                offerRefreshQueued = true;
+                gameController.RequestBanner("전술계약 갱신", new Color(0.72f, 0.88f, 1f), 1.5f);
+            }
+
             if (offerRefreshQueued || (!missionSelected && activeMissions.Count == 0))
             {
-                // Offers persist until the player actively accepts one. Preparation only refreshes the contract badge; it never interrupts with a modal.
                 RefillMissions();
             }
 
@@ -1438,7 +1593,7 @@ namespace DefenseGame
         private void ClosePanel()
         {
             SetPanelOpen(false);
-            gameController?.NotifyUiStateChanged();
+            gameController?.NotifyPostRoundChoiceStateChanged();
         }
 
         // Combat may begin while the optional contract panel is visible through an external/UI action.

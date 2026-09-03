@@ -2248,7 +2248,7 @@ namespace DefenseGame
             // publish its visibility transition immediately instead of leaving a stale lock.
             if (visibilityChanged)
             {
-                gameController?.NotifyUiStateChanged();
+                gameController?.NotifyPostRoundChoiceStateChanged();
             }
         }
 

@@ -23,6 +23,7 @@ namespace DefenseGame
         private readonly Dictionary<CharacterTag, int> tagCounts = new Dictionary<CharacterTag, int>();
         private readonly List<SynergyEntry> activeEntries = new List<SynergyEntry>();
         private readonly List<SynergyEntry> nearEntries = new List<SynergyEntry>();
+        private readonly HashSet<string> previouslyActiveTitles = new HashSet<string>();
         private bool subscribed;
         private bool isExpanded;
 
@@ -248,6 +249,7 @@ namespace DefenseGame
                 float rightRatio = right.target > 0 ? (float)right.progress / right.target : 0f;
                 return rightRatio.CompareTo(leftRatio);
             });
+            AnnounceNewActiveSynergies();
             RefreshUi(defenders.Length);
             if (gameController != null)
             {
@@ -825,60 +827,87 @@ namespace DefenseGame
         {
             if (summaryText != null)
             {
-                summaryText.text = defenderCount > 0
-                    ? "\uc2dc\ub108\uc9c0 " + activeEntries.Count + "\uac1c \ud65c\uc131"
-                    : "\uc2dc\ub108\uc9c0 \ub300\uae30\uc911";
+                summaryText.text = BuildCollapsedSummary(defenderCount);
                 summaryText.color = defenderCount > 0 ? Color.white : new Color(0.86f, 0.92f, 1f);
             }
 
             if (expandedHeaderText != null)
             {
                 expandedHeaderText.text = activeEntries.Count > 0
-                    ? "\ud65c\uc131 \uc2dc\ub108\uc9c0 " + activeEntries.Count + " | \ub2e4\uc74c \uc870\ud569"
-                    : "\ub2e4\uc74c \uc2dc\ub108\uc9c0 \uc870\ud569";
-            }
-
-            List<SynergyEntry> displayEntries = new List<SynergyEntry>(activeEntries);
-            int nearCount = Mathf.Min(3, nearEntries.Count);
-            for (int i = 0; i < nearCount; i++)
-            {
-                displayEntries.Add(nearEntries[i]);
+                    ? "현재 활성 " + activeEntries.Count + "개  |  다음 활성 후보"
+                    : "현재 활성 없음  |  다음 활성 후보";
             }
 
             int rowCount = titleTexts != null ? titleTexts.Length : 0;
-            int displayCount = Mathf.Min(displayEntries.Count, rowCount);
-            bool hasOverflow = displayEntries.Count > rowCount;
             for (int i = 0; i < rowCount; i++)
             {
-                bool showOverflowRow = hasOverflow && i == rowCount - 1;
-                bool hasEntry = i < displayCount && !showOverflowRow;
-                SynergyEntry entry = hasEntry ? displayEntries[i] : null;
+                bool isActive = i < activeEntries.Count;
+                int nearIndex = i - activeEntries.Count;
+                bool isNear = !isActive && nearIndex >= 0 && nearIndex < nearEntries.Count;
+                bool hasEntry = isActive || isNear;
+                SynergyEntry entry = isActive ? activeEntries[i] : isNear ? nearEntries[nearIndex] : null;
                 if (titleTexts[i] != null)
                 {
                     titleTexts[i].text = hasEntry
-                        ? (entry.locked ? "\ub2e4\uc74c: " : string.Empty) + entry.title
-                        : showOverflowRow ? "+ " + (displayEntries.Count - (rowCount - 1)) + "\uac1c \ub354 \uc788\uc74c"
-                        : i == 0 ? "\ud65c\uc131 \uc2dc\ub108\uc9c0 \uc5c6\uc74c" : string.Empty;
-                    titleTexts[i].color = hasEntry && entry.locked ? new Color(0.76f, 0.84f, 0.96f) : hasEntry || showOverflowRow ? Color.white : new Color(0.75f, 0.80f, 0.90f);
+                        ? (isActive ? "현재 활성: " : "다음: ") + entry.title
+                        : i == 0 && activeEntries.Count == 0 ? "현재 활성 시너지 없음" : string.Empty;
+                    titleTexts[i].color = isNear ? new Color(0.76f, 0.84f, 0.96f) : hasEntry ? Color.white : new Color(0.75f, 0.80f, 0.90f);
                 }
                 if (detailTexts != null && i < detailTexts.Length && detailTexts[i] != null)
                 {
                     detailTexts[i].text = hasEntry ? entry.detail
-                        : showOverflowRow ? "\ub2e4\uc591\ud55c \uc218\ud638\uc790\ub97c \ub354 \ubc30\uce58\ud558\uba74 \ud45c\uc2dc\ub429\ub2c8\ub2e4."
                         : i == 0 ? "\ubcf5\uc81c \uc720\ub2db\uc740 \uc2dc\ub108\uc9c0 \uc9c4\ud589\ub3c4\uc5d0 \ud3ec\ud568\ub418\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4." : string.Empty;
-                    detailTexts[i].color = hasEntry && entry.locked ? new Color(0.60f, 0.70f, 0.88f) : hasEntry || showOverflowRow ? new Color(0.84f, 0.91f, 1f) : new Color(0.58f, 0.66f, 0.84f);
+                    detailTexts[i].color = isNear ? new Color(0.60f, 0.70f, 0.88f) : hasEntry ? new Color(0.84f, 0.91f, 1f) : new Color(0.58f, 0.66f, 0.84f);
                 }
                 if (accentImages != null && i < accentImages.Length && accentImages[i] != null)
                 {
-                    accentImages[i].color = hasEntry ? (entry.locked ? Color.Lerp(entry.color, Color.black, 0.35f) : entry.color)
-                        : showOverflowRow ? new Color(1f, 0.76f, 0.28f, 0.92f) : new Color(0.42f, 0.48f, 0.64f, 0.62f);
+                    accentImages[i].color = hasEntry ? (isNear ? Color.Lerp(entry.color, Color.black, 0.35f) : entry.color)
+                        : new Color(0.42f, 0.48f, 0.64f, 0.62f);
                 }
                 if (iconImages != null && i < iconImages.Length && iconImages[i] != null)
                 {
-                    iconImages[i].color = hasEntry ? Color.Lerp(entry.color, Color.white, entry.locked ? 0.10f : 0.38f)
-                        : showOverflowRow ? new Color(1f, 0.84f, 0.38f, 0.70f) : new Color(0.58f, 0.66f, 0.84f, 0.22f);
+                    iconImages[i].color = hasEntry ? Color.Lerp(entry.color, Color.white, isNear ? 0.10f : 0.38f)
+                        : new Color(0.58f, 0.66f, 0.84f, 0.22f);
                 }
             }
+        }
+
+        private string BuildCollapsedSummary(int defenderCount)
+        {
+            if (defenderCount <= 0 || activeEntries.Count == 0) return "시너지 대기중";
+            List<string> titles = new List<string>(activeEntries.Count);
+            for (int i = 0; i < activeEntries.Count; i++)
+            {
+                if (activeEntries[i] != null) titles.Add(activeEntries[i].title);
+            }
+            return FormatCollapsedSummaryForValidation(titles.ToArray());
+        }
+
+        public static string FormatCollapsedSummaryForValidation(params string[] activeTitles)
+        {
+            int count = activeTitles != null ? activeTitles.Length : 0;
+            if (count <= 0) return "시너지 대기중";
+            string first = string.IsNullOrEmpty(activeTitles[0]) ? "활성 시너지" : activeTitles[0];
+            if (count == 1) return "시너지 | " + first + " 활성";
+            if (count == 2) return "시너지 | " + first + " · " + activeTitles[1];
+            return "시너지 | " + first + " 외 " + (count - 1) + "개";
+        }
+
+        private void AnnounceNewActiveSynergies()
+        {
+            HashSet<string> currentTitles = new HashSet<string>();
+            for (int i = 0; i < activeEntries.Count; i++)
+            {
+                SynergyEntry entry = activeEntries[i];
+                if (entry == null) continue;
+                currentTitles.Add(entry.title);
+                if (!previouslyActiveTitles.Contains(entry.title) && gameController != null)
+                {
+                    gameController.RequestBanner("시너지 활성! " + entry.title + " · " + entry.detail, entry.color, 2.1f);
+                }
+            }
+            previouslyActiveTitles.Clear();
+            foreach (string title in currentTitles) previouslyActiveTitles.Add(title);
         }
 
         private void AddEntry(string title, string detail, Color color)
