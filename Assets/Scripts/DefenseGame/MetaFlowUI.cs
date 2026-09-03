@@ -2659,7 +2659,7 @@ namespace DefenseGame
 
             if (visible)
             {
-                GetComponent<SimpleGameHUD>()?.BeginOpeningGuidance();
+                GetComponent<SimpleGameHUD>()?.BeginOpeningTutorial();
             }
         }
 

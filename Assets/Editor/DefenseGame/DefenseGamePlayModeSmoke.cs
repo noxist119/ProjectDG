@@ -31,6 +31,10 @@ namespace DefenseGame.Editor
         private static int openingGuidanceCaptureIndex;
         private static double openingGuidanceCaptureStartedAt = -1d;
         private static bool openingGuidanceCaptureReturnedToLobby;
+        private static bool openingGuidanceCapturePaused;
+        private static double openingGuidanceCapturePauseStartedAt;
+        private static string openingGuidanceCapturePendingPath;
+        private const double OpeningGuidanceCaptureSettleSeconds = 0.35d;
         private static readonly double[] OpeningGuidanceCaptureSeconds = { 0.25d, 1.75d, 3.25d };
         private static int runtimeErrors;
         private static bool running;
@@ -54,6 +58,15 @@ namespace DefenseGame.Editor
             {
                 File.Delete(OutputPath);
             }
+            for (int i = 0; i < OpeningGuidanceCaptureSeconds.Length; i++)
+            {
+                string staleCapture = Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, "OpeningTutorialOverlay_" + OpeningGuidanceCaptureSeconds[i].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ".png"));
+                if (File.Exists(staleCapture))
+                {
+                    File.Delete(staleCapture);
+                }
+            }
+
 
             previousEnterPlayModeOptionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
             previousEnterPlayModeOptions = EditorSettings.enterPlayModeOptions;
@@ -155,6 +168,9 @@ namespace DefenseGame.Editor
                 openingGuidanceCaptureIndex = 0;
                 openingGuidanceCaptureStartedAt = -1d;
                 openingGuidanceCaptureReturnedToLobby = false;
+                openingGuidanceCapturePaused = false;
+                openingGuidanceCapturePauseStartedAt = 0d;
+                openingGuidanceCapturePendingPath = null;
                 evaluateAt = playModeEnteredAt + 5.2d;
             }
         }
@@ -170,7 +186,7 @@ namespace DefenseGame.Editor
             {
                 GameObject openingPanel = UnityEngine.Object.FindObjectsOfType<Transform>(true)
                     .Select(candidate => candidate != null ? candidate.gameObject : null)
-                    .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidancePanel");
+                    .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningTutorialOverlay");
                 if (openingPanel != null && openingPanel.activeInHierarchy)
                 {
                     openingGuidanceCaptureStartedAt = EditorApplication.timeSinceStartup;
@@ -192,10 +208,32 @@ namespace DefenseGame.Editor
                     }
                 }
             }
+            else if (openingGuidanceCapturePaused)
+            {
+                double pauseDuration = EditorApplication.timeSinceStartup - openingGuidanceCapturePauseStartedAt;
+                bool captureWritten = !string.IsNullOrEmpty(openingGuidanceCapturePendingPath) && File.Exists(openingGuidanceCapturePendingPath);
+                if (pauseDuration < OpeningGuidanceCaptureSettleSeconds || (!captureWritten && pauseDuration < 1d))
+                {
+                    return;
+                }
+
+
+                openingGuidanceCapturePaused = false;
+                openingGuidanceCapturePendingPath = null;
+                return;
+            }
             else if (openingGuidanceCaptureIndex < OpeningGuidanceCaptureSeconds.Length && EditorApplication.timeSinceStartup >= openingGuidanceCaptureStartedAt + OpeningGuidanceCaptureSeconds[openingGuidanceCaptureIndex])
             {
-                string capturePath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, "Pass8OpeningGuidance_" + OpeningGuidanceCaptureSeconds[openingGuidanceCaptureIndex].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ".png"));
+                string capturePath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, "OpeningTutorialOverlay_" + OpeningGuidanceCaptureSeconds[openingGuidanceCaptureIndex].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ".png"));
+
                 ScreenCapture.CaptureScreenshot(capturePath);
+                GameObject kickerBadge = FindUiObject("KickerBadge");
+                Text kickerText = kickerBadge != null ? kickerBadge.GetComponent<Text>() : null;
+                kickerText?.SetAllDirty();
+                Canvas.ForceUpdateCanvases();
+                openingGuidanceCapturePauseStartedAt = EditorApplication.timeSinceStartup;
+                openingGuidanceCapturePendingPath = capturePath;
+                openingGuidanceCapturePaused = true;
                 openingGuidanceCaptureIndex++;
             }
             else if (openingGuidanceCaptureIndex >= OpeningGuidanceCaptureSeconds.Length && !openingGuidanceCaptureReturnedToLobby)
@@ -2585,8 +2623,8 @@ namespace DefenseGame.Editor
             Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
             Button summonButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonButton");
             Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
-            GameObject openingGuidancePanel = UnityEngine.Object.FindObjectsOfType<Transform>(true).Select(candidate => candidate != null ? candidate.gameObject : null).FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidancePanel");
-            Text openingGuidanceTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidanceTitle");
+            GameObject openingGuidancePanel = UnityEngine.Object.FindObjectsOfType<Transform>(true).Select(candidate => candidate != null ? candidate.gameObject : null).FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningTutorialOverlay");
+            Text openingGuidanceTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(candidate => candidate != null && candidate.name == "TitleText" && candidate.transform.parent != null && candidate.transform.parent.name == "TutorialCard");
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
             MethodInfo requestForecast = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
@@ -2950,57 +2988,102 @@ namespace DefenseGame.Editor
         }
         private static bool ValidatePass2UOpeningGuidance(DefenseGameController controller, SimpleGameHUD simpleHud, out string summary)
         {
-            GameObject warningPanel = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+            GameObject overlay = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                .Select(candidate => candidate != null ? candidate.gameObject : null)
+                .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningTutorialOverlay");
+            GameObject obsoletePanel = UnityEngine.Object.FindObjectsOfType<Transform>(true)
                 .Select(candidate => candidate != null ? candidate.gameObject : null)
                 .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidancePanel");
-            Text title = UnityEngine.Object.FindObjectsOfType<Text>(true)
-                .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidanceTitle");
-            Text subtitle = UnityEngine.Object.FindObjectsOfType<Text>(true)
-                .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidanceSub");
-            CanvasGroup group = warningPanel != null ? warningPanel.GetComponent<CanvasGroup>() : null;
+            RectTransform card = overlay != null ? overlay.transform.Find("TutorialCard") as RectTransform : null;
+            RectTransform badge = card != null ? card.Find("KickerBadge") as RectTransform : null;
+            Text kicker = badge != null ? badge.GetComponentInChildren<Text>(true) : null;
+            Text title = card != null ? card.Find("TitleText")?.GetComponent<Text>() : null;
+            Text subtitle = card != null ? card.Find("SubtitleText")?.GetComponent<Text>() : null;
+            VerticalLayoutGroup layout = card != null ? card.GetComponent<VerticalLayoutGroup>() : null;
+            CanvasGroup group = overlay != null ? overlay.GetComponent<CanvasGroup>() : null;
             Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
             Button summonButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonButton");
+            GameObject bossPanel = UnityEngine.Object.FindObjectsOfType<Transform>(true).Select(candidate => candidate != null ? candidate.gameObject : null).FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningPanel");
+            Text bossTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningTitle");
+            Text bossSubtitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningSub");
             BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-            MethodInfo updateGuidance = typeof(SimpleGameHUD).GetMethod("UpdateOpeningGuidance", flags);
-            FieldInfo elapsed = typeof(SimpleGameHUD).GetField("openingGuidanceElapsed", flags);
-            FieldInfo active = typeof(SimpleGameHUD).GetField("openingGuidanceActive", flags);
+            MethodInfo updateTutorial = typeof(SimpleGameHUD).GetMethod("UpdateOpeningTutorial", flags);
+            MethodInfo showBossWarning = typeof(SimpleGameHUD).GetMethod("ShowBossWarning", flags);
+            FieldInfo elapsed = typeof(SimpleGameHUD).GetField("openingTutorialElapsed", flags);
+            FieldInfo active = typeof(SimpleGameHUD).GetField("openingTutorialActive", flags);
 
-            if (controller == null || simpleHud == null || warningPanel == null || title == null || subtitle == null || group == null || battleButton == null || summonButton == null || updateGuidance == null || elapsed == null || active == null)
+            if (controller == null || simpleHud == null || overlay == null || obsoletePanel != null || card == null || badge == null || kicker == null || title == null || subtitle == null || layout == null || group == null || battleButton == null || summonButton == null || bossPanel == null || bossTitle == null || bossSubtitle == null || updateTutorial == null || showBossWarning == null || elapsed == null || active == null)
             {
-                summary = "ui_reference_missing";
+                summary = "ui_reference_missing_or_obsolete_panel_present";
                 return false;
             }
 
             try
             {
                 controller.ResetRunForRetry();
-                simpleHud.BeginOpeningGuidance();
-                bool stageOne = warningPanel.activeSelf && title.text == "\uBC29\uC5B4\uC120 \uB3CC\uD30C \uC8FC\uC758!" && !subtitle.gameObject.activeSelf;
+                simpleHud.BeginOpeningTutorial();
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(card);
+                float stageOneKickerGap = GetVerticalLayoutGap(badge, title.rectTransform, card);
+                bool stageOne = overlay.activeSelf && kicker.text == "WARNING" && title.text == "\uBC29\uC5B4\uC120 \uB3CC\uD30C \uC8FC\uC758!" && !subtitle.enabled && stageOneKickerGap >= 17.5f;
 
                 elapsed.SetValue(simpleHud, 1.51f - Time.unscaledDeltaTime);
-                updateGuidance.Invoke(simpleHud, null);
-                bool stageTwo = title.text == "\uBAAC\uC2A4\uD130\uAC00 \uC544\uB798 \uB05D\uC5D0 \uB3C4\uB2EC\uD558\uBA74" && subtitle.gameObject.activeSelf && subtitle.text == "HP\uAC00 \uAC10\uC18C\uD569\uB2C8\uB2E4";
+                updateTutorial.Invoke(simpleHud, null);
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(card);
+                float stageTwoKickerGap = GetVerticalLayoutGap(badge, title.rectTransform, card);
+                float stageTwoSubtitleGap = GetVerticalLayoutGap(title.rectTransform, subtitle.rectTransform, card);
+                bool stageTwo = title.text == "\uBAAC\uC2A4\uD130\uAC00 \uC544\uB798 \uB05D\uC5D0 \uB3C4\uB2EC\uD558\uBA74" && subtitle.enabled && subtitle.text == "HP\uAC00 \uAC10\uC18C\uD569\uB2C8\uB2E4" && stageTwoKickerGap >= 17.5f && stageTwoSubtitleGap >= 11.5f;
 
                 elapsed.SetValue(simpleHud, 3.01f - Time.unscaledDeltaTime);
-                updateGuidance.Invoke(simpleHud, null);
-                bool stageThree = title.text == "\uC218\uD638\uC790\uB97C \uC18C\uD658\uD574" && subtitle.text == "\uB9C9\uC544\uB0B4\uC138\uC694!";
+                updateTutorial.Invoke(simpleHud, null);
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(card);
+                float stageThreeKickerGap = GetVerticalLayoutGap(badge, title.rectTransform, card);
+                float stageThreeSubtitleGap = GetVerticalLayoutGap(title.rectTransform, subtitle.rectTransform, card);
+                bool stageThree = title.text == "\uC218\uD638\uC790\uB97C \uC18C\uD658\uD574" && subtitle.text == "\uB9C9\uC544\uB0B4\uC138\uC694!" && stageThreeKickerGap >= 17.5f && stageThreeSubtitleGap >= 11.5f;
+
+                bool cardGeometry = Mathf.Abs(card.rect.width - 820f) <= .5f && Mathf.Abs(card.rect.height - 270f) <= .5f;
+                bool textFits = title.preferredWidth <= title.rectTransform.rect.width + .5f && title.preferredHeight <= title.rectTransform.rect.height + .5f && subtitle.preferredWidth <= subtitle.rectTransform.rect.width + .5f && subtitle.preferredHeight <= subtitle.rectTransform.rect.height + .5f;
+                bool typography = kicker.fontSize == 24 && title.fontSize == 56 && subtitle.fontSize == 29 && title.alignment == TextAnchor.MiddleCenter && subtitle.alignment == TextAnchor.MiddleCenter;
 
                 elapsed.SetValue(simpleHud, 4.61f - Time.unscaledDeltaTime);
-                updateGuidance.Invoke(simpleHud, null);
-                bool fading = warningPanel.activeSelf && group.alpha >= 0f && group.alpha < 1f;
+                updateTutorial.Invoke(simpleHud, null);
+                bool fading = overlay.activeSelf && group.alpha >= 0f && group.alpha < 1f;
 
                 elapsed.SetValue(simpleHud, 4.80f - Time.unscaledDeltaTime);
-                updateGuidance.Invoke(simpleHud, null);
-                bool hidden = !warningPanel.activeSelf && !(bool)active.GetValue(simpleHud);
-                bool centered = title.alignment == TextAnchor.MiddleCenter && subtitle.alignment == TextAnchor.MiddleCenter;
+                updateTutorial.Invoke(simpleHud, null);
+                bool hidden = !overlay.activeSelf && !(bool)active.GetValue(simpleHud);
                 bool nonBlocking = !group.interactable && !group.blocksRaycasts && battleButton.interactable && summonButton.interactable;
-                summary = "stage1=" + stageOne + ", stage2=" + stageTwo + ", stage3=" + stageThree + ", fading=" + fading + ", hidden=" + hidden + ", centered=" + centered + ", nonBlocking=" + nonBlocking;
-                return stageOne && stageTwo && stageThree && fading && hidden && centered && nonBlocking;
+
+                showBossWarning.Invoke(simpleHud, new object[] { 10 });
+                bool bossWarningUnchanged = bossPanel.activeSelf && bossTitle.text == "\uACE8\uB818 \uAD70\uC8FC" && bossSubtitle.text == "ROUND 10  |  \uBCF4\uC2A4 \uB4F1\uC7A5!";
+                bossPanel.SetActive(false);
+
+                summary = "stage1=" + stageOne + ", stage2=" + stageTwo + ", stage3=" + stageThree + ", gaps=" + stageOneKickerGap.ToString("0.0") + "/" + stageTwoKickerGap.ToString("0.0") + "/" + stageTwoSubtitleGap.ToString("0.0") + "/" + stageThreeSubtitleGap.ToString("0.0") + ", card=" + cardGeometry + ", textFits=" + textFits + ", typography=" + typography + ", fading=" + fading + ", hidden=" + hidden + ", nonBlocking=" + nonBlocking + ", bossWarningUnchanged=" + bossWarningUnchanged;
+                return stageOne && stageTwo && stageThree && cardGeometry && textFits && typography && fading && hidden && nonBlocking && bossWarningUnchanged;
             }
             finally
             {
                 controller.ResetRunForRetry();
             }
+        }
+
+        private static float GetVerticalLayoutGap(RectTransform upper, RectTransform lower, RectTransform relativeTo)
+        {
+            Vector3[] upperCorners = new Vector3[4];
+            Vector3[] lowerCorners = new Vector3[4];
+            upper.GetWorldCorners(upperCorners);
+            lower.GetWorldCorners(lowerCorners);
+            float upperBottom = float.PositiveInfinity;
+            float lowerTop = float.NegativeInfinity;
+            for (int i = 0; i < 4; i++)
+            {
+                upperBottom = Mathf.Min(upperBottom, relativeTo.InverseTransformPoint(upperCorners[i]).y);
+                lowerTop = Mathf.Max(lowerTop, relativeTo.InverseTransformPoint(lowerCorners[i]).y);
+            }
+
+            return upperBottom - lowerTop;
         }
         private static bool ValidatePass2WMissionToast(TacticalMissionSystem tacticalMissionSystem, out string summary)
         {

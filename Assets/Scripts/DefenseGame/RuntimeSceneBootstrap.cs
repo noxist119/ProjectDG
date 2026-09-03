@@ -1029,17 +1029,17 @@ private void EnsureLight()
 			Text bossWarningSub;
 			GameObject bossWarningPanel = BuildBossWarningPanel(hudRoot, font, out bossWarningGroup, out bossWarningTitle, out bossWarningSub);
 
-            CanvasGroup openingGuidanceGroup;
-            Text openingGuidanceKicker;
-            Text openingGuidanceTitle;
-            Text openingGuidanceSub;
-            GameObject openingGuidancePanel = BuildOpeningGuidancePanel(hudRoot, font, out openingGuidanceGroup, out openingGuidanceKicker, out openingGuidanceTitle, out openingGuidanceSub);
+            CanvasGroup openingTutorialGroup;
+            Text openingTutorialKicker;
+            Text openingTutorialTitle;
+            Text openingTutorialSub;
+            GameObject openingTutorialOverlay = BuildOpeningTutorialOverlay(hudRoot, font, out openingTutorialGroup, out openingTutorialKicker, out openingTutorialTitle, out openingTutorialSub);
 			ultimateRecipeSelection = BuildUltimateRecipeSelectionPanel(hudRoot, font, gameController);
 			BuildLuckySummonChoicePanel(hudRoot, font, gameController);
 			BuildBossForecastBetPanel(hudRoot, font, gameController);
 			hud.Configure(gameController, gold, life, round, board, content, hint, mergeResult, mergeCelebration, mergeCelebrationSub, countdown, roundBanner, hintValue, playerName, rank, state, battleLabel, summonLabel, summonCost, deckSummary, capacity, normalCount, rareCount, epicCount, legendaryCount, mythicCount, transcendentCount, ultimateRecipeHud, bossRoundHud, synergyInsight, recipeInsight, tileInsight, null, earlyRunInsight, fateGaugeText, fateGaugeFill, fateDebtText, fateCostBenefit, fateGradeLockButton, fateGradeLockLabel, fateNormalBanButton, fateNormalBanLabel, fateForceShopButton, fateForceShopLabel, fateSurvivalButton, fateSurvivalLabel, ((Component)(object)fatePanel).gameObject, fatePanelCanvasGroup, fatePanelReopenButton, fatePanelReopenLabel, roundProgressFill, battleButton, summonButton, bossWarningPanel, bossWarningGroup, bossWarningTitle, bossWarningSub, boardManager, ((Component)(object)unitSellPanel).gameObject, unitSellTitle, unitSellDetail, unitSellButton, unitSellButtonLabel, lifeProgressFill, luckySummonProgress);
 
-            hud.ConfigureOpeningGuidance(openingGuidancePanel, openingGuidanceGroup, openingGuidanceKicker, openingGuidanceTitle, openingGuidanceSub);
+            hud.ConfigureOpeningTutorial(openingTutorialOverlay, openingTutorialGroup, openingTutorialKicker, openingTutorialTitle, openingTutorialSub);
 			canvasObject.SetActive(value: true);
 		}
 
@@ -1240,14 +1240,68 @@ private void EnsureLight()
 			root.SetActive(value: false);
 			return selection;
 		}
-        private GameObject BuildOpeningGuidancePanel(Transform parent, Font font, out CanvasGroup canvasGroup, out Text kicker, out Text title, out Text subtitle)
+        private GameObject BuildOpeningTutorialOverlay(Transform parent, Font font, out CanvasGroup canvasGroup, out Text kicker, out Text title, out Text subtitle)
         {
-            Image panel = CreatePanel(parent, "OpeningGuidancePanel", new Vector2(0f, 92f), new Vector2(790f, 230f), new Color(0.2f, 0.02f, 0.08f, 0.94f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), rounded: true, shadow: true);
-            canvasGroup = panel.gameObject.AddComponent<CanvasGroup>(); canvasGroup.alpha = 0f; canvasGroup.blocksRaycasts = false; canvasGroup.interactable = false;
-            kicker = CreateText(panel.transform, font, new Color(1f, .78f, .28f), "OpeningGuidanceKicker", new Vector2(.5f, 1f), new Vector2(.5f, 1f), new Vector2(.5f, 1f), new Vector2(0f, -38f), new Vector2(420f, 32f), "WARNING", 27, TextAnchor.MiddleCenter, bold: true);
-            title = CreateText(panel.transform, font, Color.white, "OpeningGuidanceTitle", new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(0f, 24f), new Vector2(680f, 70f), "WARNING", 60, TextAnchor.MiddleCenter, bold: true);
-            subtitle = CreateText(panel.transform, font, new Color(1f, .88f, .74f), "OpeningGuidanceSub", new Vector2(.5f, 0f), new Vector2(.5f, 0f), new Vector2(.5f, 0f), new Vector2(0f, 42f), new Vector2(620f, 36f), string.Empty, 25, TextAnchor.MiddleCenter, bold: true);
-            panel.gameObject.SetActive(false); return panel.gameObject;
+            GameObject overlay = new GameObject("OpeningTutorialOverlay", typeof(RectTransform), typeof(CanvasGroup));
+            overlay.transform.SetParent(parent, false);
+            RectTransform overlayRect = overlay.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = Vector2.zero;
+            overlayRect.offsetMax = Vector2.zero;
+
+            canvasGroup = overlay.GetComponent<CanvasGroup>();
+            canvasGroup.alpha = 0f;
+            canvasGroup.blocksRaycasts = false;
+            canvasGroup.interactable = false;
+
+            Image card = CreatePanel(overlay.transform, "TutorialCard", new Vector2(0f, 125f), new Vector2(820f, 270f), new Color(0.035f, 0.055f, 0.14f, 0.97f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), rounded: true, shadow: true);
+            Outline cardBorder = card.gameObject.AddComponent<Outline>();
+            cardBorder.effectColor = new Color(1f, .56f, .16f, .82f);
+            cardBorder.effectDistance = new Vector2(2f, -2f);
+            cardBorder.useGraphicAlpha = true;
+
+            VerticalLayoutGroup layout = card.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(50, 50, 28, 28);
+            layout.spacing = 0f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            kicker = CreateText(card.transform, font, new Color(1f, .62f, .18f, 1f), "KickerBadge", new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero, new Vector2(170f, 38f), "WARNING", 24, TextAnchor.MiddleCenter, bold: true);
+            LayoutElement badgeLayout = kicker.gameObject.AddComponent<LayoutElement>();
+            badgeLayout.minWidth = badgeLayout.preferredWidth = 170f;
+            badgeLayout.minHeight = badgeLayout.preferredHeight = 38f;
+
+            CreateLayoutSpacer(card.transform, "KickerTitleGap", 18f);
+            title = CreateText(card.transform, font, Color.white, "TitleText", new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero, new Vector2(720f, 72f), "\uBC29\uC5B4\uC120 \uB3CC\uD30C \uC8FC\uC758!", 56, TextAnchor.MiddleCenter, bold: true);
+            LayoutElement titleLayout = title.gameObject.AddComponent<LayoutElement>();
+            titleLayout.minWidth = titleLayout.preferredWidth = 720f;
+            titleLayout.minHeight = titleLayout.preferredHeight = 72f;
+
+            CreateLayoutSpacer(card.transform, "TitleSubtitleGap", 12f);
+            subtitle = CreateText(card.transform, font, new Color(1f, .9f, .72f, 1f), "SubtitleText", new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero, new Vector2(720f, 42f), string.Empty, 29, TextAnchor.MiddleCenter, bold: true);
+            LayoutElement subtitleLayout = subtitle.gameObject.AddComponent<LayoutElement>();
+            subtitleLayout.minWidth = subtitleLayout.preferredWidth = 720f;
+            subtitleLayout.minHeight = subtitleLayout.preferredHeight = 42f;
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(card.rectTransform);
+            overlay.SetActive(false);
+            return overlay;
+        }
+
+        private static void CreateLayoutSpacer(Transform parent, string name, float height)
+        {
+            GameObject spacer = new GameObject(name, typeof(RectTransform), typeof(LayoutElement));
+            RectTransform spacerRect = spacer.GetComponent<RectTransform>();
+            spacerRect.sizeDelta = new Vector2(0f, height);
+            spacer.transform.SetParent(parent, false);
+            LayoutElement layoutElement = spacer.GetComponent<LayoutElement>();
+            layoutElement.minHeight = height;
+            layoutElement.preferredHeight = height;
+            layoutElement.flexibleHeight = 0f;
         }
 
 		private GameObject BuildBossWarningPanel(Transform parent, Font font, out CanvasGroup canvasGroup, out Text title, out Text subtitle)

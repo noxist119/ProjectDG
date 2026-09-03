@@ -23,11 +23,11 @@ namespace DefenseGame
         [SerializeField] private Text bossWarningTitleText;
         [SerializeField] private Text bossWarningSubText;
 
-        [SerializeField] private GameObject openingGuidancePanel;
-        [SerializeField] private CanvasGroup openingGuidanceCanvasGroup;
-        [SerializeField] private Text openingGuidanceTitleText;
-        [SerializeField] private Text openingGuidanceSubText;
-        [SerializeField] private Text openingGuidanceKickerText;
+        [SerializeField] private GameObject openingTutorialOverlay;
+        [SerializeField] private CanvasGroup openingTutorialCanvasGroup;
+        [SerializeField] private Text openingTutorialTitleText;
+        [SerializeField] private Text openingTutorialSubtitleText;
+        [SerializeField] private Text openingTutorialKickerText;
         [SerializeField] private DefenseBoardManager boardManager;
 
         [Header("Casual HUD")]
@@ -97,8 +97,8 @@ namespace DefenseGame
         private const float BossWarningDuration = 3.4f;
         private const int MaxPostRoundBannerQueue = 4;
         private const float PostRoundBannerBurstWindow = 0.2f;
-        private const float OpeningGuidanceStageDuration = 1.5f;
-        private const float OpeningGuidanceFadeDuration = 0.22f;
+        private const float OpeningTutorialStageDuration = 1.5f;
+        private const float OpeningTutorialFadeDuration = 0.22f;
         private const float DefeatCinematicDuration = DefenseGameController.DefeatSlowMotionDurationRealtime;
         private const float DefeatCinematicFadeOutDuration = 0.25f;
         private const float FatePanelClosedYOffset = 226f;
@@ -113,12 +113,12 @@ namespace DefenseGame
         public int PendingPostRoundBannerCount => postRoundBannerQueue.Count;
         public string CurrentRoundBannerMessage => roundBannerText != null ? roundBannerText.text : string.Empty;
 
-        [Header("Opening Guidance")]
-        [SerializeField] private bool enableOpeningGuidance = true;
-        private float openingGuidanceElapsed;
-        private int openingGuidanceStage = -1;
-        private bool openingGuidanceShownForRun;
-        private bool openingGuidanceActive;
+        [Header("Opening Tutorial")]
+        [SerializeField] private bool enableOpeningTutorial = true;
+        private float openingTutorialElapsed;
+        private int openingTutorialStage = -1;
+        private bool openingTutorialShownForRun;
+        private bool openingTutorialActive;
         private DefenderUnit selectedUnit;
         private DefenderUnit pendingSellConfirmUnit;
         private float pendingSellConfirmExpireTime;
@@ -155,14 +155,14 @@ namespace DefenseGame
         private bool ultimateReadyStateInitialized;
         private readonly HashSet<string> readyUltimateRecipeNames = new HashSet<string>();
 
-        public void ConfigureOpeningGuidance(GameObject panel, CanvasGroup group, Text kicker, Text title, Text subtitle)
+        public void ConfigureOpeningTutorial(GameObject overlay, CanvasGroup group, Text kicker, Text title, Text subtitle)
         {
-            openingGuidancePanel = panel;
-            openingGuidanceCanvasGroup = group;
-            openingGuidanceKickerText = kicker;
-            openingGuidanceTitleText = title;
-            openingGuidanceSubText = subtitle;
-            HideOpeningGuidance();
+            openingTutorialOverlay = overlay;
+            openingTutorialCanvasGroup = group;
+            openingTutorialKickerText = kicker;
+            openingTutorialTitleText = title;
+            openingTutorialSubtitleText = subtitle;
+            HideOpeningTutorial();
         }
 
         public void Configure(
@@ -317,7 +317,7 @@ namespace DefenseGame
             WireUnitSellButton();
             WireFatePanelControls();
             InitializeFatePanelMotionIfNeeded();
-            ResetOpeningGuidanceForNewRun();
+            ResetOpeningTutorialForNewRun();
             Subscribe();
             Refresh();
         }
@@ -335,7 +335,7 @@ namespace DefenseGame
 
         private void OnDisable()
         {
-            HideOpeningGuidance();
+            HideOpeningTutorial();
             ResetUltimateReadyVisuals();
             if (defeatCinematicActive)
             {
@@ -350,7 +350,7 @@ namespace DefenseGame
             UpdateRoundBanner();
             UpdateMergeCelebration();
             UpdateBossWarning();
-            UpdateOpeningGuidance();
+            UpdateOpeningTutorial();
             UpdateSellConfirmationTimer();
             UpdateDefeatCinematic();
             UpdateUltimateReadyEmphasis();
@@ -1496,57 +1496,72 @@ namespace DefenseGame
             }
         }
 
-        public void BeginOpeningGuidance()
+        public void BeginOpeningTutorial()
         {
-            if (!enableOpeningGuidance || openingGuidanceShownForRun || openingGuidanceActive || gameController == null || gameController.IsRoundRunning || gameController.CurrentRound > 0 || openingGuidancePanel == null) return;
-            openingGuidanceShownForRun = true;
-            openingGuidanceActive = true;
-            openingGuidanceElapsed = 0f;
-            openingGuidanceStage = -1;
-            ShowOpeningGuidanceStage(0);
+            if (!enableOpeningTutorial || openingTutorialShownForRun || openingTutorialActive || gameController == null || gameController.IsRoundRunning || gameController.CurrentRound > 0 || openingTutorialOverlay == null) return;
+            openingTutorialShownForRun = true;
+            openingTutorialActive = true;
+            openingTutorialElapsed = 0f;
+            openingTutorialStage = -1;
+            ShowOpeningTutorialStage(0);
         }
 
-        private void ResetOpeningGuidanceForNewRun()
+        private void ResetOpeningTutorialForNewRun()
         {
-            HideOpeningGuidance();
-            openingGuidanceShownForRun = false;
-            openingGuidanceStage = -1;
-            openingGuidanceElapsed = 0f;
+            HideOpeningTutorial();
+            openingTutorialShownForRun = false;
+            openingTutorialStage = -1;
+            openingTutorialElapsed = 0f;
         }
 
-        private void HandleRunReset() { ResetOpeningGuidanceForNewRun(); }
+        private void HandleRunReset() { ResetOpeningTutorialForNewRun(); }
 
-        private void UpdateOpeningGuidance()
+        private void UpdateOpeningTutorial()
         {
-            if (!openingGuidanceActive || openingGuidancePanel == null) return;
-            openingGuidanceElapsed += Time.unscaledDeltaTime;
-            int stage = Mathf.Clamp(Mathf.FloorToInt(openingGuidanceElapsed / OpeningGuidanceStageDuration), 0, 2);
-            if (stage != openingGuidanceStage && openingGuidanceElapsed < OpeningGuidanceStageDuration * 3f) ShowOpeningGuidanceStage(stage);
-            float fadeStart = OpeningGuidanceStageDuration * 3f;
-            if (openingGuidanceElapsed >= fadeStart)
+            if (!openingTutorialActive || openingTutorialOverlay == null) return;
+            openingTutorialElapsed += Time.unscaledDeltaTime;
+            int stage = Mathf.Clamp(Mathf.FloorToInt(openingTutorialElapsed / OpeningTutorialStageDuration), 0, 2);
+            if (stage != openingTutorialStage && openingTutorialElapsed < OpeningTutorialStageDuration * 3f) ShowOpeningTutorialStage(stage);
+            float fadeStart = OpeningTutorialStageDuration * 3f;
+            if (openingTutorialElapsed >= fadeStart)
             {
-                if (openingGuidanceCanvasGroup != null) openingGuidanceCanvasGroup.alpha = Mathf.Clamp01((fadeStart + OpeningGuidanceFadeDuration - openingGuidanceElapsed) / OpeningGuidanceFadeDuration);
-                if (openingGuidanceElapsed >= fadeStart + OpeningGuidanceFadeDuration) HideOpeningGuidance();
+                if (openingTutorialCanvasGroup != null) openingTutorialCanvasGroup.alpha = Mathf.Clamp01((fadeStart + OpeningTutorialFadeDuration - openingTutorialElapsed) / OpeningTutorialFadeDuration);
+                if (openingTutorialElapsed >= fadeStart + OpeningTutorialFadeDuration) HideOpeningTutorial();
             }
         }
 
-        private void ShowOpeningGuidanceStage(int stage)
+        private void ShowOpeningTutorialStage(int stage)
         {
             string title = stage == 0 ? "\uBC29\uC5B4\uC120 \uB3CC\uD30C \uC8FC\uC758!" : stage == 1 ? "\uBAAC\uC2A4\uD130\uAC00 \uC544\uB798 \uB05D\uC5D0 \uB3C4\uB2EC\uD558\uBA74" : "\uC218\uD638\uC790\uB97C \uC18C\uD658\uD574";
             string subtitle = stage == 1 ? "HP\uAC00 \uAC10\uC18C\uD569\uB2C8\uB2E4" : stage == 2 ? "\uB9C9\uC544\uB0B4\uC138\uC694!" : string.Empty;
-            openingGuidanceStage = Mathf.Clamp(stage, 0, 2);
-            SetText(openingGuidanceKickerText, "WARNING"); SetText(openingGuidanceTitleText, title); SetText(openingGuidanceSubText, subtitle);
-            if (openingGuidanceTitleText != null) { openingGuidanceTitleText.gameObject.SetActive(true); openingGuidanceTitleText.color = Color.white; }
-            if (openingGuidanceSubText != null) { openingGuidanceSubText.gameObject.SetActive(!string.IsNullOrEmpty(subtitle)); openingGuidanceSubText.color = new Color(1f, .88f, .74f, 1f); }
-            openingGuidancePanel.SetActive(true); openingGuidancePanel.transform.SetAsLastSibling();
-            if (openingGuidanceCanvasGroup != null) { openingGuidanceCanvasGroup.alpha = 1f; openingGuidanceCanvasGroup.blocksRaycasts = false; openingGuidanceCanvasGroup.interactable = false; }
+            openingTutorialStage = Mathf.Clamp(stage, 0, 2);
+            SetText(openingTutorialKickerText, stage == 1 ? "WARNING " : "WARNING");
+            if (openingTutorialKickerText != null)
+            {
+                openingTutorialKickerText.gameObject.SetActive(true);
+                openingTutorialKickerText.enabled = true;
+            }
+            SetText(openingTutorialTitleText, title);
+            SetText(openingTutorialSubtitleText, subtitle);
+            if (openingTutorialTitleText != null) { openingTutorialTitleText.gameObject.SetActive(true); openingTutorialTitleText.color = Color.white; }
+            if (openingTutorialSubtitleText != null) { openingTutorialSubtitleText.gameObject.SetActive(true); openingTutorialSubtitleText.enabled = !string.IsNullOrEmpty(subtitle); openingTutorialSubtitleText.color = new Color(1f, .9f, .72f, 1f); }
+            openingTutorialOverlay.SetActive(true);
+            openingTutorialOverlay.transform.SetAsLastSibling();
+            RectTransform tutorialCard = openingTutorialOverlay.transform.Find("TutorialCard") as RectTransform;
+            if (tutorialCard != null)
+            {
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(tutorialCard);
+                Canvas.ForceUpdateCanvases();
+            }
+            if (openingTutorialCanvasGroup != null) { openingTutorialCanvasGroup.alpha = 1f; openingTutorialCanvasGroup.blocksRaycasts = false; openingTutorialCanvasGroup.interactable = false; }
         }
 
-        private void HideOpeningGuidance()
+        private void HideOpeningTutorial()
         {
-            openingGuidanceActive = false; openingGuidanceElapsed = 0f; openingGuidanceStage = -1;
-            if (openingGuidanceCanvasGroup != null) openingGuidanceCanvasGroup.alpha = 0f;
-            if (openingGuidancePanel != null) openingGuidancePanel.SetActive(false);
+            openingTutorialActive = false; openingTutorialElapsed = 0f; openingTutorialStage = -1;
+            if (openingTutorialCanvasGroup != null) openingTutorialCanvasGroup.alpha = 0f;
+            if (openingTutorialOverlay != null) openingTutorialOverlay.SetActive(false);
         }
         private void ApplyWarningLayout(bool openingGuidance, bool hasSubtitle)
         {
@@ -1595,7 +1610,7 @@ namespace DefenseGame
         private void HandleGameOver()
         {
             ClearPostRoundBannerQueue();
-            HideOpeningGuidance();
+            HideOpeningTutorial();
             if (unitSellPanel != null)
             {
                 unitSellPanel.SetActive(false);
