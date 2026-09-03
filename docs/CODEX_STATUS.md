@@ -133,3 +133,12 @@
 - Actual Overdrive EventSystem UI run reached R10 warning/spawn and R11, then ended in a recorded R12 gameplay defeat (not a UI lock); runtimeErrors=0. No monster, boss, economy, shop, or spawn values changed.
 - Full detail: `docs/Pass7RunVarietySynergyCombatReadability.md`.
 - Next task: use the Pass 7 R12 gameplay evidence to decide whether a separate balance pass is warranted.
+## Pass 8 — Contract Drama & Opening Combat Feedback
+
+- Opening guidance is now its own non-blocking `OpeningGuidancePanel`; `BossWarningPanel` remains reserved for real boss arrivals. Actual PlayMode captures were generated at 0.25s, 1.75s, and 3.25s under `BatchPlaytestResults/Pass8OpeningGuidance_*.png`; the title/subtitle sequence, fade, centered layout, and input pass-through all passed.
+- Tactical contracts preserve the displayed tier, deadline, fixed reward, roulette, and jackpot after selection. R0 excludes legacy low-HP `LastStandGambit`; the active 18 contract families are tier-scaled into 24+ variants, with R0/R10/R20/R30 pools of 12/15/14/12.
+- Contract roulette/jackpot uses the seeded Mission RNG channel. 20-seed validation passed with draft signatures/kinds R0 15/12, R10 18/13, R20 17/13, R30 10/10.
+- Damage popup curve: normal 1.00 -> 1.50 -> 1.00, critical 1.00 -> 1.60 -> 1.00, heal peak 1.38. Frame-curve validation PASS.
+- Validation: `Assembly-CSharp-Editor` build PASS (0 errors), full Unity PlayMode Smoke PASS, Pass 2X UI flow PASS, `runtimeErrors=0`, no invisible blocker.
+- Full detail: `docs/Pass8ContractDramaOpeningCombatFeedback.md`.
+- Next task: Start the next user-requested ProjectDG pass.

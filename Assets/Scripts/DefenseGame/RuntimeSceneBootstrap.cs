@@ -1028,10 +1028,18 @@ private void EnsureLight()
 			Text bossWarningTitle;
 			Text bossWarningSub;
 			GameObject bossWarningPanel = BuildBossWarningPanel(hudRoot, font, out bossWarningGroup, out bossWarningTitle, out bossWarningSub);
+
+            CanvasGroup openingGuidanceGroup;
+            Text openingGuidanceKicker;
+            Text openingGuidanceTitle;
+            Text openingGuidanceSub;
+            GameObject openingGuidancePanel = BuildOpeningGuidancePanel(hudRoot, font, out openingGuidanceGroup, out openingGuidanceKicker, out openingGuidanceTitle, out openingGuidanceSub);
 			ultimateRecipeSelection = BuildUltimateRecipeSelectionPanel(hudRoot, font, gameController);
 			BuildLuckySummonChoicePanel(hudRoot, font, gameController);
 			BuildBossForecastBetPanel(hudRoot, font, gameController);
 			hud.Configure(gameController, gold, life, round, board, content, hint, mergeResult, mergeCelebration, mergeCelebrationSub, countdown, roundBanner, hintValue, playerName, rank, state, battleLabel, summonLabel, summonCost, deckSummary, capacity, normalCount, rareCount, epicCount, legendaryCount, mythicCount, transcendentCount, ultimateRecipeHud, bossRoundHud, synergyInsight, recipeInsight, tileInsight, null, earlyRunInsight, fateGaugeText, fateGaugeFill, fateDebtText, fateCostBenefit, fateGradeLockButton, fateGradeLockLabel, fateNormalBanButton, fateNormalBanLabel, fateForceShopButton, fateForceShopLabel, fateSurvivalButton, fateSurvivalLabel, ((Component)(object)fatePanel).gameObject, fatePanelCanvasGroup, fatePanelReopenButton, fatePanelReopenLabel, roundProgressFill, battleButton, summonButton, bossWarningPanel, bossWarningGroup, bossWarningTitle, bossWarningSub, boardManager, ((Component)(object)unitSellPanel).gameObject, unitSellTitle, unitSellDetail, unitSellButton, unitSellButtonLabel, lifeProgressFill, luckySummonProgress);
+
+            hud.ConfigureOpeningGuidance(openingGuidancePanel, openingGuidanceGroup, openingGuidanceKicker, openingGuidanceTitle, openingGuidanceSub);
 			canvasObject.SetActive(value: true);
 		}
 
@@ -1232,6 +1240,15 @@ private void EnsureLight()
 			root.SetActive(value: false);
 			return selection;
 		}
+        private GameObject BuildOpeningGuidancePanel(Transform parent, Font font, out CanvasGroup canvasGroup, out Text kicker, out Text title, out Text subtitle)
+        {
+            Image panel = CreatePanel(parent, "OpeningGuidancePanel", new Vector2(0f, 92f), new Vector2(790f, 230f), new Color(0.2f, 0.02f, 0.08f, 0.94f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), rounded: true, shadow: true);
+            canvasGroup = panel.gameObject.AddComponent<CanvasGroup>(); canvasGroup.alpha = 0f; canvasGroup.blocksRaycasts = false; canvasGroup.interactable = false;
+            kicker = CreateText(panel.transform, font, new Color(1f, .78f, .28f), "OpeningGuidanceKicker", new Vector2(.5f, 1f), new Vector2(.5f, 1f), new Vector2(.5f, 1f), new Vector2(0f, -38f), new Vector2(420f, 32f), "WARNING", 27, TextAnchor.MiddleCenter, bold: true);
+            title = CreateText(panel.transform, font, Color.white, "OpeningGuidanceTitle", new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(0f, 24f), new Vector2(680f, 70f), "WARNING", 60, TextAnchor.MiddleCenter, bold: true);
+            subtitle = CreateText(panel.transform, font, new Color(1f, .88f, .74f), "OpeningGuidanceSub", new Vector2(.5f, 0f), new Vector2(.5f, 0f), new Vector2(.5f, 0f), new Vector2(0f, 42f), new Vector2(620f, 36f), string.Empty, 25, TextAnchor.MiddleCenter, bold: true);
+            panel.gameObject.SetActive(false); return panel.gameObject;
+        }
 
 		private GameObject BuildBossWarningPanel(Transform parent, Font font, out CanvasGroup canvasGroup, out Text title, out Text subtitle)
 		{

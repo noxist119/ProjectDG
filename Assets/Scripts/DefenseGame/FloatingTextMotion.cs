@@ -96,18 +96,7 @@ namespace DefenseGame
             {
                 rect.anchoredPosition += velocity * deltaTime;
                 float elapsed = maxLifetime - lifetime;
-                if (popInDuration > 0f && elapsed < popInDuration)
-                {
-                    rect.localScale = Vector3.one * Mathf.Lerp(initialScale, peakScale, elapsed / popInDuration);
-                }
-                else if (settleDuration > 0f && elapsed < popInDuration + settleDuration)
-                {
-                    rect.localScale = Vector3.one * Mathf.Lerp(peakScale, 1f, (elapsed - popInDuration) / settleDuration);
-                }
-                else
-                {
-                    rect.localScale = Vector3.one;
-                }
+                rect.localScale = Vector3.one * EvaluateDamageScaleAt(elapsed, popInDuration, settleDuration, initialScale, peakScale);
             }
 
             velocity *= 0.96f;
@@ -125,6 +114,24 @@ namespace DefenseGame
             }
         }
 
+        // Shared by Update and the editor smoke so frame-state validation covers the exact production curve.
+        public static float EvaluateDamageScaleAt(float elapsed, float popIn, float settle, float startScale, float peak)
+        {
+            float initial = Mathf.Max(0.01f, startScale);
+            float maximum = Mathf.Max(initial, peak);
+            float time = Mathf.Max(0f, elapsed);
+            if (popIn > 0f && time <= popIn)
+            {
+                return Mathf.Lerp(initial, maximum, time / popIn);
+            }
+
+            if (settle > 0f && time <= popIn + settle)
+            {
+                return Mathf.Lerp(maximum, 1f, Mathf.Clamp01((time - popIn) / settle));
+            }
+
+            return 1f;
+        }
         private void Recycle()
 		{
 			if (Pool.Count >= 96)

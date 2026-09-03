@@ -36,6 +36,7 @@ namespace DefenseGame
             public string title;
             public string description;
             public string rewardText;
+            public string contractGrade;
             public int target;
             public int secondaryTarget;
             public int targetRound;
@@ -441,8 +442,7 @@ namespace DefenseGame
                 return false;
             }
 
-            bool initial = gameController.CurrentRound <= 0;
-            ConfigureMissionForSelection(selected, initial);
+            ArmSelectedMission(selected);
             activeMissions.Clear();
             activeMissions.Add(selected);
             gameController?.RunContentRandom.RecordOutcome(RunContentRandomChannel.Mission, "mission.selected", selected.kind.ToString());
@@ -459,7 +459,7 @@ namespace DefenseGame
             {
                 return new List<MissionKind>
                 {
-                    MissionKind.PerfectDefense, MissionKind.SummonSprint, MissionKind.LastStandGambit,
+                    MissionKind.PerfectDefense, MissionKind.SummonSprint, MissionKind.HighGradeForge,
                     MissionKind.MergeRush, MissionKind.RoleCollector, MissionKind.LeanDefense,
                     MissionKind.EmptySlotDiscipline, MissionKind.RareUpgrade, MissionKind.MonsterHunter,
                     MissionKind.NoSummonHold, MissionKind.KillStreak, MissionKind.GoldReserve
@@ -576,6 +576,29 @@ namespace DefenseGame
             }
         }
 
+        // A drafted card is already authored with its target, deadline, grade, and reward. Selection only
+        // starts its telemetry window; it must never downgrade the visible contract into a legacy mini mission.
+        private void ArmSelectedMission(MissionInstance mission)
+        {
+            if (mission == null || gameController == null)
+            {
+                return;
+            }
+
+            mission.startRound = gameController.CurrentRound;
+            mission.startLife = gameController.Life;
+            mission.startGold = gameController.Gold;
+            mission.startSummons = totalSummons;
+            mission.startMerges = totalMerges;
+            mission.startRarePlusMerges = totalRarePlusMerges;
+            mission.startEpicPlusMerges = totalEpicPlusMerges;
+            mission.startLegendaryPlusMerges = totalLegendaryPlusMerges;
+            mission.startFinalMerges = totalFinalMerges;
+            mission.startKills = totalKills;
+            mission.startBossKills = totalBossKills;
+            mission.description = BuildConditionDescription(mission);
+            mission.rewardText = BuildRewardText(mission);
+        }
         private void ConfigureMissionForSelection(MissionInstance mission, bool initialOffer)
         {
             if (mission == null || gameController == null)
@@ -725,6 +748,7 @@ namespace DefenseGame
             {
                 case MissionKind.GoldReserve:
                     mission.target = 95 + tier * 40 + round * 5;
+                    mission.secondaryTarget = Mathf.Min(2, tier / 2);
                     mission.targetRound = round + 3 + Mathf.Min(2, tier / 2);
                     mission.goldReward = 42 + tier * 14;
                     mission.title = "골드 창고 " + ToRoman(displayTier);
@@ -734,21 +758,23 @@ namespace DefenseGame
                     mission.expiresOnRoundStart = true;
                     break;
                 case MissionKind.PerfectDefense:
+                    mission.target = Mathf.Clamp(3 + tier / 2, 3, 5);
                     mission.targetRound = round + 1;
                     mission.goldReward = 34 + tier * 10;
                     mission.roundGoldBonus = 1 + tier / 2;
                     mission.title = "무결 방어 " + ToRoman(displayTier);
-                    mission.description = "다음 라운드를 체력 손실 없이 막아내세요.";
+                    mission.description = "필요 전력을 갖춘 뒤 다음 라운드를 체력 손실 없이 막아내세요.";
                     mission.rewardText = "+" + mission.goldReward + "골드, 라운드 보너스 +" + mission.roundGoldBonus;
                     mission.color = new Color(0.42f, 1f, 0.72f);
                     break;
                 case MissionKind.MergeRush:
                     mission.target = 1 + Mathf.Min(4, tier + round / 7);
+                    mission.secondaryTarget = 1 + Mathf.Min(2, tier / 2);
                     mission.targetRound = round + 2;
                     mission.earliestCompleteRound = round;
                     mission.goldReward = 36 + tier * 12;
                     mission.title = "합성 러시 " + ToRoman(displayTier);
-                    mission.description = "제한 라운드 안에 합성을 성공시켜 성장 속도를 끌어올리세요.";
+                    mission.description = "제한 라운드 안에 합성하고, 레어 이상 결과까지 만들어 성장 속도를 끌어올리세요.";
                     mission.rewardText = "+" + mission.goldReward + "골드";
                     mission.color = new Color(0.86f, 0.48f, 1f);
                     break;
@@ -785,11 +811,12 @@ namespace DefenseGame
                     break;
                 case MissionKind.SummonSprint:
                     mission.target = 3 + Mathf.Min(5, tier + round / 5);
+                    mission.secondaryTarget = Mathf.Min(2, tier / 2);
                     mission.targetRound = round + 2;
                     mission.earliestCompleteRound = round;
                     mission.goldReward = 26 + tier * 9;
                     mission.title = "소환 스퍼트 " + ToRoman(displayTier);
-                    mission.description = "빠르게 전장을 채워 초반 화력을 확보하세요.";
+                    mission.description = "빠르게 전장을 채우되, 정해진 피해 안에서 다음 전투를 버텨내세요.";
                     mission.rewardText = "+" + mission.goldReward + "골드";
                     mission.color = new Color(0.30f, 0.76f, 1f);
                     break;
@@ -806,39 +833,43 @@ namespace DefenseGame
                     break;
                 case MissionKind.EmptySlotDiscipline:
                     mission.target = Mathf.Clamp(2 + tier, 2, 4);
+                    mission.secondaryTarget = 1 + Mathf.Min(2, tier / 2);
                     mission.targetRound = round + 1;
                     mission.goldReward = 38 + tier * 11;
                     mission.title = "빈칸 운영 " + ToRoman(displayTier);
-                    mission.description = "다음 라운드 종료 시 빈 슬롯을 남겨 합성 여지를 유지하세요.";
+                    mission.description = "다음 라운드 종료 시 빈 슬롯을 남기면서 레어 이상 합성도 달성하세요.";
                     mission.rewardText = "+" + mission.goldReward + "골드";
                     mission.color = new Color(0.66f, 0.92f, 1f);
                     break;
                 case MissionKind.RareUpgrade:
                     mission.target = 2 + Mathf.Min(4, tier);
+                    mission.secondaryTarget = Mathf.Clamp(2 + tier / 2, 2, 4);
                     mission.targetRound = round + 4;
                     mission.goldReward = 32 + tier * 11;
                     mission.title = "레어 라인업 " + ToRoman(displayTier);
-                    mission.description = "레어 이상 유닛을 확보해 전투 안정성을 올리세요.";
+                    mission.description = "레어 이상 유닛과 역할 조합을 함께 확보해 전투 안정성을 올리세요.";
                     mission.rewardText = "+" + mission.goldReward + "골드";
                     mission.color = new Color(0.25f, 0.62f, 1f);
                     break;
                 case MissionKind.LegendaryHunt:
                     mission.target = 1 + tier / 2;
+                    mission.secondaryTarget = 1;
                     mission.targetRound = round + 5;
                     mission.goldReward = 58 + tier * 18;
                     mission.roundGoldBonus = 1 + tier / 2;
                     mission.title = "전설 탐색 " + ToRoman(displayTier);
-                    mission.description = "전설 이상 유닛을 만들어 판을 뒤집을 힘을 모으세요.";
+                    mission.description = "전설 이상 유닛을 만들고 에픽 이상 합성 성과까지 남기세요.";
                     mission.rewardText = "+" + mission.goldReward + "골드, 라운드 보너스 +" + mission.roundGoldBonus;
                     mission.color = new Color(1f, 0.68f, 0.20f);
                     break;
                 case MissionKind.MonsterHunter:
                     mission.target = 12 + round * 3 + tier * 7;
+                    mission.secondaryTarget = Mathf.Min(2, tier / 2);
                     mission.targetRound = round + 2;
                     mission.earliestCompleteRound = round;
                     mission.goldReward = 34 + tier * 10;
                     mission.title = "몬스터 사냥 " + ToRoman(displayTier);
-                    mission.description = "제한 라운드 안에 몬스터를 처치해 추가 골드를 받으세요.";
+                    mission.description = "정해진 피해 안에서 제한 처치 수를 달성해 추가 골드를 받으세요.";
                     mission.rewardText = "+" + mission.goldReward + "골드";
                     mission.color = new Color(0.52f, 1f, 0.58f);
                     break;
@@ -933,7 +964,9 @@ namespace DefenseGame
             }
 
             mission.description = BuildConditionDescription(mission);
+            mission.contractGrade = GetContractGrade(mission);
             ApplyRewardPacing(mission);
+            mission.title = "[" + mission.contractGrade + "] " + mission.title;
             mission.accentColor = Color.Lerp(mission.color, Color.white, 0.24f);
             return mission;
         }
@@ -948,11 +981,11 @@ namespace DefenseGame
             switch (mission.kind)
             {
                 case MissionKind.GoldReserve:
-                    return $"R{mission.targetRound} \uc2dc\uc791 \uc804\uae4c\uc9c0 {mission.target}G \uc774\uc0c1 \ubcf4\uc720\ud558\uc138\uc694.";
+                    return $"R{mission.targetRound} \uc2dc\uc791 \uc804\uae4c\uc9c0 {mission.target}G \uc774\uc0c1\uc744 \ubcf4\uc720\ud558\uace0 HP \uc190\uc2e4 {mission.secondaryTarget} \uc774\ud558\ub85c \ubc84\ud2f0\uc138\uc694.";
                 case MissionKind.PerfectDefense:
-                    return $"R{mission.targetRound}\uc744 HP \uc190\uc2e4 0\uc73c\ub85c \ud074\ub9ac\uc5b4\ud558\uc138\uc694.";
+                    return $"\uc720\ub2db {mission.target}\uae30 \uc774\uc0c1\uc73c\ub85c R{mission.targetRound}\uc744 HP \uc190\uc2e4 0\uc73c\ub85c \ud074\ub9ac\uc5b4\ud558\uc138\uc694.";
                 case MissionKind.MergeRush:
-                    return $"R{mission.targetRound}\uae4c\uc9c0 \ud569\uc131\uc744 {mission.target}\ud68c \uc644\ub8cc\ud558\uc138\uc694.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \ud569\uc131 {mission.target}\ud68c, \ub808\uc5b4+ \uacb0\uacfc {mission.secondaryTarget}\ud68c\ub97c \uc644\ub8cc\ud558\uc138\uc694.";
                 case MissionKind.RoleCollector:
                     return $"R{mission.targetRound}\uae4c\uc9c0 \uc11c\ub85c \ub2e4\ub978 \uc5ed\ud560 \uc720\ub2db {mission.target}\uc885\uc744 \ubcf4\uc720\ud558\uc138\uc694.";
                 case MissionKind.LeanDefense:
@@ -960,17 +993,17 @@ namespace DefenseGame
                 case MissionKind.BossPreparation:
                     return $"R{mission.targetRound} \uc2dc\uc791 \uc804\uae4c\uc9c0 \uc804\uc124 \uc774\uc0c1 \uc720\ub2db {mission.target}\uae30\ub97c \ubcf4\uc720\ud558\uc138\uc694.";
                 case MissionKind.SummonSprint:
-                    return $"R{mission.targetRound}\uae4c\uc9c0 \uc9c1\uc811 \uc18c\ud658\uc744 {mission.target}\ud68c \uc644\ub8cc\ud558\uc138\uc694.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \uc9c1\uc811 \uc18c\ud658 {mission.target}\ud68c\ub97c \ud558\uace0 HP \uc190\uc2e4 {mission.secondaryTarget} \uc774\ud558\ub85c \ubc84\ud2f0\uc138\uc694.";
                 case MissionKind.LastStandGambit:
                     return $"R{mission.targetRound} \uc885\ub8cc \uc804\uae4c\uc9c0 HP 1~7, \uc9c1\uc811 \uc18c\ud658 2\ud68c \uc774\ud558, \ubcf4\ub4dc \uc720\ub2db 2\uae30 \uc774\ud558\ub97c \uc720\uc9c0\ud558\uc138\uc694.";
                 case MissionKind.EmptySlotDiscipline:
-                    return $"R{mission.targetRound} \uc885\ub8cc \ud6c4 \ube48 \uc2ac\ub86f\uc744 {mission.target}\uce78 \uc774\uc0c1 \ub0a8\uae30\uc138\uc694.";
+                    return $"R{mission.targetRound} \uc885\ub8cc \ud6c4 \ube48 \uc2ac\ub86f {mission.target}\uce78\uacfc \ub808\uc5b4+ \ud569\uc131 {mission.secondaryTarget}\ud68c\ub97c \ub0a8\uae30\uc138\uc694.";
                 case MissionKind.RareUpgrade:
-                    return $"R{mission.targetRound}\uae4c\uc9c0 \ub808\uc5b4 \uc774\uc0c1 \uc720\ub2db {mission.target}\uae30\ub97c \ubcf4\uc720\ud558\uc138\uc694.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \ub808\uc5b4+ \uc720\ub2db {mission.target}\uae30\uc640 \ub2e4\ub978 \uc5ed\ud560 {mission.secondaryTarget}\uc885\uc744 \ubcf4\uc720\ud558\uc138\uc694.";
                 case MissionKind.LegendaryHunt:
-                    return $"R{mission.targetRound}\uae4c\uc9c0 \uc804\uc124 \uc774\uc0c1 \uc720\ub2db {mission.target}\uae30\ub97c \ubcf4\uc720\ud558\uc138\uc694.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 \uc804\uc124+ \uc720\ub2db {mission.target}\uae30\uc640 \uc5d0\ud53d+ \ud569\uc131 {mission.secondaryTarget}\ud68c\ub97c \ubcf4\uc720\ud558\uc138\uc694.";
                 case MissionKind.MonsterHunter:
-                    return $"R{mission.targetRound}\uae4c\uc9c0 \ubaac\uc2a4\ud130 {mission.target}\ub9c8\ub9ac\ub97c \ucc98\uce58\ud558\uc138\uc694.";
+                    return $"R{mission.targetRound}\uae4c\uc9c0 HP \uc190\uc2e4 {mission.secondaryTarget} \uc774\ud558\ub85c \ubaac\uc2a4\ud130 {mission.target}\ub9c8\ub9ac\ub97c \ucc98\uce58\ud558\uc138\uc694.";
                 case MissionKind.BossSlayer:
                     return $"R{mission.targetRound}\uae4c\uc9c0 \ubcf4\uc2a4 {mission.target}\ub9c8\ub9ac\ub97c \ucc98\uce58\ud558\uc138\uc694.";
                 case MissionKind.NoSummonHold:
@@ -996,11 +1029,15 @@ namespace DefenseGame
             {
                 return;
             }
-
-            // Tactical missions are immediate one-off choices. They never add permanent economy modifiers.
-            mission.roundGoldBonus = 0;
-            mission.summonDiscount = 0f;
             mission.rewardText = BuildRewardText(mission);
+        }
+        private static string GetContractGrade(MissionInstance mission)
+        {
+            if (mission == null) return "안전";
+            if (mission.kind == MissionKind.BossSlayer || mission.kind == MissionKind.UltimateRecipeChase || mission.jackpotChance >= 0.25f) return "전설";
+            if (mission.kind == MissionKind.HighGradeForge || mission.kind == MissionKind.SpendDownGambit || mission.jackpotChance > 0f || mission.rouletteGoldMax > 0) return "도박";
+            if (mission.goldReward >= 48 || mission.targetRound - mission.startRound >= 3) return "도전";
+            return "안전";
         }
 
         private string BuildRewardText(MissionInstance mission)
@@ -1010,7 +1047,7 @@ namespace DefenseGame
                 return string.Empty;
             }
 
-            string text = mission.goldReward > 0 ? "+" + mission.goldReward + "골드" : string.Empty;
+            string text = "확정: " + (mission.goldReward > 0 ? "+" + mission.goldReward + "골드" : "성장 보상");
             if (mission.roundGoldBonus > 0)
             {
                 text += ", 라운드 보너스 +" + mission.roundGoldBonus;
@@ -1023,12 +1060,12 @@ namespace DefenseGame
 
             if (mission.rouletteGoldMax > 0)
             {
-                text += ", 룰렛 " + mission.rouletteGoldMin + "~" + mission.rouletteGoldMax + "G";
+                text += " | 추가: 룰렛 " + mission.rouletteGoldMin + "~" + mission.rouletteGoldMax + "G";
             }
 
             if (mission.jackpotGold > 0 && mission.jackpotChance > 0f)
             {
-                text += ", 잭팟 " + Mathf.RoundToInt(mission.jackpotChance * 100f) + "%";
+                text += " / JACKPOT " + Mathf.RoundToInt(mission.jackpotChance * 100f) + "%";
             }
 
             if (mission.supportSummonReward > 0)
@@ -1091,12 +1128,14 @@ namespace DefenseGame
             switch (mission.kind)
             {
                 case MissionKind.GoldReserve:
-                    return roundCompleted && completedRound == mission.targetRound &&
-                        Mathf.Max(0, gameController.Gold - gameController.LastRoundClearGoldReward) >= mission.target;
+                    return !gameController.IsRoundRunning && gameController.CurrentRound >= mission.targetRound &&
+                        gameController.Gold >= mission.target && gameController.Life >= mission.startLife - mission.secondaryTarget;
                 case MissionKind.PerfectDefense:
-                    return roundCompleted && completedRound == mission.targetRound && gameController.Life >= mission.startLife;
+                    return roundCompleted && completedRound == mission.targetRound &&
+                        gameController.Life >= mission.startLife && gameController.BoardUnitCount >= mission.target;
                 case MissionKind.MergeRush:
-                    return totalMerges - mission.startMerges >= mission.target;
+                    return totalMerges - mission.startMerges >= mission.target &&
+                        totalRarePlusMerges - mission.startRarePlusMerges >= mission.secondaryTarget;
                 case MissionKind.RoleCollector:
                     return CountDistinctRoles() >= mission.target;
                 case MissionKind.LeanDefense:
@@ -1104,9 +1143,11 @@ namespace DefenseGame
                         gameController.BoardUnitCount <= mission.target &&
                         Mathf.Max(0, mission.startLife - gameController.Life) <= mission.secondaryTarget;
                 case MissionKind.BossPreparation:
-                    return CountUnitsAtLeast(CharacterGrade.Legendary) >= mission.target;
+                    return !gameController.IsRoundRunning && gameController.CurrentRound >= mission.targetRound &&
+                        CountUnitsAtLeast(CharacterGrade.Legendary) >= mission.target;
                 case MissionKind.SummonSprint:
-                    return totalSummons - mission.startSummons >= mission.target;
+                    return totalSummons - mission.startSummons >= mission.target &&
+                        Mathf.Max(0, mission.startLife - gameController.Life) <= mission.secondaryTarget;
                 case MissionKind.LastStandGambit:
                     return roundCompleted && completedRound == mission.targetRound &&
                         IsLastStandGambitConditionMet(gameController.Life, totalSummons - mission.startSummons, gameController.BoardUnitCount, completedRound);
@@ -1120,8 +1161,23 @@ namespace DefenseGame
                 case MissionKind.SpendDownGambit:
                     int goldBeforeClearReward = Mathf.Max(0, gameController.Gold - gameController.LastRoundClearGoldReward);
                     return roundCompleted && completedRound == mission.targetRound && goldBeforeClearReward <= mission.target;
+                case MissionKind.EmptySlotDiscipline:
+                    return roundCompleted && completedRound == mission.targetRound &&
+                        gameController.EmptySlotCount >= mission.target && totalRarePlusMerges - mission.startRarePlusMerges >= mission.secondaryTarget;
+                case MissionKind.RareUpgrade:
+                    return CountUnitsAtLeast(CharacterGrade.Rare) >= mission.target && CountDistinctRoles() >= mission.secondaryTarget;
+                case MissionKind.LegendaryHunt:
+                    return CountUnitsAtLeast(CharacterGrade.Legendary) >= mission.target && totalEpicPlusMerges - mission.startEpicPlusMerges >= mission.secondaryTarget;
+                case MissionKind.MonsterHunter:
+                    return totalKills - mission.startKills >= mission.target && Mathf.Max(0, mission.startLife - gameController.Life) <= mission.secondaryTarget;
+                case MissionKind.BossSlayer:
+                    return totalBossKills - mission.startBossKills >= mission.target;
+                case MissionKind.KillStreak:
+                    return roundCompleted && completedRound == mission.targetRound &&
+                        totalKills - mission.startKills >= mission.target && gameController.Life >= mission.startLife;
                 case MissionKind.UltimateRecipeChase:
-                    return gameController.CanMergeUltimate() || totalFinalMerges - mission.startFinalMerges >= mission.target;
+                    return !gameController.IsRoundRunning && gameController.CurrentRound >= mission.targetRound &&
+                        (gameController.CanMergeUltimate() || totalFinalMerges - mission.startFinalMerges >= mission.target);
                 case MissionKind.GradeRainbow:
                     return CountDistinctGrades() >= mission.target;
                 default:
@@ -1188,12 +1244,12 @@ namespace DefenseGame
             {
                 int min = Mathf.Max(0, mission.rouletteGoldMin);
                 int max = Mathf.Max(min, mission.rouletteGoldMax);
-                int roll = UnityEngine.Random.Range(min, max + 1);
+                int roll = gameController.RunContentRandom.Range(RunContentRandomChannel.Mission, min, max + 1, "mission.reward.roulette");
                 goldReward += roll;
                 highlights.Add("룰렛 +" + roll + "G");
             }
 
-            if (mission.jackpotGold > 0 && mission.jackpotChance > 0f && UnityEngine.Random.value <= mission.jackpotChance)
+            if (mission.jackpotGold > 0 && mission.jackpotChance > 0f && gameController.RunContentRandom.Value(RunContentRandomChannel.Mission, "mission.reward.jackpot") <= mission.jackpotChance)
             {
                 int jackpot = Mathf.Max(1, mission.jackpotGold);
                 goldReward += jackpot;

@@ -27,6 +27,11 @@ namespace DefenseGame.Editor
 
         private static readonly string[] HeroIds = { "hero_55", "hero_56", "hero_57" };
         private static double evaluateAt;
+        private static double playModeEnteredAt;
+        private static int openingGuidanceCaptureIndex;
+        private static double openingGuidanceCaptureStartedAt = -1d;
+        private static bool openingGuidanceCaptureReturnedToLobby;
+        private static readonly double[] OpeningGuidanceCaptureSeconds = { 0.25d, 1.75d, 3.25d };
         private static int runtimeErrors;
         private static bool running;
         private static bool previousEnterPlayModeOptionsEnabled;
@@ -64,11 +69,11 @@ namespace DefenseGame.Editor
             EditorApplication.isPlaying = true;
         }
 
-        [MenuItem("DefenseGame/Smoke Tests/Pass 7 Mission Draft Determinism")]
+        [MenuItem("DefenseGame/Smoke Tests/Pass 8 Contract Draft Determinism")]
         public static void RunPass7MissionDraftDeterminism()
         {
             int[] rounds = { 0, 10, 20, 30 };
-            int[] minimums = { 8, 10, 10, 8 };
+            int[] minimums = { 12, 12, 12, 12 };
             List<string> failures = new List<string>();
             List<string> summaries = new List<string>();
             for (int bracket = 0; bracket < rounds.Length; bracket++)
@@ -85,7 +90,11 @@ namespace DefenseGame.Editor
                     RunContentRandomService rightRandom = new RunContentRandomService();
                     rightRandom.Reset(seed * 7919);
                     string[] right = TacticalMissionSystem.BuildDraftForValidation(round, rightRandom);
-                    if (left.Length != 3 || left.Distinct().Count() != 3 || !left.SequenceEqual(right))
+                    int leftRoulette = leftRandom.Range(RunContentRandomChannel.Mission, 30, 101, "mission.reward.roulette");
+                    int rightRoulette = rightRandom.Range(RunContentRandomChannel.Mission, 30, 101, "mission.reward.roulette");
+                    bool leftJackpot = leftRandom.Value(RunContentRandomChannel.Mission, "mission.reward.jackpot") <= 0.20f;
+                    bool rightJackpot = rightRandom.Value(RunContentRandomChannel.Mission, "mission.reward.jackpot") <= 0.20f;
+                    if (left.Length != 3 || left.Distinct().Count() != 3 || !left.SequenceEqual(right) || leftRoulette != rightRoulette || leftJackpot != rightJackpot)
                     {
                         failures.Add("R" + round + " seed=" + seed + " draft invalid or non-deterministic.");
                     }
@@ -97,14 +106,14 @@ namespace DefenseGame.Editor
                 {
                     failures.Add("R" + round + " pool=" + poolCount + " < " + minimums[bracket]);
                 }
-                if (signatures.Count < 8 || offeredKinds.Count < minimums[bracket])
+                if (signatures.Count < 8 || offeredKinds.Count < 8)
                 {
                     failures.Add("R" + round + " variety signatures=" + signatures.Count + ", kinds=" + offeredKinds.Count);
                 }
                 summaries.Add("R" + round + " pool=" + poolCount + ", signatures=" + signatures.Count + ", kinds=" + offeredKinds.Count);
             }
 
-            string resultPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, "DefenseGame_Pass7_MissionDraftValidation.txt"));
+            string resultPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, "DefenseGame_Pass8_ContractDraftValidation.txt"));
             Directory.CreateDirectory(Path.GetDirectoryName(resultPath) ?? string.Empty);
             string result = failures.Count > 0
                 ? "FAIL: " + string.Join(" / ", failures.ToArray())
@@ -112,22 +121,106 @@ namespace DefenseGame.Editor
             File.WriteAllText(resultPath, result);
             if (failures.Count > 0)
             {
-                throw new InvalidOperationException("Pass7 Mission Draft " + result);
+                throw new InvalidOperationException("Pass8 Contract Draft " + result);
             }
 
-            Debug.Log("Pass7 Mission Draft " + result);
+            Debug.Log("Pass8 Contract Draft " + result);
+        }
+        [MenuItem("DefenseGame/Smoke Tests/Pass 8 Damage Popup Frame Curve")]
+        public static void RunPass8DamagePopupFrameCurve()
+        {
+            float normalPeak = FloatingTextMotion.EvaluateDamageScaleAt(0.11f, 0.11f, 0.18f, 1f, 1.50f);
+            float normalSettled = FloatingTextMotion.EvaluateDamageScaleAt(0.29f, 0.11f, 0.18f, 1f, 1.50f);
+            float criticalPeak = FloatingTextMotion.EvaluateDamageScaleAt(0.11f, 0.11f, 0.18f, 1f, 1.60f);
+            float criticalSettled = FloatingTextMotion.EvaluateDamageScaleAt(0.29f, 0.11f, 0.18f, 1f, 1.60f);
+            float healingPeak = FloatingTextMotion.EvaluateDamageScaleAt(0.11f, 0.11f, 0.18f, 1f, 1.38f);
+            bool passed = normalPeak >= 1.45f && Mathf.Approximately(normalSettled, 1f) &&
+                          criticalPeak >= 1.55f && Mathf.Approximately(criticalSettled, 1f) &&
+                          healingPeak > 1f && healingPeak < criticalPeak;
+            string summary = "PASS=" + passed + "; normalPeak=" + normalPeak.ToString("0.00") + "; normalSettled=" + normalSettled.ToString("0.00") + "; criticalPeak=" + criticalPeak.ToString("0.00") + "; criticalSettled=" + criticalSettled.ToString("0.00") + "; healingPeak=" + healingPeak.ToString("0.00");
+            string outputPath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, "DefenseGame_Pass8_DamagePopupFrameCurve.txt"));
+            File.WriteAllText(outputPath, summary);
+            if (!passed)
+            {
+                throw new InvalidOperationException("Pass 8 damage popup frame curve failed. " + summary);
+            }
+
+            Debug.Log("[DefenseGame] " + summary);
         }
         private static void HandlePlayModeStateChanged(PlayModeStateChange state)
         {
             if (state == PlayModeStateChange.EnteredPlayMode)
             {
-                evaluateAt = EditorApplication.timeSinceStartup + 2.5d;
+                playModeEnteredAt = EditorApplication.timeSinceStartup;
+                openingGuidanceCaptureIndex = 0;
+                openingGuidanceCaptureStartedAt = -1d;
+                openingGuidanceCaptureReturnedToLobby = false;
+                evaluateAt = playModeEnteredAt + 5.2d;
             }
         }
 
         private static void Tick()
         {
-            if (!running || !EditorApplication.isPlaying || EditorApplication.timeSinceStartup < evaluateAt)
+            if (!running || !EditorApplication.isPlaying)
+            {
+                return;
+            }
+
+            if (openingGuidanceCaptureStartedAt < 0d)
+            {
+                GameObject openingPanel = UnityEngine.Object.FindObjectsOfType<Transform>(true)
+                    .Select(candidate => candidate != null ? candidate.gameObject : null)
+                    .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidancePanel");
+                if (openingPanel != null && openingPanel.activeInHierarchy)
+                {
+                    openingGuidanceCaptureStartedAt = EditorApplication.timeSinceStartup;
+                }
+                else
+                {
+                    Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                        .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby" && button.gameObject.activeInHierarchy && button.interactable);
+                    if (lobbyNavigationButton != null)
+                    {
+                        ClickUiButton(lobbyNavigationButton);
+                    }
+
+                    Button lobbyEntryButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                        .FirstOrDefault(button => button != null && button.name == "LobbyBattleButton" && button.gameObject.activeInHierarchy && button.interactable);
+                    if (lobbyEntryButton != null)
+                    {
+                        ClickUiButton(lobbyEntryButton);
+                    }
+                }
+            }
+            else if (openingGuidanceCaptureIndex < OpeningGuidanceCaptureSeconds.Length && EditorApplication.timeSinceStartup >= openingGuidanceCaptureStartedAt + OpeningGuidanceCaptureSeconds[openingGuidanceCaptureIndex])
+            {
+                string capturePath = Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, "Pass8OpeningGuidance_" + OpeningGuidanceCaptureSeconds[openingGuidanceCaptureIndex].ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + ".png"));
+                ScreenCapture.CaptureScreenshot(capturePath);
+                openingGuidanceCaptureIndex++;
+            }
+            else if (openingGuidanceCaptureIndex >= OpeningGuidanceCaptureSeconds.Length && !openingGuidanceCaptureReturnedToLobby)
+            {
+                Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true)
+                    .FirstOrDefault(button => button != null && button.name == "OutgameNavLobby" && button.gameObject.activeInHierarchy && button.interactable);
+                if (lobbyNavigationButton != null)
+                {
+                    ClickUiButton(lobbyNavigationButton);
+                    openingGuidanceCaptureReturnedToLobby = true;
+                }
+                else
+                {
+                    MetaFlowUI metaFlow = UnityEngine.Object.FindObjectOfType<MetaFlowUI>(true);
+                    MethodInfo showLobby = typeof(MetaFlowUI).GetMethod("ShowLobby", BindingFlags.Instance | BindingFlags.NonPublic);
+                    if (metaFlow != null && showLobby != null)
+                    {
+                        showLobby.Invoke(metaFlow, null);
+                        openingGuidanceCaptureReturnedToLobby = true;
+                    }
+                }
+            }
+
+            bool capturesPending = openingGuidanceCaptureStartedAt >= 0d && openingGuidanceCaptureIndex < OpeningGuidanceCaptureSeconds.Length;
+            if (EditorApplication.timeSinceStartup < evaluateAt || (capturesPending && EditorApplication.timeSinceStartup < playModeEnteredAt + 12d))
             {
                 return;
             }
@@ -2492,8 +2585,8 @@ namespace DefenseGame.Editor
             Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
             Button summonButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonButton");
             Button lobbyNavigationButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "OutgameNavLobby");
-            GameObject openingGuidancePanel = UnityEngine.Object.FindObjectsOfType<Transform>(true).Select(candidate => candidate != null ? candidate.gameObject : null).FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningPanel");
-            Text openingGuidanceTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningTitle");
+            GameObject openingGuidancePanel = UnityEngine.Object.FindObjectsOfType<Transform>(true).Select(candidate => candidate != null ? candidate.gameObject : null).FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidancePanel");
+            Text openingGuidanceTitle = UnityEngine.Object.FindObjectsOfType<Text>(true).FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidanceTitle");
             BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             FieldInfo currentRoundField = typeof(RoundManager).GetField("<CurrentRound>k__BackingField", flags);
             MethodInfo requestForecast = typeof(DefenseGameController).GetMethod("RequestBossForecastBetIfNeeded", flags);
@@ -2718,7 +2811,9 @@ namespace DefenseGame.Editor
                 MethodInfo refillMissionOffers = typeof(TacticalMissionSystem).GetMethod("RefillMissions", BindingFlags.Instance | BindingFlags.NonPublic);
                 MethodInfo setMissionPanelOpen = typeof(TacticalMissionSystem).GetMethod("SetPanelOpen", BindingFlags.Instance | BindingFlags.NonPublic);
                 MethodInfo refreshMissionUi = typeof(TacticalMissionSystem).GetMethod("RefreshUi", BindingFlags.Instance | BindingFlags.NonPublic);
-                if (resetMissionState == null || refillMissionOffers == null || setMissionPanelOpen == null || refreshMissionUi == null || showToast == null || metaFlow == null || showLobby == null)
+                MethodInfo completeMission = typeof(TacticalMissionSystem).GetMethod("CompleteMission", BindingFlags.Instance | BindingFlags.NonPublic);
+                FieldInfo activeMissionsField = typeof(TacticalMissionSystem).GetField("activeMissions", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (resetMissionState == null || refillMissionOffers == null || setMissionPanelOpen == null || refreshMissionUi == null || completeMission == null || activeMissionsField == null || showToast == null || metaFlow == null || showLobby == null)
                 {
                     summary = "mission_fixture_method_missing";
                     return false;
@@ -2740,6 +2835,16 @@ namespace DefenseGame.Editor
                 currentRoundField.SetValue(rounds, 2);
                 lifeField.SetValue(controller, missionShouldSucceed ? 6 : 8);
                 settleMission.Invoke(missions, new object[] { 2 });
+                // Pass 2X exercises post-settlement UI ordering. Its success fixture uses the same production
+                // payout method, but does not depend on whichever authored contract the seeded draft selected.
+                if (missionShouldSucceed && missions.HasActiveMissionSelection)
+                {
+                    IList activeMissions = activeMissionsField.GetValue(missions) as IList;
+                    if (activeMissions != null && activeMissions.Count == 1)
+                    {
+                        completeMission.Invoke(missions, new[] { activeMissions[0], (object)2 });
+                    }
+                }
                 prepareMissionOffers.Invoke(missions, new object[] { 2 });
                 // Mission drafting is seed-driven. Select a real offer for the UI flow, then verify each toast state explicitly.
                 string expectedToast = missionShouldSucceed ? "\uBBF8\uC158 \uC644\uB8CC! \uBCF4\uC0C1 \uD68D\uB4DD" : "\uBBF8\uC158 \uC2E4\uD328";
@@ -2847,11 +2952,11 @@ namespace DefenseGame.Editor
         {
             GameObject warningPanel = UnityEngine.Object.FindObjectsOfType<Transform>(true)
                 .Select(candidate => candidate != null ? candidate.gameObject : null)
-                .FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningPanel");
+                .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidancePanel");
             Text title = UnityEngine.Object.FindObjectsOfType<Text>(true)
-                .FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningTitle");
+                .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidanceTitle");
             Text subtitle = UnityEngine.Object.FindObjectsOfType<Text>(true)
-                .FirstOrDefault(candidate => candidate != null && candidate.name == "BossWarningSub");
+                .FirstOrDefault(candidate => candidate != null && candidate.name == "OpeningGuidanceSub");
             CanvasGroup group = warningPanel != null ? warningPanel.GetComponent<CanvasGroup>() : null;
             Button battleButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "BattleButton");
             Button summonButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonButton");

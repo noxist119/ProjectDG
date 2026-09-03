@@ -219,7 +219,7 @@ namespace DefenseGame
             shadow.effectColor = new Color(0f, 0f, 0f, 0.72f);
             shadow.effectDistance = new Vector2(2.4f, -2.4f);
 
-            motion.InitializeDamage(new Vector2(horizontalWobble * 0.16f, critical ? 92f : 74f), 0.72f, 0.08f, 0.12f, 0.75f, critical ? 1.42f : 1.32f);
+            motion.InitializeDamage(new Vector2(horizontalWobble * 0.16f, critical ? 92f : 74f), 0.72f, 0.11f, 0.18f, 1f, healing ? 1.38f : (critical ? 1.60f : 1.50f));
         }
 
         public void ShowStatus(string message, Color color, float duration = 0.9f)
