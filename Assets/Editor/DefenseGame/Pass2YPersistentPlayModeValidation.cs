@@ -21,6 +21,7 @@ namespace DefenseGame.Editor
         private const string MidgameAuditOutputFileName = "DefenseGame_Pass4_R1_R30_Overdrive.json";
         private const string Pass5OutputFileName = "DefenseGame_Pass5_R1_R30_Overdrive.json";
         private const string Pass6OutputFileName = "DefenseGame_Pass6_R1_R30_Overdrive.json";
+        private const string Pass13OutputFileName = "DefenseGame_Pass13_R1_R20_Overdrive.json";
         private const float ValidationTimeScale = 8f;
         private const double ActionDelaySeconds = 0.14d;
         private const double StartupTimeoutSeconds = 15d;
@@ -54,6 +55,7 @@ namespace DefenseGame.Editor
         private static ValidationReport report;
         private static readonly HashSet<int> RecordedRoundStarts = new HashSet<int>();
         private static bool pass9ChoiceFlowValidation;
+        private static bool pass13IntegrationValidation;
 
         private static string OutputPath => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, outputFileName));
 
@@ -108,6 +110,16 @@ namespace DefenseGame.Editor
             Begin(false, false, true);
         }
 
+        [MenuItem("DefenseGame/Validation/Pass 13 R1-R20 Full Run Integration Validation")]
+        public static void RunPass13FullRunIntegrationValidation()
+        {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
+            pass13IntegrationValidation = true;
+            progressionAuditMaxRound = 20;
+            Begin(false, false, true);
+        }
+
         [MenuItem("DefenseGame/Validation/Pass 4 R1-R30 Midgame Balance Audit")]
         public static void RunPass4MidgameAudit()
         {
@@ -148,7 +160,7 @@ namespace DefenseGame.Editor
             skipRunShopPurchase = skipPurchase;
             outputFileName = stopAfterRecovery
                 ? (skipPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
-                : (pass6EconomyValidation ? Pass6OutputFileName : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName)));
+                : (pass13IntegrationValidation ? Pass13OutputFileName : (pass6EconomyValidation ? Pass6OutputFileName : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName))));
             runtimeErrors = 0;
             runtimeErrorMessages.Clear();
             pass5MissionWasActive = false;
@@ -533,6 +545,12 @@ namespace DefenseGame.Editor
                 return;
             }
 
+            if (pass13IntegrationValidation && controller.CurrentRound <= 0 && !report.initialMissionAutoOpenResolved)
+            {
+                TryResolvePass13InitialMissionAutoOpen();
+                return;
+            }
+
             // A RunShop modal owns the post-result choice state. If a delayed Result overlay
             // is still animating behind it, resolve the actual open choice first.
             if (TryResolveChoice("AugmentChoiceOverlay", "AugmentChoice_")) return;
@@ -675,6 +693,32 @@ namespace DefenseGame.Editor
                 Click(normalUpgrade);
                 Log("clicked_normal_upgrade_r" + controller.CurrentRound);
             }
+        }
+
+        private static bool TryResolvePass13InitialMissionAutoOpen()
+        {
+            SimpleGameHUD hud = UnityEngine.Object.FindObjectOfType<SimpleGameHUD>();
+            TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
+            if (hud == null || missionSystem == null || !hud.IsOpeningTutorialCompleteForCurrentRun)
+            {
+                return true;
+            }
+
+            if (!missionSystem.IsChoicePanelOpen)
+            {
+                return true;
+            }
+
+            report.initialMissionAutoOpenObserved = missionSystem.MissionOfferCount == 3 && !missionSystem.HasActiveMissionSelection;
+            Button laterButton = FindButton("MissionCloseButton");
+            if (Click(laterButton))
+            {
+                report.initialMissionAutoOpenResolved = !missionSystem.IsChoicePanelOpen && !missionSystem.HasActiveMissionSelection && IsInteractable("BattleButton");
+                RecordChoiceFlow("InitialTacticalMission:Later");
+                Log("resolved_initial_mission_auto_open=" + report.initialMissionAutoOpenResolved);
+            }
+
+            return true;
         }
 
         private static bool TryResolveTacticalMission()
@@ -878,6 +922,9 @@ namespace DefenseGame.Editor
                 }
             }
 
+            RuntimeBgmController bgm = UnityEngine.Object.FindObjectOfType<RuntimeBgmController>();
+            AudioSource bgmSource = bgm != null ? bgm.GetComponent<AudioSource>() : null;
+
             return new RoundSnapshot
             {
                 round = round,
@@ -897,7 +944,9 @@ namespace DefenseGame.Editor
                 targetCount = controller.RoundTargetCount,
                 horde = controller.IsCurrentRoundHorde,
                 battleButtonInteractable = IsInteractable("BattleButton"),
-                activeChoicePanels = DescribeActiveChoicePanels()
+                activeChoicePanels = DescribeActiveChoicePanels(),
+                bgmClipName = bgmSource != null && bgmSource.clip != null ? bgmSource.clip.name : string.Empty,
+                bgmPlaying = bgmSource != null && bgmSource.isPlaying
             };
         }
 
@@ -1016,8 +1065,9 @@ namespace DefenseGame.Editor
             report.runtimeErrors = runtimeErrors;
             report.runtimeErrorMessages = new List<string>(runtimeErrorMessages);
             report.finishedUtc = DateTime.UtcNow.ToString("O");
-            report.passed = ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && (!pass9ChoiceFlowValidation || report.tacticalMissionSelectedByUi) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
+            report.passed = ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && (!pass13IntegrationValidation || (report.initialMissionAutoOpenObserved && report.initialMissionAutoOpenResolved)) && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && (!pass9ChoiceFlowValidation || report.tacticalMissionSelectedByUi) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
             File.WriteAllText(OutputPath, JsonUtility.ToJson(report, true));
+            pass13IntegrationValidation = false;
 
             running = false;
             EditorApplication.update -= Tick;
@@ -1053,6 +1103,8 @@ namespace DefenseGame.Editor
             public int runtimeErrors;
             public bool overdriveSelected;
             public bool enteredBattlePreparation;
+            public bool initialMissionAutoOpenObserved;
+            public bool initialMissionAutoOpenResolved;
             public RoundSnapshot r10Start;
             public int r10BossKillCountAtStart;
             public bool r10BossWarningSeen;
@@ -1133,6 +1185,8 @@ namespace DefenseGame.Editor
             public bool horde;
             public bool battleButtonInteractable;
             public string activeChoicePanels;
+            public string bgmClipName;
+            public bool bgmPlaying;
         }
     }
 }

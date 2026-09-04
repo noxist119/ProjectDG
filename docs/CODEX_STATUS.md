@@ -142,3 +142,13 @@
 - Validation: `Assembly-CSharp-Editor` build PASS (0 errors), full Unity PlayMode Smoke PASS, Pass 2X UI flow PASS, `runtimeErrors=0`, no invisible blocker.
 - Full detail: `docs/Pass8ContractDramaOpeningCombatFeedback.md`.
 - Next task: Start the next user-requested ProjectDG pass.
+
+## Pass 13 — R1-R20 Full Run Integration Validation
+
+- Scope: persistent Unity PlayMode validation through EventSystem UI clicks only. No `StartRound`, debug round jump, or reward/resource fixture was used.
+- Initial flow: opening tutorial completed, then the R0 three-card Tactical Mission panel auto-opened. Its visible `Later` button closed it once; BattleButton was interactable and the panel did not reopen before R1.
+- R1-R6 actual Overdrive record: R1 cleared HP 10->7 / Gold 7->16 (MainBGM); R2 cleared 7->5 / 6->20 (Continue -> Tactical Later); R3 cleared 5->3 / 9->28 (Continue -> Tactical Later); R4 Horde cleared 3->1 / 17->50 (Continue -> RunShop purchase -> Tactical Later); R5 cleared 1->1 / 3->35; R6 gameplay defeat 1->0 / 26->55.
+- R7-R10 and R11-R20 were not reached. This was a recorded gameplay defeat, not an environment, visible-choice, or stale-BattleButton failure; `runtimeErrors=0` and no invisible blocker was observed. No balance change was made in this integration pass.
+- Full Unity PlayMode Smoke: PASS, runtimeErrors=0. Pass10 BGM mapping, Pass11 monster exit/leak integrity, Summon Grade Luck, initial Tactical Mission flow, opening guidance, and Pass2X UI flow all passed.
+- Test-only change: the persistent runner has a Pass 13 R1-R20 mode that waits for and resolves the actual initial auto-open before starting R1, and records active BGM clip names in round snapshots.
+- Next task: treat the R6 defeat as balance evidence only if a separate balance pass is requested; do not classify it as a UI-flow blocker.
