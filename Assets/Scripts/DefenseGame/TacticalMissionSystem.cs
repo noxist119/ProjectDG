@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -92,6 +93,7 @@ namespace DefenseGame
         private const int MaxMissionOffers = 3;
         private const float CompletionToastHoldDuration = 3f;
         private const float CompletionToastFadeDuration = 0.22f;
+        private const float InitialMissionOpenAfterTutorialDelay = 1f;
 
         // Before selection this contains the three offers; after selection it contains one active mission.
         private readonly List<MissionInstance> activeMissions = new List<MissionInstance>();
@@ -120,6 +122,8 @@ namespace DefenseGame
         private bool resolvingMission;
         private int pendingMissionSupportSummons;
         private bool runStarted;
+        private Coroutine initialMissionOfferOpenRoutine;
+        private bool initialMissionOfferOpenConsumed;
 
         public int PendingMissionSupportSummons => pendingMissionSupportSummons;
         // Compatibility surface for older smoke callers: this now means an opening three-choice draft exists, not a fixed trio.
@@ -200,6 +204,7 @@ namespace DefenseGame
             SetPanelOpen(false);
             HideCompletionToast();
             RefreshUi();
+            QueueInitialMissionOfferOpen();
         }
 
         private void OnEnable()
@@ -220,6 +225,11 @@ namespace DefenseGame
 
         private void ResetRunState()
         {
+            if (initialMissionOfferOpenRoutine != null)
+            {
+                StopCoroutine(initialMissionOfferOpenRoutine);
+                initialMissionOfferOpenRoutine = null;
+            }
             activeMissions.Clear();
             completedFamilyLevels.Clear();
             completedMissionKeys.Clear();
@@ -243,6 +253,44 @@ namespace DefenseGame
             missionSelected = false;
             offerRefreshQueued = false;
             offersGeneratedForRound = int.MinValue;
+            initialMissionOfferOpenConsumed = false;
+        }
+
+        private void QueueInitialMissionOfferOpen()
+        {
+            if (initialMissionOfferOpenConsumed || initialMissionOfferOpenRoutine != null || gameController == null || gameController.CurrentRound > 0 || missionSelected || activeMissions.Count != MaxMissionOffers)
+            {
+                return;
+            }
+
+            initialMissionOfferOpenRoutine = StartCoroutine(OpenInitialMissionOffersAfterTutorial());
+        }
+
+        private IEnumerator OpenInitialMissionOffersAfterTutorial()
+        {
+            // Give MetaFlow one frame to begin the opening tutorial before observing it.
+            yield return null;
+            SimpleGameHUD openingTutorialHud = FindObjectOfType<SimpleGameHUD>();
+            while (openingTutorialHud != null && !openingTutorialHud.IsOpeningTutorialCompleteForCurrentRun)
+            {
+                yield return null;
+            }
+
+            yield return new WaitForSecondsRealtime(InitialMissionOpenAfterTutorialDelay);
+            initialMissionOfferOpenRoutine = null;
+            OpenInitialMissionOffersIfEligible();
+        }
+
+        private void OpenInitialMissionOffersIfEligible()
+        {
+            if (initialMissionOfferOpenConsumed || gameController == null || gameController.IsRoundRunning || gameController.CurrentRound > 0 || missionSelected || activeMissions.Count != MaxMissionOffers || IsChoicePanelOpen)
+            {
+                return;
+            }
+
+            initialMissionOfferOpenConsumed = true;
+            SetPanelOpen(true);
+            RefreshUi();
         }
 
         private void WireUi()
@@ -289,6 +337,7 @@ namespace DefenseGame
             }
 
             gameController.OnStateChanged += HandleStateChanged;
+            gameController.OnRunReset += HandleRunReset;
             gameController.OnMergeCompleted += HandleMergeCompleted;
             gameController.OnRoundStarted += HandleRoundStarted;
             gameController.OnRoundMissionSettlement += HandleRoundMissionSettlement;
@@ -308,6 +357,7 @@ namespace DefenseGame
             }
 
             gameController.OnStateChanged -= HandleStateChanged;
+            gameController.OnRunReset -= HandleRunReset;
             gameController.OnMergeCompleted -= HandleMergeCompleted;
             gameController.OnRoundStarted -= HandleRoundStarted;
             gameController.OnRoundMissionSettlement -= HandleRoundMissionSettlement;
@@ -1451,6 +1501,14 @@ namespace DefenseGame
             }
         }
 
+        private void HandleRunReset()
+        {
+            ResetRunState();
+            RefillMissions();
+            RefreshUi();
+            QueueInitialMissionOfferOpen();
+        }
+
         private void HandleStateChanged()
         {
             if (runStarted && gameController != null && !gameController.IsRoundRunning && gameController.CurrentRound <= 0)
@@ -1458,6 +1516,7 @@ namespace DefenseGame
                 ResetRunState();
                 RefillMissions();
                 RefreshUi();
+                QueueInitialMissionOfferOpen();
                 return;
             }
 

@@ -112,6 +112,7 @@ namespace DefenseGame
 
         public int PendingPostRoundBannerCount => postRoundBannerQueue.Count;
         public string CurrentRoundBannerMessage => roundBannerText != null ? roundBannerText.text : string.Empty;
+        public bool IsOpeningTutorialCompleteForCurrentRun => !enableOpeningTutorial || (openingTutorialShownForRun && !openingTutorialActive);
 
         [Header("Opening Tutorial")]
         [SerializeField] private bool enableOpeningTutorial = true;

@@ -3390,17 +3390,37 @@ namespace DefenseGame.Editor
 
             try
             {
+                BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                MethodInfo queueInitialOpen = typeof(TacticalMissionSystem).GetMethod("QueueInitialMissionOfferOpen", flags);
+                MethodInfo openInitialOffers = typeof(TacticalMissionSystem).GetMethod("OpenInitialMissionOffersIfEligible", flags);
+                FieldInfo initialOpenRoutine = typeof(TacticalMissionSystem).GetField("initialMissionOfferOpenRoutine", flags);
+                if (queueInitialOpen == null || openInitialOffers == null || initialOpenRoutine == null)
+                {
+                    summary = "initial_auto_open_reflection_missing";
+                    return false;
+                }
+
                 controller.ResetRunForRetry();
-                bool offersPersist = tacticalMissionSystem.MissionOfferCount == 3 && !tacticalMissionSystem.HasActiveMissionSelection && !tacticalMissionSystem.IsChoicePanelOpen && battleButton.interactable;
-                summaryButton.onClick.Invoke();
-                bool openedByPlayer = tacticalMissionSystem.IsChoicePanelOpen;
+                queueInitialOpen.Invoke(tacticalMissionSystem, null);
+                bool initialScheduled = initialOpenRoutine.GetValue(tacticalMissionSystem) != null;
+                openInitialOffers.Invoke(tacticalMissionSystem, null);
+                bool initialAutoOpened = tacticalMissionSystem.MissionOfferCount == 3 && !tacticalMissionSystem.HasActiveMissionSelection && tacticalMissionSystem.IsChoicePanelOpen;
                 closeButton.onClick.Invoke();
+                controller.NotifyPostRoundChoiceStateChanged();
                 bool closedLater = !tacticalMissionSystem.IsChoicePanelOpen && !tacticalMissionSystem.HasActiveMissionSelection && tacticalMissionSystem.MissionOfferCount == 3 && battleButton.interactable;
                 summaryButton.onClick.Invoke();
+                bool openedByPlayer = tacticalMissionSystem.IsChoicePanelOpen;
                 optionButton.onClick.Invoke();
                 bool selected = tacticalMissionSystem.HasActiveMissionSelection && !tacticalMissionSystem.IsChoicePanelOpen && battleButton.interactable;
-                summary = "offers=" + offersPersist + ", opened=" + openedByPlayer + ", later=" + closedLater + ", selected=" + selected;
-                return offersPersist && openedByPlayer && closedLater && selected;
+
+                controller.ResetRunForRetry();
+                queueInitialOpen.Invoke(tacticalMissionSystem, null);
+                bool retryScheduled = initialOpenRoutine.GetValue(tacticalMissionSystem) != null;
+                openInitialOffers.Invoke(tacticalMissionSystem, null);
+                bool reopenedAfterRetry = tacticalMissionSystem.MissionOfferCount == 3 && !tacticalMissionSystem.HasActiveMissionSelection && tacticalMissionSystem.IsChoicePanelOpen;
+                closeButton.onClick.Invoke();
+                summary = "scheduled=" + initialScheduled + ", opened=" + initialAutoOpened + ", later=" + closedLater + ", manual=" + openedByPlayer + ", selected=" + selected + ", retry=" + (retryScheduled && reopenedAfterRetry);
+                return initialScheduled && initialAutoOpened && closedLater && openedByPlayer && selected && retryScheduled && reopenedAfterRetry;
             }
             finally
             {
