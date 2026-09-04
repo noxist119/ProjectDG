@@ -22,6 +22,8 @@ namespace DefenseGame.Editor
         private const string Pass5OutputFileName = "DefenseGame_Pass5_R1_R30_Overdrive.json";
         private const string Pass6OutputFileName = "DefenseGame_Pass6_R1_R30_Overdrive.json";
         private const string Pass13OutputFileName = "DefenseGame_Pass13_R1_R20_Overdrive.json";
+        private const string Pass14AreaOutputFileName = "DefenseGame_Pass14_AreaStability_R1_R10.json";
+        private const string Pass14LuckOutputFileName = "DefenseGame_Pass14_LuckInvestment_R1_R10.json";
         private const float ValidationTimeScale = 8f;
         private const double ActionDelaySeconds = 0.14d;
         private const double StartupTimeoutSeconds = 15d;
@@ -55,7 +57,10 @@ namespace DefenseGame.Editor
         private static ValidationReport report;
         private static readonly HashSet<int> RecordedRoundStarts = new HashSet<int>();
         private static bool pass9ChoiceFlowValidation;
+        private enum Pass14Strategy { None, AreaStability, LuckInvestment }
+
         private static bool pass13IntegrationValidation;
+        private static Pass14Strategy pass14Strategy;
 
         private static string OutputPath => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, outputFileName));
 
@@ -110,6 +115,28 @@ namespace DefenseGame.Editor
             Begin(false, false, true);
         }
 
+        [MenuItem("DefenseGame/Validation/Pass 14 R1-R10 Area Stability UI Validation")]
+        public static void RunPass14AreaStabilityValidation()
+        {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
+            pass13IntegrationValidation = false;
+            pass14Strategy = Pass14Strategy.AreaStability;
+            progressionAuditMaxRound = 10;
+            Begin(false, false, true);
+        }
+
+        [MenuItem("DefenseGame/Validation/Pass 14 R1-R10 Luck Investment UI Validation")]
+        public static void RunPass14LuckInvestmentValidation()
+        {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
+            pass13IntegrationValidation = false;
+            pass14Strategy = Pass14Strategy.LuckInvestment;
+            progressionAuditMaxRound = 10;
+            Begin(false, false, true);
+        }
+
         [MenuItem("DefenseGame/Validation/Pass 13 R1-R20 Full Run Integration Validation")]
         public static void RunPass13FullRunIntegrationValidation()
         {
@@ -160,7 +187,7 @@ namespace DefenseGame.Editor
             skipRunShopPurchase = skipPurchase;
             outputFileName = stopAfterRecovery
                 ? (skipPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
-                : (pass13IntegrationValidation ? Pass13OutputFileName : (pass6EconomyValidation ? Pass6OutputFileName : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName))));
+                : (pass14Strategy != Pass14Strategy.None ? (pass14Strategy == Pass14Strategy.AreaStability ? Pass14AreaOutputFileName : Pass14LuckOutputFileName) : (pass13IntegrationValidation ? Pass13OutputFileName : (pass6EconomyValidation ? Pass6OutputFileName : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName)))));
             runtimeErrors = 0;
             runtimeErrorMessages.Clear();
             pass5MissionWasActive = false;
@@ -175,6 +202,7 @@ namespace DefenseGame.Editor
                 status = "running",
                 validationMode = "EventSystem UI clicks only; no StartRound/debug round jump/reward fixture",
                 runShopScenario = stopAfterRecovery ? (skipPurchase ? "later" : "purchase_then_close") : "persistent",
+                strategyName = pass14Strategy.ToString(),
                 validationTimeScale = ValidationTimeScale,
                 startedUtc = DateTime.UtcNow.ToString("O"),
                 roundSnapshots = new List<RoundSnapshot>(),
@@ -545,7 +573,7 @@ namespace DefenseGame.Editor
                 return;
             }
 
-            if (pass13IntegrationValidation && controller.CurrentRound <= 0 && !report.initialMissionAutoOpenResolved)
+            if ((pass13IntegrationValidation || pass14Strategy != Pass14Strategy.None) && controller.CurrentRound <= 0 && !report.initialMissionAutoOpenResolved)
             {
                 TryResolvePass13InitialMissionAutoOpen();
                 return;
@@ -576,6 +604,11 @@ namespace DefenseGame.Editor
             if (TryResolveChoice("LuckySummonChoiceOverlay", "LuckySummonChoice")) return;
             if (TryResolveChoice("Fate", "Fate")) return;
 
+            if (pass14Strategy != Pass14Strategy.None && PreparePass14UsingOnlyUiClicks())
+            {
+                return;
+            }
+
             Button battleButton = FindButton("BattleButton");
             if (battleButton == null || !battleButton.gameObject.activeInHierarchy || !battleButton.interactable)
             {
@@ -590,11 +623,71 @@ namespace DefenseGame.Editor
                 return;
             }
 
-            PrepareUsingOnlyUiClicks();
+            if (pass14Strategy == Pass14Strategy.None)
+            {
+                PrepareUsingOnlyUiClicks();
+            }
             if (Click(battleButton))
             {
                 Log("clicked_battle_r" + (controller.CurrentRound + 1));
             }
+        }
+
+        private static bool PreparePass14UsingOnlyUiClicks()
+        {
+            if (controller == null)
+            {
+                return false;
+            }
+
+            int targetBoard = pass14Strategy == Pass14Strategy.AreaStability
+                ? (controller.CurrentRound <= 0 ? 3 : (controller.CurrentRound <= 4 ? Mathf.Min(8, controller.CurrentRound + 3) : 8))
+                : (controller.CurrentRound <= 0 ? 3 : (controller.CurrentRound <= 4 ? Mathf.Min(5, controller.CurrentRound + 3) : 6));
+            Button summon = FindButton("SummonButton");
+            if (controller.BoardUnitCount < targetBoard && controller.EmptySlotCount > 0 && Click(summon))
+            {
+                report.actualUiSummonSpendCount++;
+                Log("pass14_" + pass14Strategy + "_summon_r" + controller.CurrentRound);
+                return true;
+            }
+
+            if (pass14Strategy == Pass14Strategy.AreaStability && controller.BoardUnitCount >= targetBoard && TryUpgradeNormalGradeThroughVisibleUi())
+            {
+                return true;
+            }
+
+            if (pass14Strategy == Pass14Strategy.LuckInvestment && controller.SummonGradeLuckLevel < 3)
+            {
+                Button luck = FindButton("SummonGradeLuckUpgrade");
+                int previousLevel = controller.SummonGradeLuckLevel;
+                if (Click(luck) && controller.SummonGradeLuckLevel > previousLevel)
+                {
+                    report.actualUiLuckUpgradeSpendCount++;
+                    Log("pass14_luck_upgrade_lv" + controller.SummonGradeLuckLevel + "_r" + controller.CurrentRound);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TryUpgradeNormalGradeThroughVisibleUi()
+        {
+            if (controller == null || !controller.CanUpgradeGrade(CharacterGrade.Normal))
+            {
+                return false;
+            }
+
+            int previousLevel = controller.GetGradeUpgradeLevel(CharacterGrade.Normal);
+            Button upgrade = FindButton("GradeUpgrade_Normal");
+            if (Click(upgrade) && controller.GetGradeUpgradeLevel(CharacterGrade.Normal) > previousLevel)
+            {
+                report.actualUiGradeUpgradeSpendCount++;
+                Log("pass14_area_normal_upgrade_lv" + controller.GetGradeUpgradeLevel(CharacterGrade.Normal) + "_r" + controller.CurrentRound);
+                return true;
+            }
+
+            return false;
         }
 
         private static bool TrySpendGoldThroughVisibleUi()
@@ -769,7 +862,7 @@ namespace DefenseGame.Editor
                 report.r4RunShopSeen = true;
             }
 
-            if (!shopPurchaseAttempted)
+            if (!shopPurchaseAttempted && pass14Strategy == Pass14Strategy.None)
             {
                 Button offer = overlay.GetComponentsInChildren<Button>(true)
                     .FirstOrDefault(candidate => candidate != null && candidate.gameObject.activeInHierarchy && candidate.interactable && candidate.name.StartsWith("RunShopOffer_", StringComparison.Ordinal));
@@ -879,6 +972,9 @@ namespace DefenseGame.Editor
                 audit.bossName = displayName;
                 audit.bossMaxHealth = monster.MaxHealth;
                 audit.bossHealthRemaining01 = monster.MaxHealth > 0f ? Mathf.Clamp01(monster.CurrentHealth / monster.MaxHealth) : -1f;
+                RuntimeBgmController bgm = UnityEngine.Object.FindObjectOfType<RuntimeBgmController>();
+                AudioSource bgmSource = bgm != null ? bgm.GetComponent<AudioSource>() : null;
+                audit.bgmClipAtBossSpawn = bgmSource != null && bgmSource.clip != null ? bgmSource.clip.name : string.Empty;
             }
         }
 
@@ -945,6 +1041,7 @@ namespace DefenseGame.Editor
                 horde = controller.IsCurrentRoundHorde,
                 battleButtonInteractable = IsInteractable("BattleButton"),
                 activeChoicePanels = DescribeActiveChoicePanels(),
+                summonGradeLuckLevel = controller.SummonGradeLuckLevel,
                 bgmClipName = bgmSource != null && bgmSource.clip != null ? bgmSource.clip.name : string.Empty,
                 bgmPlaying = bgmSource != null && bgmSource.isPlaying
             };
@@ -1065,9 +1162,11 @@ namespace DefenseGame.Editor
             report.runtimeErrors = runtimeErrors;
             report.runtimeErrorMessages = new List<string>(runtimeErrorMessages);
             report.finishedUtc = DateTime.UtcNow.ToString("O");
-            report.passed = ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && (!pass13IntegrationValidation || (report.initialMissionAutoOpenObserved && report.initialMissionAutoOpenResolved)) && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && (!pass9ChoiceFlowValidation || report.tacticalMissionSelectedByUi) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
+            bool requiresInitialMissionAutoOpen = pass13IntegrationValidation || pass14Strategy != Pass14Strategy.None;
+            report.passed = ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && (!requiresInitialMissionAutoOpen || (report.initialMissionAutoOpenObserved && report.initialMissionAutoOpenResolved)) && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && (!pass9ChoiceFlowValidation || report.tacticalMissionSelectedByUi) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
             File.WriteAllText(OutputPath, JsonUtility.ToJson(report, true));
             pass13IntegrationValidation = false;
+            pass14Strategy = Pass14Strategy.None;
 
             running = false;
             EditorApplication.update -= Tick;
@@ -1096,6 +1195,7 @@ namespace DefenseGame.Editor
             public string reason;
             public string validationMode;
             public string runShopScenario;
+            public string strategyName;
             public float validationTimeScale;
             public string startedUtc;
             public string finishedUtc;
@@ -1162,6 +1262,7 @@ namespace DefenseGame.Editor
             public bool bossWarningSeen;
             public string bossWarningTitle;
             public bool bossKilled;
+            public string bgmClipAtBossSpawn;
             public List<string> choiceFlow;
         }
         [Serializable]
@@ -1185,6 +1286,7 @@ namespace DefenseGame.Editor
             public bool horde;
             public bool battleButtonInteractable;
             public string activeChoicePanels;
+            public int summonGradeLuckLevel;
             public string bgmClipName;
             public bool bgmPlaying;
         }

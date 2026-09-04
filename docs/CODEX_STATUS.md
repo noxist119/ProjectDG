@@ -152,3 +152,21 @@
 - Full Unity PlayMode Smoke: PASS, runtimeErrors=0. Pass10 BGM mapping, Pass11 monster exit/leak integrity, Summon Grade Luck, initial Tactical Mission flow, opening guidance, and Pass2X UI flow all passed.
 - Test-only change: the persistent runner has a Pass 13 R1-R20 mode that waits for and resolves the actual initial auto-open before starting R1, and records active BGM clip names in round snapshots.
 - Next task: treat the R6 defeat as balance evidence only if a separate balance pass is requested; do not classify it as a UI-flow blocker.
+
+## Pass 14 — Early Game Balance After Per-Monster Leak
+
+- Scope: EventSystem UI-click validation only. No direct `StartRound`, debug shortcut, round jump, or resource fixture was used. Normal-monster leaks remain one HP per monster; no per-round leak cap was restored.
+- Evidence before the R1-R5 tuning: the Area Stability run died in R9 and the Luck Investment run died in R6/R7, with `runtimeErrors=0`. The direct cause was accumulated regular-wave leak damage, not a choice-panel or BattleButton block.
+- Single balance axis changed: `RoundManager.ApplyPreBossLeakEaseToRegularCount` now removes 4 regular monsters from the pre-profile R1-R5 count and retains the existing one-monster ease for R6-R9. R10+ and boss/support counts, health, rewards, contracts, and Luck costs are unchanged.
+
+### Final actual UI records
+
+| Strategy | R1-R9 HP end sequence | R10 result | Board / summons at R10 | Gold at R10 start/end | Errors |
+| --- | --- | --- | --- | --- | --- |
+| Area Stability | 9, 8, 7, 6, 6, 6, 6, 6, 5 | Boss warning and spawn observed; defeated in the boss round (HP 5 -> 0) | 8 / 7 | 43 -> 79 | 0 |
+| Luck Investment | 9, 8, 7, 6, 5, 3, 0 | Defeated in R7 before R10 | 6 / 5 at R7 | 89 -> 129 | 0 |
+
+- Area Stability used visible summoning first, filled to eight board units by R6, selected the visible R6 Augment, and used the Normal grade-upgrade button at R6/R7/R8. It reached the R10 boss starting with HP 5, satisfying the required minimum R10-boss-entry evidence without changing boss values.
+- Luck Investment used the visible minimal-board summons and attempted the visible high-grade-chance upgrade only after stabilizing. It did not reach the 100G first purchase before the R7 defeat, so this real-run sample records no Luck level purchase rather than claiming an unobserved early Epic conversion. The full Unity Smoke independently passed `pass2MSummonGradeLuckValid`, including the early Epic conversion/cost regression.
+- Final full Unity PlayMode Smoke: PASS (`status=pass`, `runtimeErrors=0`); Pass10 round-BGM rotation, Pass11 exit/leak integrity, Summon Grade Luck, and Pass2X UI flow all passed.
+- Next task: R10 boss clear pressure remains a separate boss-calibration question; Pass 14 changed no R6+ or boss value.

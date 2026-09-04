@@ -642,9 +642,10 @@ namespace DefenseGame
                 return count;
             }
 
-            if (round >= 5 && round <= 9)
+            if (round >= 1 && round <= 9)
             {
-                return Mathf.Max(3, count - 1);
+                int earlyRoundEase = round <= 5 ? 4 : 1;
+                return Mathf.Max(3, count - earlyRoundEase);
             }
 
             return count;
