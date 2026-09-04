@@ -36,7 +36,7 @@ namespace DefenseGame
         [SerializeField] private List<SummonGradeRateMilestone> summonGradeRateMilestones = new List<SummonGradeRateMilestone>
         {
             new SummonGradeRateMilestone(1, 0.960f, 0.040f, 0.000f, 0.000f, 0.000f),
-            new SummonGradeRateMilestone(3, 0.960f, 0.040f, 0.000f, 0.000f, 0.000f),
+            new SummonGradeRateMilestone(3, 0.940f, 0.060f, 0.000f, 0.000f, 0.000f),
             new SummonGradeRateMilestone(5, 0.911f, 0.085f, 0.004f, 0.000f, 0.000f),
             new SummonGradeRateMilestone(7, 0.883f, 0.105f, 0.012f, 0.000f, 0.000f),
             new SummonGradeRateMilestone(9, 0.845f, 0.130f, 0.023333f, 0.001667f, 0.000f),

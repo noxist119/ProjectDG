@@ -1660,8 +1660,8 @@ namespace DefenseGame.Editor
             SummonGradeRateSnapshot r3Lv3 = database.GetSummonGradeRateSnapshot(3, 3, false);
             SummonGradeRateSnapshot r4Lv10 = database.GetSummonGradeRateSnapshot(4, 10, false);
             bool earlyLuckApplies = Approximately(r1Lv1.normal, 0.95f) && Approximately(r1Lv1.rare, 0.04f) && Approximately(r1Lv1.epic, 0.01f) &&
-                                      Approximately(r3Lv3.normal, 0.93f) && Approximately(r3Lv3.rare, 0.04f) && Approximately(r3Lv3.epic, 0.03f) &&
-                                      Approximately(r4Lv10.normal, 0.86f) && Approximately(r4Lv10.rare, 0.04f) && Approximately(r4Lv10.epic, 0.10f) &&
+                                      Approximately(r3Lv3.normal, 0.91f) && Approximately(r3Lv3.rare, 0.06f) && Approximately(r3Lv3.epic, 0.03f) &&
+                                      Approximately(r4Lv10.normal, 0.84f) && Approximately(r4Lv10.rare, 0.06f) && Approximately(r4Lv10.epic, 0.10f) &&
                                       Approximately(r1Lv1.Total, 1f) && Approximately(r3Lv3.Total, 1f) && Approximately(r4Lv10.Total, 1f);
 
             SummonGradeRateSnapshot r13Base = database.GetSummonGradeRateSnapshot(13, 0, false);
