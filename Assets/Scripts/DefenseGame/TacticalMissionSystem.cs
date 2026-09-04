@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -333,7 +333,6 @@ namespace DefenseGame
 
             ClearExpiredCooldowns();
             int round = gameController.CurrentRound;
-            int minimumValid = GetMissionBracketMinimum(round);
             List<MissionKind> bracketPool = BuildCandidatePool(round);
             List<MissionKind> eligible = new List<MissionKind>();
             for (int i = 0; i < bracketPool.Count; i++)
@@ -344,9 +343,10 @@ namespace DefenseGame
                 }
             }
 
-            // A bracket never borrows a late or early mission just to fill a row. The authored pools
-            // contain more than the stated minimum; this guard simply makes an infeasible state explicit.
-            if (eligible.Count < Mathf.Min(MaxMissionOffers, minimumValid))
+            // A draft renders exactly three cards. Feasible cards from this bracket are sufficient
+            // as soon as three exist; requiring an authored-pool minimum here can hide every
+            // opening contract after the runtime feasibility filter has done its job.
+            if (eligible.Count < MaxMissionOffers)
             {
                 offerRefreshQueued = false;
                 return;
@@ -413,11 +413,6 @@ namespace DefenseGame
             }
             ids.Sort(System.StringComparer.Ordinal);
             return string.Join("|", ids.ToArray());
-        }
-
-        private int GetMissionBracketMinimum(int round)
-        {
-            return round < 10 ? 8 : round < 30 ? 10 : 8;
         }
 
         private void AddOffer(MissionKind kind, int tier, bool initial)

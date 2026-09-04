@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -3133,9 +3133,10 @@ namespace DefenseGame.Editor
         private static bool ValidatePass9ContractValidityAndSynergy(out string summary)
         {
             int[] rounds = { 0, 1, 2, 4, 5, 10, 20, 30 };
-            int[] gold = { 30, 40, 45, 60, 75, 110, 180, 260 };
-            int[] board = { 0, 2, 3, 5, 6, 7, 8, 9 };
-            int[] empty = { 10, 8, 7, 5, 4, 3, 2, 1 };
+            int[] gold = { 36, 26, 45, 60, 75, 110, 180, 260 };
+            int[] summonCosts = { 10, 11, 10, 10, 10, 10, 10, 10 };
+            int[] board = { 0, 1, 3, 5, 6, 7, 8, 9 };
+            int[] empty = { 10, 9, 7, 5, 4, 3, 2, 1 };
             List<string> failures = new List<string>();
             for (int state = 0; state < rounds.Length; state++)
             {
@@ -3143,7 +3144,7 @@ namespace DefenseGame.Editor
                 {
                     RunContentRandomService random = new RunContentRandomService();
                     random.Reset(rounds[state] * 1000 + seed);
-                    string[] draft = TacticalMissionSystem.BuildFeasibleDraftForValidation(rounds[state], gold[state], 10, board[state], empty[state], 10, random);
+                    string[] draft = TacticalMissionSystem.BuildFeasibleDraftForValidation(rounds[state], gold[state], summonCosts[state], board[state], empty[state], 10, random);
                     if (draft.Length != 3 || draft.Distinct().Count() != 3)
                     {
                         failures.Add("R" + rounds[state] + " draft=" + draft.Length);
@@ -3155,7 +3156,7 @@ namespace DefenseGame.Editor
                         {
                             failures.Add("R" + rounds[state] + " exposed NoSummonHold");
                         }
-                        if (!TacticalMissionSystem.IsMissionKindFeasibleForValidation(draft[index], rounds[state], gold[state], 10, board[state], empty[state], 10))
+                        if (!TacticalMissionSystem.IsMissionKindFeasibleForValidation(draft[index], rounds[state], gold[state], summonCosts[state], board[state], empty[state], 10))
                         {
                             failures.Add("R" + rounds[state] + " infeasible=" + draft[index]);
                         }
