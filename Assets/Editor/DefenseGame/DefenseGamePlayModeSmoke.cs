@@ -509,6 +509,7 @@ namespace DefenseGame.Editor
             bool gradeUpgradeBarUiValid = pass2PCombatHudFeedbackPolishValid;
             bool pass2NCombatEconomyUiValid = pass2PCombatHudFeedbackPolishValid;
             bool pass2MSummonGradeLuckValid = ValidatePass2MSummonGradeLuck(controller);
+            bool pass11MonsterExitAndLeakValid = ValidatePass11MonsterExitAndLeak(controller, out string pass11MonsterExitAndLeakSummary);
             bool pass1EMilestoneValid = ValidatePass1EMilestoneRules(controller, out string pass1EMilestoneSummary);
             if (!pass1DGradeRulesValid || !pass1DPressureValid || !gradeUpgradeBarUiValid || !pass1EMilestoneValid)
             {
@@ -517,6 +518,10 @@ namespace DefenseGame.Editor
             if (!pass2MSummonGradeLuckValid)
             {
                 notes.Add("Pass 2M summon grade luck validation failed.");
+            }
+            if (!pass11MonsterExitAndLeakValid)
+            {
+                notes.Add("Pass 11 monster exit/leak validation failed. " + pass11MonsterExitAndLeakSummary);
             }
             if (!pass2NCombatEconomyUiValid)
             {
@@ -1090,7 +1095,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && pass2WMissionToastValid && pass2UOpeningGuidanceValid && pass2XUiFlowValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && pass10RoundBasedMainBgmValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && pass2WMissionToastValid && pass2UOpeningGuidanceValid && pass2XUiFlowValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && pass10RoundBasedMainBgmValid && pass11MonsterExitAndLeakValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -1172,6 +1177,8 @@ namespace DefenseGame.Editor
                 boardCapacityPacingSummary = boardCapacityPacingSummary,
                 gradeUpgradeBarUiValid = gradeUpgradeBarUiValid,
                 pass2MSummonGradeLuckValid = pass2MSummonGradeLuckValid,
+                pass11MonsterExitAndLeakValid = pass11MonsterExitAndLeakValid,
+                pass11MonsterExitAndLeakSummary = pass11MonsterExitAndLeakSummary,
                 pass2NCombatEconomyUiValid = pass2NCombatEconomyUiValid,
                 pass2OCombatHudLayoutValid = pass2OCombatHudLayoutValid,
                 pass2PCombatHudFeedbackPolishValid = pass2PCombatHudFeedbackPolishValid,
@@ -1635,49 +1642,155 @@ namespace DefenseGame.Editor
                 return false;
             }
 
-            int[] expectedCosts = { 50, 100, 200, 400, 800, 1600, 3200, 0 };
-            bool costsValid = DefenseGameController.SummonGradeLuckMaximumLevel == 7;
+            int[] expectedCosts = { 100, 100, 100, 200, 200, 200, 200, 300, 300, 300, 0 };
+            bool costsValid = DefenseGameController.SummonGradeLuckMaximumLevel == 10;
+            int totalInvestment = 0;
             for (int level = 0; level <= DefenseGameController.SummonGradeLuckMaximumLevel; level++)
             {
-                costsValid &= DefenseGameController.ResolveSummonGradeLuckCost(level) == expectedCosts[level];
+                int cost = DefenseGameController.ResolveSummonGradeLuckCost(level);
+                costsValid &= cost == expectedCosts[level];
+                if (level < DefenseGameController.SummonGradeLuckMaximumLevel)
+                {
+                    totalInvestment += cost;
+                }
             }
+            costsValid &= totalInvestment == 2000;
 
-            SummonGradeRateSnapshot r13Lv0 = database.GetSummonGradeRateSnapshot(13, 0, false);
-            SummonGradeRateSnapshot r13Lv1 = database.GetSummonGradeRateSnapshot(13, 1, false);
-            SummonGradeRateSnapshot r13Lv7 = database.GetSummonGradeRateSnapshot(13, 7, false);
-            SummonGradeRateSnapshot r19Lv0 = database.GetSummonGradeRateSnapshot(19, 0, false);
-            SummonGradeRateSnapshot r19Lv2 = database.GetSummonGradeRateSnapshot(19, 2, false);
-            SummonGradeRateSnapshot r19Lv7 = database.GetSummonGradeRateSnapshot(19, 7, false);
-            SummonGradeRateSnapshot r28Lv0 = database.GetSummonGradeRateSnapshot(28, 0, false);
-            SummonGradeRateSnapshot r28Lv2 = database.GetSummonGradeRateSnapshot(28, 2, false);
-            SummonGradeRateSnapshot r28Lv7 = database.GetSummonGradeRateSnapshot(28, 7, false);
-            bool referenceRatesValid = Approximately(r13Lv0.EpicPlus, 0.050f) && Approximately(r13Lv1.EpicPlus, 0.060f) && Approximately(r13Lv7.EpicPlus, 0.120f)
-                && Approximately(r19Lv0.EpicPlus, 0.095f) && Approximately(r19Lv2.EpicPlus, 0.115f) && Approximately(r19Lv7.EpicPlus, 0.165f)
-                && Approximately(r28Lv0.EpicPlus, 0.155f) && Approximately(r28Lv2.EpicPlus, 0.175f) && Approximately(r28Lv7.EpicPlus, 0.225f);
+            SummonGradeRateSnapshot r1Lv1 = database.GetSummonGradeRateSnapshot(1, 1, false);
+            SummonGradeRateSnapshot r3Lv3 = database.GetSummonGradeRateSnapshot(3, 3, false);
+            SummonGradeRateSnapshot r4Lv10 = database.GetSummonGradeRateSnapshot(4, 10, false);
+            bool earlyLuckApplies = Approximately(r1Lv1.normal, 0.95f) && Approximately(r1Lv1.rare, 0.04f) && Approximately(r1Lv1.epic, 0.01f) &&
+                                      Approximately(r3Lv3.normal, 0.93f) && Approximately(r3Lv3.rare, 0.04f) && Approximately(r3Lv3.epic, 0.03f) &&
+                                      Approximately(r4Lv10.normal, 0.86f) && Approximately(r4Lv10.rare, 0.04f) && Approximately(r4Lv10.epic, 0.10f) &&
+                                      Approximately(r1Lv1.Total, 1f) && Approximately(r3Lv3.Total, 1f) && Approximately(r4Lv10.Total, 1f);
 
-            int[] rounds = { 1, 3, 5, 7, 9, 11, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49 };
-            float[] expectedEpicPlus = { 0f, 0f, 0.004f, 0.012f, 0.025f, 0.038f, 0.050f, 0.072f, 0.095f, 0.115f, 0.140f, 0.155f, 0.170f, 0.185f, 0.200f, 0.215f, 0.230f, 0.245f, 0.260f };
-            float[] expectedRare = { 0.040f, 0.060f, 0.085f, 0.105f, 0.130f, 0.155f, 0.180f, 0.215f, 0.240f, 0.260f, 0.275f, 0.290f, 0.305f, 0.315f, 0.325f, 0.335f, 0.345f, 0.350f, 0.355f };
-            bool milestoneRatesValid = true;
-            for (int i = 0; i < rounds.Length; i++)
-            {
-                SummonGradeRateSnapshot baseRates = database.GetSummonGradeRateSnapshot(rounds[i], 0, false);
-                SummonGradeRateSnapshot maxLuckRates = database.GetSummonGradeRateSnapshot(rounds[i], DefenseGameController.SummonGradeLuckMaximumLevel, false);
-                milestoneRatesValid &= Approximately(baseRates.EpicPlus, expectedEpicPlus[i])
-                    && Approximately(baseRates.rare, expectedRare[i])
-                    && Approximately(baseRates.Total, 1f)
-                    && Approximately(maxLuckRates.rare, expectedRare[i])
-                    && Approximately(maxLuckRates.Total, 1f);
-            }
+            SummonGradeRateSnapshot r13Base = database.GetSummonGradeRateSnapshot(13, 0, false);
+            SummonGradeRateSnapshot r13Lv10 = database.GetSummonGradeRateSnapshot(13, 10, false);
+            float r13EpicPlusBase = r13Base.EpicPlus;
+            bool postMilestoneDistribution = r13EpicPlusBase > 0f &&
+                                             Approximately(r13Lv10.rare, r13Base.rare) &&
+                                             Approximately(r13Lv10.EpicPlus, r13EpicPlusBase + 0.10f) &&
+                                             Approximately(r13Lv10.epic - r13Base.epic, 0.10f * r13Base.epic / r13EpicPlusBase) &&
+                                             Approximately(r13Lv10.legendary - r13Base.legendary, 0.10f * r13Base.legendary / r13EpicPlusBase) &&
+                                             Approximately(r13Lv10.mythic - r13Base.mythic, 0.10f * r13Base.mythic / r13EpicPlusBase) &&
+                                             Approximately(r13Lv10.Total, 1f);
 
-            SummonGradeRateSnapshot early = database.GetSummonGradeRateSnapshot(3, DefenseGameController.SummonGradeLuckMaximumLevel, false);
-            SummonGradeRateSnapshot epicOnly = database.GetSummonGradeRateSnapshot(7, DefenseGameController.SummonGradeLuckMaximumLevel, false);
-            SummonGradeRateSnapshot legendLocked = database.GetSummonGradeRateSnapshot(9, DefenseGameController.SummonGradeLuckMaximumLevel, false);
-            bool noEarlyUnlock = Approximately(early.epic, 0f) && Approximately(early.legendary, 0f) && Approximately(early.mythic, 0f)
-                && Approximately(epicOnly.legendary, 0f) && Approximately(epicOnly.mythic, 0f)
-                && Approximately(legendLocked.mythic, 0f);
             Button luckButton = UnityEngine.Object.FindObjectsOfType<Button>(true).FirstOrDefault(button => button != null && button.name == "SummonGradeLuckUpgrade");
-            return costsValid && referenceRatesValid && milestoneRatesValid && noEarlyUnlock && luckButton != null;
+            bool maxCostValid = DefenseGameController.ResolveSummonGradeLuckCost(10) == 0;
+            return costsValid && earlyLuckApplies && postMilestoneDistribution && maxCostValid && luckButton != null;
+        }
+
+        private static bool ValidatePass11MonsterExitAndLeak(DefenseGameController controller, out string summary)
+        {
+            summary = string.Empty;
+            if (controller == null)
+            {
+                summary = "controller_missing";
+                return false;
+            }
+
+            FieldInfo definitionField = typeof(MonsterUnit).GetField("definition", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo goalField = typeof(MonsterUnit).GetField("goal", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo laneGoalField = typeof(MonsterUnit).GetField("laneGoalPosition", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo laneDirectionField = typeof(MonsterUnit).GetField("laneTravelDirection", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo escapedField = typeof(MonsterUnit).GetField("escapeHandled", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo moveTowardsGoal = typeof(MonsterUnit).GetMethod("MoveTowardsGoal", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo lifeField = typeof(DefenseGameController).GetField("life", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo roundLeakField = typeof(DefenseGameController).GetField("currentRoundLeakDamageTaken", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo handleEscape = typeof(DefenseGameController).GetMethod("HandleMonsterEscaped", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo resolveLeak = typeof(DefenseGameController).GetMethod("ResolveMonsterLeakDamage", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (definitionField == null || goalField == null || laneGoalField == null || laneDirectionField == null || escapedField == null || moveTowardsGoal == null || lifeField == null || handleEscape == null || resolveLeak == null)
+            {
+                summary = "reflection_missing";
+                return false;
+            }
+
+            Vector3 lateral = MonsterUnit.ResolveLateralSeparationOffset(new Vector3(0.7f, 0f, 0.8f), Vector3.forward, 0.25f);
+            bool lateralOnly = Mathf.Abs(Vector3.Dot(lateral, Vector3.forward)) <= 0.0001f && lateral.x > 0f;
+            bool goalLineIgnoresLateral = MonsterUnit.HasReachedLaneGoalLine(new Vector3(0.35f, 0f, 0f), Vector3.zero, Vector3.forward);
+            bool beforeGoalLine = !MonsterUnit.HasReachedLaneGoalLine(new Vector3(0.35f, 0f, -0.2f), Vector3.zero, Vector3.forward);
+
+            int originalLife = controller.Life;
+            CombatGameMode originalMode = controller.CurrentCombatMode;
+            GameObject goalObject = new GameObject("Pass11Goal");
+            List<GameObject> monsters = new List<GameObject>();
+            int escapedEvents = 0;
+            Action<MonsterUnit> escapedHandler = _ => escapedEvents++;
+            MonsterUnit.OnMonsterEscaped += escapedHandler;
+            bool regularTriple = false;
+            bool overdriveTriple = false;
+            bool bossAndMidLeakValues = false;
+            try
+            {
+                goalObject.transform.position = Vector3.zero;
+                lifeField.SetValue(controller, 10);
+                if (roundLeakField != null)
+                {
+                    roundLeakField.SetValue(controller, 0);
+                }
+
+                for (int i = 0; i < 3; i++)
+                {
+                    GameObject monsterObject = new GameObject("Pass11RegularExit_" + i);
+                    monsters.Add(monsterObject);
+                    monsterObject.transform.position = new Vector3(-0.35f + i * 0.35f, 0f, 0f);
+                    MonsterUnit unit = monsterObject.AddComponent<MonsterUnit>();
+                    definitionField.SetValue(unit, new MonsterDefinition
+                    {
+                        id = "pass11_regular_" + i,
+                        displayName = "Pass11 Regular",
+                        threatLevel = MonsterThreatLevel.Regular,
+                        stats = new CombatStats { moveSpeed = 1f }
+                    });
+                    goalField.SetValue(unit, goalObject.transform);
+                    laneGoalField.SetValue(unit, Vector3.zero);
+                    laneDirectionField.SetValue(unit, Vector3.forward);
+                    escapedField.SetValue(unit, false);
+                    moveTowardsGoal.Invoke(unit, null);
+                    moveTowardsGoal.Invoke(unit, null);
+                }
+                regularTriple = escapedEvents == 3 && controller.Life == 7;
+
+                controller.TrySetCombatMode(CombatGameMode.Overdrive);
+                lifeField.SetValue(controller, 10);
+                if (roundLeakField != null)
+                {
+                    roundLeakField.SetValue(controller, 0);
+                }
+                MonsterUnit regularLeakUnit = monsters[0].GetComponent<MonsterUnit>();
+                handleEscape.Invoke(controller, new object[] { regularLeakUnit });
+                handleEscape.Invoke(controller, new object[] { regularLeakUnit });
+                handleEscape.Invoke(controller, new object[] { regularLeakUnit });
+                overdriveTriple = controller.Life == 7;
+
+                MonsterUnit midBossUnit = monsters[1].GetComponent<MonsterUnit>();
+                definitionField.SetValue(midBossUnit, new MonsterDefinition { threatLevel = MonsterThreatLevel.MidBoss, stats = new CombatStats() });
+                MonsterUnit bossUnit = monsters[2].GetComponent<MonsterUnit>();
+                definitionField.SetValue(bossUnit, new MonsterDefinition { threatLevel = MonsterThreatLevel.Boss, stats = new CombatStats() });
+                bossAndMidLeakValues = (int)resolveLeak.Invoke(controller, new object[] { midBossUnit }) == 2 &&
+                                       (int)resolveLeak.Invoke(controller, new object[] { bossUnit }) == Mathf.Max(5, Mathf.CeilToInt(controller.MaxLife * 0.30f));
+            }
+            finally
+            {
+                MonsterUnit.OnMonsterEscaped -= escapedHandler;
+                lifeField.SetValue(controller, originalLife);
+                controller.TrySetCombatMode(originalMode);
+                for (int i = 0; i < monsters.Count; i++)
+                {
+                    if (monsters[i] != null)
+                    {
+                        UnityEngine.Object.Destroy(monsters[i]);
+                    }
+                }
+                if (goalObject != null)
+                {
+                    UnityEngine.Object.Destroy(goalObject);
+                }
+            }
+
+            bool passed = lateralOnly && goalLineIgnoresLateral && beforeGoalLine && regularTriple && overdriveTriple && bossAndMidLeakValues;
+            summary = "lateral=" + lateralOnly + ", goalLine=" + goalLineIgnoresLateral + ", onceAndTriple=" + regularTriple + ", overdriveTriple=" + overdriveTriple + ", bossMid=" + bossAndMidLeakValues + ", escapedEvents=" + escapedEvents;
+            return passed;
         }
 
         private static bool ValidatePass1DGradeUpgradeRules(DefenseGameController controller)
@@ -1931,7 +2044,7 @@ namespace DefenseGame.Editor
                                        tooltipTitle.rectTransform.sizeDelta.y >= 38f && tooltipBody.rectTransform.sizeDelta.y >= 126f;
                 bool initialNumericEmphasis = luckLabel.supportRichText &&
                                               luckLabel.text.Contains("<color=#FFD84A>0</color>") &&
-                                              luckLabel.text.Contains("<color=#FFD84A>50</color> GOLD");
+                                              luckLabel.text.Contains("<color=#FFD84A>100</color> GOLD");
 
                 infoButton.onClick.Invoke();
                 bool tooltipOpens = tooltip.gameObject.activeSelf;
@@ -1961,7 +2074,7 @@ namespace DefenseGame.Editor
                 RuntimeAudioUtility.ResetPlayRequestCountsForSmoke();
                 int luckGoldBefore = controller.Gold;
                 luckButton.onClick.Invoke();
-                bool luckSuccessAudio = controller.SummonGradeLuckLevel == 1 && controller.Gold == luckGoldBefore - 50 &&
+                bool luckSuccessAudio = controller.SummonGradeLuckLevel == 1 && controller.Gold == luckGoldBefore - 100 &&
                                         RuntimeAudioUtility.ButtonPlayRequestCount == 1 && RuntimeAudioUtility.DiceAppearPlayRequestCount == 0;
                 bool updatedNumericEmphasis = luckLabel.text.Contains("<color=#FFD84A>1</color>") &&
                                               luckLabel.text.Contains("<color=#FFD84A>100</color> GOLD");
@@ -3656,6 +3769,8 @@ namespace DefenseGame.Editor
             public string boardCapacityPacingSummary;
             public bool gradeUpgradeBarUiValid;
             public bool pass2MSummonGradeLuckValid;
+            public bool pass11MonsterExitAndLeakValid;
+            public string pass11MonsterExitAndLeakSummary;
             public bool pass2NCombatEconomyUiValid;
             public bool pass2OCombatHudLayoutValid;
             public bool pass2PCombatHudFeedbackPolishValid;

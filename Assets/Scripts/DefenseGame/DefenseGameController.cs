@@ -153,7 +153,7 @@ namespace DefenseGame
         private const int DefaultBadLuckReadyThreshold = 20;
         private const int DefaultLuckySummonEarliestRound = 11;
         private const int GradeUpgradeMaxLevel = 10;
-        private const int SummonGradeLuckMaxLevel = 7;
+        private const int SummonGradeLuckMaxLevel = 10;
         private readonly Dictionary<CharacterGrade, int> gradeUpgradeLevels = new Dictionary<CharacterGrade, int>();
         private int summonGradeLuckLevel;
 
@@ -230,8 +230,6 @@ namespace DefenseGame
         [SerializeField] [Range(1f, 3f)] private float luckySummonSafeCostMultiplier = 1.5f;
         [SerializeField] [Range(0f, 1f)] private float luckySummonJackpotEpicChance = 0.25f;
         [SerializeField] [Range(0f, 1f)] private float luckySummonJackpotRefundRate = 0.50f;
-        [SerializeField] private int earlyLeakGraceRoundLimit = 4;
-        [SerializeField] private int earlyRoundLeakDamageCap = 3;
         [SerializeField] private bool enableFirstBossSummonRushBonus = true;
         [SerializeField] private int firstBossSummonRushRound = 10;
         [SerializeField] private int firstBossSummonRushMinSummons = 14;
@@ -337,7 +335,6 @@ namespace DefenseGame
         private int baseMaxLife;
         private int currentSummonBaseCost;
         private int roundGoldBonus;
-        private int currentRoundLeakDamageTaken;
         // Run telemetry only. These values do not participate in leak resolution or combat balance.
         private int runTotalLeakDamage;
         private readonly Dictionary<int, int> runLeakDamageByRound = new Dictionary<int, int>();
@@ -627,7 +624,13 @@ namespace DefenseGame
         public static int ResolveSummonGradeLuckCost(int currentLevel)
         {
             int level = Mathf.Clamp(currentLevel, 0, SummonGradeLuckMaxLevel);
-            return level >= SummonGradeLuckMaxLevel ? 0 : 50 << level;
+            if (level >= SummonGradeLuckMaxLevel)
+            {
+                return 0;
+            }
+
+            int nextLevel = level + 1;
+            return nextLevel <= 3 ? 100 : nextLevel <= 7 ? 200 : 300;
         }
 
         public int GetSummonGradeLuckCost()
@@ -4043,52 +4046,21 @@ namespace DefenseGame
                 return 0;
             }
 
-            int rawDamage;
             if (monster == null || monster.Definition == null)
             {
-                rawDamage = 1;
-                return ApplyEarlyLeakGrace(rawDamage);
+                return 1;
             }
 
             switch (monster.Definition.threatLevel)
             {
                 case MonsterThreatLevel.Boss:
-                    rawDamage = Mathf.Max(5, Mathf.CeilToInt(MaxLife * 0.30f));
-                    break;
+                    return Mathf.Max(5, Mathf.CeilToInt(MaxLife * 0.30f));
                 case MonsterThreatLevel.MidBoss:
-                    rawDamage = 2;
-                    break;
+                    return 2;
                 default:
-                    rawDamage = 1;
-                    break;
+                    // Each regular breach is one independent HP loss. Do not cap it per round.
+                    return 1;
             }
-
-            return ApplyEarlyLeakGrace(rawDamage);
-        }
-
-        private int ApplyEarlyLeakGrace(int rawDamage)
-        {
-            int damage = Mathf.Max(0, rawDamage);
-            if (damage <= 0)
-            {
-                return 0;
-            }
-
-            if (CurrentRound <= Mathf.Max(0, earlyLeakGraceRoundLimit) && earlyRoundLeakDamageCap > 0)
-            {
-                int remaining = Mathf.Max(0, earlyRoundLeakDamageCap - currentRoundLeakDamageTaken);
-                damage = Mathf.Min(damage, remaining);
-            }
-
-            int modeLeakCap = ActiveCombatModeProfile != null ? Mathf.Max(0, ActiveCombatModeProfile.roundLeakDamageCap) : 0;
-            if (modeLeakCap > 0)
-            {
-                int remaining = Mathf.Max(0, modeLeakCap - currentRoundLeakDamageTaken);
-                damage = Mathf.Min(damage, remaining);
-            }
-
-            currentRoundLeakDamageTaken += damage;
-            return damage;
         }
 
         private void TriggerLeakDefeat()
@@ -4329,7 +4301,6 @@ namespace DefenseGame
                 recentKillTimes.Clear();
                 currentRoundKilledMonsters = 0;
                 currentRoundResolvedMonsters = 0;
-                currentRoundLeakDamageTaken = 0;
                 ResetRoundTileContribution();
                 BeginEarlyRoundTelemetry(round);
                 TryApplyFirstBossSummonRushBonus(round, bossRound);
@@ -4904,7 +4875,6 @@ namespace DefenseGame
             earlyFallbackRewardGranted = false;
             earlyBossPrepRewardGranted = false;
             earlyRoundTelemetry.Clear();
-            currentRoundLeakDamageTaken = 0;
             runTotalLeakDamage = 0;
             runLeakDamageByRound.Clear();
             runEscapedMonsterCountByRound.Clear();

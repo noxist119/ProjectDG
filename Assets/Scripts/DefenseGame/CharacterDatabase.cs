@@ -36,7 +36,7 @@ namespace DefenseGame
         [SerializeField] private List<SummonGradeRateMilestone> summonGradeRateMilestones = new List<SummonGradeRateMilestone>
         {
             new SummonGradeRateMilestone(1, 0.960f, 0.040f, 0.000f, 0.000f, 0.000f),
-            new SummonGradeRateMilestone(3, 0.940f, 0.060f, 0.000f, 0.000f, 0.000f),
+            new SummonGradeRateMilestone(3, 0.960f, 0.040f, 0.000f, 0.000f, 0.000f),
             new SummonGradeRateMilestone(5, 0.911f, 0.085f, 0.004f, 0.000f, 0.000f),
             new SummonGradeRateMilestone(7, 0.883f, 0.105f, 0.012f, 0.000f, 0.000f),
             new SummonGradeRateMilestone(9, 0.845f, 0.130f, 0.023333f, 0.001667f, 0.000f),
@@ -459,14 +459,21 @@ namespace DefenseGame
         private static SummonGradeRates ApplySummonGradeLuck(SummonGradeRates rates, int summonGradeLuckLevel)
         {
             int level = Mathf.Clamp(summonGradeLuckLevel, 0, DefenseGameController.SummonGradeLuckMaximumLevel);
-            float eligibleEpicPlus = rates.epic + rates.legendary + rates.mythic;
-            if (level <= 0 || eligibleEpicPlus <= 0.0001f || rates.normal <= 0f)
+            if (level <= 0 || rates.normal <= 0f)
             {
                 return rates;
             }
 
             float bonus = Mathf.Min(level * 0.01f, rates.normal);
             rates.normal -= bonus;
+            float eligibleEpicPlus = rates.epic + rates.legendary + rates.mythic;
+            if (eligibleEpicPlus <= 0.0001f)
+            {
+                // Before the authored Epic+ milestones begin, Luck converts Normal directly into Epic.
+                rates.epic += bonus;
+                return rates;
+            }
+
             rates.epic += bonus * (rates.epic / eligibleEpicPlus);
             rates.legendary += bonus * (rates.legendary / eligibleEpicPlus);
             rates.mythic += bonus * (rates.mythic / eligibleEpicPlus);

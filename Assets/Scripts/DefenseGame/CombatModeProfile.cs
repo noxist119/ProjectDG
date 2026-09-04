@@ -50,7 +50,6 @@ namespace DefenseGame
         [Header("Boss Stats")]
         [Min(0.1f)] public float bossHealthMultiplier = 1f;
         [Min(0.1f)] public float bossAttackMultiplier = 1f;
-        [Min(0)] public int roundLeakDamageCap;
 
         [Header("Augment Pacing")]
         [Min(1)] public int firstAugmentChoiceRound = 5;
@@ -189,7 +188,6 @@ namespace DefenseGame
                 regularAttackMultiplier = 0.70f,
                 bossHealthMultiplier = 0.72f,
                 bossAttackMultiplier = 0.70f,
-                roundLeakDamageCap = 1,
                 firstAugmentChoiceRound = 6,
                 augmentChoiceInterval = 4,
                 rareHeroAugmentUnlockRound = 5,

@@ -142,6 +142,10 @@ namespace DefenseGame
 
 		private Vector3 laneGoalPosition;
 
+		private Vector3 laneTravelDirection;
+
+		private bool escapeHandled;
+
 		private FloatingCombatUI floatingUi;
 
 		private UnitAnimationDriver animationDriver;
@@ -592,6 +596,8 @@ namespace DefenseGame
 			}
 			goal = goalPoint;
 			laneGoalPosition = ((goal != null) ? new Vector3(base.transform.position.x, goal.position.y, goal.position.z) : base.transform.position);
+			laneTravelDirection = ResolveLaneTravelDirection(base.transform.position, laneGoalPosition);
+			escapeHandled = false;
 			FaceTarget(laneGoalPosition);
 			currentHealth = MaxHealth;
 			currentMana = 0f;
@@ -996,21 +1002,34 @@ namespace DefenseGame
 
 		private void MoveTowardsGoal()
 		{
-			if (!(goal == null))
+			if (goal == null || escapeHandled)
 			{
-				Vector3 moveTarget = BuildMoveTarget();
-				FaceTarget(moveTarget);
-				float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus) * (1f - slowRatio) * (1f - fateStatCrushRatio) * globalMoveSpeedMultiplier;
-				base.transform.position = Vector3.MoveTowards(base.transform.position, moveTarget, moveSpeed * Time.deltaTime);
-				animationDriver?.PlayMoving(isMoving: true);
-				if (Vector3.Distance(base.transform.position, laneGoalPosition) <= 0.05f)
-				{
-					MonsterUnit.OnMonsterEscaped?.Invoke(this);
-					UnityEngine.Object.Destroy(base.gameObject);
-				}
+				return;
+			}
+
+			Vector3 moveTarget = BuildMoveTarget();
+			FaceTarget(moveTarget);
+			float moveSpeed = definition.stats.moveSpeed * (1f + moveSpeedBonus) * (1f - slowRatio) * (1f - fateStatCrushRatio) * globalMoveSpeedMultiplier;
+			base.transform.position = Vector3.MoveTowards(base.transform.position, moveTarget, moveSpeed * Time.deltaTime);
+			animationDriver?.PlayMoving(isMoving: true);
+
+			if (HasReachedLaneGoalLine(base.transform.position, laneGoalPosition, laneTravelDirection))
+			{
+				HandleEscapeOnce();
 			}
 		}
 
+		private void HandleEscapeOnce()
+		{
+			if (escapeHandled)
+			{
+				return;
+			}
+
+			escapeHandled = true;
+			MonsterUnit.OnMonsterEscaped?.Invoke(this);
+			UnityEngine.Object.Destroy(base.gameObject);
+		}
 		private void MoveTowardsDefender(DefenderUnit target)
 		{
 			if (!(target == null))
@@ -1679,6 +1698,39 @@ namespace DefenseGame
 			return target;
 		}
 
+		public static Vector3 ResolveLateralSeparationOffset(Vector3 separation, Vector3 travelDirection, float strength)
+		{
+			travelDirection.y = 0f;
+			if (strength <= 0f || travelDirection.sqrMagnitude <= 0.0001f)
+			{
+				return Vector3.zero;
+			}
+
+			Vector3 lateral = Vector3.ProjectOnPlane(separation, travelDirection.normalized);
+			lateral.y = 0f;
+			return lateral.sqrMagnitude > 0.0001f ? lateral.normalized * strength : Vector3.zero;
+		}
+
+		public static bool HasReachedLaneGoalLine(Vector3 position, Vector3 goalPosition, Vector3 travelDirection)
+		{
+			travelDirection.y = 0f;
+			if (travelDirection.sqrMagnitude <= 0.0001f)
+			{
+				return Vector3.Distance(position, goalPosition) <= 0.05f;
+			}
+
+			Vector3 remaining = goalPosition - position;
+			remaining.y = 0f;
+			return Vector3.Dot(remaining, travelDirection.normalized) <= 0.05f;
+		}
+
+		private static Vector3 ResolveLaneTravelDirection(Vector3 startPosition, Vector3 goalPosition)
+		{
+			Vector3 direction = goalPosition - startPosition;
+			direction.y = 0f;
+			return direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward;
+		}
+
 		private void RefreshSeparationOffset()
 		{
 			Vector3 separation = Vector3.zero;
@@ -1700,7 +1752,7 @@ namespace DefenseGame
 					}
 				}
 			}
-			cachedSeparationOffset = ((separation.sqrMagnitude > 0.0001f) ? (separation.normalized * separationStrength) : Vector3.zero);
+			cachedSeparationOffset = ResolveLateralSeparationOffset(separation, laneTravelDirection, separationStrength);
 			nextSeparationRefreshTime = CombatRuntimeQuery.ScheduleNextRefresh(this, separationRefreshInterval);
 		}
 
