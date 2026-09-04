@@ -24,6 +24,7 @@ namespace DefenseGame.Editor
         private const string Pass13OutputFileName = "DefenseGame_Pass13_R1_R20_Overdrive.json";
         private const string Pass14AreaOutputFileName = "DefenseGame_Pass14_AreaStability_R1_R10.json";
         private const string Pass14LuckOutputFileName = "DefenseGame_Pass14_LuckInvestment_R1_R10.json";
+        private const string Pass15PlayerLikeOutputPrefix = "DefenseGame_Pass15_PlayerLike";
         private const float ValidationTimeScale = 8f;
         private const double ActionDelaySeconds = 0.14d;
         private const double StartupTimeoutSeconds = 15d;
@@ -58,9 +59,14 @@ namespace DefenseGame.Editor
         private static readonly HashSet<int> RecordedRoundStarts = new HashSet<int>();
         private static bool pass9ChoiceFlowValidation;
         private enum Pass14Strategy { None, AreaStability, LuckInvestment }
+        private enum PlayerLikeStrategy { None, StableBoard, ContractFirst, HighGradeInvestment }
 
         private static bool pass13IntegrationValidation;
         private static Pass14Strategy pass14Strategy;
+        private static PlayerLikeStrategy playerLikeStrategy;
+        private static int playerLikeSeedLabel;
+        private static bool playerLikeSeedInitialized;
+        private static MissionDecision pendingMissionDecision;
 
         private static string OutputPath => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, outputFileName));
 
@@ -137,6 +143,39 @@ namespace DefenseGame.Editor
             Begin(false, false, true);
         }
 
+        [MenuItem("DefenseGame/Validation/Pass 15 Player-Like / Stable / Seed 101")]
+        public static void RunPass15PlayerLikeStableSeed101() { BeginPlayerLike(PlayerLikeStrategy.StableBoard, 101); }
+
+        [MenuItem("DefenseGame/Validation/Pass 15 Player-Like / Stable / Seed 102")]
+        public static void RunPass15PlayerLikeStableSeed102() { BeginPlayerLike(PlayerLikeStrategy.StableBoard, 102); }
+
+        [MenuItem("DefenseGame/Validation/Pass 15 Player-Like / Contract / Seed 201")]
+        public static void RunPass15PlayerLikeContractSeed201() { BeginPlayerLike(PlayerLikeStrategy.ContractFirst, 201); }
+
+        [MenuItem("DefenseGame/Validation/Pass 15 Player-Like / Contract / Seed 202")]
+        public static void RunPass15PlayerLikeContractSeed202() { BeginPlayerLike(PlayerLikeStrategy.ContractFirst, 202); }
+
+        [MenuItem("DefenseGame/Validation/Pass 15 Player-Like / High Grade / Seed 301")]
+        public static void RunPass15PlayerLikeHighGradeSeed301() { BeginPlayerLike(PlayerLikeStrategy.HighGradeInvestment, 301); }
+
+        [MenuItem("DefenseGame/Validation/Pass 15 Player-Like / High Grade / Seed 302")]
+        public static void RunPass15PlayerLikeHighGradeSeed302() { BeginPlayerLike(PlayerLikeStrategy.HighGradeInvestment, 302); }
+
+        private static void BeginPlayerLike(PlayerLikeStrategy strategy, int seedLabel)
+        {
+            pass5Validation = false;
+            pass6EconomyValidation = false;
+            pass13IntegrationValidation = false;
+            playerLikeStrategy = PlayerLikeStrategy.None;
+            playerLikeSeedLabel = 0;
+            playerLikeSeedInitialized = false;
+            pendingMissionDecision = null;
+            pass14Strategy = Pass14Strategy.None;
+            playerLikeStrategy = strategy;
+            playerLikeSeedLabel = seedLabel;
+            progressionAuditMaxRound = 11;
+            Begin(false, false, true);
+        }
         [MenuItem("DefenseGame/Validation/Pass 13 R1-R20 Full Run Integration Validation")]
         public static void RunPass13FullRunIntegrationValidation()
         {
@@ -185,7 +224,9 @@ namespace DefenseGame.Editor
             progressionAudit = audit;
             stopAfterRunShopRecovery = stopAfterRecovery;
             skipRunShopPurchase = skipPurchase;
-            outputFileName = stopAfterRecovery
+            outputFileName = playerLikeStrategy != PlayerLikeStrategy.None
+                ? Pass15PlayerLikeOutputPrefix + "_" + playerLikeStrategy + "_Seed" + playerLikeSeedLabel + ".json"
+                : stopAfterRecovery
                 ? (skipPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
                 : (pass14Strategy != Pass14Strategy.None ? (pass14Strategy == Pass14Strategy.AreaStability ? Pass14AreaOutputFileName : Pass14LuckOutputFileName) : (pass13IntegrationValidation ? Pass13OutputFileName : (pass6EconomyValidation ? Pass6OutputFileName : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName)))));
             runtimeErrors = 0;
@@ -202,13 +243,15 @@ namespace DefenseGame.Editor
                 status = "running",
                 validationMode = "EventSystem UI clicks only; no StartRound/debug round jump/reward fixture",
                 runShopScenario = stopAfterRecovery ? (skipPurchase ? "later" : "purchase_then_close") : "persistent",
-                strategyName = pass14Strategy.ToString(),
+                strategyName = playerLikeStrategy != PlayerLikeStrategy.None ? playerLikeStrategy.ToString() : pass14Strategy.ToString(),
+                requestedSeedLabel = playerLikeSeedLabel,
                 validationTimeScale = ValidationTimeScale,
                 startedUtc = DateTime.UtcNow.ToString("O"),
                 roundSnapshots = new List<RoundSnapshot>(),
                 roundAudits = new List<RoundAuditEntry>(),
                 runtimeErrorMessages = new List<string>(),
-                actionLog = new List<string>()
+                actionLog = new List<string>(),
+                missionDecisions = new List<MissionDecision>()
             };
 
             Directory.CreateDirectory(Path.GetDirectoryName(OutputPath) ?? string.Empty);
@@ -282,7 +325,18 @@ namespace DefenseGame.Editor
                 }
             }
 
+            if (playerLikeStrategy != PlayerLikeStrategy.None && !playerLikeSeedInitialized)
+            {
+                controller.SetRunContentSeedOverride(playerLikeSeedLabel);
+                controller.ResetRunForRetry();
+                playerLikeSeedInitialized = true;
+                report.actualContentSeed = controller.ActiveRunContentSeed;
+                Log("configured_test_seed_" + report.actualContentSeed);
+                return;
+            }
+
             ObserveRuntimeState(now);
+            ObservePlayerLikeMissionSettlement();
             if (ShouldFinishForOutcome(now))
             {
                 return;
@@ -488,6 +542,16 @@ namespace DefenseGame.Editor
         }
         private static bool ShouldFinishForOutcome(double now)
         {
+            if (playerLikeStrategy != PlayerLikeStrategy.None && controller.CurrentRound >= 11 && controller.IsRoundRunning)
+            {
+                report.r11StartedAfterR10 = report.r10ResultObserved && report.r10ContinueClicked;
+                report.finalRound = controller.CurrentRound;
+                report.finalLife = controller.Life;
+                report.finalGold = controller.Gold;
+                Finish("r11_started", "Reached R11 through player-like visible UI flow.");
+                return true;
+            }
+
             if (progressionAudit && controller.CurrentRound == progressionAuditMaxRound && !controller.IsRoundRunning)
             {
                 RoundAuditEntry finalAudit = report.roundAudits.FirstOrDefault(entry => entry != null && entry.round == progressionAuditMaxRound);
@@ -573,7 +637,7 @@ namespace DefenseGame.Editor
                 return;
             }
 
-            if ((pass13IntegrationValidation || pass14Strategy != Pass14Strategy.None) && controller.CurrentRound <= 0 && !report.initialMissionAutoOpenResolved)
+            if ((pass13IntegrationValidation || pass14Strategy != Pass14Strategy.None || playerLikeStrategy != PlayerLikeStrategy.None) && controller.CurrentRound <= 0 && !report.initialMissionAutoOpenResolved)
             {
                 TryResolvePass13InitialMissionAutoOpen();
                 return;
@@ -604,6 +668,11 @@ namespace DefenseGame.Editor
             if (TryResolveChoice("LuckySummonChoiceOverlay", "LuckySummonChoice")) return;
             if (TryResolveChoice("Fate", "Fate")) return;
 
+            if (playerLikeStrategy != PlayerLikeStrategy.None && PreparePlayerLikeUsingOnlyUiClicks())
+            {
+                return;
+            }
+
             if (pass14Strategy != Pass14Strategy.None && PreparePass14UsingOnlyUiClicks())
             {
                 return;
@@ -633,6 +702,56 @@ namespace DefenseGame.Editor
             }
         }
 
+        private static bool PreparePlayerLikeUsingOnlyUiClicks()
+        {
+            if (controller == null)
+            {
+                return false;
+            }
+
+            int targetBoard = playerLikeStrategy == PlayerLikeStrategy.HighGradeInvestment ? 6 : 8;
+            if (playerLikeStrategy == PlayerLikeStrategy.ContractFirst && controller.CurrentRound >= 5)
+            {
+                targetBoard = 7;
+            }
+
+            Button summon = FindButton("SummonButton");
+            if (controller.BoardUnitCount < targetBoard && controller.EmptySlotCount > 0 && Click(summon))
+            {
+                report.actualUiSummonSpendCount++;
+                Log("player_like_summon_" + playerLikeStrategy + "_r" + controller.CurrentRound);
+                return true;
+            }
+
+            if (playerLikeStrategy != PlayerLikeStrategy.HighGradeInvestment &&
+                controller.CountUnitsOfGrade(CharacterGrade.Normal) >= 3 &&
+                TryMergeGradeThroughVisibleUi(CharacterGrade.Normal))
+            {
+                return true;
+            }
+
+            if (playerLikeStrategy == PlayerLikeStrategy.HighGradeInvestment &&
+                controller.BoardUnitCount >= 6 &&
+                controller.SummonGradeLuckLevel < 3)
+            {
+                int previousLevel = controller.SummonGradeLuckLevel;
+                if (Click(FindButton("SummonGradeLuckUpgrade")) && controller.SummonGradeLuckLevel > previousLevel)
+                {
+                    report.actualUiLuckUpgradeSpendCount++;
+                    Log("player_like_luck_upgrade_lv" + controller.SummonGradeLuckLevel + "_r" + controller.CurrentRound);
+                    return true;
+                }
+            }
+
+            if (playerLikeStrategy != PlayerLikeStrategy.HighGradeInvestment &&
+                controller.BoardUnitCount >= targetBoard &&
+                TryUpgradeNormalGradeThroughVisibleUi())
+            {
+                return true;
+            }
+
+            return false;
+        }
         private static bool PreparePass14UsingOnlyUiClicks()
         {
             if (controller == null)
@@ -790,6 +909,14 @@ namespace DefenseGame.Editor
 
         private static bool TryResolvePass13InitialMissionAutoOpen()
         {
+            if (playerLikeStrategy != PlayerLikeStrategy.None)
+            {
+                GameObject playerLikeOverlay = FindObject("TacticalMissionOverlay");
+                return playerLikeOverlay == null || !playerLikeOverlay.activeInHierarchy
+                    ? true
+                    : TryResolvePlayerLikeMission(playerLikeOverlay);
+            }
+
             SimpleGameHUD hud = UnityEngine.Object.FindObjectOfType<SimpleGameHUD>();
             TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
             if (hud == null || missionSystem == null || !hud.IsOpeningTutorialCompleteForCurrentRun)
@@ -822,6 +949,11 @@ namespace DefenseGame.Editor
                 return false;
             }
 
+            if (playerLikeStrategy != PlayerLikeStrategy.None)
+            {
+                return TryResolvePlayerLikeMission(overlay);
+            }
+
             if ((pass5Validation || (pass9ChoiceFlowValidation && report.r4RunShopSeen)) && !report.tacticalMissionSelectedByUi)
             {
                 Button option = FindButton("MissionOption_0");
@@ -849,6 +981,130 @@ namespace DefenseGame.Editor
             return true;
         }
 
+        private static bool TryResolvePlayerLikeMission(GameObject overlay)
+        {
+            TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
+            if (missionSystem == null || overlay == null)
+            {
+                return false;
+            }
+
+            List<string> offers = new List<string>();
+            for (int i = 0; i < missionSystem.MissionOfferCount; i++)
+            {
+                Button option = FindButton("MissionOption_" + i);
+                string visibleText = option != null
+                    ? string.Join(" ", option.GetComponentsInChildren<Text>(true).Where(text => text != null).Select(text => text.text).ToArray())
+                    : string.Empty;
+                offers.Add(missionSystem.GetMissionOfferAutomationTag(i) + ":" + visibleText);
+            }
+
+            int selectedIndex = ChoosePlayerLikeMissionIndex(missionSystem);
+            if (selectedIndex < 0)
+            {
+                if (Click(FindButton("MissionCloseButton")))
+                {
+                    report.missionDecisions.Add(new MissionDecision
+                    {
+                        round = controller.CurrentRound,
+                        offers = offers,
+                        selected = "Later",
+                        policyTag = "no_suitable_offer",
+                        result = "deferred"
+                    });
+                    RecordChoiceFlow("TacticalMission:Later");
+                    Log("player_like_mission_later_r" + controller.CurrentRound);
+                }
+                return true;
+            }
+
+            Button selected = FindButton("MissionOption_" + selectedIndex);
+            if (Click(selected))
+            {
+                pendingMissionDecision = new MissionDecision
+                {
+                    round = controller.CurrentRound,
+                    offers = offers,
+                    selected = selectedIndex < offers.Count ? offers[selectedIndex] : selected.name,
+                    policyTag = GetPlayerLikeMissionPolicyTag(missionSystem.GetMissionOfferAutomationTag(selectedIndex)),
+                    completedBefore = missionSystem.CompletedMissionCount,
+                    goldBefore = controller.Gold,
+                    boardBefore = controller.BoardUnitCount,
+                    result = "active"
+                };
+                report.missionDecisions.Add(pendingMissionDecision);
+                report.tacticalMissionSelectedByUi = true;
+                RecordChoiceFlow("TacticalMission:Select:" + selectedIndex);
+                Log("player_like_mission_select_" + selectedIndex + "_r" + controller.CurrentRound);
+            }
+
+            return true;
+        }
+
+        private static int ChoosePlayerLikeMissionIndex(TacticalMissionSystem missionSystem)
+        {
+            if (missionSystem == null || missionSystem.MissionOfferCount <= 0)
+            {
+                return -1;
+            }
+
+            string[] preference = playerLikeStrategy == PlayerLikeStrategy.ContractFirst
+                ? new[] { "growth", "balanced", "safety", "economy" }
+                : playerLikeStrategy == PlayerLikeStrategy.HighGradeInvestment
+                    ? new[] { "economy", "growth", "balanced", "safety" }
+                    : new[] { "safety", "growth", "balanced", "economy" };
+
+            foreach (string tag in preference)
+            {
+                for (int i = 0; i < missionSystem.MissionOfferCount; i++)
+                {
+                    if (string.Equals(missionSystem.GetMissionOfferAutomationTag(i), tag, StringComparison.Ordinal))
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return -1;
+        }
+
+        private static string GetPlayerLikeMissionPolicyTag(string offerTag)
+        {
+            if (playerLikeStrategy == PlayerLikeStrategy.ContractFirst)
+            {
+                return "contract_priority_" + offerTag;
+            }
+
+            if (playerLikeStrategy == PlayerLikeStrategy.HighGradeInvestment)
+            {
+                return "high_grade_safe_" + offerTag;
+            }
+
+            return "stable_board_" + offerTag;
+        }
+
+        private static void ObservePlayerLikeMissionSettlement()
+        {
+            if (playerLikeStrategy == PlayerLikeStrategy.None || pendingMissionDecision == null || controller == null)
+            {
+                return;
+            }
+
+            TacticalMissionSystem missionSystem = UnityEngine.Object.FindObjectOfType<TacticalMissionSystem>();
+            if (missionSystem == null || missionSystem.HasActiveMissionSelection)
+            {
+                return;
+            }
+
+            pendingMissionDecision.result = missionSystem.CompletedMissionCount > pendingMissionDecision.completedBefore
+                ? "completed"
+                : "failed";
+            pendingMissionDecision.goldDelta = controller.Gold - pendingMissionDecision.goldBefore;
+            pendingMissionDecision.boardDelta = controller.BoardUnitCount - pendingMissionDecision.boardBefore;
+            pendingMissionDecision.observedReward = "Gold Δ" + pendingMissionDecision.goldDelta + " / Board Δ" + pendingMissionDecision.boardDelta;
+            Log("player_like_mission_" + pendingMissionDecision.result + "_r" + controller.CurrentRound + "_" + pendingMissionDecision.observedReward);
+            pendingMissionDecision = null;
+        }
         private static bool TryResolveRunShop()
         {
             GameObject overlay = FindObject("RunShopOverlay");
@@ -952,6 +1208,10 @@ namespace DefenseGame.Editor
 
             int round = controller.CurrentRound;
             string displayName = monster.Definition != null ? monster.Definition.displayName : monster.gameObject.name;
+            if (string.IsNullOrWhiteSpace(displayName) && controller != null)
+            {
+                displayName = controller.GetBossDisplayNameForRound(round);
+            }
             if (round == 10)
             {
                 report.r10BossSpawned = true;
@@ -973,7 +1233,7 @@ namespace DefenseGame.Editor
                 audit.bossMaxHealth = monster.MaxHealth;
                 audit.bossHealthRemaining01 = monster.MaxHealth > 0f ? Mathf.Clamp01(monster.CurrentHealth / monster.MaxHealth) : -1f;
                 RuntimeBgmController bgm = UnityEngine.Object.FindObjectOfType<RuntimeBgmController>();
-                AudioSource bgmSource = bgm != null ? bgm.GetComponent<AudioSource>() : null;
+                AudioSource bgmSource = bgm != null ? bgm.GetComponentInChildren<AudioSource>(true) : null;
                 audit.bgmClipAtBossSpawn = bgmSource != null && bgmSource.clip != null ? bgmSource.clip.name : string.Empty;
             }
         }
@@ -1019,7 +1279,7 @@ namespace DefenseGame.Editor
             }
 
             RuntimeBgmController bgm = UnityEngine.Object.FindObjectOfType<RuntimeBgmController>();
-            AudioSource bgmSource = bgm != null ? bgm.GetComponent<AudioSource>() : null;
+            AudioSource bgmSource = bgm != null ? bgm.GetComponentInChildren<AudioSource>(true) : null;
 
             return new RoundSnapshot
             {
@@ -1162,11 +1422,15 @@ namespace DefenseGame.Editor
             report.runtimeErrors = runtimeErrors;
             report.runtimeErrorMessages = new List<string>(runtimeErrorMessages);
             report.finishedUtc = DateTime.UtcNow.ToString("O");
-            bool requiresInitialMissionAutoOpen = pass13IntegrationValidation || pass14Strategy != Pass14Strategy.None;
+            bool requiresInitialMissionAutoOpen = pass13IntegrationValidation || pass14Strategy != Pass14Strategy.None || playerLikeStrategy != PlayerLikeStrategy.None;
             report.passed = ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && (!requiresInitialMissionAutoOpen || (report.initialMissionAutoOpenObserved && report.initialMissionAutoOpenResolved)) && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && (!pass9ChoiceFlowValidation || report.tacticalMissionSelectedByUi) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
             File.WriteAllText(OutputPath, JsonUtility.ToJson(report, true));
             pass13IntegrationValidation = false;
             pass14Strategy = Pass14Strategy.None;
+            playerLikeStrategy = PlayerLikeStrategy.None;
+            playerLikeSeedLabel = 0;
+            playerLikeSeedInitialized = false;
+            pendingMissionDecision = null;
 
             running = false;
             EditorApplication.update -= Tick;
@@ -1196,6 +1460,8 @@ namespace DefenseGame.Editor
             public string validationMode;
             public string runShopScenario;
             public string strategyName;
+            public int requestedSeedLabel;
+            public int actualContentSeed;
             public float validationTimeScale;
             public string startedUtc;
             public string finishedUtc;
@@ -1247,6 +1513,22 @@ namespace DefenseGame.Editor
             public List<RoundAuditEntry> roundAudits;
             public List<string> runtimeErrorMessages;
             public List<string> actionLog;
+            public List<MissionDecision> missionDecisions;
+        }
+        [Serializable]
+        private sealed class MissionDecision
+        {
+            public int round;
+            public List<string> offers;
+            public string selected;
+            public string policyTag;
+            public int completedBefore;
+            public int goldBefore;
+            public int boardBefore;
+            public string result;
+            public int goldDelta;
+            public int boardDelta;
+            public string observedReward;
         }
         [Serializable]
         private sealed class RoundAuditEntry
