@@ -602,6 +602,12 @@ namespace DefenseGame.Editor
             {
                 notes.Add("Pass 9 contract feasibility or synergy clarity validation failed. " + pass9ContractValidityAndSynergySummary);
             }
+
+            bool pass10RoundBasedMainBgmValid = ValidatePass10RoundBasedMainBgm(out string pass10RoundBasedMainBgmSummary);
+            if (!pass10RoundBasedMainBgmValid)
+            {
+                notes.Add("Pass 10 round-based main BGM rotation validation failed. " + pass10RoundBasedMainBgmSummary);
+            }
             bool pass2XUiFlowValid = ValidatePass2XUiFlow(controller, out string pass2XUiFlowSummary);
             if (!pass2XUiFlowValid)
             {
@@ -1084,7 +1090,7 @@ namespace DefenseGame.Editor
                 }
             }
 
-            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && pass2WMissionToastValid && pass2UOpeningGuidanceValid && pass2XUiFlowValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && runtimeErrors == 0;
+            bool passed = safeAreaExists && safeAreaAnchorsValid && portraitProfilesValid && hpTen && hpTextTen && runResetStateValid && runSeedRepeatValid && runContentChannelIsolationValid && simultaneousDeathPolicyValid && fateEntryLayoutValid && fateEntryPastelColorValid && fateEntryIdleAtFullHealth && summonHudReadable && initialPreparationFlowValid && initialPreparationBattleStartUiPathValid && runtimeStageLifecycleValid && inventoryStageHidden && dailyFateCupUiValid && bossForecastUiValid && bossForecastTimingValid && firstBossPreparationRewardRulesValid && outgameShopValid && resultRewardIconsValid && rankingPageValid && yahtzeeModeUiValid && yahtzeeMultiplierLogicValid && yahtzeeTicketMilestoneLogicValid && yahtzeeTicketRunAccumulationValid && yahtzeeTicketNewRunResetValid && playerDirectSummonIsolationValid && tacticalMissionRiskRewardValid && tacticalMissionChoiceValid && pass2WMissionToastValid && pass2UOpeningGuidanceValid && pass2XUiFlowValid && roundDiamondRewardValid && bannerBurstQueueValid && earlyMiniShopChoicesValid && choiceScheduleValid && recipePacingTelemetryValid && ultimateRecipeUxValid && ultimateMergeInheritanceIsolationValid && diceAutoCycleValid && thunderControlDamageConversionValid && feverEngineApexDpsValid && hero32SignatureValid && gargoyleLoopDurationValid && longCombatAccelerationValid && retryTimeScaleResetValid && choiceReadabilityValid && defaultVfxConfigured && animationMaterialEventsValid && screenSpaceCombatHudValid && dragTransactionSafetyValid && dragCombatSuspensionValid && boardCapacityPacingValid && pass1DGradeRulesValid && pass1DPressureValid && gradeUpgradeBarUiValid && pass2MSummonGradeLuckValid && pass2NCombatEconomyUiValid && pass2OCombatHudLayoutValid && pass2PCombatHudFeedbackPolishValid && pass2PPostRoundNoActionValid && pass2PRunLifecycleValid && pass2PMenuPauseLifecycleValid && topFullBleedBackdropValid && pass1EMilestoneValid && pass2BPreparationSkipValid && pass2QBadLuckPointsValid && pass10RoundBasedMainBgmValid && runtimeErrors == 0;
             for (int i = 0; i < prefabResults.Length; i++)
             {
                 passed &= prefabResults[i].passed;
@@ -1135,6 +1141,8 @@ namespace DefenseGame.Editor
                 pass2XUiFlowSummary = pass2XUiFlowSummary,
                 pass2QBadLuckPointsValid = pass2QBadLuckPointsValid,
                 pass2QBadLuckPointsSummary = badLuckPointsSummary,
+                pass10RoundBasedMainBgmValid = pass10RoundBasedMainBgmValid,
+                pass10RoundBasedMainBgmSummary = pass10RoundBasedMainBgmSummary,
                 roundDiamondRewardValid = roundDiamondRewardValid,
                 bannerBurstQueueValid = bannerBurstQueueValid,
                 earlyMiniShopChoicesValid = earlyMiniShopChoicesValid,
@@ -2856,8 +2864,9 @@ namespace DefenseGame.Editor
                 MethodInfo setMissionPanelOpen = typeof(TacticalMissionSystem).GetMethod("SetPanelOpen", BindingFlags.Instance | BindingFlags.NonPublic);
                 MethodInfo refreshMissionUi = typeof(TacticalMissionSystem).GetMethod("RefreshUi", BindingFlags.Instance | BindingFlags.NonPublic);
                 MethodInfo completeMission = typeof(TacticalMissionSystem).GetMethod("CompleteMission", BindingFlags.Instance | BindingFlags.NonPublic);
+                MethodInfo expireMission = typeof(TacticalMissionSystem).GetMethod("ExpireMission", BindingFlags.Instance | BindingFlags.NonPublic);
                 FieldInfo activeMissionsField = typeof(TacticalMissionSystem).GetField("activeMissions", BindingFlags.Instance | BindingFlags.NonPublic);
-                if (resetMissionState == null || refillMissionOffers == null || setMissionPanelOpen == null || refreshMissionUi == null || completeMission == null || activeMissionsField == null || showToast == null || metaFlow == null || showLobby == null)
+                if (resetMissionState == null || refillMissionOffers == null || setMissionPanelOpen == null || refreshMissionUi == null || completeMission == null || expireMission == null || activeMissionsField == null || showToast == null || metaFlow == null || showLobby == null)
                 {
                     summary = "mission_fixture_method_missing";
                     return false;
@@ -2879,14 +2888,22 @@ namespace DefenseGame.Editor
                 currentRoundField.SetValue(rounds, 2);
                 lifeField.SetValue(controller, missionShouldSucceed ? 6 : 8);
                 settleMission.Invoke(missions, new object[] { 2 });
-                // Pass 2X exercises post-settlement UI ordering. Its success fixture uses the same production
-                // payout method, but does not depend on whichever authored contract the seeded draft selected.
-                if (missionShouldSucceed && missions.HasActiveMissionSelection)
+                // Pass 2X exercises post-settlement UI ordering. The seeded authored offer can have a
+                // later deadline, so finalize the selected fixture through the same production reward or
+                // expiry method rather than assuming every card settles at R2.
+                if (missions.HasActiveMissionSelection)
                 {
                     IList activeMissions = activeMissionsField.GetValue(missions) as IList;
                     if (activeMissions != null && activeMissions.Count == 1)
                     {
-                        completeMission.Invoke(missions, new[] { activeMissions[0], (object)2 });
+                        if (missionShouldSucceed)
+                        {
+                            completeMission.Invoke(missions, new[] { activeMissions[0], (object)2 });
+                        }
+                        else
+                        {
+                            expireMission.Invoke(missions, new object[] { 0 });
+                        }
                     }
                 }
                 prepareMissionOffers.Invoke(missions, new object[] { 2 });
@@ -3130,6 +3147,34 @@ namespace DefenseGame.Editor
             return iconRemoved && centered && nonBlocking && lifecycle;
         }
 
+        private static bool ValidatePass10RoundBasedMainBgm(out string summary)
+        {
+            KeyValuePair<int, string>[] expectedMainTracks =
+            {
+                new KeyValuePair<int, string>(1, "Audio/MainBGM"),
+                new KeyValuePair<int, string>(9, "Audio/MainBGM"),
+                new KeyValuePair<int, string>(11, "Audio/MainBGM_2"),
+                new KeyValuePair<int, string>(19, "Audio/MainBGM_2"),
+                new KeyValuePair<int, string>(21, "Audio/MainBGM_3"),
+                new KeyValuePair<int, string>(31, "Audio/MainBGM_4"),
+                new KeyValuePair<int, string>(41, "Audio/MainBGM_5"),
+                new KeyValuePair<int, string>(51, "Audio/MainBGM"),
+                new KeyValuePair<int, string>(61, "Audio/MainBGM_2")
+            };
+
+            bool mappingValid = expectedMainTracks.All(pair => RuntimeBgmController.GetRegularMainResourcePathForRound(pair.Key) == pair.Value);
+            bool bossRouteValid = RuntimeBgmController.IsBossRoundForAudio(10) &&
+                                  RuntimeBgmController.IsBossRoundForAudio(20) &&
+                                  RuntimeBgmController.IsBossRoundForAudio(30) &&
+                                  !RuntimeBgmController.IsBossRoundForAudio(9) &&
+                                  !RuntimeBgmController.IsBossRoundForAudio(11);
+            bool resourcesPresent = expectedMainTracks
+                .Select(pair => pair.Value)
+                .Distinct()
+                .All(path => Resources.Load<AudioClip>(path) != null);
+            summary = "mapping=" + mappingValid + ", bossRoute=" + bossRouteValid + ", resources=" + resourcesPresent;
+            return mappingValid && bossRouteValid && resourcesPresent;
+        }
         private static bool ValidatePass9ContractValidityAndSynergy(out string summary)
         {
             int[] rounds = { 0, 1, 2, 4, 5, 10, 20, 30 };
@@ -3580,6 +3625,8 @@ namespace DefenseGame.Editor
             public string pass2XUiFlowSummary;
             public bool pass2QBadLuckPointsValid;
             public string pass2QBadLuckPointsSummary;
+            public bool pass10RoundBasedMainBgmValid;
+            public string pass10RoundBasedMainBgmSummary;
             public bool roundDiamondRewardValid;
             public bool bannerBurstQueueValid;
             public bool earlyMiniShopChoicesValid;

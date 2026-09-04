@@ -7,17 +7,25 @@ namespace DefenseGame
     {
         private const string MainTrackKey = "main";
         private const string BossTrackKey = "boss";
+        private static readonly string[] DefaultMainResourcePaths =
+        {
+            "Audio/MainBGM",
+            "Audio/MainBGM_2",
+            "Audio/MainBGM_3",
+            "Audio/MainBGM_4",
+            "Audio/MainBGM_5"
+        };
 
         private DefenseGameController gameController;
         private AudioSource audioSource;
-        private AudioClip mainClip;
+        private AudioClip[] mainClips;
         private AudioClip bossClip;
         private Coroutine transitionRoutine;
         private string currentTrackKey;
-        private bool warnedMissingMain;
+        private bool[] warnedMissingMain;
         private bool warnedMissingBoss;
 
-        private string mainResourcePath = "Audio/MainBGM";
+        private string[] mainResourcePaths = DefaultMainResourcePaths;
         private string bossResourcePath = "Audio/BossBGM";
         private float mainVolume = 0.55f;
         private float bossVolume = 0.72f;
@@ -34,7 +42,14 @@ namespace DefenseGame
             Unsubscribe();
 
             gameController = controller;
-            mainResourcePath = string.IsNullOrWhiteSpace(newMainResourcePath) ? "Audio/MainBGM" : newMainResourcePath;
+            mainResourcePaths = new[]
+            {
+                string.IsNullOrWhiteSpace(newMainResourcePath) ? DefaultMainResourcePaths[0] : newMainResourcePath,
+                DefaultMainResourcePaths[1],
+                DefaultMainResourcePaths[2],
+                DefaultMainResourcePaths[3],
+                DefaultMainResourcePaths[4]
+            };
             bossResourcePath = string.IsNullOrWhiteSpace(newBossResourcePath) ? "Audio/BossBGM" : newBossResourcePath;
             mainVolume = Mathf.Clamp01(newMainVolume);
             bossVolume = Mathf.Clamp01(newBossVolume);
@@ -43,7 +58,7 @@ namespace DefenseGame
             EnsureAudioSource();
             LoadClips();
             Subscribe();
-            PlayMain(true);
+            PlayMainForRound(1, true);
         }
 
         private void OnDisable()
@@ -103,14 +118,19 @@ namespace DefenseGame
 
         private void LoadClips()
         {
-            mainClip = Resources.Load<AudioClip>(mainResourcePath);
-            bossClip = Resources.Load<AudioClip>(bossResourcePath);
-
-            if (mainClip == null && !warnedMissingMain)
+            mainClips = new AudioClip[mainResourcePaths.Length];
+            warnedMissingMain = new bool[mainResourcePaths.Length];
+            for (int i = 0; i < mainResourcePaths.Length; i++)
             {
-                warnedMissingMain = true;
-                Debug.LogWarning("Main BGM was not found at Resources/" + mainResourcePath);
+                mainClips[i] = Resources.Load<AudioClip>(mainResourcePaths[i]);
+                if (mainClips[i] == null && !warnedMissingMain[i])
+                {
+                    warnedMissingMain[i] = true;
+                    Debug.LogWarning("Main BGM was not found at Resources/" + mainResourcePaths[i]);
+                }
             }
+
+            bossClip = Resources.Load<AudioClip>(bossResourcePath);
 
             if (bossClip == null && !warnedMissingBoss)
             {
@@ -121,29 +141,42 @@ namespace DefenseGame
 
         private void HandleRoundStarted(int round)
         {
-            if (round > 0 && round % 10 == 0)
+            if (IsBossRound(round))
             {
                 PlayBoss();
                 return;
             }
 
-            PlayMain(false);
+            PlayMainForRound(round, false);
         }
 
         private void HandleRoundCompleted(int round)
         {
-            PlayMain(false);
+            PlayMainForRound(IsBossRound(round) ? round + 1 : round, false);
         }
 
         private void HandleGameOver()
         {
-            PlayMain(false);
+            int round = gameController != null ? gameController.CurrentRound : 1;
+            PlayMainForRound(IsBossRound(round) ? round + 1 : round, false);
         }
 
-        private void PlayMain(bool immediate)
+        public static string GetRegularMainResourcePathForRound(int round)
+        {
+            int segmentIndex = Mathf.Max(0, (round - 1) / 10) % DefaultMainResourcePaths.Length;
+            return DefaultMainResourcePaths[segmentIndex];
+        }
+
+        public static bool IsBossRoundForAudio(int round)
+        {
+            return round > 0 && round % 10 == 0;
+        }
+
+        private void PlayMainForRound(int round, bool immediate)
         {
             EnsurePlaybackResources();
-            PlayClip(mainClip, mainVolume, MainTrackKey, immediate);
+            int segmentIndex = Mathf.Max(0, (round - 1) / 10) % mainResourcePaths.Length;
+            PlayClip(mainClips[segmentIndex], mainVolume, MainTrackKey, immediate);
         }
 
         private void PlayBoss()
@@ -165,13 +198,17 @@ namespace DefenseGame
         private void EnsurePlaybackResources()
         {
             EnsureAudioSource();
-            if (mainClip == null || bossClip == null)
+            if (mainClips == null || mainClips.Length != mainResourcePaths.Length || bossClip == null)
             {
                 LoadClips();
             }
         }
 
 
+        private static bool IsBossRound(int round)
+        {
+            return IsBossRoundForAudio(round);
+        }
         private void PlayClip(AudioClip clip, float volume, string trackKey, bool immediate)
         {
             if (clip == null || audioSource == null)
