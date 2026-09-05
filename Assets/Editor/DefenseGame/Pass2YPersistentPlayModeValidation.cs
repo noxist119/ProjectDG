@@ -989,17 +989,17 @@ namespace DefenseGame.Editor
                 return false;
             }
 
+            List<TacticalMissionSystem.MissionOfferSnapshot> snapshots = new List<TacticalMissionSystem.MissionOfferSnapshot>();
             List<string> offers = new List<string>();
             for (int i = 0; i < missionSystem.MissionOfferCount; i++)
             {
-                Button option = FindButton("MissionOption_" + i);
-                string visibleText = option != null
-                    ? string.Join(" ", option.GetComponentsInChildren<Text>(true).Where(text => text != null).Select(text => text.text).ToArray())
-                    : string.Empty;
-                offers.Add(missionSystem.GetMissionOfferAutomationTag(i) + ":" + visibleText);
+                TacticalMissionSystem.MissionOfferSnapshot snapshot = missionSystem.GetMissionOfferSnapshot(i);
+                snapshots.Add(snapshot);
+                offers.Add(DescribeMissionOffer(snapshot));
             }
 
-            int selectedIndex = ChoosePlayerLikeMissionIndex(missionSystem);
+            string selectionReason;
+            int selectedIndex = ChoosePlayerLikeMissionIndex(snapshots, out selectionReason);
             if (selectedIndex < 0)
             {
                 if (Click(FindButton("MissionCloseButton")))
@@ -1009,7 +1009,8 @@ namespace DefenseGame.Editor
                         round = controller.CurrentRound,
                         offers = offers,
                         selected = "Later",
-                        policyTag = "no_suitable_offer",
+                        policyTag = "no_feasible_offer",
+                        selectionReason = selectionReason,
                         result = "deferred"
                     });
                     RecordChoiceFlow("TacticalMission:Later");
@@ -1018,6 +1019,7 @@ namespace DefenseGame.Editor
                 return true;
             }
 
+            TacticalMissionSystem.MissionOfferSnapshot selectedSnapshot = snapshots[selectedIndex];
             Button selected = FindButton("MissionOption_" + selectedIndex);
             if (Click(selected))
             {
@@ -1025,8 +1027,15 @@ namespace DefenseGame.Editor
                 {
                     round = controller.CurrentRound,
                     offers = offers,
-                    selected = selectedIndex < offers.Count ? offers[selectedIndex] : selected.name,
-                    policyTag = GetPlayerLikeMissionPolicyTag(missionSystem.GetMissionOfferAutomationTag(selectedIndex)),
+                    selected = DescribeMissionOffer(selectedSnapshot),
+                    policyTag = GetPlayerLikeMissionPolicyTag(selectedSnapshot),
+                    selectionReason = selectionReason,
+                    selectedCondition = selectedSnapshot.description,
+                    selectedReward = selectedSnapshot.rewardText,
+                    feasibleAtSelection = selectedSnapshot.feasibleNow,
+                    targetRound = selectedSnapshot.targetRound,
+                    target = selectedSnapshot.target,
+                    secondaryTarget = selectedSnapshot.secondaryTarget,
                     completedBefore = missionSystem.CompletedMissionCount,
                     goldBefore = controller.Gold,
                     boardBefore = controller.BoardUnitCount,
@@ -1041,48 +1050,115 @@ namespace DefenseGame.Editor
             return true;
         }
 
-        private static int ChoosePlayerLikeMissionIndex(TacticalMissionSystem missionSystem)
+        private static int ChoosePlayerLikeMissionIndex(List<TacticalMissionSystem.MissionOfferSnapshot> offers, out string selectionReason)
         {
-            if (missionSystem == null || missionSystem.MissionOfferCount <= 0)
+            selectionReason = "no_feasible_offer";
+            if (offers == null || offers.Count == 0)
             {
                 return -1;
             }
 
-            string[] preference = playerLikeStrategy == PlayerLikeStrategy.ContractFirst
-                ? new[] { "growth", "balanced", "safety", "economy" }
-                : playerLikeStrategy == PlayerLikeStrategy.HighGradeInvestment
-                    ? new[] { "economy", "growth", "balanced", "safety" }
-                    : new[] { "safety", "growth", "balanced", "economy" };
-
-            foreach (string tag in preference)
+            int bestIndex = -1;
+            int bestScore = int.MinValue;
+            for (int i = 0; i < offers.Count; i++)
             {
-                for (int i = 0; i < missionSystem.MissionOfferCount; i++)
+                TacticalMissionSystem.MissionOfferSnapshot offer = offers[i];
+                if (!offer.feasibleNow)
                 {
-                    if (string.Equals(missionSystem.GetMissionOfferAutomationTag(i), tag, StringComparison.Ordinal))
-                    {
-                        return i;
-                    }
+                    continue;
+                }
+
+                int score = ScorePlayerLikeMission(offer);
+                if (score > bestScore)
+                {
+                    bestIndex = i;
+                    bestScore = score;
+                    selectionReason = DescribePlayerLikeMissionReason(offer);
                 }
             }
 
-            return -1;
+            return bestIndex;
         }
 
-        private static string GetPlayerLikeMissionPolicyTag(string offerTag)
+        private static int ScorePlayerLikeMission(TacticalMissionSystem.MissionOfferSnapshot offer)
+        {
+            int score = offer.goldReward * 4 + offer.roundGoldBonus * 20;
+            bool hasStableBoard = controller != null && controller.BoardUnitCount >= 6;
+            string kind = offer.kind ?? string.Empty;
+            string category = offer.category ?? string.Empty;
+
+            if (playerLikeStrategy == PlayerLikeStrategy.StableBoard)
+            {
+                if (kind == "PerfectDefense" || kind == "MonsterHunter" || kind == "RoleCollector") score += 140;
+                if (kind == "SummonSprint") score += 80;
+                if (kind == "MergeRush" && controller != null && controller.BoardUnitCount >= 3) score += 50;
+                if (category == "SAFE") score += 65;
+                if (kind == "LeanDefense" || kind == "EmptySlotDiscipline" || kind == "NoSummonHold" || kind == "SpendDownGambit" || kind == "HighGradeForge") score -= 220;
+                return score;
+            }
+
+            if (playerLikeStrategy == PlayerLikeStrategy.ContractFirst)
+            {
+                score += 100;
+                if (kind == "SummonSprint" || kind == "MergeRush" || kind == "MonsterHunter" || kind == "RoleCollector") score += 95;
+                if (category == "TEMPO" || category == "BUILD") score += 40;
+                if (kind == "LeanDefense" || kind == "EmptySlotDiscipline" || kind == "NoSummonHold") score -= 150;
+                return score;
+            }
+
+            if (!hasStableBoard)
+            {
+                if (kind == "PerfectDefense" || kind == "SummonSprint" || kind == "MonsterHunter" || category == "SAFE") score += 140;
+                if (kind == "GoldReserve" || kind == "NoSummonHold" || kind == "LeanDefense" || kind == "EmptySlotDiscipline") score -= 180;
+                return score;
+            }
+
+            if (kind == "RareUpgrade" || kind == "RoleCollector" || kind == "GoldReserve" || kind == "HighGradeForge") score += 120;
+            if (category == "BUILD" || category == "GREED") score += 45;
+            if (kind == "LeanDefense" || kind == "EmptySlotDiscipline" || kind == "NoSummonHold") score -= 170;
+            return score;
+        }
+
+        private static string DescribePlayerLikeMissionReason(TacticalMissionSystem.MissionOfferSnapshot offer)
+        {
+            if (playerLikeStrategy == PlayerLikeStrategy.StableBoard)
+            {
+                return "feasible_now; stable-board safety and board-preservation priority";
+            }
+
+            if (playerLikeStrategy == PlayerLikeStrategy.ContractFirst)
+            {
+                return "feasible_now; contract reward and attainable action priority";
+            }
+
+            return controller != null && controller.BoardUnitCount < 6
+                ? "feasible_now; board below six, stabilize before high-grade investment"
+                : "feasible_now; board stabilized, compatible economy/high-grade investment priority";
+        }
+
+        private static string DescribeMissionOffer(TacticalMissionSystem.MissionOfferSnapshot offer)
+        {
+            return offer.kind + " | " + offer.title + " | " + offer.description + " | " + offer.rewardText
+                + " | target=" + offer.target + "/" + offer.secondaryTarget
+                + " deadline=R" + offer.targetRound
+                + " remaining=" + offer.roundsRemaining
+                + " feasible=" + offer.feasibleNow;
+        }
+
+        private static string GetPlayerLikeMissionPolicyTag(TacticalMissionSystem.MissionOfferSnapshot offer)
         {
             if (playerLikeStrategy == PlayerLikeStrategy.ContractFirst)
             {
-                return "contract_priority_" + offerTag;
+                return "contract_priority_" + offer.category;
             }
 
             if (playerLikeStrategy == PlayerLikeStrategy.HighGradeInvestment)
             {
-                return "high_grade_safe_" + offerTag;
+                return "high_grade_compatible_" + offer.category;
             }
 
-            return "stable_board_" + offerTag;
+            return "stable_board_" + offer.category;
         }
-
         private static void ObservePlayerLikeMissionSettlement()
         {
             if (playerLikeStrategy == PlayerLikeStrategy.None || pendingMissionDecision == null || controller == null)
@@ -1522,6 +1598,13 @@ namespace DefenseGame.Editor
             public List<string> offers;
             public string selected;
             public string policyTag;
+            public string selectionReason;
+            public string selectedCondition;
+            public string selectedReward;
+            public bool feasibleAtSelection;
+            public int targetRound;
+            public int target;
+            public int secondaryTarget;
             public int completedBefore;
             public int goldBefore;
             public int boardBefore;
@@ -1573,4 +1656,5 @@ namespace DefenseGame.Editor
             public bool bgmPlaying;
         }
     }
+
 }

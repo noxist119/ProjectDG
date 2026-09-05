@@ -1463,7 +1463,8 @@ namespace DefenseGame
 					Debug.LogWarning("DefenseBoardManager slot invariant warning: occupied slot and defender CurrentSlot are inconsistent.", this);
 				}
 			}
-			DefenderUnit[] defenders = GetComponentsInChildren<DefenderUnit>(includeInactive: true);
+			// Runtime fallback templates live under this manager but are intentionally inactive and never own a slot. The invariant applies only to live board units.
+			DefenderUnit[] defenders = GetComponentsInChildren<DefenderUnit>(includeInactive: false);
 			for (int j = 0; j < defenders.Length; j++)
 			{
 				DefenderUnit defender = defenders[j];

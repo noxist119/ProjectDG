@@ -69,6 +69,22 @@ namespace DefenseGame
             public string Key => kind + ":" + tier;
         }
 
+        public struct MissionOfferSnapshot
+        {
+            public string kind;
+            public string title;
+            public string description;
+            public string rewardText;
+            public string category;
+            public int tier;
+            public int target;
+            public int secondaryTarget;
+            public int targetRound;
+            public int roundsRemaining;
+            public int goldReward;
+            public int roundGoldBonus;
+            public bool feasibleNow;
+        }
         [SerializeField] private DefenseGameController gameController;
         [SerializeField] private DefenseBoardManager boardManager;
         [SerializeField] private Button summaryButton;
@@ -137,6 +153,32 @@ namespace DefenseGame
         // Read-only automation/telemetry surface. This deliberately exposes broad intent,
         // rather than the private MissionKind enum, so external test policies remain stable
         // when individual missions are added or renamed.
+        // Read-only detail for Editor policy runners. It exposes the card already shown to the player,
+        // without changing draft generation, rewards, or mission evaluation.
+        public MissionOfferSnapshot GetMissionOfferSnapshot(int index)
+        {
+            MissionOfferSnapshot snapshot = default(MissionOfferSnapshot);
+            if (missionSelected || index < 0 || index >= activeMissions.Count || activeMissions[index] == null)
+            {
+                return snapshot;
+            }
+
+            MissionInstance mission = activeMissions[index];
+            snapshot.kind = mission.kind.ToString();
+            snapshot.title = mission.title ?? string.Empty;
+            snapshot.description = mission.description ?? string.Empty;
+            snapshot.rewardText = mission.rewardText ?? string.Empty;
+            snapshot.category = GetMissionCategory(mission.kind);
+            snapshot.tier = mission.tier;
+            snapshot.target = mission.target;
+            snapshot.secondaryTarget = mission.secondaryTarget;
+            snapshot.targetRound = mission.targetRound;
+            snapshot.roundsRemaining = gameController != null ? Mathf.Max(0, mission.targetRound - gameController.CurrentRound) : 0;
+            snapshot.goldReward = mission.goldReward;
+            snapshot.roundGoldBonus = mission.roundGoldBonus;
+            snapshot.feasibleNow = IsMissionFeasibleForCurrentRun(mission);
+            return snapshot;
+        }
         public string GetMissionOfferAutomationTag(int index)
         {
             if (missionSelected || index < 0 || index >= activeMissions.Count || activeMissions[index] == null)
