@@ -73,6 +73,7 @@ namespace DefenseGame.Editor
         private static bool bootstrapDispatchScheduled;
         private static bool bootstrapProbe;
         private static string bootstrapExecutionId;
+        private static int bridgeTickCount;
 
         private static string OutputPath => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, outputFileName));
 
@@ -265,6 +266,7 @@ namespace DefenseGame.Editor
             };
             SaveBootstrapRequest(request);
             Debug.Log("[Pass17Bootstrap] queued " + request.executionId + " state=pending mode=" + request.executionMode);
+            Pass18PlayModeRunnerBridge.EnsureOpen();
             SchedulePendingBootstrap();
         }
 
@@ -459,7 +461,7 @@ namespace DefenseGame.Editor
             EditorApplication.playModeStateChanged -= HandleBootstrapPlayModeStateChanged;
             EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
             EditorApplication.update -= Tick;
-            EditorApplication.update += Tick;
+            Pass18PlayModeRunnerBridge.EnsureOpen();
             request.state = "running";
             SaveBootstrapRequest(request);
             InitializeEnteredPlayMode();
@@ -555,6 +557,29 @@ namespace DefenseGame.Editor
             }
         }
 
+        internal static bool HasPendingBridgeWork()
+        {
+            BootstrapRequest request = LoadBootstrapRequest();
+            return request != null && (request.state == "pending" || request.state == "booting" || request.state == "running");
+        }
+
+        internal static bool IsBridgeTickRequired => running && EditorApplication.isPlaying;
+
+        internal static void TickFromPlayModeBridge()
+        {
+            if (!IsBridgeTickRequired)
+            {
+                return;
+            }
+
+            bridgeTickCount++;
+            if (report != null)
+            {
+                report.bridgeTickCount = bridgeTickCount;
+            }
+
+            Tick();
+        }
         private static void Tick()
         {
             if (!running || !EditorApplication.isPlaying)
@@ -1526,6 +1551,11 @@ namespace DefenseGame.Editor
                     button = PointerEventData.InputButton.Left
                 };
                 ExecuteEvents.Execute(button.gameObject, eventData, ExecuteEvents.pointerClickHandler);
+                if (report != null && string.IsNullOrEmpty(report.firstUiAction))
+                {
+                    report.firstUiAction = button.name;
+                    report.firstUiActionBridgeTick = bridgeTickCount;
+                }
                 return true;
             }
             finally
@@ -1773,6 +1803,7 @@ namespace DefenseGame.Editor
             pendingMissionDecision = null;
 
             running = false;
+            Pass18PlayModeRunnerBridge.CloseBridge();
             EditorApplication.update -= Tick;
             EditorApplication.update -= PollPendingBootstrap;
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
@@ -1835,6 +1866,9 @@ namespace DefenseGame.Editor
             public string finishedUtc;
             public string bootstrapExecutionId;
             public string bootstrapState;
+            public int bridgeTickCount;
+            public string firstUiAction;
+            public int firstUiActionBridgeTick;
             public bool passed;
             public int runtimeErrors;
             public bool overdriveSelected;
@@ -1952,4 +1986,90 @@ namespace DefenseGame.Editor
     }
 
 
+    // Editor-only player-loop bridge. It is never compiled into Assembly-CSharp.
+    [InitializeOnLoad]
+    internal sealed class Pass18PlayModeRunnerBridge : EditorWindow
+    {
+        private static Pass18PlayModeRunnerBridge instance;
+        private static bool closeQueued;
+
+        static Pass18PlayModeRunnerBridge()
+        {
+            EditorApplication.delayCall += RestoreAfterReload;
+        }
+
+        internal static void EnsureOpen()
+        {
+            if (instance != null)
+            {
+                return;
+            }
+
+            instance = CreateInstance<Pass18PlayModeRunnerBridge>();
+            instance.titleContent = new GUIContent("Pass 18 Runner");
+            instance.minSize = new Vector2(220f, 46f);
+            instance.maxSize = instance.minSize;
+            instance.ShowUtility();
+        }
+
+        internal static void CloseBridge()
+        {
+            if (instance == null || closeQueued)
+            {
+                return;
+            }
+
+            closeQueued = true;
+            EditorApplication.delayCall += CloseQueuedBridge;
+        }
+
+        private static void RestoreAfterReload()
+        {
+            if (Pass2YPersistentPlayModeValidation.HasPendingBridgeWork())
+            {
+                EnsureOpen();
+            }
+        }
+
+        private static void CloseQueuedBridge()
+        {
+            closeQueued = false;
+            if (instance == null)
+            {
+                return;
+            }
+
+            Pass18PlayModeRunnerBridge bridge = instance;
+            instance = null;
+            bridge.Close();
+        }
+
+        private void Update()
+        {
+            if (Pass2YPersistentPlayModeValidation.IsBridgeTickRequired)
+            {
+                Pass2YPersistentPlayModeValidation.TickFromPlayModeBridge();
+                Repaint();
+                return;
+            }
+
+            if (!Pass2YPersistentPlayModeValidation.HasPendingBridgeWork())
+            {
+                CloseBridge();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (instance == this)
+            {
+                instance = null;
+            }
+        }
+
+        private void OnGUI()
+        {
+            GUILayout.Label("Editor validation runner bridge", EditorStyles.miniLabel);
+        }
+    }
 }
