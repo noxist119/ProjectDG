@@ -201,3 +201,10 @@
 - Compile validation: `Assembly-CSharp-Editor` passed with 0 errors (the earlier external telemetry warning did not recur in this build).
 - Stable 101 execution: NOT VERIFIED. The only clean bridge execution attempt could not begin because a previous Unity instance had been launched before its project lock was cleared; the replacement process remained at Unity project-lock startup and was stopped. No second retry was made, no Stable 101 JSON was produced, and no Tick/UI/R1 claim is made.
 - Next task: with Unity fully closed and a single clean persistent Editor session, execute Stable 101 once and use its bridge Tick / first UI action telemetry before any six-seed validation.
+## Pass 19 — Single-session Stable 101 bridge verification
+
+- Preflight: no Unity process was running. `Library/EditorInstance.json` referenced dead prior PID 5080 and `Temp/UnityLockfile` was stale; both were removed only after confirming that PID was absent. One Unity Editor session (PID 33336) was then launched. No second Unity instance was started.
+- Actual Stable 101 result: NOT COMPLETED. The sole run persisted execution ID `c6e3081b486945b99b48bdf83407d5fc` through `pending` → `booting` → `EnteredPlayMode` → `running`. The final runner log state was `playmode_detected_by_delay`; no `BatchPlaytestResults/DefenseGame_Pass15_PlayerLike_StableBoard_Seed101.json` was created.
+- Required telemetry: `bridgeTickCount`, `firstUiAction`, and `firstUiActionBridgeTick` were not recorded because the runner never reached `Finish()` to write JSON. Therefore no EventSystem click, opening-contract/preparation action, R1 start, BoardSlot count, or runtimeErrors value is claimed.
+- Failure boundary: the EditorWindow bridge did not produce observable runner Tick telemetry after the `running` state. The single validation Editor was stopped; no retry or second Unity launch was attempted.
+- Next task: diagnose why the EditorWindow bridge does not receive an observable PlayMode update in this Editor launch path before attempting any six-seed validation.
