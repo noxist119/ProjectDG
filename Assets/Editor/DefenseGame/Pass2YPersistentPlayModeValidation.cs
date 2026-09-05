@@ -30,6 +30,9 @@ namespace DefenseGame.Editor
         private const double StartupTimeoutSeconds = 15d;
         private const double RunTimeoutSeconds = 360d;
         private const double ChoiceBlockTimeoutSeconds = 5d;
+        private const string BootstrapSessionKey = "DefenseGame.Pass17.PersistentValidation.Request";
+        private const string BootstrapFallbackKey = "DefenseGame.Pass17.PersistentValidation.RequestFallback";
+        private const double BootstrapRequestExpiryMinutes = 15d;
 
         private static bool running;
         private static bool previousEnterPlayModeOptionsEnabled;
@@ -67,8 +70,24 @@ namespace DefenseGame.Editor
         private static int playerLikeSeedLabel;
         private static bool playerLikeSeedInitialized;
         private static MissionDecision pendingMissionDecision;
+        private static bool bootstrapDispatchScheduled;
+        private static bool bootstrapProbe;
+        private static string bootstrapExecutionId;
 
         private static string OutputPath => Path.GetFullPath(Path.Combine(Application.dataPath, "..", OutputDirectoryName, outputFileName));
+
+        [InitializeOnLoadMethod]
+        private static void RestorePendingBootstrapAfterReload()
+        {
+            EnsureBootstrapPoller();
+            SchedulePendingBootstrap();
+        }
+
+        [MenuItem("DefenseGame/Validation/Pass 17 Persistent Bootstrap Probe")]
+        public static void RunPass17BootstrapProbe()
+        {
+            QueueBootstrapRequest(true, false, false, false);
+        }
 
         [MenuItem("DefenseGame/Validation/Pass 2Y Persistent Overdrive R10-R15 UI Flow")]
         public static void Run()
@@ -220,15 +239,181 @@ namespace DefenseGame.Editor
                 return;
             }
 
+            QueueBootstrapRequest(false, stopAfterRecovery, skipPurchase, audit);
+        }
+
+        private static void QueueBootstrapRequest(bool probe, bool stopAfterRecovery, bool skipPurchase, bool audit)
+        {
+            BootstrapRequest request = new BootstrapRequest
+            {
+                executionMode = probe ? "bootstrap_probe" : "persistent_validation",
+                strategy = playerLikeStrategy.ToString(),
+                seed = playerLikeSeedLabel,
+                executionId = Guid.NewGuid().ToString("N"),
+                requestedUtc = DateTime.UtcNow.ToString("O"),
+                state = "pending",
+                probe = probe,
+                stopAfterRecovery = stopAfterRecovery,
+                skipPurchase = skipPurchase,
+                audit = audit,
+                pass5Validation = pass5Validation,
+                pass6EconomyValidation = pass6EconomyValidation,
+                pass9ChoiceFlowValidation = pass9ChoiceFlowValidation,
+                pass13IntegrationValidation = pass13IntegrationValidation,
+                pass14Strategy = pass14Strategy.ToString(),
+                progressionAuditMaxRound = progressionAuditMaxRound
+            };
+            SaveBootstrapRequest(request);
+            Debug.Log("[Pass17Bootstrap] queued " + request.executionId + " state=pending mode=" + request.executionMode);
+            SchedulePendingBootstrap();
+        }
+
+        private static void EnsureBootstrapPoller()
+        {
+            EditorApplication.update -= PollPendingBootstrap;
+            EditorApplication.update += PollPendingBootstrap;
+        }
+
+        private static void PollPendingBootstrap()
+        {
+            if (running)
+            {
+                return;
+            }
+
+            BootstrapRequest request = LoadBootstrapRequest();
+            if (request == null)
+            {
+                return;
+            }
+
+            if (EditorApplication.isPlaying && request.state == "booting")
+            {
+                Debug.Log("[Pass17Bootstrap] " + request.executionId + " state=playmode_detected_by_poller");
+                StartRunFromBootstrap(request);
+                return;
+            }
+
+            if (!EditorApplication.isPlaying && !EditorApplication.isPlayingOrWillChangePlaymode && request.state == "pending")
+            {
+                Debug.Log("[Pass17Bootstrap] " + request.executionId + " state=pending_detected_by_poller");
+                DispatchPendingBootstrap();
+            }
+        }
+        private static void SchedulePendingBootstrap()
+        {
+            if (bootstrapDispatchScheduled)
+            {
+                return;
+            }
+
+            bootstrapDispatchScheduled = true;
+            EditorApplication.delayCall += DispatchPendingBootstrap;
+        }
+
+        private static void DispatchPendingBootstrap()
+        {
+            bootstrapDispatchScheduled = false;
+            BootstrapRequest request = LoadBootstrapRequest();
+            if (request == null)
+            {
+                return;
+            }
+
+            DateTime requestedAt;
+            if (!DateTime.TryParse(request.requestedUtc, null, System.Globalization.DateTimeStyles.RoundtripKind, out requestedAt) ||
+                DateTime.UtcNow - requestedAt.ToUniversalTime() > TimeSpan.FromMinutes(BootstrapRequestExpiryMinutes))
+            {
+                Debug.LogWarning("[Pass17Bootstrap] discarded expired request " + request.executionId);
+                ClearBootstrapRequest();
+                return;
+            }
+
+            if (!EditorApplication.isPlaying && request.state == "running")
+            {
+                Debug.LogWarning("[Pass17Bootstrap] discarded stale running request " + request.executionId);
+                ClearBootstrapRequest();
+                return;
+            }
+
+            if (EditorApplication.isPlaying)
+            {
+                Debug.Log("[Pass17Bootstrap] " + request.executionId + " state=playmode_detected_by_delay");
+                StartRunFromBootstrap(request);
+                return;
+            }
+
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                SchedulePendingBootstrap();
+                return;
+            }
+
+            request.state = "booting";
+            request.previousEnterPlayModeOptionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+            request.previousEnterPlayModeOptions = (int)EditorSettings.enterPlayModeOptions;
+            request.previousRunInBackground = Application.runInBackground;
+            request.previousVSyncCount = QualitySettings.vSyncCount;
+            request.previousTargetFrameRate = Application.targetFrameRate;
+            request.previousTimeScale = Time.timeScale;
+            SaveBootstrapRequest(request);
+            ApplyValidationRuntimeOptions();
+            EnsureBootstrapPoller();
+            EditorApplication.playModeStateChanged -= HandleBootstrapPlayModeStateChanged;
+            EditorApplication.playModeStateChanged += HandleBootstrapPlayModeStateChanged;
+            Debug.Log("[Pass17Bootstrap] " + request.executionId + " state=booting requesting_playmode");
+            EditorSceneManager.OpenScene(ScenePath);
+            EditorApplication.isPlaying = true;
+        }
+
+        private static void HandleBootstrapPlayModeStateChanged(PlayModeStateChange state)
+        {
+            if (state != PlayModeStateChange.EnteredPlayMode)
+            {
+                return;
+            }
+
+            BootstrapRequest request = LoadBootstrapRequest();
+            if (request == null)
+            {
+                return;
+            }
+
+            Debug.Log("[Pass17Bootstrap] " + request.executionId + " state=entered_playmode_event");
+            StartRunFromBootstrap(request);
+        }
+
+        private static void StartRunFromBootstrap(BootstrapRequest request)
+        {
+            if (running || request == null)
+            {
+                return;
+            }
+
+            progressionAudit = request.audit;
+            stopAfterRunShopRecovery = request.stopAfterRecovery;
+            skipRunShopPurchase = request.skipPurchase;
+            pass5Validation = request.pass5Validation;
+            pass6EconomyValidation = request.pass6EconomyValidation;
+            pass9ChoiceFlowValidation = request.pass9ChoiceFlowValidation;
+            pass13IntegrationValidation = request.pass13IntegrationValidation;
+            pass14Strategy = ParsePass14Strategy(request.pass14Strategy);
+            playerLikeStrategy = ParsePlayerLikeStrategy(request.strategy);
+            playerLikeSeedLabel = request.seed;
+            playerLikeSeedInitialized = false;
+            pendingMissionDecision = null;
+            progressionAuditMaxRound = request.progressionAuditMaxRound;
+            bootstrapProbe = request.probe;
+            bootstrapExecutionId = request.executionId;
+            previousEnterPlayModeOptionsEnabled = request.previousEnterPlayModeOptionsEnabled;
+            previousEnterPlayModeOptions = (EnterPlayModeOptions)request.previousEnterPlayModeOptions;
+            previousRunInBackground = request.previousRunInBackground;
+            previousVSyncCount = request.previousVSyncCount;
+            previousTargetFrameRate = request.previousTargetFrameRate;
+            previousTimeScale = request.previousTimeScale;
+            outputFileName = ResolveOutputFileName();
+            Debug.Log("[Pass17Bootstrap] " + bootstrapExecutionId + " state=running restored");
             running = true;
-            progressionAudit = audit;
-            stopAfterRunShopRecovery = stopAfterRecovery;
-            skipRunShopPurchase = skipPurchase;
-            outputFileName = playerLikeStrategy != PlayerLikeStrategy.None
-                ? Pass15PlayerLikeOutputPrefix + "_" + playerLikeStrategy + "_Seed" + playerLikeSeedLabel + ".json"
-                : stopAfterRecovery
-                ? (skipPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
-                : (pass14Strategy != Pass14Strategy.None ? (pass14Strategy == Pass14Strategy.AreaStability ? Pass14AreaOutputFileName : Pass14LuckOutputFileName) : (pass13IntegrationValidation ? Pass13OutputFileName : (pass6EconomyValidation ? Pass6OutputFileName : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName)))));
             runtimeErrors = 0;
             runtimeErrorMessages.Clear();
             pass5MissionWasActive = false;
@@ -242,11 +427,13 @@ namespace DefenseGame.Editor
             {
                 status = "running",
                 validationMode = "EventSystem UI clicks only; no StartRound/debug round jump/reward fixture",
-                runShopScenario = stopAfterRecovery ? (skipPurchase ? "later" : "purchase_then_close") : "persistent",
+                runShopScenario = stopAfterRunShopRecovery ? (skipRunShopPurchase ? "later" : "purchase_then_close") : "persistent",
                 strategyName = playerLikeStrategy != PlayerLikeStrategy.None ? playerLikeStrategy.ToString() : pass14Strategy.ToString(),
                 requestedSeedLabel = playerLikeSeedLabel,
                 validationTimeScale = ValidationTimeScale,
                 startedUtc = DateTime.UtcNow.ToString("O"),
+                bootstrapExecutionId = bootstrapExecutionId,
+                bootstrapState = "running",
                 roundSnapshots = new List<RoundSnapshot>(),
                 roundAudits = new List<RoundAuditEntry>(),
                 runtimeErrorMessages = new List<string>(),
@@ -260,18 +447,7 @@ namespace DefenseGame.Editor
                 File.Delete(OutputPath);
             }
 
-            previousEnterPlayModeOptionsEnabled = EditorSettings.enterPlayModeOptionsEnabled;
-            previousEnterPlayModeOptions = EditorSettings.enterPlayModeOptions;
-            previousRunInBackground = Application.runInBackground;
-            previousVSyncCount = QualitySettings.vSyncCount;
-            previousTargetFrameRate = Application.targetFrameRate;
-            previousTimeScale = Time.timeScale;
-            EditorSettings.enterPlayModeOptionsEnabled = true;
-            EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
-            Application.runInBackground = true;
-            Application.targetFrameRate = 240;
-            QualitySettings.vSyncCount = 0;
-
+            ApplyValidationRuntimeOptions();
             Application.logMessageReceived -= HandleLogMessage;
             MonsterUnit.OnMonsterSpawned -= HandleMonsterSpawned;
             MonsterUnit.OnMonsterKilled -= HandleMonsterKilled;
@@ -280,13 +456,93 @@ namespace DefenseGame.Editor
             MonsterUnit.OnMonsterKilled += HandleMonsterKilled;
             MonsterUnit.OnMonsterEscaped += HandleMonsterEscaped;
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
+            EditorApplication.playModeStateChanged -= HandleBootstrapPlayModeStateChanged;
             EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
             EditorApplication.update -= Tick;
             EditorApplication.update += Tick;
-            EditorSceneManager.OpenScene(ScenePath);
-            EditorApplication.isPlaying = true;
+            request.state = "running";
+            SaveBootstrapRequest(request);
+            InitializeEnteredPlayMode();
         }
 
+        private static string ResolveOutputFileName()
+        {
+            if (bootstrapProbe)
+            {
+                return "DefenseGame_Pass17_BootstrapProbe.json";
+            }
+
+            return playerLikeStrategy != PlayerLikeStrategy.None
+                ? Pass15PlayerLikeOutputPrefix + "_" + playerLikeStrategy + "_Seed" + playerLikeSeedLabel + ".json"
+                : stopAfterRunShopRecovery
+                ? (skipRunShopPurchase ? "DefenseGame_Pass2Z_RunShopLater.json" : "DefenseGame_Pass2Z_RunShopPurchase.json")
+                : (pass14Strategy != Pass14Strategy.None ? (pass14Strategy == Pass14Strategy.AreaStability ? Pass14AreaOutputFileName : Pass14LuckOutputFileName) : (pass13IntegrationValidation ? Pass13OutputFileName : (pass6EconomyValidation ? Pass6OutputFileName : (pass5Validation ? Pass5OutputFileName : (progressionAudit ? (progressionAuditMaxRound > 15 ? MidgameAuditOutputFileName : ProgressionAuditOutputFileName) : PersistentOutputFileName)))));
+        }
+
+        private static void ApplyValidationRuntimeOptions()
+        {
+            EditorSettings.enterPlayModeOptionsEnabled = true;
+            EditorSettings.enterPlayModeOptions = EnterPlayModeOptions.DisableDomainReload;
+            Application.runInBackground = true;
+            Application.targetFrameRate = 240;
+            QualitySettings.vSyncCount = 0;
+        }
+
+        private static Pass14Strategy ParsePass14Strategy(string value)
+        {
+            Pass14Strategy parsed;
+            return Enum.TryParse(value, out parsed) ? parsed : Pass14Strategy.None;
+        }
+
+        private static PlayerLikeStrategy ParsePlayerLikeStrategy(string value)
+        {
+            PlayerLikeStrategy parsed;
+            return Enum.TryParse(value, out parsed) ? parsed : PlayerLikeStrategy.None;
+        }
+
+        private static void InitializeEnteredPlayMode()
+        {
+            startedAt = EditorApplication.timeSinceStartup;
+            nextActionAt = startedAt + 1d;
+            Log("entered_play_mode execution=" + bootstrapExecutionId);
+        }
+
+        private static void SaveBootstrapRequest(BootstrapRequest request)
+        {
+            string serialized = JsonUtility.ToJson(request);
+            SessionState.SetString(BootstrapSessionKey, serialized);
+            EditorPrefs.SetString(BootstrapFallbackKey, serialized);
+        }
+
+        private static BootstrapRequest LoadBootstrapRequest()
+        {
+            string serialized = SessionState.GetString(BootstrapSessionKey, string.Empty);
+            if (string.IsNullOrEmpty(serialized))
+            {
+                serialized = EditorPrefs.GetString(BootstrapFallbackKey, string.Empty);
+            }
+
+            if (string.IsNullOrEmpty(serialized))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonUtility.FromJson<BootstrapRequest>(serialized);
+            }
+            catch (ArgumentException)
+            {
+                ClearBootstrapRequest();
+                return null;
+            }
+        }
+
+        private static void ClearBootstrapRequest()
+        {
+            SessionState.EraseString(BootstrapSessionKey);
+            EditorPrefs.DeleteKey(BootstrapFallbackKey);
+        }
         private static void HandlePlayModeStateChanged(PlayModeStateChange state)
         {
             if (state == PlayModeStateChange.EnteredPlayMode)
@@ -323,6 +579,12 @@ namespace DefenseGame.Editor
                     }
                     return;
                 }
+            }
+
+            if (bootstrapProbe)
+            {
+                Finish("bootstrap_probe_entered", "Restored bootstrap request entered PlayMode and resolved DefenseGameController.");
+                return;
             }
 
             if (playerLikeStrategy != PlayerLikeStrategy.None && !playerLikeSeedInitialized)
@@ -1498,9 +1760,11 @@ namespace DefenseGame.Editor
             report.runtimeErrors = runtimeErrors;
             report.runtimeErrorMessages = new List<string>(runtimeErrorMessages);
             report.finishedUtc = DateTime.UtcNow.ToString("O");
+            report.bootstrapState = status;
             bool requiresInitialMissionAutoOpen = pass13IntegrationValidation || pass14Strategy != Pass14Strategy.None || playerLikeStrategy != PlayerLikeStrategy.None;
-            report.passed = ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && (!requiresInitialMissionAutoOpen || (report.initialMissionAutoOpenObserved && report.initialMissionAutoOpenResolved)) && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && (!pass9ChoiceFlowValidation || report.tacticalMissionSelectedByUi) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
+            report.passed = (status == "bootstrap_probe_entered" && runtimeErrors == 0) || ((status == "reached_r15" || (progressionAudit && status == "r" + progressionAuditMaxRound + "_completed")) && report.r10BossWarningSeen && report.r10BossSpawned && report.r10BossCleared && report.r10ContinueClicked && report.r11StartedAfterR10 && (!requiresInitialMissionAutoOpen || (report.initialMissionAutoOpenObserved && report.initialMissionAutoOpenResolved)) && !report.invisibleBlockerObserved && runtimeErrors == 0) || (status == "r4_shop_recovered" && report.r4RunShopSeen && (report.r4RunShopPurchaseClicked || report.r4RunShopCloseClicked) && (!pass9ChoiceFlowValidation || report.tacticalMissionSelectedByUi) && report.r5StartedAfterRunShop && !report.invisibleBlockerObserved && runtimeErrors == 0);
             File.WriteAllText(OutputPath, JsonUtility.ToJson(report, true));
+            ClearBootstrapRequest();
             pass13IntegrationValidation = false;
             pass14Strategy = Pass14Strategy.None;
             playerLikeStrategy = PlayerLikeStrategy.None;
@@ -1510,7 +1774,9 @@ namespace DefenseGame.Editor
 
             running = false;
             EditorApplication.update -= Tick;
+            EditorApplication.update -= PollPendingBootstrap;
             EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
+            EditorApplication.playModeStateChanged -= HandleBootstrapPlayModeStateChanged;
             Application.logMessageReceived -= HandleLogMessage;
             MonsterUnit.OnMonsterSpawned -= HandleMonsterSpawned;
             MonsterUnit.OnMonsterKilled -= HandleMonsterKilled;
@@ -1529,6 +1795,32 @@ namespace DefenseGame.Editor
         }
 
         [Serializable]
+        private sealed class BootstrapRequest
+        {
+            public string executionMode;
+            public string strategy;
+            public int seed;
+            public string executionId;
+            public string requestedUtc;
+            public string state;
+            public bool probe;
+            public bool stopAfterRecovery;
+            public bool skipPurchase;
+            public bool audit;
+            public bool pass5Validation;
+            public bool pass6EconomyValidation;
+            public bool pass9ChoiceFlowValidation;
+            public bool pass13IntegrationValidation;
+            public string pass14Strategy;
+            public int progressionAuditMaxRound;
+            public bool previousEnterPlayModeOptionsEnabled;
+            public int previousEnterPlayModeOptions;
+            public bool previousRunInBackground;
+            public int previousVSyncCount;
+            public int previousTargetFrameRate;
+            public float previousTimeScale;
+        }
+        [Serializable]
         private sealed class ValidationReport
         {
             public string status;
@@ -1541,6 +1833,8 @@ namespace DefenseGame.Editor
             public float validationTimeScale;
             public string startedUtc;
             public string finishedUtc;
+            public string bootstrapExecutionId;
+            public string bootstrapState;
             public bool passed;
             public int runtimeErrors;
             public bool overdriveSelected;
@@ -1656,5 +1950,6 @@ namespace DefenseGame.Editor
             public bool bgmPlaying;
         }
     }
+
 
 }
