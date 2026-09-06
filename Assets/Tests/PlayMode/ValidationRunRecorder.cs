@@ -51,7 +51,7 @@ namespace DefenseGame.Tests
             record.status = "running";
             record.failureReason = reason;
             Save();
-            UnityEngine.Debug.Log("[Pass22] " + record.executionId + " " + reason + " round=" + record.finalRound + " ticks=" + record.runnerTickCount);
+            UnityEngine.Debug.Log("[Pass23] " + record.executionId + " " + reason + " round=" + record.finalRound + " ticks=" + record.runnerTickCount);
         }
         internal void HandleLog(string condition, string stackTrace, LogType type)
         {
@@ -73,7 +73,7 @@ namespace DefenseGame.Tests
         internal string Save()
         {
             string root = ResolveProjectRoot(); string directory = Path.Combine(root, "BatchPlaytestResults"); Directory.CreateDirectory(directory);
-            string path = Path.Combine(directory, "DefenseGame_Pass22_" + record.strategy + "_Seed" + record.requestedSeed + ".json"); File.WriteAllText(path, JsonUtility.ToJson(record, true)); return path;
+            string path = Path.Combine(directory, "DefenseGame_Pass23_" + record.strategy + "_Seed" + record.requestedSeed + ".json"); File.WriteAllText(path, JsonUtility.ToJson(record, true)); return path;
         }
         private static string ResolveProjectRoot()
         {

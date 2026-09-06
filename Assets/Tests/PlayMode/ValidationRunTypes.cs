@@ -28,6 +28,12 @@ namespace DefenseGame.Tests
         public string displayName; public float maxHealth; public float remainingHealth; public float remainingHealth01;
         public bool spawned; public bool killed;
     }
+    [Serializable] internal sealed class ValidationFateRecord
+    {
+        public int round; public bool entryClicked; public string selectedCard; public string selectionReason;
+        public float timeScaleBeforeEntry; public float timeScaleBeforeSelection; public float timeScaleAfterResolution;
+        public bool panelOpenBeforeEntry; public bool panelOpenAfterResolution; public string result = "pending";
+    }
     [Serializable] internal sealed class ValidationMissionRecord
     {
         public int round; public List<string> offers = new List<string>(); public string selected; public string selectionReason;
@@ -36,7 +42,7 @@ namespace DefenseGame.Tests
     }
     [Serializable] internal sealed class ValidationRunRecord
     {
-        public string pass = "Pass 22"; public string executionInfrastructure = "Unity Test Framework PlayMode";
+        public string pass = "Pass 23"; public string executionInfrastructure = "Unity Test Framework PlayMode";
         public string executionId; public string unityProcessId; public string launcher = "Unity Test Framework";
         public string strategy; public int requestedSeed; public int actualContentSeed; public string status = "idle"; public string finalState = "Idle";
         public bool infrastructureReady; public int runnerTickCount; public bool actualEventSystemClick; public string firstUiAction; public int firstUiActionRound = -1;
@@ -45,7 +51,7 @@ namespace DefenseGame.Tests
         public int runtimeErrors; public int boardSlotWarnings; public string blockingChoiceReason; public string activeChoicePanels; public bool battleButtonInteractable; public string failureReason;
         public List<ValidationStateTransition> stateTransitions = new List<ValidationStateTransition>();
         public List<ValidationActionRecord> actions = new List<ValidationActionRecord>();
-        public List<ValidationMissionRecord> missions = new List<ValidationMissionRecord>();
+        public List<ValidationMissionRecord> missions = new List<ValidationMissionRecord>(); public List<ValidationFateRecord> fateChoices = new List<ValidationFateRecord>();
         public List<ValidationRoundSnapshot> rounds = new List<ValidationRoundSnapshot>();
     }
 

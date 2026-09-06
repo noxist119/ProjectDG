@@ -127,6 +127,9 @@ namespace DefenseGame.Tests
                     }
 
                     if (!ui.IsReadyForAction) { yield return null; continue; }
+                    string fateFailure;
+                    if (policy.TryResolveFateChoice(controller, ui, recorder, out fateFailure)) { blockedSince = -1f; yield return null; continue; }
+                    if (!string.IsNullOrEmpty(fateFailure)) { recorder.MarkFailure("infrastructure_failed", fateFailure); recorder.RecordSnapshot(controller, "fate_resolution_failure"); yield break; }
                     if (DriveVisibleUi(controller, mission, policy, ui, recorder, ref initialContractOfferDeadline))
                     {
                         blockedSince = -1f; yield return null; continue;
@@ -204,7 +207,6 @@ namespace DefenseGame.Tests
             if (policy.TryResolveRunShop(controller, ui, recorder)) return true;
             if (policy.TryResolveMission(mission, controller, ui, recorder)) return true;
             if (policy.TryResolveGenericChoice("LuckySummonChoiceOverlay", "LuckySummonChoice", controller, ui, recorder)) return true;
-            if (policy.TryResolveGenericChoice("Fate", "Fate", controller, ui, recorder)) return true;
             if (policy.TryPrepare(controller, ui, recorder)) return true;
             return ui.TryClick(RuntimeGameView.FindButton("BattleButton"), "battle_r" + (RuntimeGameView.Int(controller, "CurrentRound") + 1), recorder, controller);
         }
